@@ -6,6 +6,13 @@
 
 #include <stdio.h>
 
+void usage() {
+	fprintf(stderr,"");
+	fprintf(stderr,"\n");
+	fprintf(stderr,"  --help         : Print this help\n");
+	exit(0);
+}
+
 argStruct *args_init(){
 
 
@@ -45,6 +52,9 @@ argStruct *args_get(int argc, char **argv){
 		else if(strcasecmp("-depth",arv)==0) args->mps_depth=atof(val); 
 		else if(strcasecmp("-isSim",arv)==0) args->isSim=atoi(val);
 		else if(strcasecmp("-seed",arv)==0) args->seed=atoi(val);
+		else if(strcasecmp("-h",arv) == 0 || strcasecmp( "--help",arv) == 0) {
+			usage();
+		}
 
 		else{
 			fprintf(stderr,"Unknown arg:%s\n",arv);

@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+
+ngsAMOVA
+
+# VIM swap files
+*.swp

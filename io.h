@@ -44,6 +44,7 @@ argStruct *args_init();
 
 argStruct *args_get(int argc, char **argv);
 
+void usage();
 
 
 

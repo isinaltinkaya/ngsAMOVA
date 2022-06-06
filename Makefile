@@ -2,7 +2,8 @@ CXX ?= g++
 
 #  -g     add debugging info to the executable 
 #  -Wall  turn on most compiler warnings
-CXXFLAGS  = -g -Wall
+# CXXFLAGS  = -g -Wall
+CXXFLAGS  = -g -Wall -ggdb
 LIBS = -lz -lhts
 
 # HTSSRC := $(CURDIR)/htslib
@@ -58,7 +59,7 @@ endif
 
 
 
-PROGRAM = cmpgt
+PROGRAM = ngsAMOVA
 
 CXXSRC = $(wildcard *.cpp)
 OBJ = $(CXXSRC:.cpp=.o)
