@@ -10,6 +10,7 @@ void usage() {
 	fprintf(stderr,"");
 	fprintf(stderr,"\n");
 	fprintf(stderr,"  --help         : Print this help\n");
+	fprintf(stderr,"  --in         : input\n");
 	exit(0);
 }
 
@@ -20,16 +21,11 @@ argStruct *args_init(){
 
 	args->out_fp=strdup("angsdput");
 
-
 	args->in_fn=NULL;
-	args->isSim=0;
 
-	args->mps_depth=4;
-	args->errate=0.01;
 	args->seed=-1;
 
 	return args;
-
 
 }
 
@@ -48,14 +44,10 @@ argStruct *args_get(int argc, char **argv){
 
 		if(strcasecmp("-in",arv)==0) args->in_fn=strdup(val);
 		else if(strcasecmp("-out",arv)==0) args->out_fp=strdup(val); 
-		else if(strcasecmp("-err",arv)==0) args->errate=atof(val); 
-		else if(strcasecmp("-depth",arv)==0) args->mps_depth=atof(val); 
-		else if(strcasecmp("-isSim",arv)==0) args->isSim=atoi(val);
 		else if(strcasecmp("-seed",arv)==0) args->seed=atoi(val);
 		else if(strcasecmp("-h",arv) == 0 || strcasecmp( "--help",arv) == 0) {
 			usage();
 		}
-
 		else{
 			fprintf(stderr,"Unknown arg:%s\n",arv);
 			free(args);

@@ -18,6 +18,8 @@ template<typename T> struct get_data{
 	int n=0;
 	
 
+	int ploidy=0;
+
 	T& operator[](unsigned i){
 		return data[i];
 	}
