@@ -1,0 +1,143 @@
+
+Reading file:	"test/t1_vcf_vcfgl.vcf"
+Number of samples: 1
+Number of chromosomes: 1
+
+
+
+->lgl 0.000000->lngl 0.000000
+->lgl -0.299570->lngl -0.689785
+->lgl -2.472760->lngl -5.693740
+->lgl -0.299570->lngl -0.689785
+->lgl -2.472760->lngl -5.693740
+->lgl -2.472760->lngl -5.693740
+->lgl -0.299570->lngl -0.689785
+->lgl -2.472760->lngl -5.693740
+->lgl -2.472760->lngl -5.693740
+->lgl -2.472760->lngl -5.693740
+
+
+Missing data
+
+Missing data
+
+Missing data
+
+Missing data
+
+Missing data
+
+Missing data
+
+Missing data
+
+Missing data
+
+Missing data
+
+Missing data
+
+
+
+->lgl -1.873620->lngl 0.000000
+->lgl 0.000000->lngl -0.689785
+->lgl -1.873620->lngl -5.693740
+->lgl -2.173190->lngl -0.689785
+->lgl -2.173190->lngl -5.693740
+->lgl -4.346370->lngl -5.693740
+->lgl -2.173190->lngl -0.689785
+->lgl -2.173190->lngl -5.693740
+->lgl -4.346370->lngl -5.693740
+->lgl -4.346370->lngl -5.693740
+
+
+->lgl -2.472760->lngl 0.000000
+->lgl -0.299570->lngl -0.689785
+->lgl 0.000000->lngl -5.693740
+->lgl -2.472760->lngl -0.689785
+->lgl -0.299570->lngl -5.693740
+->lgl -2.472760->lngl -5.693740
+->lgl -2.472760->lngl -0.689785
+->lgl -0.299570->lngl -5.693740
+->lgl -2.472760->lngl -5.693740
+->lgl -2.472760->lngl -5.693740
+after lngl->	0.000000
+
+after lngl->	-0.689785
+
+after lngl->	-5.693740
+
+after lngl->	-0.689785
+
+after lngl->	-5.693740
+
+after lngl->	-5.693740
+
+after lngl->	-0.689785
+
+after lngl->	-5.693740
+
+after lngl->	-5.693740
+
+after lngl->	-5.693740
+
+after lngl->	0.000000
+
+after lngl->	0.000000
+
+after lngl->	0.000000
+
+after lngl->	0.000000
+
+after lngl->	0.000000
+
+after lngl->	0.000000
+
+after lngl->	0.000000
+
+after lngl->	0.000000
+
+after lngl->	0.000000
+
+after lngl->	0.000000
+
+after lngl->	-4.314170
+
+after lngl->	0.000000
+
+after lngl->	-4.314170
+
+after lngl->	-5.003955
+
+after lngl->	-5.003955
+
+after lngl->	-10.007887
+
+after lngl->	-5.003955
+
+after lngl->	-5.003955
+
+after lngl->	-10.007887
+
+after lngl->	-10.007887
+
+after lngl->	-5.693740
+
+after lngl->	-0.689785
+
+after lngl->	0.000000
+
+after lngl->	-5.693740
+
+after lngl->	-0.689785
+
+after lngl->	-5.693740
+
+after lngl->	-5.693740
+
+after lngl->	-0.689785
+
+after lngl->	-5.693740
+
+after lngl->	-5.693740
+Total number of sites analysed: 4

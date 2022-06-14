@@ -11,6 +11,7 @@
  *
  * @field *in_fn	pointer to input file name
  * @field *out_fp	pointer to output file prefix [angsdput]
+ * @field doGeno	use GT tags to count ind2ind 2dsfs
  * @field seed		random seed
  *
  *
@@ -25,6 +26,7 @@ typedef struct{
 	char* in_fn;
 	char* out_fp;
 
+	int doGeno;
 
 	int seed;
 	

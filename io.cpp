@@ -24,6 +24,7 @@ argStruct *args_init(){
 	args->in_fn=NULL;
 
 	args->seed=-1;
+	args->doGeno=0;
 
 	return args;
 
@@ -45,6 +46,7 @@ argStruct *args_get(int argc, char **argv){
 		if(strcasecmp("-in",arv)==0) args->in_fn=strdup(val);
 		else if(strcasecmp("-out",arv)==0) args->out_fp=strdup(val); 
 		else if(strcasecmp("-seed",arv)==0) args->seed=atoi(val);
+		else if(strcasecmp("-doGeno",arv)==0) args->doGeno=atoi(val);
 		else if(strcasecmp("-h",arv) == 0 || strcasecmp( "--help",arv) == 0) {
 			usage();
 		}
