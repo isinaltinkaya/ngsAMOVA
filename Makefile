@@ -2,12 +2,8 @@ CXX ?= g++
 
 #  -g     add debugging info to the executable 
 #  -Wall  turn on most compiler warnings
-# CXXFLAGS  = -g -Wall
-CXXFLAGS  = -g -Wall -ggdb
-LIBS = -lz -lhts
-
-# HTSSRC := $(CURDIR)/htslib
-# HTSSRC := /maps/projects/lundbeck/scratch/pfs488/AMOVA/vcfToGlf/htslib
+CXXFLAGS  = -g -Wall
+LIBS = -lz -lm -lbz2 -llzma -lcurl -lpthread
 
 
 #if htslib source is defined
@@ -16,7 +12,7 @@ ifdef HTSSRC
 #if hts source is set to systemwide
 ifeq ($(HTSSRC),systemwide)
 $(info HTSSRC set to systemwide; assuming systemwide installation)
-LIBS += -lhts
+LIBHTS := -lhts
 
 else
 
@@ -24,8 +20,7 @@ else
 # Adjust $(HTSSRC) to point to your top-level htslib directory
 $(info HTSSRC defined: $(HTSSRC))
 CXXFLAGS += -I"$(realpath $(HTSSRC))"
-LIBHTS := $(HTSSRC)/libhts.a
-LIBS := $(LIBHTS) $(LIBS)
+LIBHTS := $(realpath $(HTSSRC))/libhts.a
 
 endif
 
@@ -36,11 +31,10 @@ $(info HTSSRC not defined; using htslib submodule)
 $(info Use `make HTSSRC=/path/to/htslib` to build using a local htslib installation)
 $(info Use `make HTSSRC=systemwide` to build using the systemwide htslib installation)
 
-
-HTSSRC := $(CURDIR)/htslib
-CXXFLAGS += -I$(HTSSRC)
+HTSSRC := $(realpath $(CURDIR)/htslib)
+CXXFLAGS := -I"$(HTSSRC)"
 LIBHTS := $(HTSSRC)/libhts.a
-LIBS := $(LIBHTS) $(LIBS)
+
 
 all: .activate_module
 
@@ -54,16 +48,11 @@ endif
 
 
 
-
-# CPPFLAGS += -I$(HTSSRC)
-
-
-
 PROGRAM = ngsAMOVA
+all: $(PROGRAM)
 
 CXXSRC = $(wildcard *.cpp)
 OBJ = $(CXXSRC:.cpp=.o)
-
 
 -include $(OBJ:.o=.d)
 
@@ -73,14 +62,23 @@ OBJ = $(CXXSRC:.cpp=.o)
 
 
 
-all: $(PROGRAM) $(OBJ)
-
 $(PROGRAM): $(OBJ)
-	$(CXX) $(CPPFLAGS) $(LIBS) -o $(PROGRAM) *.o 
+	$(CXX) -o $(PROGRAM) *.o $(LIBHTS) $(LIBS) 
 
 clean:
 	$(RM) *.o *.d $(PROGRAM)
 
 test: 
-	./vcfgl -in test/t1.vcf -out test/t1_testvcfgl -err 0.01 -seed 42 -depth 1 -isSim 1;
-	bash -c "diff test/t1_vcf_vcfgl.vcf test/t1_testvcfgl.vcf" ;
+	./ngsAMOVA -in test/t1.vcf -out test/t1_pos00_explode0_test -O v -seed 42 -depth 1 -err 0.01 -pos0 0 -explode 0;
+	bash -c "diff -I '^##fileDate' test/t1_pos00_explode0_test.vcf test/t1_pos00_explode0_god.vcf";
+	./ngsAMOVA -in test/t1.vcf -out test/t1_pos00_explode1_test -O v -seed 42 -depth 1 -err 0.01 -pos0 0 -explode 1;
+	bash -c "diff -I '^##fileDate' test/t1_pos00_explode1_test.vcf test/t1_pos00_explode1_god.vcf";
+	./ngsAMOVA -in test/t1.vcf -out test/t1_pos01_explode0_test -O v -seed 42 -depth 1 -err 0.01 -pos0 1 -explode 0;
+	bash -c "diff -I '^##fileDate' test/t1_pos01_explode0_test.vcf test/t1_pos01_explode0_god.vcf";
+	./ngsAMOVA -in test/t1.vcf -out test/t1_pos01_explode1_test -O v -seed 42 -depth 1 -err 0.01 -pos0 1 -explode 1;
+	bash -c "diff -I '^##fileDate' test/t1_pos01_explode1_test.vcf test/t1_pos01_explode1_god.vcf";
+	./ngsAMOVA -in test/t2.vcf -out test/t2_pos01_explode0_test -O v -seed 42 -depth 1 -err 0.01 -pos0 1 -explode 0;
+	bash -c "diff -I '^##fileDate' test/t2_pos01_explode0_test.vcf test/t2_pos01_explode0_god.vcf";
+	./ngsAMOVA -in test/t2.vcf -out test/t2_pos01_explode1_test -O v -seed 42 -depth 1 -err 0.01 -pos0 1 -explode 1;
+	bash -c "diff -I '^##fileDate' test/t2_pos01_explode1_test.vcf test/t2_pos01_explode1_god.vcf";
+
