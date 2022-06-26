@@ -38,6 +38,31 @@ void print_2DM(size_t x1, size_t x2, double *M){
 	}
 };
 
+/*
+ * Binomial coefficient
+ * n choose k
+ */
+int nCk(int n, int k){
+	int res = 1;
+	if (k > n - k){
+		k = n - k;
+	}
+	// [ n * (n-1) * ... * (n-k+1) ] / [ k * (k-1) * ... * 1 ]
+	for (int i = 0; i < k; ++i) {
+		res = res * (n - i) / (i+1) ;
+	}
+	return res;
+}
+
+/*
+ * Maps a given pair of objects to their index in
+ * the lexicographically ordered binomial coefficients
+ * a.k.a. array of pairs
+ */
+int nCk_idx(int nInd, int i1, int i2){
+	return (nInd - nCk((nInd-i1),2))+(i2-i1)+1;
+}
+
 FILE *getFILE(const char*fname,const char* mode){
 	FILE *fp;
 	if(NULL==(fp=fopen(fname,mode))){
@@ -47,6 +72,9 @@ FILE *getFILE(const char*fname,const char* mode){
 	return fp;
 }
 
+int get_gt_sfs( get_data<int32_t> gt, int32_t *gt_sfs[9]){
+
+}
 
 
 int do_gt_sfs(bcf1_t *bcf,bcf_hdr_t *hdr,get_data<int32_t> gt ,int pairM[],char *TAG, int i1, int i2){
@@ -179,18 +207,12 @@ int main(int argc, char **argv) {
 		bcf_hdr_t *hdr = bcf_hdr_read(in_ff);
 		bcf1_t *bcf = bcf_init();
 
-		// int nInd=bcf_hdr_nsamples(hdr);
 		nInd=bcf_hdr_nsamples(hdr);
 
 		if(nInd==1){
 			fprintf(stderr,"\n\n[ERROR]\tOnly one sample; will exit\n\n");
 			exit(0);
 		}
-		//print sample ids
-		// for( size_t i = 0; i < nInd; i++ ) {
-		// fprintf(stderr,"\n->->%s\n",hdr->samples[i]);
-		// }
-
 
 
 		nSites=0;
@@ -206,23 +228,29 @@ int main(int argc, char **argv) {
 		//
 
 		int buf_size=1024;
-		// int buf_size=10;
 
-		double *lngls[buf_size];
 
+		double **lngls;
+
+		lngls=(double**) malloc(buf_size*sizeof(double*));
 		for (int i=0;i<buf_size;i++){
 			lngls[i]=(double*)malloc(nInd*10*sizeof(double));
 		}
 
 
+		fprintf(stderr,"\n\n->nCk %d choose 2 : %d \n\n",nInd,nCk(nInd,2));
 
-		int32_t *gts[buf_size];	
-		for (int i=0;i<buf_size;i++){
-			gts[i]=(int32_t*)malloc(nInd*10*sizeof(int32_t));
+		//TODO use int?
+		int n_ind_cmb=nCk(nInd,2);
+
+		int32_t **gt_sfs;
+		gt_sfs=(int32_t**) malloc(n_ind_cmb*sizeof(int32_t*));
+
+		for (int i=0;i<n_ind_cmb;i++){
+			//9 categories per individual pair
+			gt_sfs[i]=(int32_t*)malloc(9*sizeof(int32_t));
 		}
 
-
-		// lngls.data=(double*)malloc(buf_size*10*nInd*sizeof(double));
 
 		if(args->isSim==1){
 			anc=(char*)malloc(buf_size*sizeof(char));
@@ -240,16 +268,14 @@ int main(int argc, char **argv) {
 		// }
 
 
-		// if (args->doGeno==1){
-		int nDim=9;
-		// int pairM[nInd][nInd*nDim] = (int*)malloc(nDim*nInd*sizeof(int));
-		// int pairM[nInd][nInd][9] ={};
-		//todo only create if dogeno 1
+		//TODO only create if doGeno etc
+		
 		int pairM[9]={};
-		// }
 
 
 		/*
+		 * [START] Reading sites
+		 *
 		 * hdr	header
 		 * bcf	struct for storing each record
 		 */
@@ -296,8 +322,6 @@ int main(int argc, char **argv) {
 						// lngls.data[(nSites*10*nInd)+(10*indi)+i]=(double)log2ln(lgl.data[i]);
 						// GL[nSites][(10*indi)+i]=(double)log2ln(lgl.data[i]);
 						lngls[nSites][(10*indi)+i]=(double)log2ln(lgl.data[i]);
-						//TODO fix gt sfs 
-						// gts[nSites][indi+i]=(int)
 //
 	// //binary input genotypes from simulated input
 	// for (int i=0; i<gt.ploidy;i++){
@@ -307,6 +331,26 @@ int main(int argc, char **argv) {
 					}
 				}
 			}
+
+			get_data<int32_t> gt;
+
+			gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
+
+			if(gt.n<0){
+				fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
+				exit(1);
+			}
+
+			for(int i1=0;i1<nInd-1;i1++){
+				for(int i2=i1+1;i2<nInd;i2++){
+					int pair_idx=nCk_idx(nInd,i1,i2);
+					fprintf(stderr,"\n->i1: %d, i2: %d, pair: %d, nInd: %d\n\n",i1,i2, pair_idx,nInd);
+					// get_gt_sfs(gt,gt_sfs[pair_idx]);
+					// do_gt_sfs(bcf,hdr,gt,pairM,"GT",i1,i2);
+
+				}
+			}
+
 
 			if(bcf_is_snp(bcf)){
 				if(bcf->rlen == 1){
@@ -325,46 +369,56 @@ int main(int argc, char **argv) {
 			}
 
 			if (args->doGeno==1){
-				if (args->doInd==1){
-					int i1=args->ind1;
-					int i2=args->ind2;
-					get_data<int32_t> gt;
 
+			for(int i1=0;i1<nInd-1;i1++){
+				for(int i2=i1+1;i2<nInd;i2++){
+
+
+
+				}
+			}
+				//TODO bcf_hdr_set_samples efficient sample parsing
+				// if (args->doInd==1){
+					// int i1=args->ind1;
+					// int i2=args->ind2;
+					// get_data<int32_t> gt;
 					// gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
-
 					// if(gt.n<0){
 					// fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
 					// exit(1);
 					// }
-					do_gt_sfs(bcf,hdr,gt,pairM,"GT",i1,i2);
-				}
+					// do_gt_sfs(bcf,hdr,gt,pairM,"GT",i1,i2);
+				// }
 				// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
+
 			}
+
 			nSites++;
+
 		}
+		// [END] Reading sites
 
 
 
-		//TODO bcf_hdr_set_samples efficient sample parsing
-		if (args->doGeno==1){
-
-			if (args->doInd==1){
-				int i1=args->ind1;
-				int i2=args->ind2;
-				fprintf(stdout,"ind%d,ind%d,",i1,i2);
-				//TODO print sample ids,below. not sure if works
-				// fprintf(stdout,"%s,%s,",hdr->samples[i1],hdr->samples[i2]);
-				for (int k=0; k<nDim;k++){
-					// fprintf(stderr,"%d",pairM[i1][i2][k]);
-					fprintf(stdout,"%d",pairM[k]);
-					if(k<nDim-1){
-						fprintf(stdout,",");
-					}else{
-						fprintf(stdout,"\n");
-					}
-				}
-			}
-
+		// if (args->doGeno==1){
+//
+			// if (args->doInd==1){
+				// int i1=args->ind1;
+				// int i2=args->ind2;
+				// fprintf(stdout,"ind%d,ind%d,",i1,i2);
+				// //TODO print sample ids,below. not sure if works
+				// // fprintf(stdout,"%s,%s,",hdr->samples[i1],hdr->samples[i2]);
+				// for (int k=0; k<nDim;k++){
+					// // fprintf(stderr,"%d",pairM[i1][i2][k]);
+					// fprintf(stdout,"%d",pairM[k]);
+					// if(k<nDim-1){
+						// fprintf(stdout,",");
+					// }else{
+						// fprintf(stdout,"\n");
+					// }
+				// }
+			// }
+//
 			// fprintf(stdout,"\ngt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d",
 					// hdr->samples[i1],
 					// hdr->samples[i2],
@@ -377,7 +431,7 @@ int main(int argc, char **argv) {
 					// pairM[6],
 					// pairM[7],
 					// pairM[8]);
-		}
+		// }
 
 
 		// if(args->isSim==1){

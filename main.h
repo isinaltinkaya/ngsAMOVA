@@ -28,9 +28,9 @@ template<typename T> struct get_data{
 		return data == NULL;
 	}
 
-	int do_gt_sfs(){
-		fprintf(stderr,"\n\nHERE!!!\n\n");
-	};
+	// int do_gt_sfs(){
+		// fprintf(stderr,"\n\nHERE!!!\n\n");
+	// };
 
 	void destroy(){
 		free(data);
