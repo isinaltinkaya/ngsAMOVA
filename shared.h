@@ -43,12 +43,7 @@ typedef struct{
 paramStruct *pars_init();
 void pars_destroy(paramStruct *p);
 
-
-int bcf_alleles_get_gtidx(int a1, int a2);
-
-int bcf_alleles_get_gtidx(char a1, char a2);
-
-extern char bcf_allele_charToInt[256];
+extern const int get_3x3_idx[3][3];
 
 
 #endif

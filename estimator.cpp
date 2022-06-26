@@ -73,6 +73,7 @@ void rescale_likelihood_ratio(double *like){
 
 double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSites, double tole, char *anc, char *der){
 
+	// fprintf(stderr,"\nEM begin\n");
 	double temp;
 	double SFS2[3][3];
 
@@ -88,6 +89,7 @@ double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSit
 
 	do{
 
+	// fprintf(stderr,"\nEM\n");
 		sum=0.0;
 		double TMP[3][3];
 		double ESFS[3][3];
@@ -141,6 +143,7 @@ double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSit
 		}
 
 	}while(d>tole);
+	// }while(d>0.001);
 
 	return d;
 }

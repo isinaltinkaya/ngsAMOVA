@@ -20,6 +20,23 @@
 #include "shared.h"
 
 
+//0 1 2
+//00 01 02
+//MMMM MMMm MMmm
+//
+//3 4 5
+//10 11 12
+//MmMM MmMm Mmmm
+//
+//6 7 8
+//20 21 22
+//mmMM mmMm mmmm
+const int get_3x3_idx[3][3]={
+	{0, 1, 2},
+	{3, 4, 5},
+	{6, 7, 8}
+};
+
 using size_t=decltype(sizeof(int));
 
 extern char bcf_allele_charToInt[256];
@@ -72,100 +89,34 @@ FILE *getFILE(const char*fname,const char* mode){
 	return fp;
 }
 
-int get_gt_sfs( get_data<int32_t> gt, int32_t *gt_sfs[9]){
+void get_gt_sfs( int* gtdata, int **sfs, int i1, int i2,int nInd){
 
-}
+	int pair_idx=nCk_idx(nInd,i1,i2);
+	// fprintf(stderr,"\n->i1: %d, i2: %d, pair: %d, nInd: %d\n\n", i1, i2, pair_idx,nInd);
 
-
-int do_gt_sfs(bcf1_t *bcf,bcf_hdr_t *hdr,get_data<int32_t> gt ,int pairM[],char *TAG, int i1, int i2){
-
-	gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
-
-	if(gt.n<0){
-		fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
-		exit(1);
-	}
-
-
-
-	// for(int i1=0;i1<nInd-1;i1++)
-	// for(int i2=i1+1;i2<nInd;i2++)
-
-
-	int32_t *ptr1 = gt.data + i1*gt.ploidy;
-	int32_t *ptr2 = gt.data + i2*gt.ploidy;
+	// int32_t *ptr1 = gtdata + i1*gt.ploidy;
+	// int32_t *ptr2 = gtdata + i2*gt.ploidy;
+	int32_t *ptr1 = gtdata + i1*2;
+	int32_t *ptr2 = gtdata + i2*2;
 
 
 	int gti1=0;
 	int gti2=0;
 
+
 	//binary input genotypes from simulated input
-	for (int i=0; i<gt.ploidy;i++){
+	// for (int i=0; i<gt.ploidy;i++){
+	for (int i=0; i<2;i++){
 		gti1 += bcf_gt_allele(ptr1[i]);
 		gti2 += bcf_gt_allele(ptr2[i]);
 	}
-	// fprintf(stderr,"\n%d:%d %d:%d\n",i1,gti1,i2,gti2);
+	// fprintf(stderr,"\n%d:%d %d:%d -> %d\n",i1,gti1,i2,gti2,get_3x3_idx[gti1][gti2]);
 
-	//0 1 2
-	//00 01 02
-	//MMMM MMMm MMmm
-	//
-	//3 4 5
-	//10 11 12
-	//MmMM MmMm Mmmm
-	//
-	//6 7 8
-	//20 21 22
-	//mmMM mmMm mmmm
+	int idx=get_3x3_idx[gti1][gti2];
 
-	switch(gti1){
-		case 0:
-			switch(gti2){
-				case 0:
-					// pairM[i1][i2][0]++;
-					pairM[0]++;
-					break;
-				case 1:
-					// pairM[i1][i2][1]++;
-					pairM[1]++;
-					break;
-				case 2:
-					pairM[2]++;
-					// pairM[i1][i2][2]++;
-					break;
-			}
-			break;
-		case 1:
+	sfs[pair_idx][idx]++;
+	// sfs[pair_idx][get_3x3_idx[gti1][gti2]]++;
 
-			switch(gti2){
-				case 0:
-					// pairM[i1][i2][3]++;
-					pairM[3]++;
-					break;
-				case 1:
-					// pairM[i1][i2][4]++;
-					pairM[4]++;
-					break;
-				case 2:
-					// pairM[i1][i2][5]++;
-					pairM[5]++;
-					break;
-			}
-			break;
-		case 2:
-
-			switch(gti2){
-				case 0:
-					pairM[6]++;
-					// pairM[i1][i2][6]++;
-					break;
-				case 1:
-					pairM[7]++;
-					// pairM[i1][i2][7]++;
-					break;
-			}
-	}
-	return 0;
 }
 
 
@@ -228,7 +179,7 @@ int main(int argc, char **argv) {
 		//
 
 		int buf_size=1024;
-
+		// int buf_size=2;
 
 		double **lngls;
 
@@ -238,17 +189,25 @@ int main(int argc, char **argv) {
 		}
 
 
-		fprintf(stderr,"\n\n->nCk %d choose 2 : %d \n\n",nInd,nCk(nInd,2));
-
-		//TODO use int?
 		int n_ind_cmb=nCk(nInd,2);
+		
+		fprintf(stderr,"\nn_ind_cmb: %d\n",n_ind_cmb);
 
-		int32_t **gt_sfs;
-		gt_sfs=(int32_t**) malloc(n_ind_cmb*sizeof(int32_t*));
+		/*
+		 * gt_sfs[n_pairs][9]
+		 */
+		int **gt_sfs;
+		gt_sfs=(int**) malloc(n_ind_cmb*sizeof(int*));
 
 		for (int i=0;i<n_ind_cmb;i++){
 			//9 categories per individual pair
-			gt_sfs[i]=(int32_t*)malloc(9*sizeof(int32_t));
+			gt_sfs[i]=(int*)malloc(9*sizeof(int));
+		}
+
+		for(int x=0;x<n_ind_cmb;x++){
+			for (int y=0; y<9; y++){
+				gt_sfs[x][y]=0;
+			}
 		}
 
 
@@ -256,7 +215,6 @@ int main(int argc, char **argv) {
 			anc=(char*)malloc(buf_size*sizeof(char));
 			der=(char*)malloc(buf_size*sizeof(char));
 		}
-
 
 		char* TAG;
 
@@ -269,7 +227,7 @@ int main(int argc, char **argv) {
 
 
 		//TODO only create if doGeno etc
-		
+
 		int pairM[9]={};
 
 
@@ -295,18 +253,21 @@ int main(int argc, char **argv) {
 
 			while(nSites>=buf_size){
 
+				//TODO
 				fprintf(stderr,"\n\nrealloc %d at site %d\n\n",buf_size,nSites);
 				buf_size=buf_size*2;
 				//TODO realloc lngls
 				// lngls.data=(double*)realloc(lngls.data,buf_size*10*nInd*sizeof(double));
+				// lngls=(double**)realloc(lngls,buf_size*10*nInd*sizeof(*lngls));
+				// lngls=(double**)realloc(lngls,buf_size*10*nInd*sizeof(*lngls));
 
 				// GL=(double**)realloc(GL,sizeof(double *[buf_size]));
 
 
-				if(args->isSim==1){
-					anc=(char*)realloc(anc,buf_size*sizeof(char));
-					der=(char*)realloc(der,buf_size*sizeof(char));
-				}
+				// if(args->isSim==1){
+					// anc=(char*)realloc(anc,buf_size*sizeof(char));
+					// der=(char*)realloc(der,buf_size*sizeof(char));
+				// }
 
 			}
 
@@ -322,12 +283,12 @@ int main(int argc, char **argv) {
 						// lngls.data[(nSites*10*nInd)+(10*indi)+i]=(double)log2ln(lgl.data[i]);
 						// GL[nSites][(10*indi)+i]=(double)log2ln(lgl.data[i]);
 						lngls[nSites][(10*indi)+i]=(double)log2ln(lgl.data[i]);
-//
-	// //binary input genotypes from simulated input
-	// for (int i=0; i<gt.ploidy;i++){
-		// gti1 += bcf_gt_allele(ptr1[i]);
-		// gti2 += bcf_gt_allele(ptr2[i]);
-	// }
+						//
+						// //binary input genotypes from simulated input
+						// for (int i=0; i<gt.ploidy;i++){
+						// gti1 += bcf_gt_allele(ptr1[i]);
+						// gti2 += bcf_gt_allele(ptr2[i]);
+						// }
 					}
 				}
 			}
@@ -343,10 +304,7 @@ int main(int argc, char **argv) {
 
 			for(int i1=0;i1<nInd-1;i1++){
 				for(int i2=i1+1;i2<nInd;i2++){
-					int pair_idx=nCk_idx(nInd,i1,i2);
-					fprintf(stderr,"\n->i1: %d, i2: %d, pair: %d, nInd: %d\n\n",i1,i2, pair_idx,nInd);
-					// get_gt_sfs(gt,gt_sfs[pair_idx]);
-					// do_gt_sfs(bcf,hdr,gt,pairM,"GT",i1,i2);
+					get_gt_sfs(gt.data,gt_sfs,i1,i2,nInd);
 
 				}
 			}
@@ -367,72 +325,25 @@ int main(int argc, char **argv) {
 					exit(1);
 				}
 			}
+			//TODO bcf_hdr_set_samples efficient sample parsing
+			// if (args->doInd==1){
+			// int i1=args->ind1;
+			// int i2=args->ind2;
+			// get_data<int32_t> gt;
+			// gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
+			// if(gt.n<0){
+			// fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
+			// exit(1);
+			// }
+			// do_gt_sfs(bcf,hdr,gt,pairM,"GT",i1,i2);
+			// }
+			// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
 
-			if (args->doGeno==1){
-
-			for(int i1=0;i1<nInd-1;i1++){
-				for(int i2=i1+1;i2<nInd;i2++){
-
-
-
-				}
-			}
-				//TODO bcf_hdr_set_samples efficient sample parsing
-				// if (args->doInd==1){
-					// int i1=args->ind1;
-					// int i2=args->ind2;
-					// get_data<int32_t> gt;
-					// gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
-					// if(gt.n<0){
-					// fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
-					// exit(1);
-					// }
-					// do_gt_sfs(bcf,hdr,gt,pairM,"GT",i1,i2);
-				// }
-				// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
-
-			}
 
 			nSites++;
 
 		}
 		// [END] Reading sites
-
-
-
-		// if (args->doGeno==1){
-//
-			// if (args->doInd==1){
-				// int i1=args->ind1;
-				// int i2=args->ind2;
-				// fprintf(stdout,"ind%d,ind%d,",i1,i2);
-				// //TODO print sample ids,below. not sure if works
-				// // fprintf(stdout,"%s,%s,",hdr->samples[i1],hdr->samples[i2]);
-				// for (int k=0; k<nDim;k++){
-					// // fprintf(stderr,"%d",pairM[i1][i2][k]);
-					// fprintf(stdout,"%d",pairM[k]);
-					// if(k<nDim-1){
-						// fprintf(stdout,",");
-					// }else{
-						// fprintf(stdout,"\n");
-					// }
-				// }
-			// }
-//
-			// fprintf(stdout,"\ngt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d",
-					// hdr->samples[i1],
-					// hdr->samples[i2],
-					// pairM[0],
-					// pairM[1],
-					// pairM[2],
-					// pairM[3],
-					// pairM[4],
-					// pairM[5],
-					// pairM[6],
-					// pairM[7],
-					// pairM[8]);
-		// }
-
 
 		// if(args->isSim==1){
 		// // fprintf(stderr,"\n->here %d \n",anc[site]);
@@ -444,23 +355,31 @@ int main(int argc, char **argv) {
 		for(int i1=0;i1<nInd-1;i1++){
 			for(int i2=i1+1;i2<nInd;i2++){
 
+				int pair_idx=nCk_idx(nInd,i1,i2);
+
 				// double SFS2D[10][10];
 				// EM_2DSFS_GL10(lngls,SFS2D,i1,i2,nSites,args->tole);
 				double SFS2D3[3][3];
 				double dx;
 				dx=EM_2DSFS_GL3(lngls,SFS2D3,i1,i2,nSites,args->tole,anc,der);
 				// print_2DM(3,3,*SFS2D3);
-				fprintf(stdout,"\ngl,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f",
+				fprintf(stdout,"gl,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
 						hdr->samples[i1],
 						hdr->samples[i2],
 						SFS2D3[0][0],SFS2D3[0][1],SFS2D3[0][2],
 						SFS2D3[1][0],SFS2D3[1][1],SFS2D3[1][2],
 						SFS2D3[2][0],SFS2D3[2][1],SFS2D3[2][2]);
 
+				fprintf(stdout,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+						hdr->samples[i1],
+						hdr->samples[i2],
+						gt_sfs[pair_idx][0],gt_sfs[pair_idx][1],gt_sfs[pair_idx][2],
+						gt_sfs[pair_idx][3],gt_sfs[pair_idx][4],gt_sfs[pair_idx][5],
+						gt_sfs[pair_idx][6],gt_sfs[pair_idx][7],gt_sfs[pair_idx][8]);
 
 			}
 		}
-		fprintf(stdout,"\n");
+		// fprintf(stdout,"\n");
 
 		fprintf(stderr, "Total number of sites analysed: %i\n", nSites);
 
