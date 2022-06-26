@@ -20,38 +20,6 @@ double log2ln(float ivar){
 }
 
 
-void gl_log10(int base, double errate, double *like){
-
-#if 0
-	for(int i=0;i<10;i++)
-		fprintf(stderr," %f ",like[i]);
-#endif
-
-	// fprintf(stderr,"base=%d\n",base);
-	/*0=AA, 1=AC, 2=AG, 3=AT, 4=CC, 5=CG, 6=CT, 7=GG, 8= GT, 9= TT*/
-	static double homTrue,het,homFalse;
-	static int preCalc=0;
-	if(preCalc==0){
-		homTrue = log10(1.0-errate);
-		het = log10((1.0-errate)/2.0+errate/6.0);
-		homFalse = log10(errate/3.0);
-		preCalc = 1;
-	}
-	//fprintf(stderr,"offs=%d homeTrue=%f\n",offsets[base][0],homTrue);
-	/*0=AA*/
-	like[offsets[base][0]] += homTrue; //homozygotic hit
-
-	/*1=AC, 2=AG, 3=AT*/
-	for(int o=1;o<4;o++)//heterozygotic hit{
-		like[offsets[base][o]] += het;
-
-	/*4=CC, 5=CG, 6=CT, 7=GG, 8= GT, 9= TT*/
-	for(int o=4;o<10;o++)//non hit
-		like[offsets[base][o]] += homFalse;
-
-}
-
-
 void rescale_likelihood_ratio(double *like){
 
 	//rescale to likeratios
@@ -75,7 +43,6 @@ double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSit
 
 	// fprintf(stderr,"\nEM begin\n");
 	double temp;
-	double SFS2[3][3];
 
 	double sum;
 	double d;
@@ -90,7 +57,6 @@ double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSit
 	do{
 
 	// fprintf(stderr,"\nEM\n");
-		sum=0.0;
 		double TMP[3][3];
 		double ESFS[3][3];
 
@@ -101,7 +67,12 @@ double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSit
 		}
 
 		for(size_t s=0; s<nSites; s++){
+
+			sum=0.0;
 #if 0
+
+
+			fprintf(stderr,"\n-> site: %d anc:%d der:%d gtidx ancanc:%d ancder:%d derder:%d",s,anc[s],der[s],bcf_alleles_get_gtidx(anc[s],anc[s]),bcf_alleles_get_gtidx(anc[s],der[s]),bcf_alleles_get_gtidx(der[s],der[s]));
 			fprintf(stderr,"\n-> ind1: (%f",lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])]);
 			fprintf(stderr," %f",lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])]);
 			fprintf(stderr," %f",lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])]);
@@ -155,7 +126,6 @@ double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSit
 double EM_2DSFS_GL10(double **lngl, double SFS[10][10], int i1, int i2, size_t nSites, double tole){
 
 	double temp;
-	double SFS2[10][10];
 
 	double sum;
 	double d;
@@ -164,12 +134,12 @@ double EM_2DSFS_GL10(double **lngl, double SFS[10][10], int i1, int i2, size_t n
 
 	do{
 
-		sum=0.0;
 		double TMP[10][10];
 		double ESFS[10][10];
 		memset(ESFS,0.0,10*10*sizeof(double));
 
 		for(size_t s=0; s<nSites; s++){
+			sum=0.0;
 			for(int i=0;i<10;i++){
 				for(int j=0;j<10;j++){
 					// SFS * ind1 * ind2
@@ -185,14 +155,14 @@ double EM_2DSFS_GL10(double **lngl, double SFS[10][10], int i1, int i2, size_t n
 				}
 			}
 
-			d=0.0;
-			for(int i=0;i<10;i++){
-				for(int j=0;j<10;j++){
-					temp=ESFS[i][j]/(double)nSites;
-					d += fabs(temp-SFS[i][j]);
-					SFS[i][j]=temp;
+		}
+		d=0.0;
+		for(int i=0;i<10;i++){
+			for(int j=0;j<10;j++){
+				temp=ESFS[i][j]/(double)nSites;
+				d += fabs(temp-SFS[i][j]);
+				SFS[i][j]=temp;
 
-				}
 			}
 		}
 
