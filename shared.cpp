@@ -81,7 +81,7 @@ void paramStruct_destroy(paramStruct *pars){
 //6 7 8
 //20 21 22
 //mmMM mmMm mmmm
-const int get_3x3_idx[3][3]={
+extern const int get_3x3_idx[3][3]={
 	{0, 1, 2},
 	{3, 4, 5},
 	{6, 7, 8}

@@ -101,12 +101,14 @@ double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSit
 		}
 
 		for(size_t s=0; s<nSites; s++){
-			// fprintf(stderr,"\n-> ind1: (%f",lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])]);
-			// fprintf(stderr," %f",lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])]);
-			// fprintf(stderr," %f",lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])]);
-			// fprintf(stderr,"), ind2: (%f",lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])]);
-			// fprintf(stderr," %f",lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])]);
-			// fprintf(stderr," %f)\n",lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])]);
+#if 0
+			fprintf(stderr,"\n-> ind1: (%f",lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])]);
+			fprintf(stderr," %f",lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])]);
+			fprintf(stderr," %f",lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])]);
+			fprintf(stderr,"), ind2: (%f",lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])]);
+			fprintf(stderr," %f",lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])]);
+			fprintf(stderr," %f)\n",lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])]);
+#endif
 			// SFS * ind1 * ind2
 			TMP[0][0]=SFS[0][0]*lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])]*lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])];
 			TMP[0][1]=SFS[0][1]*lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])]*lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])];
@@ -130,20 +132,19 @@ double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSit
 					ESFS[i][j] += TMP[i][j]/sum;
 				}
 			}
+		}
 
-			d=0.0;
-			for(int i=0;i<3;i++){
-				for(int j=0;j<3;j++){
-					temp=ESFS[i][j]/(double)nSites;
-					d += fabs(temp-SFS[i][j]);
-					SFS[i][j]=temp;
+		d=0.0;
+		for(int i=0;i<3;i++){
+			for(int j=0;j<3;j++){
+				temp=ESFS[i][j]/(double)nSites;
+				d += fabs(temp-SFS[i][j]);
+				SFS[i][j]=temp;
 
-				}
 			}
 		}
 
 	}while(d>tole);
-	// }while(d>0.001);
 
 	return d;
 }

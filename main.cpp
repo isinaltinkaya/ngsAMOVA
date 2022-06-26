@@ -15,33 +15,12 @@
 #include "main.h"
 #include "random_generator.h"
 #include "estimator.h"
-#include "utils.h"
+#include "vcf_utils.h"
 #include "io.h"
 #include "shared.h"
 
 
-//0 1 2
-//00 01 02
-//MMMM MMMm MMmm
-//
-//3 4 5
-//10 11 12
-//MmMM MmMm Mmmm
-//
-//6 7 8
-//20 21 22
-//mmMM mmMm mmmm
-const int get_3x3_idx[3][3]={
-	{0, 1, 2},
-	{3, 4, 5},
-	{6, 7, 8}
-};
-
 using size_t=decltype(sizeof(int));
-
-extern char bcf_allele_charToInt[256];
-
-const int vcf_gl_order_idx[10]={0,1,4,2,5,7,3,6,8,9};
 
 
 //print 2D matrix
@@ -345,12 +324,6 @@ int main(int argc, char **argv) {
 		}
 		// [END] Reading sites
 
-		// if(args->isSim==1){
-		// // fprintf(stderr,"\n->here %d \n",anc[site]);
-		// // fprintf(stderr,"\n->here %d \n",der[site]);
-		// }
-		//
-
 
 		for(int i1=0;i1<nInd-1;i1++){
 			for(int i2=i1+1;i2<nInd;i2++){
@@ -379,7 +352,6 @@ int main(int argc, char **argv) {
 
 			}
 		}
-		// fprintf(stdout,"\n");
 
 		fprintf(stderr, "Total number of sites analysed: %i\n", nSites);
 
