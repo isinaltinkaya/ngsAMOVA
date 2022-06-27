@@ -40,12 +40,12 @@ void print_2DM(size_t x1, size_t x2, double *M){
  */
 int nCk(int n, int k){
 	int res = 1;
-	if (k > n - k){
-		k = n - k;
+	if (k > n-k){
+		k = n-k;
 	}
 	// [ n * (n-1) * ... * (n-k+1) ] / [ k * (k-1) * ... * 1 ]
 	for (int i = 0; i < k; ++i) {
-		res = res * (n - i) / (i+1) ;
+		res = res * (n-i) / (i+1) ;
 	}
 	return res;
 }
@@ -56,8 +56,13 @@ int nCk(int n, int k){
  * a.k.a. array of pairs
  */
 int nCk_idx(int nInd, int i1, int i2){
-	return (nInd - nCk((nInd-i1),2))+(i2-i1)+1;
+	// int ret=(nInd - nCk((nInd-i1),2))+(i2-i1)+1;
+	int ret=(nCk(nInd,2) - nCk((nInd-i1),2))+(i2-i1)-1;
+	// fprintf(stderr,"\n->ret: %d, nInd:%d, %d + %d + 1\n",ret,nInd,nCk((nInd-i1),2),(i2-i1));
+	return ret;
+	// return (nInd - nCk((nInd-i1),2))+(i2-i1)+1;
 }
+
 
 FILE *getFILE(const char*fname,const char* mode){
 	FILE *fp;
@@ -68,33 +73,23 @@ FILE *getFILE(const char*fname,const char* mode){
 	return fp;
 }
 
-void get_gt_sfs( int* gtdata, int **sfs, int i1, int i2,int nInd){
-
-	int pair_idx=nCk_idx(nInd,i1,i2);
-	// fprintf(stderr,"\n->i1: %d, i2: %d, pair: %d, nInd: %d\n\n", i1, i2, pair_idx,nInd);
-
-	// int32_t *ptr1 = gtdata + i1*gt.ploidy;
-	// int32_t *ptr2 = gtdata + i2*gt.ploidy;
-	int32_t *ptr1 = gtdata + i1*2;
-	int32_t *ptr2 = gtdata + i2*2;
-
+void get_gt_sfs( int* gtdata, int **sfs, int32_t *ptr1, int32_t *ptr2, int pair_idx){
 
 	int gti1=0;
 	int gti2=0;
 
 
-	//binary input genotypes from simulated input
-	// for (int i=0; i<gt.ploidy;i++){
+	//using binary input genotypes from VCF GT tag
+	//assume ploidy=2
 	for (int i=0; i<2;i++){
 		gti1 += bcf_gt_allele(ptr1[i]);
 		gti2 += bcf_gt_allele(ptr2[i]);
 	}
 	// fprintf(stderr,"\n%d:%d %d:%d -> %d\n",i1,gti1,i2,gti2,get_3x3_idx[gti1][gti2]);
 
-	int idx=get_3x3_idx[gti1][gti2];
-
-	sfs[pair_idx][idx]++;
-	// sfs[pair_idx][get_3x3_idx[gti1][gti2]]++;
+	// int idx=get_3x3_idx[gti1][gti2];
+	// sfs[pair_idx][idx]++;
+	sfs[pair_idx][get_3x3_idx[gti1][gti2]]++;
 
 }
 
@@ -114,10 +109,8 @@ int main(int argc, char **argv) {
 	int nInd=pars->nInd;
 	size_t nSites=pars->nSites;
 
-
 	char *anc=pars->anc;
-	char *der;
-
+	char *der=pars->der;
 
 
 	if(args!=NULL){
@@ -160,18 +153,22 @@ int main(int argc, char **argv) {
 		int buf_size=1024;
 		// int buf_size=2;
 
-		double **lngls;
+		/*
+		 * lngls[nSites][nInd*10*double]
+		 */
+		double **lngls=0;
 
 		lngls=(double**) malloc(buf_size*sizeof(double*));
-		for (int i=0;i<buf_size;i++){
-			lngls[i]=(double*)malloc(nInd*10*sizeof(double));
-		}
+		// for (int i=0;i<buf_size;i++){
+			// lngls[i]=(double*)malloc(nInd*10*sizeof(double));
+		// }
 
 
 		int n_ind_cmb=nCk(nInd,2);
 		
 		fprintf(stderr,"\nn_ind_cmb: %d\n",n_ind_cmb);
 
+		//TODO only create if doGeno etc
 		/*
 		 * gt_sfs[n_pairs][9]
 		 */
@@ -205,9 +202,7 @@ int main(int argc, char **argv) {
 		// }
 
 
-		//TODO only create if doGeno etc
 
-		int pairM[9]={};
 
 
 		/*
@@ -220,7 +215,8 @@ int main(int argc, char **argv) {
 		while (bcf_read(in_ff, hdr, bcf) == 0) {
 
 			get_data<float> lgl;
-			lgl.data=(float*)malloc(buf_size*10*nInd*sizeof(float));
+			//TODO check
+			// lgl.data=(float*)malloc(buf_size*10*nInd*sizeof(float));
 
 			TAG="GL";
 			lgl.n = bcf_get_format_float(hdr,bcf,TAG,&lgl.data,&lgl.size_e);
@@ -230,25 +226,22 @@ int main(int argc, char **argv) {
 				exit(1);
 			}
 
+
 			while(nSites>=buf_size){
 
-				//TODO
-				fprintf(stderr,"\n\nrealloc %d at site %d\n\n",buf_size,nSites);
+				// fprintf(stderr,"\n\nrealloc %d at site %d\n",buf_size,nSites);
 				buf_size=buf_size*2;
-				//TODO realloc lngls
-				// lngls.data=(double*)realloc(lngls.data,buf_size*10*nInd*sizeof(double));
-				// lngls=(double**)realloc(lngls,buf_size*10*nInd*sizeof(*lngls));
-				// lngls=(double**)realloc(lngls,buf_size*10*nInd*sizeof(*lngls));
+				// fprintf(stderr,"new size: %d\n",buf_size);
 
-				// GL=(double**)realloc(GL,sizeof(double *[buf_size]));
+				lngls=(double**) realloc(lngls, buf_size * sizeof(*lngls) );
 
-
-				// if(args->isSim==1){
-					// anc=(char*)realloc(anc,buf_size*sizeof(char));
-					// der=(char*)realloc(der,buf_size*sizeof(char));
-				// }
+				if(args->isSim==1){
+					anc=(char*)realloc(anc,buf_size*sizeof(char));
+					der=(char*)realloc(der,buf_size*sizeof(char));
+				}
 
 			}
+			lngls[nSites]=(double*)malloc(nInd*10*sizeof(double));
 
 			//TODO
 			//-if site is not shared between two inds
@@ -258,16 +251,9 @@ int main(int argc, char **argv) {
 					if(isnan(lgl.data[i])){
 						fprintf(stderr,"\nMissing data\n");
 					}else if (lgl.data[i]==bcf_float_vector_end){
+						fprintf(stderr,"\n???\n");
 					}else{
-						// lngls.data[(nSites*10*nInd)+(10*indi)+i]=(double)log2ln(lgl.data[i]);
-						// GL[nSites][(10*indi)+i]=(double)log2ln(lgl.data[i]);
 						lngls[nSites][(10*indi)+i]=(double)log2ln(lgl.data[i]);
-						//
-						// //binary input genotypes from simulated input
-						// for (int i=0; i<gt.ploidy;i++){
-						// gti1 += bcf_gt_allele(ptr1[i]);
-						// gti2 += bcf_gt_allele(ptr2[i]);
-						// }
 					}
 				}
 			}
@@ -281,10 +267,19 @@ int main(int argc, char **argv) {
 				exit(1);
 			}
 
+
 			for(int i1=0;i1<nInd-1;i1++){
 				for(int i2=i1+1;i2<nInd;i2++){
-					get_gt_sfs(gt.data,gt_sfs,i1,i2,nInd);
+					
+					int32_t *ptr1 = gt.data + i1*gt.ploidy;
+					int32_t *ptr2 = gt.data + i2*gt.ploidy;
+					int pair_idx=nCk_idx(nInd,i1,i2);
+					// fprintf(stderr,"\n->i1: %d, i2: %d, pair: %d, nInd: %d\n\n", i1, i2, pair_idx,nInd);
+					// fprintf(stderr,"%d\t%d\t%d\n", i1, i2, pair_idx);
 
+
+					get_gt_sfs(gt.data,gt_sfs,ptr1,ptr2,pair_idx);
+					
 				}
 			}
 
@@ -310,13 +305,9 @@ int main(int argc, char **argv) {
 			// int i2=args->ind2;
 			// get_data<int32_t> gt;
 			// gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
-			// if(gt.n<0){
-			// fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
-			// exit(1);
 			// }
-			// do_gt_sfs(bcf,hdr,gt,pairM,"GT",i1,i2);
-			// }
-			// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
+
+			fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
 
 
 			nSites++;

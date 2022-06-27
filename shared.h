@@ -18,6 +18,7 @@ using size_t=decltype(sizeof(int));
  * @field minor		minor allele
  * @field ref		reference allele
  * @field anc		ancestral allele
+ * @field der		derived allele
  */
 
 
@@ -34,6 +35,7 @@ typedef struct{
 	char *minor;
 	char *ref;
 	char *anc;
+	char *der;
 
 
 	

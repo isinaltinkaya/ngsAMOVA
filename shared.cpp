@@ -28,6 +28,7 @@ paramStruct *pars_init(){
 	pars->minor=NULL;
 	pars->ref=NULL;
 	pars->anc=NULL;
+	pars->der=NULL;
 
 	return pars;
 
@@ -51,6 +52,7 @@ void paramStruct_destroy(paramStruct *pars){
 	}
 	delete[] pars->ref;
 	delete[] pars->anc;
+	delete[] pars->der;
 
 //
 	// if(pars->post){
