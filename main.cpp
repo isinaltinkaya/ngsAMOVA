@@ -10,6 +10,8 @@
 #include <inttypes.h>
 #include <math.h>
 
+#include <limits>
+
 #include <time.h>
 
 #include "main.h"
@@ -21,6 +23,8 @@
 
 
 using size_t=decltype(sizeof(int));
+
+const double NEG_INF = -std::numeric_limits<double>::infinity();
 
 
 //print 2D matrix
@@ -132,10 +136,10 @@ int main(int argc, char **argv) {
 
 		nInd=bcf_hdr_nsamples(hdr);
 
-		if(nInd==1){
-			fprintf(stderr,"\n\n[ERROR]\tOnly one sample; will exit\n\n");
-			exit(0);
-		}
+		// if(nInd==1){
+			// fprintf(stderr,"\n\n[ERROR]\tOnly one sample; will exit\n\n");
+			// exit(0);
+		// }
 
 
 		nSites=0;
@@ -159,9 +163,9 @@ int main(int argc, char **argv) {
 		double **lngls=0;
 
 		lngls=(double**) malloc(buf_size*sizeof(double*));
-		// for (int i=0;i<buf_size;i++){
-			// lngls[i]=(double*)malloc(nInd*10*sizeof(double));
-		// }
+		for (int i=0;i<buf_size;i++){
+			lngls[i]=(double*)malloc(nInd*10*sizeof(double));
+		}
 
 
 		int n_ind_cmb=nCk(nInd,2);
@@ -227,6 +231,7 @@ int main(int argc, char **argv) {
 			}
 
 
+
 			while(nSites>=buf_size){
 
 				// fprintf(stderr,"\n\nrealloc %d at site %d\n",buf_size,nSites);
@@ -244,16 +249,19 @@ int main(int argc, char **argv) {
 			lngls[nSites]=(double*)malloc(nInd*10*sizeof(double));
 
 			//TODO
-			//-if site is not shared between two inds
+			//- if site is not shared between two inds
+			//- only store lngls3 if majmin 3x3 will be used
 
 			for(int indi=0; indi<nInd; indi++){
 				for(int i=0;i<10;i++){
+					lngls[nSites][(10*indi)+i]=NEG_INF;
 					if(isnan(lgl.data[i])){
 						fprintf(stderr,"\nMissing data\n");
 					}else if (lgl.data[i]==bcf_float_vector_end){
 						fprintf(stderr,"\n???\n");
 					}else{
-						lngls[nSites][(10*indi)+i]=(double)log2ln(lgl.data[i]);
+						// fprintf(stderr,"\n->->i:%d ind:%d %s %f -> %f\n",i,indi,hdr->samples[indi],lgl.data[(10*indi)+i],(double)log2ln(lgl.data[(10*indi)+i]));
+						lngls[nSites][(10*indi)+i]=(double)log2ln(lgl.data[(10*indi)+i]);
 					}
 				}
 			}
@@ -266,7 +274,6 @@ int main(int argc, char **argv) {
 				fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
 				exit(1);
 			}
-
 
 			for(int i1=0;i1<nInd-1;i1++){
 				for(int i2=i1+1;i2<nInd;i2++){
@@ -316,6 +323,17 @@ int main(int argc, char **argv) {
 		// [END] Reading sites
 
 
+#if 0
+		for(int s=0;s<nSites;s++){
+			int i1=0;
+			fprintf(stderr,"\n-> site: %d anc:%d der:%d gtidx ancanc:%d ancder:%d derder:%d",s,anc[s],der[s],bcf_alleles_get_gtidx(anc[s],anc[s]),bcf_alleles_get_gtidx(anc[s],der[s]),bcf_alleles_get_gtidx(der[s],der[s]));
+			fprintf(stderr,"\n-> ind:%s (%f",hdr->samples[i1],lngls[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])]);
+			fprintf(stderr," %f",lngls[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])]);
+			fprintf(stderr," %f",lngls[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])]);
+			fprintf(stderr,")\n");
+		}
+#endif
+
 		for(int i1=0;i1<nInd-1;i1++){
 			for(int i2=i1+1;i2<nInd;i2++){
 
@@ -326,6 +344,8 @@ int main(int argc, char **argv) {
 				double SFS2D3[3][3];
 				double dx;
 				dx=EM_2DSFS_GL3(lngls,SFS2D3,i1,i2,nSites,args->tole,anc,der);
+			// fprintf(stderr,"), ind1: (%f,%f,%f)\n",lngls[0][0],lngls[0][1],lngls[0][2]);
+			// fprintf(stderr,"), ind2: (%f,%f,%f)\n",lngls[0][10],lngls[0][11],lngls[0][12]);
 				// print_2DM(3,3,*SFS2D3);
 				fprintf(stdout,"gl,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
 						hdr->samples[i1],
@@ -333,6 +353,13 @@ int main(int argc, char **argv) {
 						SFS2D3[0][0],SFS2D3[0][1],SFS2D3[0][2],
 						SFS2D3[1][0],SFS2D3[1][1],SFS2D3[1][2],
 						SFS2D3[2][0],SFS2D3[2][1],SFS2D3[2][2]);
+
+				fprintf(stdout,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
+						hdr->samples[i1],
+						hdr->samples[i2],
+						nSites*SFS2D3[0][0],nSites*SFS2D3[0][1],nSites*SFS2D3[0][2],
+						nSites*SFS2D3[1][0],nSites*SFS2D3[1][1],nSites*SFS2D3[1][2],
+						nSites*SFS2D3[2][0],nSites*SFS2D3[2][1],nSites*SFS2D3[2][2]);
 
 				fprintf(stdout,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
 						hdr->samples[i1],

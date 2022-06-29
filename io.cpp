@@ -79,6 +79,19 @@ argStruct *args_get(int argc, char **argv){
 		srand48(args->seed);
 	}
 
+	//TODO
+	//write function for args to define acceptable range of values and auto err message accordingly
+	
+	if (args->isSim > 1){
+		fprintf(stderr,"\n[ERROR]\tArgument isSim is set to %d\n",args->isSim);
+		free(args);
+		return 0;
+	}else if (args->isSim < 0){
+		fprintf(stderr,"\n[ERROR]\tArgument isSim is set to %d\n",args->isSim);
+		free(args);
+		return 0;
+	}
+
 	if(args->in_fn==NULL){
 		fprintf(stderr,"Must supply -in\n");
 		free(args);
