@@ -246,6 +246,7 @@ int main(int argc, char **argv) {
 				}
 
 			}
+
 			lngls[nSites]=(double*)malloc(nInd*10*sizeof(double));
 
 			//TODO
@@ -284,7 +285,6 @@ int main(int argc, char **argv) {
 					// fprintf(stderr,"\n->i1: %d, i2: %d, pair: %d, nInd: %d\n\n", i1, i2, pair_idx,nInd);
 					// fprintf(stderr,"%d\t%d\t%d\n", i1, i2, pair_idx);
 
-
 					get_gt_sfs(gt.data,gt_sfs,ptr1,ptr2,pair_idx);
 					
 				}
@@ -306,6 +306,7 @@ int main(int argc, char **argv) {
 					exit(1);
 				}
 			}
+
 			//TODO bcf_hdr_set_samples efficient sample parsing
 			// if (args->doInd==1){
 			// int i1=args->ind1;
@@ -360,6 +361,7 @@ int main(int argc, char **argv) {
 						nSites*SFS2D3[0][0],nSites*SFS2D3[0][1],nSites*SFS2D3[0][2],
 						nSites*SFS2D3[1][0],nSites*SFS2D3[1][1],nSites*SFS2D3[1][2],
 						nSites*SFS2D3[2][0],nSites*SFS2D3[2][1],nSites*SFS2D3[2][2]);
+				// fprintf(stderr,"\n\nHERE,%f\n\n",SFS2D3[0][0]);
 
 				fprintf(stdout,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
 						hdr->samples[i1],

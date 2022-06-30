@@ -27,7 +27,7 @@ argStruct *args_init(){
 	args->seed=-1;
 	args->doGeno=0;
 
-	args->tole=1e-6;
+	args->tole=1e-8;
 
 	args->isSim=0;
 

@@ -68,7 +68,7 @@ double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSit
 
 	for (int i=0; i<3; i++){
 		for (int j=0; j<3; j++){
-			SFS[i][j]=0.01;
+			SFS[i][j]=(double) (1/9);
 		}
 	}
 
@@ -105,15 +105,25 @@ double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSit
 #endif
 
 			// SFS * ind1 * ind2
-			TMP[0][0] = SFS[0][0] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])];
-			TMP[0][1] = SFS[0][1] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])];
-			TMP[0][2] = SFS[0][2] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])];
-			TMP[1][0] = SFS[1][0] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])];
-			TMP[1][1] = SFS[1][1] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])];
-			TMP[1][2] = SFS[1][2] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])];
-			TMP[2][0] = SFS[2][0] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])];
-			TMP[2][1] = SFS[2][1] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])];
-			TMP[2][2] = SFS[2][2] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])];
+			// TMP[0][0] = SFS[0][0] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])];
+			// TMP[0][1] = SFS[0][1] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])];
+			// TMP[0][2] = SFS[0][2] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])];
+			// TMP[1][0] = SFS[1][0] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])];
+			// TMP[1][1] = SFS[1][1] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])];
+			// TMP[1][2] = SFS[1][2] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])];
+			// TMP[2][0] = SFS[2][0] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])];
+			// TMP[2][1] = SFS[2][1] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])];
+			// TMP[2][2] = SFS[2][2] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])];
+
+			TMP[0][0] = exp(SFS[0][0] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])]);
+			TMP[0][1] = exp(SFS[0][1] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])]);
+			TMP[0][2] = exp(SFS[0][2] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])]);
+			TMP[1][0] = exp(SFS[1][0] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])]);
+			TMP[1][1] = exp(SFS[1][1] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])]);
+			TMP[1][2] = exp(SFS[1][2] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])]);
+			TMP[2][0] = exp(SFS[2][0] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])]);
+			TMP[2][1] = exp(SFS[2][1] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])]);
+			TMP[2][2] = exp(SFS[2][2] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])]);
 
 			for(int i=0;i<3;i++){
 				for(int j=0;j<3;j++){
