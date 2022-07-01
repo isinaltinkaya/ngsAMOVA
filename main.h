@@ -16,6 +16,8 @@ template<typename T> struct get_data{
 
 	int size_e=0;
 	int n=0;
+
+	int n_missing=0;
 	
 
 	int ploidy=0;

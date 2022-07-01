@@ -146,7 +146,6 @@ int main(int argc, char **argv) {
 
 		nSites=0;
 
-
 		fprintf(stderr, "\nReading file: \"%s\"", in_fn);
 		fprintf(stderr, "\nNumber of samples: %i", bcf_hdr_nsamples(hdr));
 		fprintf(stderr,	"\nNumber of chromosomes: %d",hdr->n[BCF_DT_CTG]);
@@ -164,6 +163,7 @@ int main(int argc, char **argv) {
 			// lngls[i]=(double*)malloc(nInd*10*sizeof(double));
 		// }
 
+		//TODO build lookup table
 
 		int n_ind_cmb=nCk(nInd,2);
 		
@@ -204,8 +204,6 @@ int main(int argc, char **argv) {
 
 
 
-
-
 		/*
 		 * [START] Reading sites
 		 *
@@ -214,6 +212,24 @@ int main(int argc, char **argv) {
 		 */
 
 		while (bcf_read(in_ff, hdr, bcf) == 0) {
+
+			TAG="DP";
+			get_data<int32_t> dp;
+			dp.n = bcf_get_format_int32(hdr,bcf,TAG,&dp.data,&dp.size_e);
+			if(dp.n<0){
+				fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
+				exit(1);
+			}
+
+			//TODO use only sites non-missing for all individuals for now
+			for(int indi=0; indi<nInd; indi++){
+				if(dp.data[indi]==0){
+					// fprintf(stderr,"\nDepth: %d at (site_i: %d, pos: %d) in (ind_i: %d, ind_id: %s)\n",dp.data[indi],nSites,bcf->pos,indi,hdr->samples[indi]);
+					dp.n_missing++;
+				}
+			}
+			if (dp.n_missing>0) continue;
+
 
 			get_data<float> lgl;
 
@@ -253,6 +269,7 @@ int main(int argc, char **argv) {
 					lngls[nSites][(10*indi)+i]=NEG_INF;
 					if(isnan(lgl.data[i])){
 						fprintf(stderr,"\nMissing data\n");
+						lgl.n_missing++;
 						break;
 					}else if (lgl.data[i]==bcf_float_vector_end){
 						fprintf(stderr,"\n???\n");
@@ -262,6 +279,7 @@ int main(int argc, char **argv) {
 					}
 				}
 			}
+			if (lgl.n_missing>0) continue;
 
 
 			get_data<int32_t> gt;
