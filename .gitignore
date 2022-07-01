@@ -12,5 +12,5 @@ ngsAMOVA
 
 
 # Test VCF files
-t*.vcf
-
+./t*.vcf
+!test/t*vcf

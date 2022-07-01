@@ -1,1 +1,0 @@
--in test/t1.vcf -out test/t1_testvcfgl -err 0.010000 -depth 1.000000 -isSim 1 -seed 42
