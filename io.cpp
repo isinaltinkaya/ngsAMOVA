@@ -15,7 +15,7 @@ void usage() {
 	exit(0);
 }
 
-argStruct *args_init(){
+argStruct *argStruct_init(){
 
 
 	argStruct *args=(argStruct*)calloc(1,sizeof(argStruct));
@@ -39,12 +39,19 @@ argStruct *args_init(){
 
 }
 
+//
+// void *argStruct_destroy(argStruct *args){
+	// if(args->in_fn){
+		// free(args->in_fn);
+		// args->in_fn=NULL;
+	// }
+//
+// }
+//
 
+argStruct *argStruct_get(int argc, char **argv){
 
-
-argStruct *args_get(int argc, char **argv){
-
-	argStruct *args = args_init(); 
+	argStruct *args = argStruct_init(); 
 
 	while(*argv){
 
@@ -67,7 +74,7 @@ argStruct *args_get(int argc, char **argv){
 		else{
 			fprintf(stderr,"Unknown arg:%s\n",arv);
 			free(args);
-			return 0;
+			return NULL;
 		}
 		++argv; 
 	} 
@@ -85,32 +92,35 @@ argStruct *args_get(int argc, char **argv){
 	if (args->isSim > 1){
 		fprintf(stderr,"\n[ERROR]\tArgument isSim is set to %d\n",args->isSim);
 		free(args);
-		return 0;
+		return NULL;
 	}else if (args->isSim < 0){
 		fprintf(stderr,"\n[ERROR]\tArgument isSim is set to %d\n",args->isSim);
 		free(args);
-		return 0;
+		return NULL;
 	}
 
 	if(args->in_fn==NULL){
 		fprintf(stderr,"Must supply -in\n");
 		free(args);
-		return 0;
+		return NULL;
 	}
 
 	if (args->doGeno == 1){
 		if(args->doInd==1){
 			if(args->ind1==-1){
 				fprintf(stderr,"Must supply -ind1 while using -doGeno 1 -doInd 1 \n");
-				return 0;
+				free(args);
+				return NULL;
 			}
 			if(args->ind2==-1){
 				fprintf(stderr,"Must supply -ind2 while using -doGeno 1 -doInd 1 \n");
-				return 0;
+				free(args);
+				return NULL;
 			}
 			if(args->ind1==args->ind2){
 				fprintf(stderr,"Ind ids must be different while using -doGeno 1 -doInd 1 \n");
-				return 0;
+				free(args);
+				return NULL;
 			}
 		}
 	}

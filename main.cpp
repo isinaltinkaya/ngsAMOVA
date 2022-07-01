@@ -108,17 +108,18 @@ int main(int argc, char **argv) {
 		exit(0);
 	}
 
-	argStruct *args=args_get(--argc,++argv);
-	paramStruct *pars = pars_init();
-
-	int nInd=pars->nInd;
-	size_t nSites=pars->nSites;
-
-	char *anc=pars->anc;
-	char *der=pars->der;
-
+	argStruct *args=argStruct_get(--argc,++argv);
 
 	if(args!=NULL){
+
+		paramStruct *pars = paramStruct_init();
+
+		int nInd=pars->nInd;
+		size_t nSites=pars->nSites;
+
+		char *anc=pars->anc;
+		char *der=pars->der;
+
 
 		char *in_fn=args->in_fn;
 
@@ -137,10 +138,10 @@ int main(int argc, char **argv) {
 
 		nInd=bcf_hdr_nsamples(hdr);
 
-		// if(nInd==1){
-			// fprintf(stderr,"\n\n[ERROR]\tOnly one sample; will exit\n\n");
-			// exit(0);
-		// }
+		if(nInd==1){
+			fprintf(stderr,"\n\n[ERROR]\tOnly one sample; will exit\n\n");
+			exit(0);
+		}
 
 
 		nSites=0;
@@ -151,12 +152,7 @@ int main(int argc, char **argv) {
 		fprintf(stderr,	"\nNumber of chromosomes: %d",hdr->n[BCF_DT_CTG]);
 
 
-		//todo first use index of bcf etc to determine nsites
-		//then start analyses
-		//
-
 		int buf_size=1024;
-		// int buf_size=2;
 
 		/*
 		 * lngls[nSites][nInd*10*double]
@@ -164,9 +160,9 @@ int main(int argc, char **argv) {
 		double **lngls=0;
 
 		lngls=(double**) malloc(buf_size*sizeof(double*));
-		for (int i=0;i<buf_size;i++){
-			lngls[i]=(double*)malloc(nInd*10*sizeof(double));
-		}
+		// for (int i=0;i<buf_size;i++){
+			// lngls[i]=(double*)malloc(nInd*10*sizeof(double));
+		// }
 
 
 		int n_ind_cmb=nCk(nInd,2);
@@ -197,7 +193,7 @@ int main(int argc, char **argv) {
 			der=(char*)malloc(buf_size*sizeof(char));
 		}
 
-		char* TAG;
+		const char* TAG=NULL;
 
 
 		//TODO not filling with -INF? 
@@ -220,8 +216,6 @@ int main(int argc, char **argv) {
 		while (bcf_read(in_ff, hdr, bcf) == 0) {
 
 			get_data<float> lgl;
-			//TODO check
-			// lgl.data=(float*)malloc(buf_size*10*nInd*sizeof(float));
 
 			TAG="GL";
 			lgl.n = bcf_get_format_float(hdr,bcf,TAG,&lgl.data,&lgl.size_e);
@@ -269,13 +263,14 @@ int main(int argc, char **argv) {
 				}
 			}
 
+
 			get_data<int32_t> gt;
 
 			gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
 			gt.ploidy=gt.n/nInd;
 
 			if(gt.n<0){
-				fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
+				fprintf(stderr,"\n[ERROR](File reading)\tProblem with reading GT; will exit!\n\n");
 				exit(1);
 			}
 
@@ -358,13 +353,13 @@ int main(int argc, char **argv) {
 			// fprintf(stderr,"), ind1: (%f,%f,%f)\n",lngls[0][0],lngls[0][1],lngls[0][2]);
 			// fprintf(stderr,"), ind2: (%f,%f,%f)\n",lngls[0][10],lngls[0][11],lngls[0][12]);
 				// print_2DM(3,3,*SFS2D3);
-				fprintf(stdout,"gl,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
-						hdr->samples[i1],
-						hdr->samples[i2],
-						SFS2D3[0][0],SFS2D3[0][1],SFS2D3[0][2],
-						SFS2D3[1][0],SFS2D3[1][1],SFS2D3[1][2],
-						SFS2D3[2][0],SFS2D3[2][1],SFS2D3[2][2]);
-
+				// fprintf(stdout,"gl,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
+						// hdr->samples[i1],
+						// hdr->samples[i2],
+						// SFS2D3[0][0],SFS2D3[0][1],SFS2D3[0][2],
+						// SFS2D3[1][0],SFS2D3[1][1],SFS2D3[1][2],
+						// SFS2D3[2][0],SFS2D3[2][1],SFS2D3[2][2]);
+//
 				fprintf(stdout,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
 						hdr->samples[i1],
 						hdr->samples[i2],
@@ -394,11 +389,32 @@ int main(int argc, char **argv) {
 			exit(BCF_CLOSE);
 		}
 
-		free(args->in_fn);
-		free(args);
+		if(args->isSim==1){
+			free(anc);
+			anc=NULL;
+			free(der);
+			der=NULL;
+		}
 
+		for (int i=0;i<n_ind_cmb;i++){
+			free(gt_sfs[i]);
+			gt_sfs[i]=NULL;
+		}
+		free(gt_sfs);
+
+		for (size_t s=0;s<nSites;s++){
+			free(lngls[s]);
+			lngls[s]=NULL;
+		}
+
+		free(lngls);
+
+		paramStruct_destroy(pars);
 
 	}
+	free(args->in_fn);
+	free(args->out_fp);
+	free(args);
 
 	return 0;
 

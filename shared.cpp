@@ -13,7 +13,7 @@
 
 using size_t=decltype(sizeof(int));
 
-paramStruct *pars_init(){
+paramStruct *paramStruct_init(){
 
 	paramStruct *pars= new paramStruct;
 
@@ -37,10 +37,7 @@ paramStruct *pars_init(){
 
 void paramStruct_destroy(paramStruct *pars){
 
-
-
 	delete[] pars->keepSites;
-
 	delete[] pars->pos;
 
 	if(pars->major){

@@ -42,8 +42,8 @@ typedef struct{
 }paramStruct;
 
 
-paramStruct *pars_init();
-void pars_destroy(paramStruct *p);
+paramStruct *paramStruct_init();
+void paramStruct_destroy(paramStruct *p);
 
 extern const int get_3x3_idx[3][3];
 

@@ -47,9 +47,11 @@ typedef struct{
 }argStruct;
 
 
-argStruct *args_init();
+argStruct *argStruct_init();
 
-argStruct *args_get(int argc, char **argv);
+argStruct *argStruct_get(int argc, char **argv);
+
+// void *argStruct_destroy(argStruct *arg);
 
 void usage();
 
