@@ -77,6 +77,7 @@ FILE *getFILE(const char*fname,const char* mode){
 	return fp;
 }
 
+
 void get_gt_sfs( int* gtdata, int **sfs, int32_t *ptr1, int32_t *ptr2, int pair_idx){
 
 	int gti1=0;
@@ -145,9 +146,9 @@ int main(int argc, char **argv) {
 		nSites=0;
 
 
-		fprintf(stderr, "\nReading file:\t\"%s\"\n", in_fn);
-		fprintf(stderr, "Number of samples: %i\n", bcf_hdr_nsamples(hdr));
-		fprintf(stderr,	"Number of chromosomes: %d\n",hdr->n[BCF_DT_CTG]);
+		fprintf(stderr, "\nReading file: \"%s\"", in_fn);
+		fprintf(stderr, "\nNumber of samples: %i", bcf_hdr_nsamples(hdr));
+		fprintf(stderr,	"\nNumber of chromosomes: %d",hdr->n[BCF_DT_CTG]);
 
 
 		//todo first use index of bcf etc to determine nsites
@@ -170,7 +171,7 @@ int main(int argc, char **argv) {
 
 		int n_ind_cmb=nCk(nInd,2);
 		
-		fprintf(stderr,"\nn_ind_cmb: %d\n",n_ind_cmb);
+		fprintf(stderr,"\nNumber of individual pairs: %d\n",n_ind_cmb);
 
 		//TODO only create if doGeno etc
 		/*
@@ -258,6 +259,7 @@ int main(int argc, char **argv) {
 					lngls[nSites][(10*indi)+i]=NEG_INF;
 					if(isnan(lgl.data[i])){
 						fprintf(stderr,"\nMissing data\n");
+						break;
 					}else if (lgl.data[i]==bcf_float_vector_end){
 						fprintf(stderr,"\n???\n");
 					}else{
@@ -270,11 +272,19 @@ int main(int argc, char **argv) {
 			get_data<int32_t> gt;
 
 			gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
+			gt.ploidy=gt.n/nInd;
 
 			if(gt.n<0){
 				fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
 				exit(1);
 			}
+
+			if (gt.ploidy!=2){
+				fprintf(stderr,"ERROR:\n\nploidy: %d not supported\n",gt.ploidy);
+				return 1;
+			}
+
+
 
 			for(int i1=0;i1<nInd-1;i1++){
 				for(int i2=i1+1;i2<nInd;i2++){
@@ -315,7 +325,7 @@ int main(int argc, char **argv) {
 			// gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
 			// }
 
-			fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
+			// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
 
 
 			nSites++;
