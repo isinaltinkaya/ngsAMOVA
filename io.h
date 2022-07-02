@@ -16,6 +16,9 @@
  * @field isSim		input is vcfgl simulation output
  * 					anc=ref and der=alt[0]
  *
+ * TODO rename
+ * @field onlyShared	use only sites shared among all inds
+ *
  * @field doGeno	use GT tags to count ind2ind 2dsfs
  * @field doInd		do ind pairs
  * @field ind1		ind1 id
@@ -34,6 +37,7 @@ typedef struct{
 	int doGeno;
 
 	int isSim;
+	int onlyShared;
 
 	int seed;
 
@@ -54,10 +58,6 @@ argStruct *argStruct_get(int argc, char **argv);
 // void *argStruct_destroy(argStruct *arg);
 
 void usage();
-
-
-
-
 
 
 

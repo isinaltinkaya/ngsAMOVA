@@ -5,6 +5,9 @@
 #include <math.h>
 #include <string.h>
 
+#include <limits>
+
+const double NEG_INF = -std::numeric_limits<double>::infinity();
 
 
 const int offsets[4][10]={
@@ -56,7 +59,7 @@ void rescale_likelihood_ratio(double *like){
 
 
 
-double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSites, double tole, char *anc, char *der){
+double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSites, int shared_nSites, double tole, char *anc, char *der){
 
 	//TODO check underflow
 	// fprintf(stderr,"\nEM begin for ind1:%d and ind2:%d \n",i1,i2);
@@ -64,7 +67,6 @@ double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSit
 
 	double sum;
 	double d;
-
 
 	for (int i=0; i<3; i++){
 		for (int j=0; j<3; j++){
@@ -85,7 +87,20 @@ double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSit
 			}
 		}
 
+		// int tme=0;
 		for(size_t s=0; s<nSites; s++){
+
+			if (lngl[s][10*i1]==NEG_INF){
+				// fprintf(stderr,"\nNEG INF\n");
+				continue;
+			}
+			if (lngl[s][10*i2]==NEG_INF){
+				// fprintf(stderr,"\nNEG INF2\n");
+				continue;
+			}
+
+
+			// tme++;
 
 			sum=0.0;
 #if 0
@@ -138,11 +153,12 @@ double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSit
 				}
 			}
 		}
+		// fprintf(stderr,"\n->->tme:%d nSites:%d shared_nSites:%d\n",tme,nSites,shared_nSites);
 
 		d=0.0;
 		for(int i=0;i<3;i++){
 			for(int j=0;j<3;j++){
-				temp=ESFS[i][j]/(double)nSites;
+				temp=ESFS[i][j]/(double)shared_nSites;
 				d += fabs(temp-SFS[i][j]);
 				SFS[i][j]=temp;
 

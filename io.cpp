@@ -31,6 +31,8 @@ argStruct *argStruct_init(){
 
 	args->isSim=0;
 
+	args->onlyShared=0;
+
 	args->doInd=0;
 	args->ind1=-1;
 	args->ind2=-1;
@@ -68,6 +70,7 @@ argStruct *argStruct_get(int argc, char **argv){
 		else if(strcasecmp("-ind2",arv)==0) args->ind2=atoi(val);
 		else if(strcasecmp("-tole",arv)==0) args->tole=atof(val);
 		else if(strcasecmp("-isSim",arv)==0) args->isSim=atoi(val);
+		else if(strcasecmp("-onlyShared",arv)==0) args->onlyShared=atoi(val);
 		else if(strcasecmp("-h",arv) == 0 || strcasecmp( "--help",arv) == 0) {
 			usage();
 		}

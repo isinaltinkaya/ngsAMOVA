@@ -212,25 +212,25 @@ int main(int argc, char **argv) {
 		 */
 
 		while (bcf_read(in_ff, hdr, bcf) == 0) {
-
-			TAG="DP";
-			get_data<int32_t> dp;
-			dp.n = bcf_get_format_int32(hdr,bcf,TAG,&dp.data,&dp.size_e);
-			if(dp.n<0){
-				fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
-				exit(1);
-			}
-
-			//TODO use only sites non-missing for all individuals for now
-			for(int indi=0; indi<nInd; indi++){
-				if(dp.data[indi]==0){
-					// fprintf(stderr,"\nDepth: %d at (site_i: %d, pos: %d) in (ind_i: %d, ind_id: %s)\n",dp.data[indi],nSites,bcf->pos,indi,hdr->samples[indi]);
-					dp.n_missing++;
-				}
-			}
-			if (dp.n_missing>0) continue;
-
-
+//
+			// TAG="DP";
+			// get_data<int32_t> dp;
+			// dp.n = bcf_get_format_int32(hdr,bcf,TAG,&dp.data,&dp.size_e);
+			// if(dp.n<0){
+				// fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
+				// exit(1);
+			// }
+//
+			// //TODO use only sites non-missing for all individuals for now
+			// for(int indi=0; indi<nInd; indi++){
+				// if(dp.data[indi]==0){
+					// // fprintf(stderr,"\nDepth: %d at (site_i: %d, pos: %d) in (ind_i: %d, ind_id: %s)\n",dp.data[indi],nSites,bcf->pos,indi,hdr->samples[indi]);
+					// dp.n_missing++;
+				// }
+			// }
+			// if (dp.n_missing>0) continue;
+//
+//
 			get_data<float> lgl;
 
 			TAG="GL";
@@ -267,19 +267,29 @@ int main(int argc, char **argv) {
 			for(int indi=0; indi<nInd; indi++){
 				for(int i=0;i<10;i++){
 					lngls[nSites][(10*indi)+i]=NEG_INF;
-					if(isnan(lgl.data[i])){
-						fprintf(stderr,"\nMissing data\n");
+					if(isnan(lgl.data[(10*indi)+i])){
+						// fprintf(stderr,"\nMissing data\n");
 						lgl.n_missing++;
 						break;
-					}else if (lgl.data[i]==bcf_float_vector_end){
-						fprintf(stderr,"\n???\n");
+					}else if (bcf_float_is_vector_end(lgl.data[(10*indi)+i])){
+						fprintf(stderr,"\nwhat are you\n");
+						// lgl.n_missing++;
+						break;
+					// }else if(bcf_float_is_missing(lgl.data[i])){
+						// fprintf(stderr,"\nMissing data\n");
+						// lgl.n_missing++;
+						// break;
+					// }else if(std::isnan(lgl.data[(10*indi)+i])){
 					}else{
 						// fprintf(stderr,"\n->->i:%d ind:%d %s %f -> %f\n",i,indi,hdr->samples[indi],lgl.data[(10*indi)+i],(double)log2ln(lgl.data[(10*indi)+i]));
 						lngls[nSites][(10*indi)+i]=(double)log2ln(lgl.data[(10*indi)+i]);
 					}
 				}
 			}
-			if (lgl.n_missing>0) continue;
+			if(args->onlyShared==1){
+				if (lgl.n_missing>0) continue;
+			}
+			if (lgl.n_missing == 10*nInd) continue;
 
 
 			get_data<int32_t> gt;
@@ -339,6 +349,7 @@ int main(int argc, char **argv) {
 			// }
 
 			// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
+			// fprintf(stderr,"%d\n\n",nSites);
 
 
 			nSites++;
@@ -363,11 +374,37 @@ int main(int argc, char **argv) {
 
 				int pair_idx=nCk_idx(nInd,i1,i2);
 
+				int shared_nSites=0;
+
+				for(size_t s=0; s<nSites; s++){
+					if (lngls[s][10*i1]==NEG_INF){
+						// fprintf(stderr,"\nNEG INF\n");
+						continue;
+					}else if (lngls[s][10*i2]==NEG_INF){
+						// fprintf(stderr,"\nNEG INF2\n");
+						continue;
+					}else{
+						shared_nSites++;
+					}
+				}
+				if(shared_nSites==0){
+					continue;
+				}
+
+				fprintf(stdout,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+						hdr->samples[i1],
+						hdr->samples[i2],
+						gt_sfs[pair_idx][0],gt_sfs[pair_idx][1],gt_sfs[pair_idx][2],
+						gt_sfs[pair_idx][3],gt_sfs[pair_idx][4],gt_sfs[pair_idx][5],
+						gt_sfs[pair_idx][6],gt_sfs[pair_idx][7],gt_sfs[pair_idx][8]);
+
 				// double SFS2D[10][10];
 				// EM_2DSFS_GL10(lngls,SFS2D,i1,i2,nSites,args->tole);
 				double SFS2D3[3][3];
 				double dx;
-				dx=EM_2DSFS_GL3(lngls,SFS2D3,i1,i2,nSites,args->tole,anc,der);
+				// dx=EM_2DSFS_GL3(lngls,SFS2D3,i1,i2,nSites,args->tole,anc,der);
+				// int shared_nSites=0;
+				dx=EM_2DSFS_GL3(lngls,SFS2D3,i1,i2,nSites,shared_nSites,args->tole,anc,der);
 			// fprintf(stderr,"), ind1: (%f,%f,%f)\n",lngls[0][0],lngls[0][1],lngls[0][2]);
 			// fprintf(stderr,"), ind2: (%f,%f,%f)\n",lngls[0][10],lngls[0][11],lngls[0][12]);
 				// print_2DM(3,3,*SFS2D3);
@@ -381,18 +418,16 @@ int main(int argc, char **argv) {
 				fprintf(stdout,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
 						hdr->samples[i1],
 						hdr->samples[i2],
-						nSites*SFS2D3[0][0],nSites*SFS2D3[0][1],nSites*SFS2D3[0][2],
-						nSites*SFS2D3[1][0],nSites*SFS2D3[1][1],nSites*SFS2D3[1][2],
-						nSites*SFS2D3[2][0],nSites*SFS2D3[2][1],nSites*SFS2D3[2][2]);
+						shared_nSites*SFS2D3[0][0],shared_nSites*SFS2D3[0][1],shared_nSites*SFS2D3[0][2],
+						shared_nSites*SFS2D3[1][0],shared_nSites*SFS2D3[1][1],shared_nSites*SFS2D3[1][2],
+						shared_nSites*SFS2D3[2][0],shared_nSites*SFS2D3[2][1],shared_nSites*SFS2D3[2][2]);
+				// fprintf(stdout,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
+						// hdr->samples[i1],
+						// hdr->samples[i2],
+						// nSites*SFS2D3[0][0],nSites*SFS2D3[0][1],nSites*SFS2D3[0][2],
+						// nSites*SFS2D3[1][0],nSites*SFS2D3[1][1],nSites*SFS2D3[1][2],
+						// nSites*SFS2D3[2][0],nSites*SFS2D3[2][1],nSites*SFS2D3[2][2]);
 				// fprintf(stderr,"\n\nHERE,%f\n\n",SFS2D3[0][0]);
-
-				fprintf(stdout,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
-						hdr->samples[i1],
-						hdr->samples[i2],
-						gt_sfs[pair_idx][0],gt_sfs[pair_idx][1],gt_sfs[pair_idx][2],
-						gt_sfs[pair_idx][3],gt_sfs[pair_idx][4],gt_sfs[pair_idx][5],
-						gt_sfs[pair_idx][6],gt_sfs[pair_idx][7],gt_sfs[pair_idx][8]);
-
 			}
 		}
 
