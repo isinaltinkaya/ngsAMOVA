@@ -1,4 +1,4 @@
-#include "estimator.h"
+#include "em.h"
 #include "vcf_utils.h"
 
 #include <stdio.h>
@@ -10,56 +10,12 @@
 const double NEG_INF = -std::numeric_limits<double>::infinity();
 
 
-const int offsets[4][10]={
-	{0,1,2,3,  4,5,6,7,8,9},//AA,AC,AG,AT,therest
-	{4,1,5,6,  0,2,3,7,8,9},//CC,AC,CG,CT,therest
-	{7,2,5,8,  0,1,3,4,6,9},//GG,AG,CG,GT,therest
-	{9,3,6,8,  0,1,2,4,5,7},//TT,AT,CT,GT,therest
-};
+
+// double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSites, int shared_nSites, double tole, char *anc, char *der){
+int EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSites, int shared_nSites, double tole, char *anc, char *der){
 
 
-double log2ln(float ivar){
-	return (double) ivar/M_LOG10E;
-}
-
-
-void rescale_likelihood_ratio(double *like){
-
-	//rescale to likeratios
-	double mx = like[0];
-
-	for(int i=1;i<10;i++){
-		if(like[i]>mx){
-			mx=like[i];
-		}
-	}
-
-	for(int i=0;i<10;i++){
-		like[i] -= mx;
-	}
-
-}
-
-
-// void normalize(double *tmp, int nDim){
-			// for(int i=0;i<nDim;i++){
-				// for(int j=0;j<3;j++){
-					// sum += TMP[i][j];
-				// }
-			// }
-//
-//
-			// for(int i=0;i<nDim;i++){
-				// for(int j=0;j<3;j++){
-					// ESFS[i][j] += TMP[i][j]/sum;
-				// }
-			// }
-//
-// }
-
-
-
-double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSites, int shared_nSites, double tole, char *anc, char *der){
+	int n_em_iter=0;
 
 	//TODO check underflow
 	// fprintf(stderr,"\nEM begin for ind1:%d and ind2:%d \n",i1,i2);
@@ -76,6 +32,7 @@ double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSit
 
 	do{
 
+		n_em_iter++;
 	// fprintf(stderr,"\nEM\n");
 
 		double TMP[3][3];
@@ -177,7 +134,8 @@ double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSit
 
 	}while(d>tole);
 
-	return d;
+	// return d;
+	return n_em_iter;
 }
 
 

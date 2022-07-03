@@ -37,6 +37,7 @@ typedef struct{
 	char *anc;
 	char *der;
 
+	char *DATETIME;
 
 	
 }paramStruct;
@@ -46,6 +47,8 @@ paramStruct *paramStruct_init();
 void paramStruct_destroy(paramStruct *p);
 
 extern const int get_3x3_idx[3][3];
+
+char *get_time();
 
 
 #endif

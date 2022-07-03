@@ -10,6 +10,7 @@
 #include "shared.h"
 
 #include <cstddef>
+#include <time.h>
 
 using size_t=decltype(sizeof(int));
 
@@ -21,6 +22,7 @@ paramStruct *paramStruct_init(){
 	pars->nInd=0;
 
 	pars->keepSites=NULL;
+	pars->DATETIME=NULL;
 
 	pars->pos=NULL;
 
@@ -51,18 +53,21 @@ void paramStruct_destroy(paramStruct *pars){
 	delete[] pars->anc;
 	delete[] pars->der;
 
-//
+	delete pars->DATETIME;
+	pars->DATETIME=NULL;
+
+	//
 	// if(pars->post){
-		// for(int i=0;i<pars->nSites;i++)
-			// delete [] pars->post[i];
-		// delete [] pars->post;
-		// pars->post=NULL;
+	// for(int i=0;i<pars->nSites;i++)
+	// delete [] pars->post[i];
+	// delete [] pars->post;
+	// pars->post=NULL;
 	// }
 	// if(pars->likes){
-		// for(int i=0;i<pars->nSites;i++)
-			// delete [] pars->likes[i];
-		// delete [] pars->likes;
-		// pars->likes=NULL;
+	// for(int i=0;i<pars->nSites;i++)
+	// delete [] pars->likes[i];
+	// delete [] pars->likes;
+	// pars->likes=NULL;
 	// }
 	delete pars;
 
@@ -85,4 +90,14 @@ extern const int get_3x3_idx[3][3]={
 	{3, 4, 5},
 	{6, 7, 8}
 };
+
+
+
+char *get_time(){
+	time_t current_time;
+	struct tm *local_time; 
+	current_time=time(NULL);
+	local_time=localtime(&current_time);
+	return(asctime(local_time));
+}
 

@@ -9,8 +9,6 @@
 ##FORMAT=<ID=GL,Number=G,Type=Float,Description="Genotype likelihood in log10 likelihood ratio format">
 ##bcftools_viewVersion=1.9+htslib-1.9
 ##bcftools_viewCommand=view -s pop1_ind1,pop1_ind2 ../../simulations/msprime/simulations/sim2/model_OutOfAfrica_3G09/contig_chr22/masked_vcfgl_var/sim2-OutOfAfrica_3G09-chr22-rep0-d1.bcf; Date=Fri Jul  1 13:52:45 2022
-##bcftools_annotateVersion=1.9+htslib-1.9
-##bcftools_annotateCommand=annotate -x INFO/AC,INFO/AN test/test_mis.vcf; Date=Sat Jul  2 16:10:30 2022
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	pop1_ind1	pop1_ind2
 chr22	16051762	.	A	C,G,T	.	PASS	.	GT:DP:GL	0|0:2:0,-0.60148,-6.35044,-0.60148,-6.35044,-6.35044,-0.60148,-6.35044,-6.35044,-6.35044	0|0:1:0,-0.30074,-3.17522,-0.30074,-3.17522,-3.17522,-0.30074,-3.17522,-3.17522,-3.17522
 chr22	16051791	.	A	C,G,T	.	PASS	.	GT:DP:GL	0|0:1:0,-0.30074,-3.17522,-0.30074,-3.17522,-3.17522,-0.30074,-3.17522,-3.17522,-3.17522	0|0:1:0,-0.30074,-3.17522,-0.30074,-3.17522,-3.17522,-0.30074,-3.17522,-3.17522,-3.17522

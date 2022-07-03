@@ -15,8 +15,8 @@
 #include <time.h>
 
 #include "main.h"
-#include "random_generator.h"
-#include "estimator.h"
+#include "em.h"
+#include "math_utils.h"
 #include "vcf_utils.h"
 #include "io.h"
 #include "shared.h"
@@ -25,48 +25,6 @@
 using size_t=decltype(sizeof(int));
 
 const double NEG_INF = -std::numeric_limits<double>::infinity();
-
-
-//print 2D matrix
-void print_2DM(size_t x1, size_t x2, double *M){
-	printf("\n");
-	int m,n;
-	for (m=0;m<x1;m++){
-		for (n=0;n<x2;n++){
-			printf("A[%d,%d]=%f\n",m,n,M[(m*x1)+n]);
-		}
-	}
-};
-
-/*
- * Binomial coefficient
- * n choose k
- */
-int nCk(int n, int k){
-	int res = 1;
-	if (k > n-k){
-		k = n-k;
-	}
-	// [ n * (n-1) * ... * (n-k+1) ] / [ k * (k-1) * ... * 1 ]
-	for (int i = 0; i < k; ++i) {
-		res = res * (n-i) / (i+1) ;
-	}
-	return res;
-}
-
-/*
- * Maps a given pair of objects to their index in
- * the lexicographically ordered binomial coefficients
- * a.k.a. array of pairs
- */
-int nCk_idx(int nInd, int i1, int i2){
-	// int ret=(nInd - nCk((nInd-i1),2))+(i2-i1)+1;
-	int ret=(nCk(nInd,2) - nCk((nInd-i1),2))+(i2-i1)-1;
-	// fprintf(stderr,"\n->ret: %d, nInd:%d, %d + %d + 1\n",ret,nInd,nCk((nInd-i1),2),(i2-i1));
-	return ret;
-	// return (nInd - nCk((nInd-i1),2))+(i2-i1)+1;
-}
-
 
 FILE *getFILE(const char*fname,const char* mode){
 	FILE *fp;
@@ -83,7 +41,6 @@ void get_gt_sfs( int* gtdata, int **sfs, int32_t *ptr1, int32_t *ptr2, int pair_
 	int gti1=0;
 	int gti2=0;
 
-
 	//using binary input genotypes from VCF GT tag
 	//assume ploidy=2
 	for (int i=0; i<2;i++){
@@ -91,11 +48,7 @@ void get_gt_sfs( int* gtdata, int **sfs, int32_t *ptr1, int32_t *ptr2, int pair_
 		gti2 += bcf_gt_allele(ptr2[i]);
 	}
 	// fprintf(stderr,"\n%d:%d %d:%d -> %d\n",i1,gti1,i2,gti2,get_3x3_idx[gti1][gti2]);
-
-	// int idx=get_3x3_idx[gti1][gti2];
-	// sfs[pair_idx][idx]++;
 	sfs[pair_idx][get_3x3_idx[gti1][gti2]]++;
-
 }
 
 
@@ -116,11 +69,8 @@ int main(int argc, char **argv) {
 
 		int nInd=pars->nInd;
 		size_t nSites=pars->nSites;
-
 		char *anc=pars->anc;
 		char *der=pars->der;
-
-
 		char *in_fn=args->in_fn;
 
 		vcfFile * in_ff = bcf_open(in_fn, "r");
@@ -143,12 +93,23 @@ int main(int argc, char **argv) {
 			exit(0);
 		}
 
-
+		//TODO
+		//print args nicely to an arg file and use -out
+		//but smart -out. if output prefix is given detect and truncate
+		//so it would play nicely with smk pipelines
 		nSites=0;
+
+
+		char *DATETIME=pars->DATETIME;
+		DATETIME=get_time();
+
+		fprintf(stderr,"\n%s",DATETIME);
+		fprintf(stderr,"\n./ngsAMOVA -in %s -tole %e -isSim %d -onlyShared %d\n",args->in_fn,args->tole,args->isSim,args->onlyShared);
 
 		fprintf(stderr, "\nReading file: \"%s\"", in_fn);
 		fprintf(stderr, "\nNumber of samples: %i", bcf_hdr_nsamples(hdr));
 		fprintf(stderr,	"\nNumber of chromosomes: %d",hdr->n[BCF_DT_CTG]);
+
 
 
 		int buf_size=1024;
@@ -194,15 +155,6 @@ int main(int argc, char **argv) {
 		}
 
 		const char* TAG=NULL;
-
-
-		//TODO not filling with -INF? 
-		// lngls.n=buf_size*10*nInd;
-		// for(int i=0;i<lngls.n;i++){
-		// lngls.data[i]=-INFINITY;
-		// }
-
-
 
 		/*
 		 * [START] Reading sites
@@ -261,39 +213,67 @@ int main(int argc, char **argv) {
 			lngls[nSites]=(double*)malloc(nInd*10*sizeof(double));
 
 			//TODO
-			//- if site is not shared between two inds
 			//- only store lngls3 if majmin 3x3 will be used
+			//- check below what are you
+
 
 			for(int indi=0; indi<nInd; indi++){
+				int n_missing_gl_indi=0;
 				for(int i=0;i<10;i++){
 					lngls[nSites][(10*indi)+i]=NEG_INF;
 					if(isnan(lgl.data[(10*indi)+i])){
 						// fprintf(stderr,"\nMissing data\n");
-						lgl.n_missing++;
-						break;
+						n_missing_gl_indi++;
 					}else if (bcf_float_is_vector_end(lgl.data[(10*indi)+i])){
 						fprintf(stderr,"\nwhat are you\n");
 						// lgl.n_missing++;
-						break;
 					// }else if(bcf_float_is_missing(lgl.data[i])){
 						// fprintf(stderr,"\nMissing data\n");
 						// lgl.n_missing++;
-						// break;
 					// }else if(std::isnan(lgl.data[(10*indi)+i])){
 					}else{
 						// fprintf(stderr,"\n->->i:%d ind:%d %s %f -> %f\n",i,indi,hdr->samples[indi],lgl.data[(10*indi)+i],(double)log2ln(lgl.data[(10*indi)+i]));
 						lngls[nSites][(10*indi)+i]=(double)log2ln(lgl.data[(10*indi)+i]);
 					}
 				}
+				
+				//if all 10 gls missing for ind
+				if (n_missing_gl_indi==10){
+
+					lgl.n_missing_ind++;
+					
+				}
 			}
+
 			if(args->onlyShared==1){
-				if (lgl.n_missing>0) continue;
+				//if all 10 gls missing for at least 1 ind
+				if (lgl.n_missing_ind>0){
+					free(lngls[nSites]);
+					lngls[nSites]=NULL;
+					continue;
+				}
 			}
-			if (lgl.n_missing == 10*nInd) continue;
+
+			//skip site if missing for all individuals
+			if (lgl.n_missing_ind == nInd) {
+				// fprintf(stderr,"->->n_missing_ind: %d, nInd: %d\n",lgl.n_missing_ind,nInd);
+				free(lngls[nSites]);
+				lngls[nSites]=NULL;
+				continue;
+
+			//if there are only 2 individuals, skip site regardless of onlyShared val
+			}else if (nInd==2){
+				if(lgl.n_missing_ind>0){
+					free(lngls[nSites]);
+					lngls[nSites]=NULL;
+					continue;
+				}
+			}
+
+			// fprintf(stderr,"->->->n_missing_ind: %d, nInd: %d\n",lgl.n_missing_ind,nInd);
 
 
 			get_data<int32_t> gt;
-
 			gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
 			gt.ploidy=gt.n/nInd;
 
@@ -369,44 +349,64 @@ int main(int argc, char **argv) {
 		}
 #endif
 
+		
+		fprintf(stdout,"Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,N_EM_ITER,nSites\n");
+
 		for(int i1=0;i1<nInd-1;i1++){
 			for(int i2=i1+1;i2<nInd;i2++){
 
-				int pair_idx=nCk_idx(nInd,i1,i2);
 
 				int shared_nSites=0;
 
-				for(size_t s=0; s<nSites; s++){
-					if (lngls[s][10*i1]==NEG_INF){
-						// fprintf(stderr,"\nNEG INF\n");
-						continue;
-					}else if (lngls[s][10*i2]==NEG_INF){
-						// fprintf(stderr,"\nNEG INF2\n");
-						continue;
-					}else{
-						shared_nSites++;
+				if(args->onlyShared==1){
+					shared_nSites=nSites;
+				}else{
+
+
+					for(size_t s=0; s<nSites; s++){
+
+						int n_neg_inf_i1=0;
+						int n_neg_inf_i2=0;
+
+						if (lngls[s][(10*i1)+s]==NEG_INF){
+							n_neg_inf_i1++;
+							// fprintf(stderr,"\nNEG INF\n");
+						}
+						if (lngls[s][(10*i2)+s]==NEG_INF){
+							n_neg_inf_i2++;
+							// fprintf(stderr,"\nNEG INF2\n");
+						}
+						//skip if all -inf == all missing for i1 or i2
+						if(n_neg_inf_i1==10){
+							continue;
+						}else if(n_neg_inf_i2==10){
+							continue;
+						}else{
+							shared_nSites++;
+						}
 					}
+					
 				}
 				if(shared_nSites==0){
 					continue;
 				}
 
-				fprintf(stdout,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+				int pair_idx=nCk_idx(nInd,i1,i2);
+
+				fprintf(stdout,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d\n",
 						hdr->samples[i1],
 						hdr->samples[i2],
 						gt_sfs[pair_idx][0],gt_sfs[pair_idx][1],gt_sfs[pair_idx][2],
 						gt_sfs[pair_idx][3],gt_sfs[pair_idx][4],gt_sfs[pair_idx][5],
-						gt_sfs[pair_idx][6],gt_sfs[pair_idx][7],gt_sfs[pair_idx][8]);
+						gt_sfs[pair_idx][6],gt_sfs[pair_idx][7],gt_sfs[pair_idx][8],
+						"gt",
+						shared_nSites);
 
 				// double SFS2D[10][10];
 				// EM_2DSFS_GL10(lngls,SFS2D,i1,i2,nSites,args->tole);
 				double SFS2D3[3][3];
-				double dx;
-				// dx=EM_2DSFS_GL3(lngls,SFS2D3,i1,i2,nSites,args->tole,anc,der);
-				// int shared_nSites=0;
-				dx=EM_2DSFS_GL3(lngls,SFS2D3,i1,i2,nSites,shared_nSites,args->tole,anc,der);
-			// fprintf(stderr,"), ind1: (%f,%f,%f)\n",lngls[0][0],lngls[0][1],lngls[0][2]);
-			// fprintf(stderr,"), ind2: (%f,%f,%f)\n",lngls[0][10],lngls[0][11],lngls[0][12]);
+				int n_em_iter;
+				n_em_iter=EM_2DSFS_GL3(lngls,SFS2D3,i1,i2,nSites,shared_nSites,args->tole,anc,der);
 				// print_2DM(3,3,*SFS2D3);
 				// fprintf(stdout,"gl,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
 						// hdr->samples[i1],
@@ -415,23 +415,25 @@ int main(int argc, char **argv) {
 						// SFS2D3[1][0],SFS2D3[1][1],SFS2D3[1][2],
 						// SFS2D3[2][0],SFS2D3[2][1],SFS2D3[2][2]);
 //
-				fprintf(stdout,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
+				// fprintf(stdout,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
+						// hdr->samples[i1],
+						// hdr->samples[i2],
+						// shared_nSites*SFS2D3[0][0],shared_nSites*SFS2D3[0][1],shared_nSites*SFS2D3[0][2],
+						// shared_nSites*SFS2D3[1][0],shared_nSites*SFS2D3[1][1],shared_nSites*SFS2D3[1][2],
+						// shared_nSites*SFS2D3[2][0],shared_nSites*SFS2D3[2][1],shared_nSites*SFS2D3[2][2]);
+//
+				fprintf(stdout,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d\n",
 						hdr->samples[i1],
 						hdr->samples[i2],
 						shared_nSites*SFS2D3[0][0],shared_nSites*SFS2D3[0][1],shared_nSites*SFS2D3[0][2],
 						shared_nSites*SFS2D3[1][0],shared_nSites*SFS2D3[1][1],shared_nSites*SFS2D3[1][2],
-						shared_nSites*SFS2D3[2][0],shared_nSites*SFS2D3[2][1],shared_nSites*SFS2D3[2][2]);
-				// fprintf(stdout,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
-						// hdr->samples[i1],
-						// hdr->samples[i2],
-						// nSites*SFS2D3[0][0],nSites*SFS2D3[0][1],nSites*SFS2D3[0][2],
-						// nSites*SFS2D3[1][0],nSites*SFS2D3[1][1],nSites*SFS2D3[1][2],
-						// nSites*SFS2D3[2][0],nSites*SFS2D3[2][1],nSites*SFS2D3[2][2]);
-				// fprintf(stderr,"\n\nHERE,%f\n\n",SFS2D3[0][0]);
+						shared_nSites*SFS2D3[2][0],shared_nSites*SFS2D3[2][1],shared_nSites*SFS2D3[2][2],
+						n_em_iter,
+						shared_nSites);
 			}
 		}
 
-		fprintf(stderr, "Total number of sites analysed: %i\n", nSites);
+		fprintf(stderr, "Total number of sites processed: %i\n", nSites);
 
 		bcf_hdr_destroy(hdr);
 		bcf_destroy(bcf);

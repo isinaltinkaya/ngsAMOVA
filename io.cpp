@@ -128,7 +128,7 @@ argStruct *argStruct_get(int argc, char **argv){
 		}
 	}
 
-	// fprintf(stderr,"-in %s -out %s -err %f -depth %f -isSim %d -seed %d\n",args->in_fn,args->out_fp,args->errate,args->mps_depth,args->isSim,args->seed);
+	// fprintf(stderr,"-in %s -isSim %d -tole %f %\n",args->in_fn,args->out_fp,args->errate,args->mps_depth,args->isSim,args->seed);
 
 	return args;
 

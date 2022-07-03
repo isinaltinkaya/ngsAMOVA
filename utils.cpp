@@ -12,6 +12,19 @@
 #include <math.h>
 
 #include <time.h>
+
+
+//print 2D matrix
+void print_2DM(size_t x1, size_t x2, double *M){
+	printf("\n");
+	int m,n;
+	for (m=0;m<x1;m++){
+		for (n=0;n<x2;n++){
+			printf("A[%d,%d]=%f\n",m,n,M[(m*x1)+n]);
+		}
+	}
+};
+
 //
 //
 // const int vcf_gt10[10][2]={{0,0},{0,1},{1,1},{0,2},{1,2},{2,2},{0,3},{1,3},{2,3},{3,3}};
