@@ -11,7 +11,6 @@ const double NEG_INF = -std::numeric_limits<double>::infinity();
 
 
 
-// double EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSites, int shared_nSites, double tole, char *anc, char *der){
 int EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSites, int shared_nSites, double tole, char *anc, char *der){
 
 

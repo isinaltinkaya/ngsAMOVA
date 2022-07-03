@@ -27,7 +27,7 @@ argStruct *argStruct_init(){
 	args->seed=-1;
 	args->doGeno=0;
 
-	args->tole=1e-8;
+	args->tole=1e-10;
 
 	args->isSim=0;
 
@@ -128,59 +128,6 @@ argStruct *argStruct_get(int argc, char **argv){
 		}
 	}
 
-	// fprintf(stderr,"-in %s -isSim %d -tole %f %\n",args->in_fn,args->out_fp,args->errate,args->mps_depth,args->isSim,args->seed);
-
 	return args;
 
 }
-
-
-
-
-// VCF VCF{
-//
-	// VCF(char *ptr);
-	// ~VCF();
-//
-	// void print();
-//
-	// struct gt_data{
-		// uint8_t allele1;
-		// uint8_t allele2;
-		// bool is_phased;
-	// };
-	// gt_data gt;
-//
-//
-	// // double **gl;
-//
-//
-	// private:
-	// char *p;
-	// int len;
-//
-// };
-//
-//
-// VCF::VCF(char *ptr){
-	// len=strlen(ptr);
-	// p=(char *)malloc(len+1);
-	// if(!p){
-		// fprintf(stderr, "\nAllocation error\n");
-		// exit(1);
-	// }
-	// strcpy(p,ptr);
-// }
-//
-// VCF::~VCF(){
-	// fprintf(stderr, "\nDestructor is deallocating memory\n");
-	// free(p);
-// }
-//
-//
-// void VCF::print(){
-	// fprintf(stderr, "\nLength of %s is %d\n",p,len);
-// }
-//
-//
-//
