@@ -104,7 +104,7 @@ int main(int argc, char **argv) {
 		DATETIME=get_time();
 
 		fprintf(stderr,"\n%s",DATETIME);
-		fprintf(stderr,"\n./ngsAMOVA -in %s -tole %e -isSim %d -onlyShared %d\n",args->in_fn,args->tole,args->isSim,args->onlyShared);
+		fprintf(stderr,"\n./ngsAMOVA -in %s -tole %e -isSim %d -onlyShared %d -minInd %d\n",args->in_fn,args->tole,args->isSim,args->onlyShared,args->minInd);
 
 		fprintf(stderr, "\nReading file: \"%s\"", in_fn);
 		fprintf(stderr, "\nNumber of samples: %i", bcf_hdr_nsamples(hdr));
@@ -253,6 +253,14 @@ int main(int argc, char **argv) {
 					continue;
 				}
 			}
+
+			//skip site if minInd is defined and #non-missing inds=<nInd
+			if (args->minInd!=0 && args->minInd>nInd-lgl.n_missing_ind){
+				free(lngls[nSites]);
+				lngls[nSites]=NULL;
+				continue;
+			}
+
 
 			//skip site if missing for all individuals
 			if (lgl.n_missing_ind == nInd) {
@@ -464,12 +472,15 @@ int main(int argc, char **argv) {
 
 		free(lngls);
 
+		free(args->in_fn);
+		args->in_fn=NULL;
+		free(args);
+	// free(args->out_fp);
+
 		paramStruct_destroy(pars);
 
 	}
-	free(args->in_fn);
-	free(args->out_fp);
-	free(args);
+	//if args==NULL; already freed in io.cpp
 
 	return 0;
 

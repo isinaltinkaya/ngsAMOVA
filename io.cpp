@@ -7,6 +7,27 @@
 
 #include <stdio.h>
 
+#include <sys/stat.h>
+
+
+
+
+// Check if file exists
+// @param in_fn	input filename
+// @return		1 if file exists; 0 otherwise
+// credit: angsd/aio.cpp
+int file_exists(const char* in_fn){
+	struct stat buffer;
+	return (stat(in_fn,&buffer)==0);
+}
+
+
+//TODO use macro or function
+// #define STR_IS_EMPTY(X) ( (1/(sizeof(X[0])==1)) && (X[0]==0) )
+// int str_is_empty(const char* str){
+	// return (strlen(str)==0);
+// }
+
 void usage() {
 	fprintf(stderr,"");
 	fprintf(stderr,"\n");
@@ -32,6 +53,7 @@ argStruct *argStruct_init(){
 	args->isSim=0;
 
 	args->onlyShared=0;
+	args->minInd=0;
 
 	args->doInd=0;
 	args->ind1=-1;
@@ -71,41 +93,60 @@ argStruct *argStruct_get(int argc, char **argv){
 		else if(strcasecmp("-tole",arv)==0) args->tole=atof(val);
 		else if(strcasecmp("-isSim",arv)==0) args->isSim=atoi(val);
 		else if(strcasecmp("-onlyShared",arv)==0) args->onlyShared=atoi(val);
+		else if(strcasecmp("-minInd",arv)==0) args->minInd=atoi(val);
 		else if(strcasecmp("-h",arv) == 0 || strcasecmp( "--help",arv) == 0) {
 			usage();
+			exit(0);
 		}
 		else{
 			fprintf(stderr,"Unknown arg:%s\n",arv);
 			free(args);
+			exit(1);
 			return NULL;
 		}
 		++argv; 
 	} 
 
+	//TODO check return null vs exit 0 1 etc
 
-	if (args->seed == -1){
-		srand48(time(NULL));
-	}else{
-		srand48(args->seed);
-	}
+	// if (args->seed == -1){
+		// srand48(time(NULL));
+	// }else{
+		// srand48(args->seed);
+	// }
 
 	//TODO
 	//write function for args to define acceptable range of values and auto err message accordingly
 	
-	if (args->isSim > 1){
+	if (args->isSim > 1 || args->isSim < 0){
 		fprintf(stderr,"\n[ERROR]\tArgument isSim is set to %d\n",args->isSim);
 		free(args);
 		return NULL;
-	}else if (args->isSim < 0){
-		fprintf(stderr,"\n[ERROR]\tArgument isSim is set to %d\n",args->isSim);
-		free(args);
-		return NULL;
+	}
+	
+	if(args->onlyShared!=0){
+		if(args->minInd!=0){
+			fprintf(stderr,"\n[ERROR]\tonlyShared and minInd cannot be used together\n");
+			free(args);
+			return NULL;
+		}
 	}
 
 	if(args->in_fn==NULL){
 		fprintf(stderr,"Must supply -in\n");
 		free(args);
-		return NULL;
+		exit(1);
+		//TODO if filename ''
+	// }else{
+		// fprintf(stderr,"len:%d",strcmp(args->in_fn,""));
+		// if(str_is_empty(args->in_fn)==1){
+		// }else{
+			// if(file_exists(args->in_fn)==0){
+				// fprintf(stderr,"Input file %s does not exist; will exit!\n",args->in_fn);
+				// free(args);
+				// exit(1);
+			// }
+		// }
 	}
 
 	if (args->doGeno == 1){
@@ -131,3 +172,4 @@ argStruct *argStruct_get(int argc, char **argv){
 	return args;
 
 }
+

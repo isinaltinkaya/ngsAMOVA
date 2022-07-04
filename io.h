@@ -19,6 +19,9 @@
  * TODO rename
  * @field onlyShared	use only sites shared among all inds
  *
+ * @field minInd	minimum number of individuals needed
+ * 					for site to be included in analyses
+ *
  * @field doGeno	use GT tags to count ind2ind 2dsfs
  * @field doInd		do ind pairs
  * @field ind1		ind1 id
@@ -38,6 +41,7 @@ typedef struct{
 
 	int isSim;
 	int onlyShared;
+	int minInd;
 
 	int seed;
 
