@@ -314,7 +314,7 @@ int main(int argc, char **argv) {
 				if (set_lngls3(lngls3, lgl.data,args, nInd,a1,a2, nSites)==1){
 					free(lngls3[nSites]);
 					lngls3[nSites]=NULL;
-fprintf(stderr,"\nset_lngls3 returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
+// fprintf(stderr,"\nset_lngls3 returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
 					continue;
 				// }else{
 				}
@@ -389,7 +389,7 @@ fprintf(stderr,"\nset_lngls3 returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\
 #endif
 
 
-		fprintf(stdout,"Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,N_EM_ITER,nSites\n");
+		fprintf(stdout,"Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,N_EM_ITER,nSites,tole\n");
 
 
 		for(int i1=0;i1<nInd-1;i1++){
@@ -398,7 +398,6 @@ fprintf(stderr,"\nset_lngls3 returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\
 				//TODO avoid checking shared sites multiple times for ind pairs
 				//
 				int shared_nSites=0;
-
 
 				if(args->onlyShared==1){
 
@@ -423,34 +422,49 @@ fprintf(stderr,"\nset_lngls3 returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\
 				}
 
 				if(shared_nSites==0){
-					fprintf(stderr,"\n\n->No shared sites found (n=%d for i1:%d i2:%d!!\n\n",shared_nSites,i1,i2);
+					fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
+					fprintf(stdout,"gt,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,%s,%d,%e\n",
+						hdr->samples[i1],
+						hdr->samples[i2],
+						"gt",
+						shared_nSites,
+						args->tole);
+					//tole is not used with gt but print to indicate that result is from this specific run
+
+					fprintf(stdout,"gle,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,%d,%e\n",
+							hdr->samples[i1],
+							hdr->samples[i2],
+							shared_nSites,
+							args->tole);
 					continue;
 				}
 
 				int pair_idx=nCk_idx(nInd,i1,i2);
 
-				fprintf(stdout,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d\n",
+				fprintf(stdout,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%e\n",
 						hdr->samples[i1],
 						hdr->samples[i2],
 						gt_sfs[pair_idx][0],gt_sfs[pair_idx][1],gt_sfs[pair_idx][2],
 						gt_sfs[pair_idx][3],gt_sfs[pair_idx][4],gt_sfs[pair_idx][5],
 						gt_sfs[pair_idx][6],gt_sfs[pair_idx][7],gt_sfs[pair_idx][8],
 						"gt",
-						shared_nSites);
+						shared_nSites,
+						args->tole);
 
 
 				double SFS2D3[3][3];
 				int n_em_iter;
 				n_em_iter=EM_2DSFS_GL3(lngls3,SFS2D3,i1,i2,nSites,shared_nSites,args->tole);
 
-				fprintf(stdout,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d\n",
+				fprintf(stdout,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e\n",
 						hdr->samples[i1],
 						hdr->samples[i2],
 						shared_nSites*SFS2D3[0][0],shared_nSites*SFS2D3[0][1],shared_nSites*SFS2D3[0][2],
 						shared_nSites*SFS2D3[1][0],shared_nSites*SFS2D3[1][1],shared_nSites*SFS2D3[1][2],
 						shared_nSites*SFS2D3[2][0],shared_nSites*SFS2D3[2][1],shared_nSites*SFS2D3[2][2],
 						n_em_iter,
-						shared_nSites);
+						shared_nSites,
+						args->tole);
 			}
 		}
 

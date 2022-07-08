@@ -91,4 +91,9 @@ int nCk_idx(int nInd, int i1, int i2){
 	// return (nInd - nCk((nInd-i1),2))+(i2-i1)+1;
 }
 
-
+/*
+ * Prepare a lookup table for pairs of individuals
+ */
+// void prep_pair_idx_lt(int** LOOKUP, int nInd, int i1, int i2){
+	// LOOKUP[i1][i2]=nCk_idx(nInd,i1,i2);
+// }
