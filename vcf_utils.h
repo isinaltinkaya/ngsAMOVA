@@ -5,7 +5,9 @@
 
 #include <cstddef>
 
-extern const char bcf_allele_charToInt[256];
+// extern const char bcf_allele_charToInt[256];
+// extern const int bcf_allele_charToInt[256];
+extern int bcf_allele_charToInt[256];
 
 int bcf_alleles_get_gtidx(int a1, int a2);
 

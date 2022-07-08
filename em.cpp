@@ -11,13 +11,13 @@ const double NEG_INF = -std::numeric_limits<double>::infinity();
 
 
 
-int EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSites, int shared_nSites, double tole, char *anc, char *der){
-
-
-	int n_em_iter=0;
+int EM_2DSFS_GL3(double **lngls, double SFS[3][3], int i1, int i2, size_t nSites, int shared_nSites, double tole){
 
 	//TODO check underflow
 	// fprintf(stderr,"\nEM begin for ind1:%d and ind2:%d \n",i1,i2);
+
+	int n_em_iter=0;
+
 	double temp;
 
 	double sum;
@@ -32,7 +32,6 @@ int EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSites,
 	do{
 
 		n_em_iter++;
-	// fprintf(stderr,"\nEM\n");
 
 		double TMP[3][3];
 		double ESFS[3][3];
@@ -46,55 +45,25 @@ int EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSites,
 		// int tme=0;
 		for(size_t s=0; s<nSites; s++){
 
-			if (lngl[s][10*i1]==NEG_INF){
+			if ((lngls[s][(3*i1)+0]==NEG_INF) && (lngls[s][(3*i1)+1]==NEG_INF) && (lngls[s][(3*i1)+2]==NEG_INF)){
 				// fprintf(stderr,"\nNEG INF\n");
 				continue;
 			}
-			if (lngl[s][10*i2]==NEG_INF){
+			if ((lngls[s][(3*i2)+0]==NEG_INF) && (lngls[s][(3*i2)+1]==NEG_INF) && (lngls[s][(3*i2)+2]==NEG_INF)){
 				// fprintf(stderr,"\nNEG INF2\n");
 				continue;
 			}
 
-
-			// tme++;
-
 			sum=0.0;
-#if 0
 
-// fprintf(stderr,"\n\nHERE!!!:%d %d\n\n",10*i1+bcf_alleles_get_gtidx(der[s],der[s]),10*i2+bcf_alleles_get_gtidx(anc[s],der[s]));
-//
-			fprintf(stderr,"\n-> site: %d anc:%d der:%d gtidx ancanc:%d ancder:%d derder:%d",s,anc[s],der[s],bcf_alleles_get_gtidx(anc[s],anc[s]),bcf_alleles_get_gtidx(anc[s],der[s]),bcf_alleles_get_gtidx(der[s],der[s]));
-			fprintf(stderr,"\n-> ind1:%d ind2:%d \n",i1,i2);
-			fprintf(stderr,"\n-> ind1: (%f",lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])]);
-			fprintf(stderr," %f",lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])]);
-			fprintf(stderr," %f",lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])]);
-			// fprintf(stderr,"), ind1: (%f,%f,%f)\n",lngl[s][0],lngl[s][1],lngl[s][2]);
-			// fprintf(stderr,"), ind2: (%f,%f,%f)\n",lngl[s][10],lngl[s][11],lngl[s][12]);
-			fprintf(stderr,"), ind2: (%f",lngl[s][11]);
-			fprintf(stderr," %f",lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])]);
-			fprintf(stderr," %f)\n",lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])]);
-#endif
 
 			// SFS * ind1 * ind2
-			// TMP[0][0] = SFS[0][0] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])];
-			// TMP[0][1] = SFS[0][1] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])];
-			// TMP[0][2] = SFS[0][2] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])];
-			// TMP[1][0] = SFS[1][0] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])];
-			// TMP[1][1] = SFS[1][1] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])];
-			// TMP[1][2] = SFS[1][2] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])];
-			// TMP[2][0] = SFS[2][0] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])];
-			// TMP[2][1] = SFS[2][1] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])];
-			// TMP[2][2] = SFS[2][2] * lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])] * lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])];
-
-			TMP[0][0] = exp(SFS[0][0] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])]);
-			TMP[0][1] = exp(SFS[0][1] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])]);
-			TMP[0][2] = exp(SFS[0][2] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])]);
-			TMP[1][0] = exp(SFS[1][0] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])]);
-			TMP[1][1] = exp(SFS[1][1] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])]);
-			TMP[1][2] = exp(SFS[1][2] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])]);
-			TMP[2][0] = exp(SFS[2][0] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],anc[s])]);
-			TMP[2][1] = exp(SFS[2][1] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(anc[s],der[s])]);
-			TMP[2][2] = exp(SFS[2][2] + lngl[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])] + lngl[s][(10*i2)+bcf_alleles_get_gtidx(der[s],der[s])]);
+			//lngls3 (anc,anc),(anc,der),(der,der)
+			for(int idx1=0;idx1<3;idx1++){
+				for(int idx2=0;idx2<3;idx2++){
+					TMP[idx1][idx2]= exp( SFS[idx1][idx2] + lngls[s][(3*i1)+idx1] + lngls[s][(3*i2)+idx2] );
+				}
+			}
 
 			for(int i=0;i<3;i++){
 				for(int j=0;j<3;j++){
@@ -109,7 +78,6 @@ int EM_2DSFS_GL3(double **lngl, double SFS[3][3], int i1, int i2, size_t nSites,
 				}
 			}
 		}
-		// fprintf(stderr,"\n->->tme:%d nSites:%d shared_nSites:%d\n",tme,nSites,shared_nSites);
 
 		d=0.0;
 		for(int i=0;i<3;i++){

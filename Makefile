@@ -2,7 +2,7 @@ CXX ?= g++
 
 #  -g     add debugging info to the executable 
 #  -Wall  turn on most compiler warnings
-CXXFLAGS  = -g -Wall
+CXXFLAGS  := -g -Wall
 LIBS = -lz -lm -lbz2 -llzma -lcurl -lpthread
 
 
@@ -32,7 +32,7 @@ $(info Use `make HTSSRC=/path/to/htslib` to build using a local htslib installat
 $(info Use `make HTSSRC=systemwide` to build using the systemwide htslib installation)
 
 HTSSRC := $(realpath $(CURDIR)/htslib)
-CXXFLAGS := -I"$(HTSSRC)"
+CXXFLAGS += -I"$(HTSSRC)"
 LIBHTS := $(HTSSRC)/libhts.a
 
 

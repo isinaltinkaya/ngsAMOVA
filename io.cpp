@@ -29,7 +29,7 @@ int file_exists(const char* in_fn){
 // }
 
 void usage() {
-	fprintf(stderr,"");
+	// fprintf(stderr,"");
 	fprintf(stderr,"\n");
 	fprintf(stderr,"  --help         : Print this help\n");
 	fprintf(stderr,"  --in         : input\n");
@@ -41,7 +41,7 @@ argStruct *argStruct_init(){
 
 	argStruct *args=(argStruct*)calloc(1,sizeof(argStruct));
 
-	args->out_fp=strdup("angsdput");
+	// args->out_fp=strdup("angsdput");
 
 	args->in_fn=NULL;
 
@@ -82,9 +82,9 @@ argStruct *argStruct_get(int argc, char **argv){
 
 		char *arv=*argv;
 		char *val=*(++argv);
+// else if(strcasecmp("-out",arv)==0) args->out_fp=strdup(val);
 
 		if(strcasecmp("-in",arv)==0) args->in_fn=strdup(val);
-		else if(strcasecmp("-out",arv)==0) args->out_fp=strdup(val); 
 		else if(strcasecmp("-seed",arv)==0) args->seed=atoi(val);
 		else if(strcasecmp("-doGeno",arv)==0) args->doGeno=atoi(val);
 		else if(strcasecmp("-doInd",arv)==0) args->doInd=atoi(val);
@@ -95,19 +95,18 @@ argStruct *argStruct_get(int argc, char **argv){
 		else if(strcasecmp("-onlyShared",arv)==0) args->onlyShared=atoi(val);
 		else if(strcasecmp("-minInd",arv)==0) args->minInd=atoi(val);
 		else if(strcasecmp("-h",arv) == 0 || strcasecmp( "--help",arv) == 0) {
+			free(args);
 			usage();
-			exit(0);
 		}
 		else{
 			fprintf(stderr,"Unknown arg:%s\n",arv);
 			free(args);
-			exit(1);
-			return NULL;
+			return 0;
 		}
 		++argv; 
 	} 
 
-	//TODO check return null vs exit 0 1 etc
+	//TODO check return 0 vs exit 0 1 etc
 
 	// if (args->seed == -1){
 		// srand48(time(NULL));
@@ -121,21 +120,27 @@ argStruct *argStruct_get(int argc, char **argv){
 	if (args->isSim > 1 || args->isSim < 0){
 		fprintf(stderr,"\n[ERROR]\tArgument isSim is set to %d\n",args->isSim);
 		free(args);
-		return NULL;
+		return 0;
 	}
 	
 	if(args->onlyShared!=0){
 		if(args->minInd!=0){
 			fprintf(stderr,"\n[ERROR]\tonlyShared and minInd cannot be used together\n");
 			free(args);
-			return NULL;
+			return 0;
 		}
+	}
+	if(args->minInd==1){
+		fprintf(stderr,"\n[ERROR]\tMinimum value allowed for minInd is 1\n");
+		free(args);
+		return 0;
 	}
 
 	if(args->in_fn==NULL){
 		fprintf(stderr,"Must supply -in\n");
 		free(args);
-		exit(1);
+		// exit(1);
+		return 0;
 		//TODO if filename ''
 	// }else{
 		// fprintf(stderr,"len:%d",strcmp(args->in_fn,""));
@@ -149,27 +154,33 @@ argStruct *argStruct_get(int argc, char **argv){
 		// }
 	}
 
+	if (args->isSim==0){
+		fprintf(stderr,"Must use -isSim 1 for now\n");
+		free(args);
+		exit(1);
+		// return 0;
+	}
+
 	if (args->doGeno == 1){
 		if(args->doInd==1){
 			if(args->ind1==-1){
 				fprintf(stderr,"Must supply -ind1 while using -doGeno 1 -doInd 1 \n");
 				free(args);
-				return NULL;
+				return 0;
 			}
 			if(args->ind2==-1){
 				fprintf(stderr,"Must supply -ind2 while using -doGeno 1 -doInd 1 \n");
 				free(args);
-				return NULL;
+				return 0;
 			}
 			if(args->ind1==args->ind2){
 				fprintf(stderr,"Ind ids must be different while using -doGeno 1 -doInd 1 \n");
 				free(args);
-				return NULL;
+				return 0;
 			}
 		}
 	}
 
 	return args;
-
 }
 

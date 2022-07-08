@@ -35,7 +35,7 @@ typedef struct{
 	char **argv;
 
 	char* in_fn;
-	char* out_fp;
+	// char* out_fp;
 
 	int doGeno;
 

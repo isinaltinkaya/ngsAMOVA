@@ -36,6 +36,63 @@ FILE *getFILE(const char*fname,const char* mode){
 }
 
 
+int set_lngls3(double **lngls3, float *lgldata,argStruct *args, int nInd,char a1, char a2, int site){
+
+	int n_missing_ind=0;
+	for(int indi=0; indi<nInd; indi++){
+
+		for(int ix=0;ix<3;ix++){
+			lngls3[site][(3*indi)+ix]=NEG_INF;
+		}
+
+		//TODO only checking the first for now
+		//what is the expectation in real cases?
+		//should we skip sites where at least one is set to missing?
+		//
+		if(isnan(lgldata[(10*indi)+0])){
+			if(args->onlyShared==1){
+				return 1;
+			}else{
+				n_missing_ind++;
+			}
+		}else{
+			// fprintf(stderr,"\n->->gt %d %d\n",bcf_alleles_get_gtidx(bcf->d.allele[0][0],bcf->d.allele[1][0]));
+			// fprintf(stderr,"\n->->gt %d \n",bcf_alleles_get_gtidx(bcf_allele_charToInt[bcf->d.allele[0][0]],bcf_allele_charToInt[bcf->d.allele[1][0]]));
+			lngls3[site][(3*indi)+0]=(double) log2ln(lgldata[(10*indi)+bcf_alleles_get_gtidx(a1,a1)]);
+			lngls3[site][(3*indi)+1]=(double) log2ln(lgldata[(10*indi)+bcf_alleles_get_gtidx(a1,a2)]);
+			lngls3[site][(3*indi)+2]=(double) log2ln(lgldata[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
+			// fprintf(stderr,"\n->->lgl %f %f %f\n",lgldata[(10*indi)+bcf_alleles_get_gtidx(a1,a1)],lgldata[(10*indi)+bcf_alleles_get_gtidx(a1,a2)],lgldata[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
+			// fprintf(stderr,"\n->->lngls3 %f %f %f\n",lngls3[site][(3*indi)+0],lngls3[site][(3*indi)+1],lngls3[site][(3*indi)+2]);
+		}
+	}
+
+	//skip site if missing for all individuals
+	if (nInd==n_missing_ind){
+		return 1;
+	}
+
+	// //if there are only 2 individuals, skip site regardless of onlyShared val
+	if (nInd==2){
+		if(n_missing_ind>0){
+			return 1;
+		}
+	}
+
+	if(args->minInd>0){
+		//skip site if minInd is defined and #non-missing inds=<nInd
+		if( (nInd - n_missing_ind) < args->minInd ){
+			fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,nInd-n_missing_ind,site);
+			return 1;
+		}else{
+			return 0;
+		}
+	}else{
+		return 0;
+	}
+
+}
+
+
 void get_gt_sfs( int* gtdata, int **sfs, int32_t *ptr1, int32_t *ptr2, int pair_idx){
 
 	int gti1=0;
@@ -58,41 +115,62 @@ int main(int argc, char **argv) {
 
 	if(argc==1){
 		usage();
+		//TODO already exit(0) in usage
 		exit(0);
 	}
 
 	argStruct *args=argStruct_get(--argc,++argv);
 
-	if(args!=NULL){
+	if(args!=0){
 
 		paramStruct *pars = paramStruct_init();
 
 		int nInd=pars->nInd;
 		size_t nSites=pars->nSites;
-		char *anc=pars->anc;
-		char *der=pars->der;
 		char *in_fn=args->in_fn;
 
-		vcfFile * in_ff = bcf_open(in_fn, "r");
+		size_t totSites=0;
+
+		vcfFile *in_ff = bcf_open(in_fn, "r");
 
 		if (in_ff == NULL) {
-			exit(1);
-		}
-
-		if (bcf == 0) {
+			free(args);
 			exit(1);
 		}
 
 		bcf_hdr_t *hdr = bcf_hdr_read(in_ff);
+
 		bcf1_t *bcf = bcf_init();
 
-		nInd=bcf_hdr_nsamples(hdr);
-
-		if(nInd==1){
-			fprintf(stderr,"\n\n[ERROR]\tOnly one sample; will exit\n\n");
-			exit(0);
+		if (bcf == 0) {
+			free(args);
+			exit(1);
 		}
 
+		nInd=bcf_hdr_nsamples(hdr);
+		//
+		// if(nInd==1){
+		// fprintf(stderr,"\n\n[ERROR]\tOnly one sample; will exit\n\n");
+		// free(args->in_fn);
+		// args->in_fn=NULL;
+		// free(args);
+		//
+		// paramStruct_destroy(pars);
+		//
+		// exit(1);
+		// }
+		if(nInd<args->minInd){
+			fprintf(stderr,"\n\n[ERROR]\tMinimum number of individuals -minInd is set to %d, but input file contains %d individuals; will exit!\n\n",args->minInd,nInd);
+
+			free(args->in_fn);
+			args->in_fn=NULL;
+			free(args);
+
+			paramStruct_destroy(pars);
+
+			exit(1);
+		}
+		//
 		//TODO
 		//print args nicely to an arg file and use -out
 		//but smart -out. if output prefix is given detect and truncate
@@ -113,21 +191,27 @@ int main(int argc, char **argv) {
 
 
 		int buf_size=1024;
+		// int buf2_size=1024;
+
 
 		/*
 		 * lngls[nSites][nInd*10*double]
 		 */
-		double **lngls=0;
-
-		lngls=(double**) malloc(buf_size*sizeof(double*));
+		// double **lngls=0;
+		//
+		// lngls=(double**) malloc(buf_size*sizeof(double*));
 		// for (int i=0;i<buf_size;i++){
-			// lngls[i]=(double*)malloc(nInd*10*sizeof(double));
+		// lngls[i]=(double*)malloc(nInd*10*sizeof(double));
 		// }
+
+
+		double **lngls3=0;
+		lngls3=(double**) malloc(buf_size*sizeof(double*));
 
 		//TODO build lookup table
 
 		int n_ind_cmb=nCk(nInd,2);
-		
+
 		fprintf(stderr,"\nNumber of individual pairs: %d\n",n_ind_cmb);
 
 		//TODO only create if doGeno etc
@@ -149,11 +233,6 @@ int main(int argc, char **argv) {
 		}
 
 
-		if(args->isSim==1){
-			anc=(char*)malloc(buf_size*sizeof(char));
-			der=(char*)malloc(buf_size*sizeof(char));
-		}
-
 		const char* TAG=NULL;
 
 		/*
@@ -164,25 +243,25 @@ int main(int argc, char **argv) {
 		 */
 
 		while (bcf_read(in_ff, hdr, bcf) == 0) {
-//
+			//
 			// TAG="DP";
 			// get_data<int32_t> dp;
 			// dp.n = bcf_get_format_int32(hdr,bcf,TAG,&dp.data,&dp.size_e);
 			// if(dp.n<0){
-				// fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
-				// exit(1);
+			// fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
+			// exit(1);
 			// }
-//
+			//
 			// //TODO use only sites non-missing for all individuals for now
 			// for(int indi=0; indi<nInd; indi++){
-				// if(dp.data[indi]==0){
-					// // fprintf(stderr,"\nDepth: %d at (site_i: %d, pos: %d) in (ind_i: %d, ind_id: %s)\n",dp.data[indi],nSites,bcf->pos,indi,hdr->samples[indi]);
-					// dp.n_missing++;
-				// }
+			// if(dp.data[indi]==0){
+			// // fprintf(stderr,"\nDepth: %d at (site_i: %d, pos: %d) in (ind_i: %d, ind_id: %s)\n",dp.data[indi],nSites,bcf->pos,indi,hdr->samples[indi]);
+			// dp.n_missing++;
+			// }
 			// }
 			// if (dp.n_missing>0) continue;
-//
-//
+			//
+			//
 			get_data<float> lgl;
 
 			TAG="GL";
@@ -193,92 +272,59 @@ int main(int argc, char **argv) {
 				exit(1);
 			}
 
+			totSites++;
 
 
-			while(nSites>=buf_size){
+			while((int) nSites >= buf_size){
 
 				// fprintf(stderr,"\n\nrealloc %d at site %d\n",buf_size,nSites);
-				buf_size=buf_size*2;
 				// fprintf(stderr,"new size: %d\n",buf_size);
+				buf_size=buf_size*2;
 
-				lngls=(double**) realloc(lngls, buf_size * sizeof(*lngls) );
+				// lngls=(double**) realloc(lngls, buf_size * sizeof(*lngls) );
+				lngls3=(double**) realloc(lngls3, buf_size * sizeof(*lngls3) );
 
-				if(args->isSim==1){
-					anc=(char*)realloc(anc,buf_size*sizeof(char));
-					der=(char*)realloc(der,buf_size*sizeof(char));
-				}
-
+				// if(args->isSim==1){
+				// anc=(char*)realloc(anc,buf_size*sizeof(char));
+				// der=(char*)realloc(der,buf_size*sizeof(char));
+				// }
 			}
 
-			lngls[nSites]=(double*)malloc(nInd*10*sizeof(double));
-
-			//TODO
-			//- only store lngls3 if majmin 3x3 will be used
-			//- check below what are you
-
-
-			for(int indi=0; indi<nInd; indi++){
-				int n_missing_gl_indi=0;
-				for(int i=0;i<10;i++){
-					lngls[nSites][(10*indi)+i]=NEG_INF;
-					if(isnan(lgl.data[(10*indi)+i])){
-						// fprintf(stderr,"\nMissing data\n");
-						n_missing_gl_indi++;
-					}else if (bcf_float_is_vector_end(lgl.data[(10*indi)+i])){
-						fprintf(stderr,"\nwhat are you\n");
-						// lgl.n_missing++;
-					// }else if(bcf_float_is_missing(lgl.data[i])){
-						// fprintf(stderr,"\nMissing data\n");
-						// lgl.n_missing++;
-					// }else if(std::isnan(lgl.data[(10*indi)+i])){
-					}else{
-						// fprintf(stderr,"\n->->i:%d ind:%d %s %f -> %f\n",i,indi,hdr->samples[indi],lgl.data[(10*indi)+i],(double)log2ln(lgl.data[(10*indi)+i]));
-						lngls[nSites][(10*indi)+i]=(double)log2ln(lgl.data[(10*indi)+i]);
-					}
-				}
-				
-				//if all 10 gls missing for ind
-				if (n_missing_gl_indi==10){
-
-					lgl.n_missing_ind++;
-					
-				}
+			//
+			// if(bcf_is_snp(bcf)){
+			// if(args->isSim==1){
+			// anc[nSites]=bcf_allele_charToInt[(unsigned char) bcf->d.allele[0][0]];
+			// der[nSites]=bcf_allele_charToInt[(unsigned char) bcf->d.allele[1][0]];
+			// // fprintf(stderr,"\n->->gt %d \n",bcf_alleles_get_gtidx(bcf->d.allele[0][0],bcf->d.allele[1][0]));
+			// // fprintf(stderr,"\n->->gt %d \n",bcf_alleles_get_gtidx(bcf_allele_charToInt[bcf->d.allele[0][0]],bcf_allele_charToInt[bcf->d.allele[1][0]]));
+			// }
+			if(bcf->rlen != 1){
+				fprintf(stderr,"\n[ERROR](File reading)\tVCF file REF allele with length of %ld is currently not supported, will exit!\n\n", bcf->rlen);
+				exit(1);
 			}
 
-			if(args->onlyShared==1){
-				//if all 10 gls missing for at least 1 ind
-				if (lgl.n_missing_ind>0){
-					free(lngls[nSites]);
-					lngls[nSites]=NULL;
+			// lngls[nSites]=(double*)malloc(nInd*10*sizeof(double));
+			lngls3[nSites]=(double*)malloc(nInd*3*sizeof(double));
+
+
+			if(bcf_is_snp(bcf)){
+				char a1=bcf_allele_charToInt[(unsigned char) bcf->d.allele[0][0]];
+				char a2=bcf_allele_charToInt[(unsigned char) bcf->d.allele[1][0]];
+
+				if (set_lngls3(lngls3, lgl.data,args, nInd,a1,a2, nSites)==1){
+					free(lngls3[nSites]);
+					lngls3[nSites]=NULL;
+fprintf(stderr,"\nset_lngls3 returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
 					continue;
+				// }else{
 				}
-			}
-
-			//skip site if minInd is defined and #non-missing inds=<nInd
-			if (args->minInd!=0 && args->minInd>nInd-lgl.n_missing_ind){
-				free(lngls[nSites]);
-				lngls[nSites]=NULL;
+			}else{
+				//TODO check
+				fprintf(stderr,"\n\nHERE BCF_IS_SNP==0!!!\n\n");
+				free(lngls3[nSites]);
+				lngls3[nSites]=NULL;
 				continue;
 			}
-
-
-			//skip site if missing for all individuals
-			if (lgl.n_missing_ind == nInd) {
-				// fprintf(stderr,"->->n_missing_ind: %d, nInd: %d\n",lgl.n_missing_ind,nInd);
-				free(lngls[nSites]);
-				lngls[nSites]=NULL;
-				continue;
-
-			//if there are only 2 individuals, skip site regardless of onlyShared val
-			}else if (nInd==2){
-				if(lgl.n_missing_ind>0){
-					free(lngls[nSites]);
-					lngls[nSites]=NULL;
-					continue;
-				}
-			}
-
-			// fprintf(stderr,"->->->n_missing_ind: %d, nInd: %d\n",lgl.n_missing_ind,nInd);
 
 
 			get_data<int32_t> gt;
@@ -292,14 +338,14 @@ int main(int argc, char **argv) {
 
 			if (gt.ploidy!=2){
 				fprintf(stderr,"ERROR:\n\nploidy: %d not supported\n",gt.ploidy);
-				return 1;
+				exit(1);
 			}
 
 
 
 			for(int i1=0;i1<nInd-1;i1++){
 				for(int i2=i1+1;i2<nInd;i2++){
-					
+
 					int32_t *ptr1 = gt.data + i1*gt.ploidy;
 					int32_t *ptr2 = gt.data + i2*gt.ploidy;
 					int pair_idx=nCk_idx(nInd,i1,i2);
@@ -307,24 +353,7 @@ int main(int argc, char **argv) {
 					// fprintf(stderr,"%d\t%d\t%d\n", i1, i2, pair_idx);
 
 					get_gt_sfs(gt.data,gt_sfs,ptr1,ptr2,pair_idx);
-					
-				}
-			}
 
-
-			if(bcf_is_snp(bcf)){
-				if(bcf->rlen == 1){
-
-					if(args->isSim==1){
-						anc[nSites]=bcf_allele_charToInt[bcf->d.allele[0][0]];
-						der[nSites]=bcf_allele_charToInt[bcf->d.allele[1][0]];
-						// fprintf(stderr,"\n->->gt %d \n",bcf_alleles_get_gtidx(bcf->d.allele[0][0],bcf->d.allele[1][0]));
-						// fprintf(stderr,"\n->->gt %d \n",bcf_alleles_get_gtidx(bcf_allele_charToInt[bcf->d.allele[0][0]],bcf_allele_charToInt[bcf->d.allele[1][0]]));
-					}
-
-				}else{
-					fprintf(stderr,"\n[ERROR](File reading)\tVCF file REF allele with length of %d is currently not supported, will exit!\n\n", bcf->rlen);
-					exit(1);
 				}
 			}
 
@@ -338,11 +367,13 @@ int main(int argc, char **argv) {
 
 			// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
 			// fprintf(stderr,"%d\n\n",nSites);
-
+			// fprintf(stderr,"\r\t-> Printing at site %lu",nSites);
+			// fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
 
 			nSites++;
 
 		}
+		fprintf(stderr,"\n");
 		// [END] Reading sites
 
 
@@ -357,45 +388,42 @@ int main(int argc, char **argv) {
 		}
 #endif
 
-		
+
 		fprintf(stdout,"Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,N_EM_ITER,nSites\n");
+
 
 		for(int i1=0;i1<nInd-1;i1++){
 			for(int i2=i1+1;i2<nInd;i2++){
 
-
+				//TODO avoid checking shared sites multiple times for ind pairs
+				//
 				int shared_nSites=0;
 
+
 				if(args->onlyShared==1){
+
 					shared_nSites=nSites;
+
 				}else{
-
-
+				
 					for(size_t s=0; s<nSites; s++){
 
-						int n_neg_inf_i1=0;
-						int n_neg_inf_i2=0;
-
-						if (lngls[s][(10*i1)+s]==NEG_INF){
-							n_neg_inf_i1++;
+						if ((lngls3[s][(3*i1)+0]==NEG_INF) && (lngls3[s][(3*i1)+1]==NEG_INF) && (lngls3[s][(3*i1)+2]==NEG_INF)){
+	// fprintf(stderr,"\n\nHERE!%d !!\n\n",shared_nSites);
 							// fprintf(stderr,"\nNEG INF\n");
-						}
-						if (lngls[s][(10*i2)+s]==NEG_INF){
-							n_neg_inf_i2++;
-							// fprintf(stderr,"\nNEG INF2\n");
-						}
-						//skip if all -inf == all missing for i1 or i2
-						if(n_neg_inf_i1==10){
 							continue;
-						}else if(n_neg_inf_i2==10){
+						}else if ((lngls3[s][(3*i2)+0]==NEG_INF) && (lngls3[s][(3*i2)+1]==NEG_INF) && (lngls3[s][(3*i2)+2]==NEG_INF)){
+	// fprintf(stderr,"\n\nHERE2!%d !!\n\n",shared_nSites);
+							// fprintf(stderr,"\nNEG INF2\n");
 							continue;
 						}else{
 							shared_nSites++;
 						}
 					}
-					
 				}
+
 				if(shared_nSites==0){
+					fprintf(stderr,"\n\n->No shared sites found (n=%d for i1:%d i2:%d!!\n\n",shared_nSites,i1,i2);
 					continue;
 				}
 
@@ -410,26 +438,11 @@ int main(int argc, char **argv) {
 						"gt",
 						shared_nSites);
 
-				// double SFS2D[10][10];
-				// EM_2DSFS_GL10(lngls,SFS2D,i1,i2,nSites,args->tole);
+
 				double SFS2D3[3][3];
 				int n_em_iter;
-				n_em_iter=EM_2DSFS_GL3(lngls,SFS2D3,i1,i2,nSites,shared_nSites,args->tole,anc,der);
-				// print_2DM(3,3,*SFS2D3);
-				// fprintf(stdout,"gl,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
-						// hdr->samples[i1],
-						// hdr->samples[i2],
-						// SFS2D3[0][0],SFS2D3[0][1],SFS2D3[0][2],
-						// SFS2D3[1][0],SFS2D3[1][1],SFS2D3[1][2],
-						// SFS2D3[2][0],SFS2D3[2][1],SFS2D3[2][2]);
-//
-				// fprintf(stdout,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
-						// hdr->samples[i1],
-						// hdr->samples[i2],
-						// shared_nSites*SFS2D3[0][0],shared_nSites*SFS2D3[0][1],shared_nSites*SFS2D3[0][2],
-						// shared_nSites*SFS2D3[1][0],shared_nSites*SFS2D3[1][1],shared_nSites*SFS2D3[1][2],
-						// shared_nSites*SFS2D3[2][0],shared_nSites*SFS2D3[2][1],shared_nSites*SFS2D3[2][2]);
-//
+				n_em_iter=EM_2DSFS_GL3(lngls3,SFS2D3,i1,i2,nSites,shared_nSites,args->tole);
+
 				fprintf(stdout,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d\n",
 						hdr->samples[i1],
 						hdr->samples[i2],
@@ -441,7 +454,8 @@ int main(int argc, char **argv) {
 			}
 		}
 
-		fprintf(stderr, "Total number of sites processed: %i\n", nSites);
+		fprintf(stderr, "Total number of sites processed: %lu\n", totSites);
+		fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", totSites-nSites);
 
 		bcf_hdr_destroy(hdr);
 		bcf_destroy(bcf);
@@ -452,13 +466,6 @@ int main(int argc, char **argv) {
 			exit(BCF_CLOSE);
 		}
 
-		if(args->isSim==1){
-			free(anc);
-			anc=NULL;
-			free(der);
-			der=NULL;
-		}
-
 		for (int i=0;i<n_ind_cmb;i++){
 			free(gt_sfs[i]);
 			gt_sfs[i]=NULL;
@@ -466,21 +473,28 @@ int main(int argc, char **argv) {
 		free(gt_sfs);
 
 		for (size_t s=0;s<nSites;s++){
-			free(lngls[s]);
-			lngls[s]=NULL;
+			// free(lngls[s]);
+			// lngls[s]=NULL;
+			free(lngls3[s]);
+			lngls3[s]=NULL;
 		}
 
-		free(lngls);
+		// free(lngls);
+		free(lngls3);
 
 		free(args->in_fn);
 		args->in_fn=NULL;
 		free(args);
-	// free(args->out_fp);
+		// free(args->out_fp);
+
 
 		paramStruct_destroy(pars);
 
+	}else{
+		//if args==NULL
+		//already freed in io.cpp
+		exit(1);
 	}
-	//if args==NULL; already freed in io.cpp
 
 	return 0;
 
