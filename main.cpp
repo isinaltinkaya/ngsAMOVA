@@ -148,6 +148,22 @@ int main(int argc, char **argv) {
 		}
 
 		nInd=bcf_hdr_nsamples(hdr);
+
+		char *DATETIME=pars->DATETIME;
+		DATETIME=get_time();
+
+		fprintf(stderr,"\n%s",DATETIME);
+		fprintf(stderr,"\n./ngsAMOVA -in %s -tole %e -isSim %d -onlyShared %d -minInd %d\n",args->in_fn,args->tole,args->isSim,args->onlyShared,args->minInd);
+
+		fprintf(stderr, "\nReading file: \"%s\"", in_fn);
+		fprintf(stderr, "\nNumber of samples: %i", bcf_hdr_nsamples(hdr));
+		fprintf(stderr,	"\nNumber of chromosomes: %d",hdr->n[BCF_DT_CTG]);
+
+		if(args->minInd==nInd){
+			fprintf(stderr,"\n-> nInd is equal to minInd, setting onlyShared to 1 and minInd to 0 for a more efficient analysis.\n");
+			args->onlyShared=1;
+			args->minInd=0;
+		}
 		//
 		// if(nInd==1){
 		// fprintf(stderr,"\n\n[ERROR]\tOnly one sample; will exit\n\n");
@@ -176,17 +192,6 @@ int main(int argc, char **argv) {
 		//but smart -out. if output prefix is given detect and truncate
 		//so it would play nicely with smk pipelines
 		nSites=0;
-
-
-		char *DATETIME=pars->DATETIME;
-		DATETIME=get_time();
-
-		fprintf(stderr,"\n%s",DATETIME);
-		fprintf(stderr,"\n./ngsAMOVA -in %s -tole %e -isSim %d -onlyShared %d -minInd %d\n",args->in_fn,args->tole,args->isSim,args->onlyShared,args->minInd);
-
-		fprintf(stderr, "\nReading file: \"%s\"", in_fn);
-		fprintf(stderr, "\nNumber of samples: %i", bcf_hdr_nsamples(hdr));
-		fprintf(stderr,	"\nNumber of chromosomes: %d",hdr->n[BCF_DT_CTG]);
 
 
 
