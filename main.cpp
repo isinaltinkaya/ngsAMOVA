@@ -411,7 +411,6 @@ int main(int argc, char **argv) {
 #endif
 
 
-		fprintf(stdout,"Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,N_EM_ITER,nSites,tole\n");
 
 
 		for(int i1=0;i1<nInd-1;i1++){
@@ -440,25 +439,27 @@ int main(int argc, char **argv) {
 
 				if(shared_nSites==0){
 					fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
-					fprintf(stdout,"gt,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,%s,%d,%e\n",
+					fprintf(stdout,"gt,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,%s,%d,%s,%e\n",
 							hdr->samples[i1],
 							hdr->samples[i2],
 							"gt",
 							shared_nSites,
+							"gt",
 							args->tole);
 					//tole is not used with gt but print to indicate that result is from this specific run
 
-					fprintf(stdout,"gle,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,%d,%e\n",
+					fprintf(stdout,"gle,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,%d,%s,%e\n",
 							hdr->samples[i1],
 							hdr->samples[i2],
 							shared_nSites,
+							"NA",
 							args->tole);
 					continue;
 				}
 
 				int pair_idx=LUT_indPair_idx[i1][i2];
 
-				fprintf(stdout,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%e\n",
+				fprintf(stdout,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%e\n",
 						hdr->samples[i1],
 						hdr->samples[i2],
 						gt_sfs[pair_idx][0],gt_sfs[pair_idx][1],gt_sfs[pair_idx][2],
@@ -466,6 +467,7 @@ int main(int argc, char **argv) {
 						gt_sfs[pair_idx][6],gt_sfs[pair_idx][7],gt_sfs[pair_idx][8],
 						"gt",
 						shared_nSites,
+						"gt",
 						args->tole);
 
 
