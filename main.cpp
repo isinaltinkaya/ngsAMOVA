@@ -26,6 +26,21 @@ using size_t=decltype(sizeof(int));
 
 const double NEG_INF = -std::numeric_limits<double>::infinity();
 
+
+/*
+ * [Look-Up Table]
+ * Find index of individual pairs using individual IDs
+ *
+ */
+void prepare_LUT_indPair_idx(int nInd, int **LUT_indPair_idx){
+	for(int i1=0;i1<nInd-1;i1++){
+		for(int i2=i1+1;i2<nInd;i2++){
+			LUT_indPair_idx[i1][i2]=nCk_idx(nInd,i1,i2);
+		}
+	}
+}
+
+
 FILE *getFILE(const char*fname,const char* mode){
 	FILE *fp;
 	if(NULL==(fp=fopen(fname,mode))){
@@ -213,9 +228,20 @@ int main(int argc, char **argv) {
 		double **lngls3=0;
 		lngls3=(double**) malloc(buf_size*sizeof(double*));
 
-		//TODO build lookup table
-
+		//TODO how to make lookup table better
 		int n_ind_cmb=nCk(nInd,2);
+
+		int **LUT_indPair_idx=0;
+
+
+
+		LUT_indPair_idx=(int **)malloc(nInd * sizeof (int*)); 
+
+		for (int mi=0;mi<nInd;mi++){
+			LUT_indPair_idx[mi]=(int*) malloc( (nInd-1) * sizeof(int)) ;
+		}
+
+		prepare_LUT_indPair_idx(nInd, LUT_indPair_idx);
 
 		fprintf(stderr,"\nNumber of individual pairs: %d\n",n_ind_cmb);
 
@@ -295,14 +321,6 @@ int main(int argc, char **argv) {
 				// }
 			}
 
-			//
-			// if(bcf_is_snp(bcf)){
-			// if(args->isSim==1){
-			// anc[nSites]=bcf_allele_charToInt[(unsigned char) bcf->d.allele[0][0]];
-			// der[nSites]=bcf_allele_charToInt[(unsigned char) bcf->d.allele[1][0]];
-			// // fprintf(stderr,"\n->->gt %d \n",bcf_alleles_get_gtidx(bcf->d.allele[0][0],bcf->d.allele[1][0]));
-			// // fprintf(stderr,"\n->->gt %d \n",bcf_alleles_get_gtidx(bcf_allele_charToInt[bcf->d.allele[0][0]],bcf_allele_charToInt[bcf->d.allele[1][0]]));
-			// }
 			if(bcf->rlen != 1){
 				fprintf(stderr,"\n[ERROR](File reading)\tVCF file REF allele with length of %ld is currently not supported, will exit!\n\n", bcf->rlen);
 				exit(1);
@@ -319,9 +337,8 @@ int main(int argc, char **argv) {
 				if (set_lngls3(lngls3, lgl.data,args, nInd,a1,a2, nSites)==1){
 					free(lngls3[nSites]);
 					lngls3[nSites]=NULL;
-// fprintf(stderr,"\nset_lngls3 returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
+					// fprintf(stderr,"\nset_lngls3 returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
 					continue;
-				// }else{
 				}
 			}else{
 				//TODO check
@@ -353,7 +370,7 @@ int main(int argc, char **argv) {
 
 					int32_t *ptr1 = gt.data + i1*gt.ploidy;
 					int32_t *ptr2 = gt.data + i2*gt.ploidy;
-					int pair_idx=nCk_idx(nInd,i1,i2);
+					int pair_idx=LUT_indPair_idx[i1][i2];
 					// fprintf(stderr,"\n->i1: %d, i2: %d, pair: %d, nInd: %d\n\n", i1, i2, pair_idx,nInd);
 					// fprintf(stderr,"%d\t%d\t%d\n", i1, i2, pair_idx);
 
@@ -400,8 +417,7 @@ int main(int argc, char **argv) {
 		for(int i1=0;i1<nInd-1;i1++){
 			for(int i2=i1+1;i2<nInd;i2++){
 
-				//TODO avoid checking shared sites multiple times for ind pairs
-				//
+				//TODO? avoid checking shared sites multiple times for ind pairs
 				int shared_nSites=0;
 
 				if(args->onlyShared==1){
@@ -409,16 +425,12 @@ int main(int argc, char **argv) {
 					shared_nSites=nSites;
 
 				}else{
-				
+
 					for(size_t s=0; s<nSites; s++){
 
 						if ((lngls3[s][(3*i1)+0]==NEG_INF) && (lngls3[s][(3*i1)+1]==NEG_INF) && (lngls3[s][(3*i1)+2]==NEG_INF)){
-	// fprintf(stderr,"\n\nHERE!%d !!\n\n",shared_nSites);
-							// fprintf(stderr,"\nNEG INF\n");
 							continue;
 						}else if ((lngls3[s][(3*i2)+0]==NEG_INF) && (lngls3[s][(3*i2)+1]==NEG_INF) && (lngls3[s][(3*i2)+2]==NEG_INF)){
-	// fprintf(stderr,"\n\nHERE2!%d !!\n\n",shared_nSites);
-							// fprintf(stderr,"\nNEG INF2\n");
 							continue;
 						}else{
 							shared_nSites++;
@@ -429,11 +441,11 @@ int main(int argc, char **argv) {
 				if(shared_nSites==0){
 					fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
 					fprintf(stdout,"gt,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,%s,%d,%e\n",
-						hdr->samples[i1],
-						hdr->samples[i2],
-						"gt",
-						shared_nSites,
-						args->tole);
+							hdr->samples[i1],
+							hdr->samples[i2],
+							"gt",
+							shared_nSites,
+							args->tole);
 					//tole is not used with gt but print to indicate that result is from this specific run
 
 					fprintf(stdout,"gle,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,%d,%e\n",
@@ -444,7 +456,7 @@ int main(int argc, char **argv) {
 					continue;
 				}
 
-				int pair_idx=nCk_idx(nInd,i1,i2);
+				int pair_idx=LUT_indPair_idx[i1][i2];
 
 				fprintf(stdout,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%e\n",
 						hdr->samples[i1],
@@ -458,10 +470,11 @@ int main(int argc, char **argv) {
 
 
 				double SFS2D3[3][3];
-				int n_em_iter;
-				n_em_iter=EM_2DSFS_GL3(lngls3,SFS2D3,i1,i2,nSites,shared_nSites,args->tole);
+				int n_em_iter=0;
+				double delta;
+				delta=EM_2DSFS_GL3(lngls3,SFS2D3,i1,i2,nSites,shared_nSites,args->tole,&n_em_iter);
 
-				fprintf(stdout,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e\n",
+				fprintf(stdout,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e\n",
 						hdr->samples[i1],
 						hdr->samples[i2],
 						shared_nSites*SFS2D3[0][0],shared_nSites*SFS2D3[0][1],shared_nSites*SFS2D3[0][2],
@@ -469,6 +482,7 @@ int main(int argc, char **argv) {
 						shared_nSites*SFS2D3[2][0],shared_nSites*SFS2D3[2][1],shared_nSites*SFS2D3[2][2],
 						n_em_iter,
 						shared_nSites,
+						delta,
 						args->tole);
 			}
 		}

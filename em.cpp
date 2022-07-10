@@ -11,12 +11,11 @@ const double NEG_INF = -std::numeric_limits<double>::infinity();
 
 
 
-int EM_2DSFS_GL3(double **lngls, double SFS[3][3], int i1, int i2, size_t nSites, int shared_nSites, double tole){
+double EM_2DSFS_GL3(double **lngls, double SFS[3][3], int i1, int i2, size_t nSites, int shared_nSites, double tole, int *n_em_iter){
 
 	//TODO check underflow
 	// fprintf(stderr,"\nEM begin for ind1:%d and ind2:%d \n",i1,i2);
 
-	int n_em_iter=0;
 
 	double temp;
 
@@ -31,7 +30,7 @@ int EM_2DSFS_GL3(double **lngls, double SFS[3][3], int i1, int i2, size_t nSites
 
 	do{
 
-		n_em_iter++;
+		(*n_em_iter)++;
 
 		double TMP[3][3];
 		double ESFS[3][3];
@@ -45,12 +44,11 @@ int EM_2DSFS_GL3(double **lngls, double SFS[3][3], int i1, int i2, size_t nSites
 		// int tme=0;
 		for(size_t s=0; s<nSites; s++){
 
+			// skip the sites containing missing values for the individual pair
 			if ((lngls[s][(3*i1)+0]==NEG_INF) && (lngls[s][(3*i1)+1]==NEG_INF) && (lngls[s][(3*i1)+2]==NEG_INF)){
-				// fprintf(stderr,"\nNEG INF\n");
 				continue;
 			}
 			if ((lngls[s][(3*i2)+0]==NEG_INF) && (lngls[s][(3*i2)+1]==NEG_INF) && (lngls[s][(3*i2)+2]==NEG_INF)){
-				// fprintf(stderr,"\nNEG INF2\n");
 				continue;
 			}
 
@@ -101,8 +99,7 @@ int EM_2DSFS_GL3(double **lngls, double SFS[3][3], int i1, int i2, size_t nSites
 
 	}while(d>tole);
 
-	// return d;
-	return n_em_iter;
+	return d;
 }
 
 
