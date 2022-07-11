@@ -26,22 +26,26 @@
  * @field doInd		do ind pairs
  * @field ind1		ind1 id
  * @field ind2		ind2 id
+ *
+ *
+ * @field doTest	test for convergence
  */
 
 
 
 typedef struct{
 
-	char **argv;
 
 	char* in_fn;
-	// char* out_fp;
+	char* out_fp;
 
 	int doGeno;
 
 	int isSim;
 	int onlyShared;
 	int minInd;
+
+	int doTest;
 
 	int seed;
 

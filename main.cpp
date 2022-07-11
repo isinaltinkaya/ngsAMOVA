@@ -27,6 +27,27 @@ using size_t=decltype(sizeof(int));
 const double NEG_INF = -std::numeric_limits<double>::infinity();
 
 
+FILE *getFILE(const char*fname,const char* mode){
+	FILE *fp;
+	if(NULL==(fp=fopen(fname,mode))){
+		fprintf(stderr,"[%s:%s()]\t->Error opening FILE handle for file:%s exiting\n",__FILE__,__FUNCTION__,fname);
+		exit(1);
+	}
+	return fp;
+}
+
+
+FILE *openFile(const char* a,const char* b){
+	char *c = (char*)malloc(strlen(a)+strlen(b)+1);
+	strcpy(c,a);
+	strcat(c,b);
+	// fprintf(stderr,"\t-> Dumping file: %s\n",c);
+	FILE *fp = getFILE(c,"w");
+	free(c);
+	return fp;
+}
+
+
 /*
  * [Look-Up Table]
  * Find index of individual pairs using individual IDs
@@ -40,18 +61,38 @@ void prepare_LUT_indPair_idx(int nInd, int **LUT_indPair_idx){
 	}
 }
 
+void test_em(double **lngls3, double GLSFS[3][3],int **GTSFS,int i1,int i2,char *id1, char*id2, int pair_idx,size_t nSites, FILE *outfile){
+// void test_em(double **lngls3, double GLSFS[3][3],int **GTSFS,int i1,int i2,char *id1, char*id2, int pair_idx,size_t nSites){
+// void test_em(double **lngls3, double GLSFS[3][3],int **GTSFS,int i1,int i2, int pair_idx,size_t nSites){
 
-FILE *getFILE(const char*fname,const char* mode){
-	FILE *fp;
-	if(NULL==(fp=fopen(fname,mode))){
-		fprintf(stderr,"[%s:%s()]\t->Error opening FILE handle for file:%s exiting\n",__FILE__,__FUNCTION__,fname);
-		exit(1);
+	double glres=0.0;
+	double gtres=0.0;
+	for(size_t s=0;s<nSites;s++){
+		if ((lngls3[s][(3*i1)+0]==NEG_INF) && (lngls3[s][(3*i1)+1]==NEG_INF) && (lngls3[s][(3*i1)+2]==NEG_INF)){
+			continue;
+		}else if ((lngls3[s][(3*i2)+0]==NEG_INF) && (lngls3[s][(3*i2)+1]==NEG_INF) && (lngls3[s][(3*i2)+2]==NEG_INF)){
+			continue;
+		}else{
+			double glresi=0.0;
+			double gtresi=0.0;
+			for(int i=0;i<3;i++){
+				for(int j=0;j<3;j++){
+					glresi+=GLSFS[i][j]*exp(lngls3[s][(3*i1)+i])*exp(lngls3[s][(3*i2)+j]);
+					gtresi+=GTSFS[pair_idx][(3*i)+j]*exp(lngls3[s][(3*i1)+i])*exp(lngls3[s][(3*i2)+j]);
+				}
+			}
+			glres+=log(glresi);
+			gtres+=log(gtresi);
+		}
 	}
-	return fp;
+	fprintf(outfile,"%s,%s,%f,%f\n",id1,id2,glres,gtres);
 }
 
 
-int set_lngls3(double **lngls3, float *lgldata,argStruct *args, int nInd,char a1, char a2, int site){
+
+
+
+int set_lngls3(double **lngls3, float *lgldata, argStruct *args, int nInd,char a1, char a2, int site){
 
 	int n_missing_ind=0;
 	for(int indi=0; indi<nInd; indi++){
@@ -143,6 +184,15 @@ int main(int argc, char **argv) {
 		int nInd=pars->nInd;
 		size_t nSites=pars->nSites;
 		char *in_fn=args->in_fn;
+
+		char *out_fp=args->out_fp;
+
+		FILE *out_emtest_ff=NULL;
+
+		if(args->doTest==1){
+			out_emtest_ff=openFile(out_fp, ".emtest.csv");
+		}
+
 
 		size_t totSites=0;
 
@@ -238,7 +288,7 @@ int main(int argc, char **argv) {
 		LUT_indPair_idx=(int **)malloc(nInd * sizeof (int*)); 
 
 		for (int mi=0;mi<nInd;mi++){
-			LUT_indPair_idx[mi]=(int*) malloc( (nInd-1) * sizeof(int)) ;
+			LUT_indPair_idx[mi]=(int*) malloc( nInd * sizeof(int)) ;
 		}
 
 		prepare_LUT_indPair_idx(nInd, LUT_indPair_idx);
@@ -413,6 +463,9 @@ int main(int argc, char **argv) {
 
 
 
+
+
+
 		for(int i1=0;i1<nInd-1;i1++){
 			for(int i2=i1+1;i2<nInd;i2++){
 
@@ -486,11 +539,20 @@ int main(int argc, char **argv) {
 						shared_nSites,
 						delta,
 						args->tole);
+
+				if(args->doTest==1){
+
+					test_em(lngls3,SFS2D3,gt_sfs,i1,i2,
+							hdr->samples[i1],
+							hdr->samples[i2],
+							pair_idx,nSites,out_emtest_ff);
+				}
 			}
 		}
 
 		fprintf(stderr, "Total number of sites processed: %lu\n", totSites);
 		fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", totSites-nSites);
+
 
 		bcf_hdr_destroy(hdr);
 		bcf_destroy(bcf);
@@ -517,13 +579,30 @@ int main(int argc, char **argv) {
 		// free(lngls);
 		free(lngls3);
 
+
+
+		for (int i=0;i<nInd;i++){
+			free(LUT_indPair_idx[i]);
+			LUT_indPair_idx[i]=NULL;
+		}
+		free(LUT_indPair_idx);
+
+
 		free(args->in_fn);
 		args->in_fn=NULL;
+
+		free(args->out_fp);
+		args->out_fp=NULL;
+
 		free(args);
-		// free(args->out_fp);
+
 
 
 		paramStruct_destroy(pars);
+
+		if(out_emtest_ff!=0){
+			fclose(out_emtest_ff);
+		}
 
 	}else{
 		//if args==NULL
@@ -534,3 +613,4 @@ int main(int argc, char **argv) {
 	return 0;
 
 }
+

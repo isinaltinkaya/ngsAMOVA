@@ -41,14 +41,15 @@ argStruct *argStruct_init(){
 
 	argStruct *args=(argStruct*)calloc(1,sizeof(argStruct));
 
-	// args->out_fp=strdup("angsdput");
-
 	args->in_fn=NULL;
+	args->out_fp=NULL;
 
 	args->seed=-1;
 	args->doGeno=0;
 
 	args->tole=1e-10;
+
+	args->doTest=0;
 
 	args->isSim=0;
 
@@ -82,9 +83,9 @@ argStruct *argStruct_get(int argc, char **argv){
 
 		char *arv=*argv;
 		char *val=*(++argv);
-// else if(strcasecmp("-out",arv)==0) args->out_fp=strdup(val);
 
 		if(strcasecmp("-in",arv)==0) args->in_fn=strdup(val);
+		else if(strcasecmp("-out",arv)==0) args->out_fp=strdup(val);
 		else if(strcasecmp("-seed",arv)==0) args->seed=atoi(val);
 		else if(strcasecmp("-doGeno",arv)==0) args->doGeno=atoi(val);
 		else if(strcasecmp("-doInd",arv)==0) args->doInd=atoi(val);
@@ -94,6 +95,7 @@ argStruct *argStruct_get(int argc, char **argv){
 		else if(strcasecmp("-isSim",arv)==0) args->isSim=atoi(val);
 		else if(strcasecmp("-onlyShared",arv)==0) args->onlyShared=atoi(val);
 		else if(strcasecmp("-minInd",arv)==0) args->minInd=atoi(val);
+		else if(strcasecmp("-doTest",arv)==0) args->doTest=atoi(val);
 		else if(strcasecmp("-h",arv) == 0 || strcasecmp( "--help",arv) == 0) {
 			free(args);
 			usage();
@@ -159,6 +161,10 @@ argStruct *argStruct_get(int argc, char **argv){
 		free(args);
 		exit(1);
 		// return 0;
+	}
+
+	if (args->out_fp==NULL){
+		args->out_fp=strdup("amovaput");
 	}
 
 	if (args->doGeno == 1){
