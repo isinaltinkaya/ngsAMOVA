@@ -191,11 +191,14 @@ int main(int argc, char **argv) {
 		char *out_fp=args->out_fp;
 
 		FILE *out_emtest_ff=NULL;
+		FILE *out_sfs_ff=NULL;
 
 		if(args->doTest==1){
 			out_emtest_ff=openFile(out_fp, ".emtest.csv");
 		}
 
+
+		out_sfs_ff=openFile(out_fp, ".sfs.csv");
 
 		size_t totSites=0;
 
@@ -495,7 +498,7 @@ int main(int argc, char **argv) {
 
 				if(shared_nSites==0){
 					fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
-					fprintf(stdout,"gt,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,%s,%d,%s,%e\n",
+					fprintf(out_sfs_ff,"gt,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,%s,%d,%s,%e\n",
 							hdr->samples[i1],
 							hdr->samples[i2],
 							"gt",
@@ -504,7 +507,7 @@ int main(int argc, char **argv) {
 							args->tole);
 					//tole is not used with gt but print to indicate that result is from this specific run
 
-					fprintf(stdout,"gle,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,%d,%s,%e\n",
+					fprintf(out_sfs_ff,"gle,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,%d,%s,%e\n",
 							hdr->samples[i1],
 							hdr->samples[i2],
 							shared_nSites,
@@ -515,7 +518,7 @@ int main(int argc, char **argv) {
 
 				int pair_idx=LUT_indPair_idx[i1][i2];
 
-				fprintf(stdout,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%e\n",
+				fprintf(out_sfs_ff,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%e\n",
 						hdr->samples[i1],
 						hdr->samples[i2],
 						gt_sfs[pair_idx][0],gt_sfs[pair_idx][1],gt_sfs[pair_idx][2],
@@ -532,7 +535,7 @@ int main(int argc, char **argv) {
 				double delta;
 				delta=EM_2DSFS_GL3(lngls3,SFS2D3,i1,i2,nSites,shared_nSites,args->tole,&n_em_iter);
 
-				fprintf(stdout,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e\n",
+				fprintf(out_sfs_ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e\n",
 						hdr->samples[i1],
 						hdr->samples[i2],
 						shared_nSites*SFS2D3[0][0],shared_nSites*SFS2D3[0][1],shared_nSites*SFS2D3[0][2],
@@ -606,6 +609,8 @@ int main(int argc, char **argv) {
 		if(out_emtest_ff!=0){
 			fclose(out_emtest_ff);
 		}
+
+		fclose(out_sfs_ff);
 
 	}else{
 		//if args==NULL
