@@ -27,7 +27,7 @@ double EM_2DSFS_GL3(double **lngls, double SFS[3][3], int i1, int i2, size_t nSi
 	}
 
 	do{
-#if 1
+#if 0
 		fprintf(stderr,"\n");
 				for (int x=0;x<3;x++){
 					for(int y=0;y<3;y++){
@@ -86,13 +86,15 @@ double EM_2DSFS_GL3(double **lngls, double SFS[3][3], int i1, int i2, size_t nSi
 
 			}
 		}
-#if 1
+#if 0
 		fprintf(stderr,"iter: %d d:%f \n",*n_em_iter,d);
 
 #endif
 		(*n_em_iter)++;
 
+#if 0
 		fprintf(stderr,"d: %e tole:%e \n",d,tole);
+#endif
 	}while(d>tole);
 
 	return d;
