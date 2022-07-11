@@ -16,21 +16,28 @@ double EM_2DSFS_GL3(double **lngls, double SFS[3][3], int i1, int i2, size_t nSi
 	//TODO check underflow
 	// fprintf(stderr,"\nEM begin for ind1:%d and ind2:%d \n",i1,i2);
 
-
 	double temp;
-
 	double sum;
 	double d;
 
 	for (int i=0; i<3; i++){
 		for (int j=0; j<3; j++){
-			SFS[i][j]=(double) (1/9);
+			SFS[i][j]=(double) 1/ (double) 9;
 		}
 	}
 
 	do{
+#if 1
+		fprintf(stderr,"\n");
+				for (int x=0;x<3;x++){
+					for(int y=0;y<3;y++){
+						fprintf(stderr,"%f ",SFS[x][y]);
+					}
+				}
+		fprintf(stderr,"\n");
 
-		(*n_em_iter)++;
+#endif
+
 
 		double TMP[3][3];
 		double ESFS[3][3];
@@ -54,21 +61,14 @@ double EM_2DSFS_GL3(double **lngls, double SFS[3][3], int i1, int i2, size_t nSi
 
 			sum=0.0;
 
-
 			// SFS * ind1 * ind2
 			//lngls3 (anc,anc),(anc,der),(der,der)
 			for(int idx1=0;idx1<3;idx1++){
 				for(int idx2=0;idx2<3;idx2++){
-					TMP[idx1][idx2]= exp( SFS[idx1][idx2] + lngls[s][(3*i1)+idx1] + lngls[s][(3*i2)+idx2] );
+					TMP[idx1][idx2]= SFS[idx1][idx2] * exp(lngls[s][(3*i1)+idx1]) * exp(lngls[s][(3*i2)+idx2]);
+					sum += TMP[idx1][idx2];
 				}
 			}
-
-			for(int i=0;i<3;i++){
-				for(int j=0;j<3;j++){
-					sum += TMP[i][j];
-				}
-			}
-
 
 			for(int i=0;i<3;i++){
 				for(int j=0;j<3;j++){
@@ -86,17 +86,13 @@ double EM_2DSFS_GL3(double **lngls, double SFS[3][3], int i1, int i2, size_t nSi
 
 			}
 		}
-#if 0
-		fprintf(stderr,"\n\n");
-				for (int x=0;x<3;x++){
-					for(int y=0;y<3;y++){
-						fprintf(stderr,"_ %f _",SFS[x][y]);
-					}
-				}
-		fprintf(stderr,"\n\n");
+#if 1
+		fprintf(stderr,"iter: %d d:%f \n",*n_em_iter,d);
 
 #endif
+		(*n_em_iter)++;
 
+		fprintf(stderr,"d: %e tole:%e \n",d,tole);
 	}while(d>tole);
 
 	return d;

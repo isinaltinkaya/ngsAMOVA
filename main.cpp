@@ -61,9 +61,8 @@ void prepare_LUT_indPair_idx(int nInd, int **LUT_indPair_idx){
 	}
 }
 
-void test_em(double **lngls3, double GLSFS[3][3],int **GTSFS,int i1,int i2,char *id1, char*id2, int pair_idx,size_t nSites, FILE *outfile){
-// void test_em(double **lngls3, double GLSFS[3][3],int **GTSFS,int i1,int i2,char *id1, char*id2, int pair_idx,size_t nSites){
-// void test_em(double **lngls3, double GLSFS[3][3],int **GTSFS,int i1,int i2, int pair_idx,size_t nSites){
+// sum [ log [ sum [ M(g1,g2) * GL(g1) * GL(g2) ] ]
+void test_em(double **lngls3, double GLSFS[3][3],int **GTSFS,int i1,int i2,char *id1, char*id2, int pair_idx,size_t nSites, int shared_nSites, FILE *outfile){
 
 	double glres=0.0;
 	double gtres=0.0;
@@ -77,15 +76,19 @@ void test_em(double **lngls3, double GLSFS[3][3],int **GTSFS,int i1,int i2,char 
 			double gtresi=0.0;
 			for(int i=0;i<3;i++){
 				for(int j=0;j<3;j++){
-					glresi+=GLSFS[i][j]*exp(lngls3[s][(3*i1)+i])*exp(lngls3[s][(3*i2)+j]);
-					gtresi+=GTSFS[pair_idx][(3*i)+j]*exp(lngls3[s][(3*i1)+i])*exp(lngls3[s][(3*i2)+j]);
+					glresi += GLSFS[i][j] * exp(lngls3[s][(3*i1)+i]) * exp(lngls3[s][(3*i2)+j]);
+					gtresi += ((double) GTSFS[pair_idx][(3*i)+j]/(double) shared_nSites)  * exp(lngls3[s][(3*i1)+i]) * exp(lngls3[s][(3*i2)+j]);
+					// fprintf(stderr,"->->->%d %d\n",GTSFS[pair_idx][(3*i)+j],shared_nSites);
 				}
 			}
+			// fprintf(stderr,"->->%f,%f\n",glresi,gtresi);
 			glres+=log(glresi);
 			gtres+=log(gtresi);
 		}
 	}
+
 	fprintf(outfile,"%s,%s,%f,%f\n",id1,id2,glres,gtres);
+	// fprintf(stderr,"%s,%s,%f,%f\n",id1,id2,glres,gtres);
 }
 
 
@@ -545,7 +548,7 @@ int main(int argc, char **argv) {
 					test_em(lngls3,SFS2D3,gt_sfs,i1,i2,
 							hdr->samples[i1],
 							hdr->samples[i2],
-							pair_idx,nSites,out_emtest_ff);
+							pair_idx,nSites,shared_nSites,out_emtest_ff);
 				}
 			}
 		}
