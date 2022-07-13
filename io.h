@@ -4,6 +4,12 @@
 
 
 
+#include <stdio.h>
+FILE *getFILE(const char*fname,const char* mode);
+
+
+FILE *openFile(const char* a,const char* b);
+
 
 /*
  * @typedef
@@ -16,13 +22,14 @@
  * @field isSim		input is vcfgl simulation output
  * 					anc=ref and der=alt[0]
  *
- * TODO rename
- * @field onlyShared	use only sites shared among all inds
  *
  * @field minInd	minimum number of individuals needed
  * 					for site to be included in analyses
  *
- * @field doGeno	use GT tags to count ind2ind 2dsfs
+ * @field doAMOVA	[0]
+ * 					1 use 10 genotype likelihoods (GL)
+ * 					2 use genotypes (GT)
+ * 
  * @field doInd		do ind pairs
  * @field ind1		ind1 id
  * @field ind2		ind2 id
@@ -39,10 +46,11 @@ typedef struct{
 	char* in_fn;
 	char* out_fp;
 
-	int doGeno;
+	int doAMOVA;
+	int printMatrix;
 
 	int isSim;
-	int onlyShared;
+
 	int minInd;
 
 	int doTest;

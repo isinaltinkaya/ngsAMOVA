@@ -4,6 +4,7 @@
 
 
 #include <stdio.h>
+
 #include <htslib/vcf.h>
 #include <htslib/vcfutils.h>
 
@@ -26,75 +27,6 @@ using size_t=decltype(sizeof(int));
 
 const double NEG_INF = -std::numeric_limits<double>::infinity();
 
-
-FILE *getFILE(const char*fname,const char* mode){
-	FILE *fp;
-	if(NULL==(fp=fopen(fname,mode))){
-		fprintf(stderr,"[%s:%s()]\t->Error opening FILE handle for file:%s exiting\n",__FILE__,__FUNCTION__,fname);
-		exit(1);
-	}
-	return fp;
-}
-
-
-FILE *openFile(const char* a,const char* b){
-	char *c = (char*)malloc(strlen(a)+strlen(b)+1);
-	strcpy(c,a);
-	strcat(c,b);
-	// fprintf(stderr,"\t-> Dumping file: %s\n",c);
-	FILE *fp = getFILE(c,"w");
-	free(c);
-	return fp;
-}
-
-
-/*
- * [Look-Up Table]
- * Find index of individual pairs using individual IDs
- *
- */
-void prepare_LUT_indPair_idx(int nInd, int **LUT_indPair_idx){
-	for(int i1=0;i1<nInd-1;i1++){
-		for(int i2=i1+1;i2<nInd;i2++){
-			LUT_indPair_idx[i1][i2]=nCk_idx(nInd,i1,i2);
-		}
-	}
-}
-
-// sum [ log [ sum [ M(g1,g2) * GL(g1) * GL(g2) ] ]
-void test_em(double **lngls3, double GLSFS[3][3],int **GTSFS,int i1,int i2,char *id1, char*id2, int pair_idx,size_t nSites, int shared_nSites, FILE *outfile){
-
-	double glres=0.0;
-	double gtres=0.0;
-	for(size_t s=0;s<nSites;s++){
-		if ((lngls3[s][(3*i1)+0]==NEG_INF) && (lngls3[s][(3*i1)+1]==NEG_INF) && (lngls3[s][(3*i1)+2]==NEG_INF)){
-			continue;
-		}else if ((lngls3[s][(3*i2)+0]==NEG_INF) && (lngls3[s][(3*i2)+1]==NEG_INF) && (lngls3[s][(3*i2)+2]==NEG_INF)){
-			continue;
-		}else{
-			double glresi=0.0;
-			double gtresi=0.0;
-			for(int i=0;i<3;i++){
-				for(int j=0;j<3;j++){
-					glresi += GLSFS[i][j] * exp(lngls3[s][(3*i1)+i]) * exp(lngls3[s][(3*i2)+j]);
-					gtresi += ((double) GTSFS[pair_idx][(3*i)+j]/(double) shared_nSites)  * exp(lngls3[s][(3*i1)+i]) * exp(lngls3[s][(3*i2)+j]);
-					// fprintf(stderr,"->->->%d %d\n",GTSFS[pair_idx][(3*i)+j],shared_nSites);
-				}
-			}
-			// fprintf(stderr,"->->%f,%f\n",glresi,gtresi);
-			glres+=log(glresi);
-			gtres+=log(gtresi);
-		}
-	}
-
-	fprintf(outfile,"%s,%s,%f,%f\n",id1,id2,glres,gtres);
-	// fprintf(stderr,"%s,%s,%f,%f\n",id1,id2,glres,gtres);
-}
-
-
-
-
-
 int set_lngls3(double **lngls3, float *lgldata, argStruct *args, int nInd,char a1, char a2, int site){
 
 	int n_missing_ind=0;
@@ -109,7 +41,7 @@ int set_lngls3(double **lngls3, float *lgldata, argStruct *args, int nInd,char a
 		//should we skip sites where at least one is set to missing?
 		//
 		if(isnan(lgldata[(10*indi)+0])){
-			if(args->onlyShared==1){
+			if(args->minInd==0){
 				return 1;
 			}else{
 				n_missing_ind++;
@@ -152,19 +84,99 @@ int set_lngls3(double **lngls3, float *lgldata, argStruct *args, int nInd,char a
 }
 
 
-void get_gt_sfs( int* gtdata, int **sfs, int32_t *ptr1, int32_t *ptr2, int pair_idx){
+namespace doAMOVA {
 
-	int gti1=0;
-	int gti2=0;
+	int get_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngls3, paramStruct *pars, argStruct *args, size_t nSites, int nInd);
 
-	//using binary input genotypes from VCF GT tag
-	//assume ploidy=2
-	for (int i=0; i<2;i++){
-		gti1 += bcf_gt_allele(ptr1[i]);
-		gti2 += bcf_gt_allele(ptr2[i]);
+	int get_GT(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args, size_t nSites, int nInd, int** LUT_indPair_idx);
+
+
+
+
+}
+
+int doAMOVA::get_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngls3, paramStruct *pars, argStruct *args, size_t nSites, int nInd){
+
+			// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
+		get_data<float> lgl;
+
+		lgl.n = bcf_get_format_float(hdr,bcf,"GL",&lgl.data,&lgl.size_e);
+
+		if(lgl.n<0){
+			fprintf(stderr,"\n[ERROR](File reading)\tVCF tag GL does not exist; will exit!\n\n");
+			exit(1);
+		}
+
+		lngls3[nSites]=(double*)malloc(nInd*3*sizeof(double));
+
+
+		if(bcf_is_snp(bcf)){
+			char a1=bcf_allele_charToInt[(unsigned char) bcf->d.allele[0][0]];
+			char a2=bcf_allele_charToInt[(unsigned char) bcf->d.allele[1][0]];
+
+			if (set_lngls3(lngls3, lgl.data,args, nInd,a1,a2, nSites)==1){
+				free(lngls3[nSites]);
+				lngls3[nSites]=NULL;
+				// fprintf(stderr,"\nset_lngls3 returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
+				return 1;
+			}
+		}else{
+			//TODO check
+			fprintf(stderr,"\n\nHERE BCF_IS_SNP==0!!!\n\n");
+			free(lngls3[nSites]);
+			lngls3[nSites]=NULL;
+			return 1;
+		}
+
+		return 0;
+}
+
+
+int doAMOVA::get_GT(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args, size_t nSites, int nInd, int** LUT_indPair_idx){
+	//TODO add check if missing gt return 1
+
+	get_data<int32_t> gt;
+	gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
+	gt.ploidy=gt.n/nInd;
+
+	if(gt.n<0){
+		fprintf(stderr,"\n[ERROR](File reading)\tProblem with reading GT; will exit!\n\n");
+		exit(1);
 	}
-	// fprintf(stderr,"\n%d:%d %d:%d -> %d\n",i1,gti1,i2,gti2,get_3x3_idx[gti1][gti2]);
-	sfs[pair_idx][get_3x3_idx[gti1][gti2]]++;
+
+	if (gt.ploidy!=2){
+		fprintf(stderr,"ERROR:\n\nploidy: %d not supported\n",gt.ploidy);
+		exit(1);
+	}
+
+	for(int i1=0;i1<nInd-1;i1++){
+		for(int i2=i1+1;i2<nInd;i2++){
+
+			int32_t *ptr1 = gt.data + i1*gt.ploidy;
+			int32_t *ptr2 = gt.data + i2*gt.ploidy;
+			int pair_idx=LUT_indPair_idx[i1][i2];
+
+			// fprintf(stderr,"\n->i1: %d, i2: %d, pair: %d, nInd: %d\n\n", i1, i2, pair_idx,nInd);
+			// fprintf(stderr,"%d\t%d\t%d\n", i1, i2, pair_idx);
+
+			int gti1=0;
+			int gti2=0;
+
+			//using binary input genotypes from VCF GT tag
+			//assume ploidy=2
+			for (int i=0; i<2;i++){
+				gti1 += bcf_gt_allele(ptr1[i]);
+				gti2 += bcf_gt_allele(ptr2[i]);
+			}
+			// fprintf(stderr,"\n%d:%d %d:%d -> %d\n",i1,gti1,i2,gti2,get_3x3_idx[gti1][gti2]);
+			sfs[pair_idx][get_3x3_idx[gti1][gti2]]++;
+
+		}
+	}
+
+
+	return 0;
+
 }
 
 
@@ -224,15 +236,14 @@ int main(int argc, char **argv) {
 		DATETIME=get_time();
 
 		fprintf(stderr,"\n%s",DATETIME);
-		fprintf(stderr,"\n./ngsAMOVA -in %s -tole %e -isSim %d -onlyShared %d -minInd %d\n",args->in_fn,args->tole,args->isSim,args->onlyShared,args->minInd);
+		fprintf(stderr,"\nngsAMOVA -doAMOVA %d -doTest %d -in %s -out %s -tole %e -isSim %d -minInd %d -printMatrix %d\n",args->doAMOVA,args->doTest,args->in_fn,args->out_fp,args->tole,args->isSim,args->minInd,args->printMatrix);
 
 		fprintf(stderr, "\nReading file: \"%s\"", in_fn);
 		fprintf(stderr, "\nNumber of samples: %i", bcf_hdr_nsamples(hdr));
 		fprintf(stderr,	"\nNumber of chromosomes: %d",hdr->n[BCF_DT_CTG]);
 
 		if(args->minInd==nInd){
-			fprintf(stderr,"\n-> nInd is equal to minInd, setting onlyShared to 1 and minInd to 0 for a more efficient analysis.\n");
-			args->onlyShared=1;
+			fprintf(stderr,"\n\t-> -minInd %d is equal to the number of individuals found in file: %d. Setting -minInd to 0 for more efficient analysis.\n",args->minInd, nInd);
 			args->minInd=0;
 		}
 		//
@@ -282,7 +293,9 @@ int main(int argc, char **argv) {
 
 
 		double **lngls3=0;
-		lngls3=(double**) malloc(buf_size*sizeof(double*));
+		if(args->doAMOVA==1 || args->doAMOVA==3){
+			lngls3=(double**) malloc(buf_size*sizeof(double*));
+		}
 
 		//TODO how to make lookup table better
 		int n_ind_cmb=nCk(nInd,2);
@@ -306,21 +319,20 @@ int main(int argc, char **argv) {
 		 * gt_sfs[n_pairs][9]
 		 */
 		int **gt_sfs;
-		gt_sfs=(int**) malloc(n_ind_cmb*sizeof(int*));
-
-		for (int i=0;i<n_ind_cmb;i++){
-			//9 categories per individual pair
-			gt_sfs[i]=(int*)malloc(9*sizeof(int));
-		}
-
-		for(int x=0;x<n_ind_cmb;x++){
-			for (int y=0; y<9; y++){
-				gt_sfs[x][y]=0;
+		if(args->doAMOVA==2 || args->doAMOVA==3){
+			gt_sfs=(int**) malloc(n_ind_cmb*sizeof(int*));
+			for (int i=0;i<n_ind_cmb;i++){
+				//9 categories per individual pair
+				gt_sfs[i]=(int*)malloc(9*sizeof(int));
+				for (int y=0; y<9; y++){
+					gt_sfs[i][y]=0;
+				}
 			}
 		}
 
 
-		const char* TAG=NULL;
+
+
 
 		/*
 		 * [START] Reading sites
@@ -330,6 +342,34 @@ int main(int argc, char **argv) {
 		 */
 
 		while (bcf_read(in_ff, hdr, bcf) == 0) {
+
+
+
+			if(bcf->rlen != 1){
+				fprintf(stderr,"\n[ERROR](File reading)\tVCF file REF allele with length of %ld is currently not supported, will exit!\n\n", bcf->rlen);
+				exit(1);
+			}
+
+
+			totSites++;
+			while((int) nSites >= buf_size){
+
+				// fprintf(stderr,"\n\nrealloc %d at site %d\n",buf_size,nSites);
+				// fprintf(stderr,"new size: %d\n",buf_size);
+				buf_size=buf_size*2;
+
+				// lngls=(double**) realloc(lngls, buf_size * sizeof(*lngls) );
+				
+				if(args->doAMOVA==1 || args->doAMOVA==3){
+					lngls3=(double**) realloc(lngls3, buf_size * sizeof(*lngls3) );
+				}
+
+				// if(args->isSim==1){
+				// anc=(char*)realloc(anc,buf_size*sizeof(char));
+				// der=(char*)realloc(der,buf_size*sizeof(char));
+				// }
+			}
+
 			//
 			// TAG="DP";
 			// get_data<int32_t> dp;
@@ -349,109 +389,52 @@ int main(int argc, char **argv) {
 			// if (dp.n_missing>0) continue;
 			//
 			//
-			get_data<float> lgl;
+			// lngls[nSites]=(double*)malloc(nInd*10*sizeof(double));
+			if(args->doAMOVA==1){
+				if(doAMOVA::get_GL3(hdr,bcf,lngls3,pars,args,nSites,nInd)==1){
+					continue;
+				}
 
-			TAG="GL";
-			lgl.n = bcf_get_format_float(hdr,bcf,TAG,&lgl.data,&lgl.size_e);
+			}else if(args->doAMOVA==2){
+				if(doAMOVA::get_GT(hdr,bcf,gt_sfs,pars,args,nSites,nInd,LUT_indPair_idx)==1){
+					continue;
+				}
 
-			if(lgl.n<0){
-				fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
-				exit(1);
-			}
+			}else if(args->doAMOVA==3){
+				if(doAMOVA::get_GL3(hdr,bcf,lngls3,pars,args,nSites,nInd)==1){
+					continue;
+				//skip site for gt if skipped by gl
+				}else{
+					if(doAMOVA::get_GT(hdr,bcf,gt_sfs,pars,args,nSites,nInd,LUT_indPair_idx)==1){
+						continue;
+					}
+				}
 
-			totSites++;
 
-
-			while((int) nSites >= buf_size){
-
-				// fprintf(stderr,"\n\nrealloc %d at site %d\n",buf_size,nSites);
-				// fprintf(stderr,"new size: %d\n",buf_size);
-				buf_size=buf_size*2;
-
-				// lngls=(double**) realloc(lngls, buf_size * sizeof(*lngls) );
-				lngls3=(double**) realloc(lngls3, buf_size * sizeof(*lngls3) );
-
-				// if(args->isSim==1){
-				// anc=(char*)realloc(anc,buf_size*sizeof(char));
-				// der=(char*)realloc(der,buf_size*sizeof(char));
+				// int GLRET=doAMOVA::get_GL3(hdr,bcf,lngls3,pars,args,nSites,nInd);
+				// int GTRET=doAMOVA::get_GT(hdr,bcf,gt_sfs,pars,args,nSites,nInd,LUT_indPair_idx);
+				// if (GLRET+GTRET>0){
+					// continue;
 				// }
 			}
 
-			if(bcf->rlen != 1){
-				fprintf(stderr,"\n[ERROR](File reading)\tVCF file REF allele with length of %ld is currently not supported, will exit!\n\n", bcf->rlen);
-				exit(1);
-			}
-
-			// lngls[nSites]=(double*)malloc(nInd*10*sizeof(double));
-			lngls3[nSites]=(double*)malloc(nInd*3*sizeof(double));
-
-
-			if(bcf_is_snp(bcf)){
-				char a1=bcf_allele_charToInt[(unsigned char) bcf->d.allele[0][0]];
-				char a2=bcf_allele_charToInt[(unsigned char) bcf->d.allele[1][0]];
-
-				if (set_lngls3(lngls3, lgl.data,args, nInd,a1,a2, nSites)==1){
-					free(lngls3[nSites]);
-					lngls3[nSites]=NULL;
-					// fprintf(stderr,"\nset_lngls3 returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
-					continue;
-				}
-			}else{
-				//TODO check
-				fprintf(stderr,"\n\nHERE BCF_IS_SNP==0!!!\n\n");
-				free(lngls3[nSites]);
-				lngls3[nSites]=NULL;
-				continue;
-			}
-
-
-			get_data<int32_t> gt;
-			gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
-			gt.ploidy=gt.n/nInd;
-
-			if(gt.n<0){
-				fprintf(stderr,"\n[ERROR](File reading)\tProblem with reading GT; will exit!\n\n");
-				exit(1);
-			}
-
-			if (gt.ploidy!=2){
-				fprintf(stderr,"ERROR:\n\nploidy: %d not supported\n",gt.ploidy);
-				exit(1);
-			}
-
-
-
-			for(int i1=0;i1<nInd-1;i1++){
-				for(int i2=i1+1;i2<nInd;i2++){
-
-					int32_t *ptr1 = gt.data + i1*gt.ploidy;
-					int32_t *ptr2 = gt.data + i2*gt.ploidy;
-					int pair_idx=LUT_indPair_idx[i1][i2];
-					// fprintf(stderr,"\n->i1: %d, i2: %d, pair: %d, nInd: %d\n\n", i1, i2, pair_idx,nInd);
-					// fprintf(stderr,"%d\t%d\t%d\n", i1, i2, pair_idx);
-
-					get_gt_sfs(gt.data,gt_sfs,ptr1,ptr2,pair_idx);
-
-				}
-			}
-
-			//TODO bcf_hdr_set_samples efficient sample parsing
-			// if (args->doInd==1){
-			// int i1=args->ind1;
-			// int i2=args->ind2;
-			// get_data<int32_t> gt;
-			// gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
-			// }
-
-			// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
-			// fprintf(stderr,"%d\n\n",nSites);
-			// fprintf(stderr,"\r\t-> Printing at site %lu",nSites);
-			// fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
-
 			nSites++;
 
+				//TODO bcf_hdr_set_samples efficient sample parsing
+				// if (args->doInd==1){
+				// int i1=args->ind1;
+				// int i2=args->ind2;
+				// get_data<int32_t> gt;
+				// gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
+				// }
+
+				// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
+				// fprintf(stderr,"%d\n\n",nSites);
+				// fprintf(stderr,"\r\t-> Printing at site %lu",nSites);
+				// fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
+
 		}
-		fprintf(stderr,"\n");
+		fprintf(stderr,"\n\t-> Finished reading sites\n");
 		// [END] Reading sites
 
 
@@ -469,90 +452,115 @@ int main(int argc, char **argv) {
 
 
 
-
-
-
 		for(int i1=0;i1<nInd-1;i1++){
 			for(int i2=i1+1;i2<nInd;i2++){
 
 				//TODO? avoid checking shared sites multiple times for ind pairs
 				int shared_nSites=0;
 
-				if(args->onlyShared==1){
+				if(args->minInd==0){
 
 					shared_nSites=nSites;
 
 				}else{
 
-					for(size_t s=0; s<nSites; s++){
+					if(args->doAMOVA==1 || args->doAMOVA==3){
 
-						if ((lngls3[s][(3*i1)+0]==NEG_INF) && (lngls3[s][(3*i1)+1]==NEG_INF) && (lngls3[s][(3*i1)+2]==NEG_INF)){
-							continue;
-						}else if ((lngls3[s][(3*i2)+0]==NEG_INF) && (lngls3[s][(3*i2)+1]==NEG_INF) && (lngls3[s][(3*i2)+2]==NEG_INF)){
-							continue;
-						}else{
-							shared_nSites++;
+						for(size_t s=0; s<nSites; s++){
+
+							if ((lngls3[s][(3*i1)+0]==NEG_INF) && (lngls3[s][(3*i1)+1]==NEG_INF) && (lngls3[s][(3*i1)+2]==NEG_INF)){
+								continue;
+							}else if ((lngls3[s][(3*i2)+0]==NEG_INF) && (lngls3[s][(3*i2)+1]==NEG_INF) && (lngls3[s][(3*i2)+2]==NEG_INF)){
+								continue;
+							}else{
+								shared_nSites++;
+							}
 						}
+
 					}
 				}
 
 				if(shared_nSites==0){
-					fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
-					fprintf(out_sfs_ff,"gt,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,%s,%d,%s,%e\n",
-							hdr->samples[i1],
-							hdr->samples[i2],
-							"gt",
-							shared_nSites,
-							"gt",
-							args->tole);
-					//tole is not used with gt but print to indicate that result is from this specific run
 
-					fprintf(out_sfs_ff,"gle,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,%d,%s,%e\n",
-							hdr->samples[i1],
-							hdr->samples[i2],
-							shared_nSites,
-							"NA",
-							args->tole);
+
+					if(args->doAMOVA==1 || args->doAMOVA==3){
+						fprintf(out_sfs_ff,"gle,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,%d,%s,%e\n",
+								hdr->samples[i1],
+								hdr->samples[i2],
+								shared_nSites,
+								"NA",
+								args->tole);
+
+					}
+					if(args->doAMOVA==2 || args->doAMOVA==3){
+						fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
+						fprintf(out_sfs_ff,"gt,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,%s,%d,%s,%e\n",
+								hdr->samples[i1],
+								hdr->samples[i2],
+								"gt",
+								shared_nSites,
+								"gt",
+								args->tole);
+					}
+
 					continue;
+
 				}
 
 				int pair_idx=LUT_indPair_idx[i1][i2];
 
-				fprintf(out_sfs_ff,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%e\n",
-						hdr->samples[i1],
-						hdr->samples[i2],
-						gt_sfs[pair_idx][0],gt_sfs[pair_idx][1],gt_sfs[pair_idx][2],
-						gt_sfs[pair_idx][3],gt_sfs[pair_idx][4],gt_sfs[pair_idx][5],
-						gt_sfs[pair_idx][6],gt_sfs[pair_idx][7],gt_sfs[pair_idx][8],
-						"gt",
-						shared_nSites,
-						"gt",
-						args->tole);
 
 
-				double SFS2D3[3][3];
-				int n_em_iter=0;
-				double delta;
-				delta=EM_2DSFS_GL3(lngls3,SFS2D3,i1,i2,nSites,shared_nSites,args->tole,&n_em_iter);
+				if(args->doAMOVA==1 || args->doAMOVA==3){
 
-				fprintf(out_sfs_ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e\n",
-						hdr->samples[i1],
-						hdr->samples[i2],
-						shared_nSites*SFS2D3[0][0],shared_nSites*SFS2D3[0][1],shared_nSites*SFS2D3[0][2],
-						shared_nSites*SFS2D3[1][0],shared_nSites*SFS2D3[1][1],shared_nSites*SFS2D3[1][2],
-						shared_nSites*SFS2D3[2][0],shared_nSites*SFS2D3[2][1],shared_nSites*SFS2D3[2][2],
-						n_em_iter,
-						shared_nSites,
-						delta,
-						args->tole);
+					double SFS2D3[3][3];
+					int n_em_iter=0;
+					double delta;
+					delta=EM_2DSFS_GL3(lngls3,SFS2D3,i1,i2,nSites,shared_nSites,args->tole,&n_em_iter);
 
-				if(args->doTest==1){
-
-					test_em(lngls3,SFS2D3,gt_sfs,i1,i2,
+					fprintf(out_sfs_ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e\n",
 							hdr->samples[i1],
 							hdr->samples[i2],
-							pair_idx,nSites,shared_nSites,out_emtest_ff);
+							shared_nSites*SFS2D3[0][0],shared_nSites*SFS2D3[0][1],shared_nSites*SFS2D3[0][2],
+							shared_nSites*SFS2D3[1][0],shared_nSites*SFS2D3[1][1],shared_nSites*SFS2D3[1][2],
+							shared_nSites*SFS2D3[2][0],shared_nSites*SFS2D3[2][1],shared_nSites*SFS2D3[2][2],
+							n_em_iter,
+							shared_nSites,
+							delta,
+							args->tole);
+
+					// if(printMatrix==1){
+					// }
+					// fprintf(stderr,"\n\t->->-> %f\n\n",MATH::SUM(SFS2D3));
+					// fprintf(stderr,"\n\t->->-> %f\n\n",MATH::EST::Sij(SFS2D3));
+
+
+
+
+					if(args->doTest==1){
+
+							test_em(lngls3,SFS2D3,gt_sfs,i1,i2,
+									hdr->samples[i1],
+									hdr->samples[i2],
+									pair_idx,nSites,shared_nSites,out_emtest_ff);
+					}
+
+				}if(args->doAMOVA==2 || args->doAMOVA==3){
+
+
+
+					fprintf(out_sfs_ff,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%e\n",
+							hdr->samples[i1],
+							hdr->samples[i2],
+							gt_sfs[pair_idx][0],gt_sfs[pair_idx][1],gt_sfs[pair_idx][2],
+							gt_sfs[pair_idx][3],gt_sfs[pair_idx][4],gt_sfs[pair_idx][5],
+							gt_sfs[pair_idx][6],gt_sfs[pair_idx][7],gt_sfs[pair_idx][8],
+							"gt",
+							shared_nSites,
+							"gt",
+							args->tole);
 				}
+
 			}
 		}
 
@@ -569,22 +577,28 @@ int main(int argc, char **argv) {
 			exit(BCF_CLOSE);
 		}
 
-		for (int i=0;i<n_ind_cmb;i++){
-			free(gt_sfs[i]);
-			gt_sfs[i]=NULL;
+		if(args->doAMOVA==1 || args->doAMOVA==3){
+
+			for (size_t s=0;s<nSites;s++){
+				// free(lngls[s]);
+				// lngls[s]=NULL;
+				free(lngls3[s]);
+				lngls3[s]=NULL;
+			}
+
+			// free(lngls);
+			free(lngls3);
+
 		}
-		free(gt_sfs);
+		if(args->doAMOVA==2 || args->doAMOVA==3){
 
-		for (size_t s=0;s<nSites;s++){
-			// free(lngls[s]);
-			// lngls[s]=NULL;
-			free(lngls3[s]);
-			lngls3[s]=NULL;
+			for (int i=0;i<n_ind_cmb;i++){
+				free(gt_sfs[i]);
+				gt_sfs[i]=NULL;
+			}
+			free(gt_sfs);
+
 		}
-
-		// free(lngls);
-		free(lngls3);
-
 
 
 		for (int i=0;i<nInd;i++){

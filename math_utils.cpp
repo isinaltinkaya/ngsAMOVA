@@ -14,18 +14,6 @@ double log2ln(float ivar){
 	return (double) ivar/M_LOG10E;
 }
 
-//
-// //print 2D matrix
-// void print_2DM(size_t x1, size_t x2, double *M){
-	// printf("\n");
-	// int m,n;
-	// for (m=0;m<x1;m++){
-		// for (n=0;n<x2;n++){
-			// printf("A[%d,%d]=%f\n",m,n,M[(m*x1)+n]);
-		// }
-	// }
-// };
-//
 /*
  * Binomial coefficient
  * n choose k
@@ -61,23 +49,6 @@ void rescale_likelihood_ratio(double *like){
 }
 
 
-// void normalize(double *tmp, int nDim){
-			// for(int i=0;i<nDim;i++){
-				// for(int j=0;j<3;j++){
-					// sum += TMP[i][j];
-				// }
-			// }
-//
-//
-			// for(int i=0;i<nDim;i++){
-				// for(int j=0;j<3;j++){
-					// ESFS[i][j] += TMP[i][j]/sum;
-				// }
-			// }
-//
-// }
-
-
 /*
  * Maps a given pair of objects to their index in
  * the lexicographically ordered binomial coefficients
@@ -92,8 +63,136 @@ int nCk_idx(int nInd, int i1, int i2){
 }
 
 /*
- * Prepare a lookup table for pairs of individuals
+ * [Look-Up Table]
+ * Find index of individual pairs using individual IDs
+ *
  */
-// void prep_pair_idx_lt(int** LOOKUP, int nInd, int i1, int i2){
-	// LOOKUP[i1][i2]=nCk_idx(nInd,i1,i2);
-// }
+void prepare_LUT_indPair_idx(int nInd, int **LUT_indPair_idx){
+	for(int i1=0;i1<nInd-1;i1++){
+		for(int i2=i1+1;i2<nInd;i2++){
+			LUT_indPair_idx[i1][i2]=nCk_idx(nInd,i1,i2);
+		}
+	}
+}
+
+namespace MATH {
+
+	double SUM(double M[3][3]);
+	double MEAN(double M[3][3]);
+	double VAR(double M[3][3]);
+	double SD(double M[3][3]);
+
+	namespace EST{
+		double Sij(double M[3][3]);
+		double Fij(double M[3][3]);
+	};
+
+}	
+
+
+double MATH::SUM(double M[3][3]){
+	double sum=0.0;
+	for(int x=0;x<3;x++){
+		for(int y=0;y<3;y++){
+			sum=sum + M[x][y];
+			// fprintf(stderr,"->->%f\n",M[x][y]);
+		}
+	}
+	return sum;
+}
+
+
+double MATH::MEAN(double M[3][3]){
+	double mean=0.0;
+	double N=9;
+	for(int x=0;x<3;x++){
+		for(int y=0;y<3;y++){
+			mean=mean + (M[x][y]/N);
+		}
+	}
+	return mean;
+}
+
+//TODO maybe template to allow float etc?
+double MATH::VAR(double M[3][3]){
+	double var=0.0;
+	double i=0.0;
+	double N=9;
+	for(int x=0;x<3;x++){
+		for(int y=0;y<3;y++){
+			i= i + pow(M[x][y] - MATH::MEAN(M),2);
+		}
+	}
+	var=i/N;
+	return var;
+}
+
+double MATH::SD(double M[3][3]){
+	return sqrt(MATH::VAR(M));
+}
+
+/*
+ *
+ * [F_ij F statistic]
+ *
+ * 00 01 02 10 11 12 20 21 22
+ * A  D  G  B  E  H  C  F  I
+ *
+ * (2C+2G-E) / (2C+2G+B+D+E+F+H)
+ *
+ */
+double MATH::EST::Fij(double M[3][3]){
+
+	double x=0.0;
+
+	double C=M[2][0];
+	double G=M[0][2];
+	double E=M[1][1];
+	double B=M[1][0];
+	double D=M[0][1];
+	double F=M[2][1];
+	double H=M[1][2];
+
+ 	x=((2*C)+(2*G)-E) / ((2*C)+(2*G)+B+D+E+F+H);
+
+	return x;
+}
+
+
+
+// double A=M[0][0];
+// double D=M[0][1];
+// double G=M[0][2];
+// double B=M[1][0];
+// double E=M[1][1];
+// double H=M[1][2];
+// double C=M[2][0];
+// double F=M[2][1];
+// double I=M[2][2];
+/*
+ *
+ * [S_ij Similarity index]
+ *
+ * 00 01 02 10 11 12 20 21 22
+ * A  D  G  B  E  H  C  F  I
+ *
+ * A + I + ((B+D+E+F+H)/2)
+ *
+ */
+double MATH::EST::Sij(double M[3][3]){
+
+	double x=0.0;
+
+	double A=M[0][0];
+	double I=M[2][2];
+	double B=M[1][0];
+	double D=M[0][1];
+	double E=M[1][1];
+	double F=M[2][1];
+	double H=M[1][2];
+
+	x=A+I+((B+D+E+F+H)/2);
+
+	return x;
+}
+

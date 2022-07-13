@@ -10,6 +10,27 @@
 #include <sys/stat.h>
 
 
+FILE *getFILE(const char*fname,const char* mode){
+	FILE *fp;
+	if(NULL==(fp=fopen(fname,mode))){
+		fprintf(stderr,"[%s:%s()]\t->Error opening FILE handle for file:%s exiting\n",__FILE__,__FUNCTION__,fname);
+		exit(1);
+	}
+	return fp;
+}
+
+
+FILE *openFile(const char* a,const char* b){
+	char *c = (char*)malloc(strlen(a)+strlen(b)+1);
+	strcpy(c,a);
+	strcat(c,b);
+	// fprintf(stderr,"\t-> Dumping file: %s\n",c);
+	FILE *fp = getFILE(c,"w");
+	free(c);
+	return fp;
+}
+
+
 
 
 // Check if file exists
@@ -45,7 +66,7 @@ argStruct *argStruct_init(){
 	args->out_fp=NULL;
 
 	args->seed=-1;
-	args->doGeno=0;
+	args->doAMOVA=0;
 
 	args->tole=1e-10;
 
@@ -53,8 +74,9 @@ argStruct *argStruct_init(){
 
 	args->isSim=0;
 
-	args->onlyShared=0;
-	args->minInd=0;
+	args->minInd=-1;
+
+	args->printMatrix=0;
 
 	args->doInd=0;
 	args->ind1=-1;
@@ -87,13 +109,13 @@ argStruct *argStruct_get(int argc, char **argv){
 		if(strcasecmp("-in",arv)==0) args->in_fn=strdup(val);
 		else if(strcasecmp("-out",arv)==0) args->out_fp=strdup(val);
 		else if(strcasecmp("-seed",arv)==0) args->seed=atoi(val);
-		else if(strcasecmp("-doGeno",arv)==0) args->doGeno=atoi(val);
+		else if(strcasecmp("-doAMOVA",arv)==0) args->doAMOVA=atoi(val);
 		else if(strcasecmp("-doInd",arv)==0) args->doInd=atoi(val);
 		else if(strcasecmp("-ind1",arv)==0) args->ind1=atoi(val);
 		else if(strcasecmp("-ind2",arv)==0) args->ind2=atoi(val);
 		else if(strcasecmp("-tole",arv)==0) args->tole=atof(val);
 		else if(strcasecmp("-isSim",arv)==0) args->isSim=atoi(val);
-		else if(strcasecmp("-onlyShared",arv)==0) args->onlyShared=atoi(val);
+		else if(strcasecmp("-printMatrix",arv)==0) args->printMatrix=atoi(val);
 		else if(strcasecmp("-minInd",arv)==0) args->minInd=atoi(val);
 		else if(strcasecmp("-doTest",arv)==0) args->doTest=atoi(val);
 		else if(strcasecmp("-h",arv) == 0 || strcasecmp( "--help",arv) == 0) {
@@ -117,31 +139,32 @@ argStruct *argStruct_get(int argc, char **argv){
 	// }
 
 	//TODO
-	//write function for args to define acceptable range of values and auto err message accordingly
-	
+	//- write function for args to define acceptable range of values and auto err message accordingly
+	//- collect them with sprintf to variable then if verbose print stderr and .arg, if not only print to .arg
 	if (args->isSim > 1 || args->isSim < 0){
 		fprintf(stderr,"\n[ERROR]\tArgument isSim is set to %d\n",args->isSim);
 		free(args);
 		return 0;
 	}
 	
-	if(args->onlyShared!=0){
-		if(args->minInd!=0){
-			fprintf(stderr,"\n[ERROR]\tonlyShared and minInd cannot be used together\n");
-			free(args);
-			return 0;
-		}
+	if(args->minInd==0){
+		fprintf(stderr,"\n\t-> -minInd 0; will use sites with data for all individuals.\n");
+
+	}else if(args->minInd==-1){
+		fprintf(stderr,"\n\t-> -minInd not set; will use sites with data for all individuals.\n");
+		args->minInd=0;
 	}
+
 	if(args->minInd==1){
-		fprintf(stderr,"\n[ERROR]\tMinimum value allowed for minInd is 1\n");
+		fprintf(stderr,"\n[ERROR]\tMinimum value allowed for minInd is 2; will exit!\n");
 		free(args);
 		return 0;
 	}
 
+
 	if(args->in_fn==NULL){
-		fprintf(stderr,"Must supply -in\n");
+		fprintf(stderr,"\n[ERROR]\tMust supply -in <input_file>; will exit!\n");
 		free(args);
-		// exit(1);
 		return 0;
 		//TODO if filename ''
 	// }else{
@@ -159,32 +182,51 @@ argStruct *argStruct_get(int argc, char **argv){
 	if (args->isSim==0){
 		fprintf(stderr,"Must use -isSim 1 for now\n");
 		free(args);
-		exit(1);
-		// return 0;
+		return 0;
 	}
 
 	if (args->out_fp==NULL){
 		args->out_fp=strdup("amovaput");
+		fprintf(stderr,"\n\t-> -out <output_prefix> not set; will use %s as a prefix for output files.\n",args->out_fp);
 	}
 
-	if (args->doGeno == 1){
+	if (args->doAMOVA!=3 && args->doTest==1){
+		fprintf(stderr,"\n[ERROR]\t-doTest 1 requires -doAMOVA 3; will exit!\n");
+		free(args);
+		return 0;
+	}
+
+	if (args->doAMOVA == 1){
 		if(args->doInd==1){
 			if(args->ind1==-1){
-				fprintf(stderr,"Must supply -ind1 while using -doGeno 1 -doInd 1 \n");
+				fprintf(stderr,"[ERROR]\tMust supply -ind1 while using -doInd 1 \n");
 				free(args);
 				return 0;
 			}
 			if(args->ind2==-1){
-				fprintf(stderr,"Must supply -ind2 while using -doGeno 1 -doInd 1 \n");
+				fprintf(stderr,"[ERROR]\tMust supply -ind2 while using -doInd 1 \n");
 				free(args);
 				return 0;
 			}
 			if(args->ind1==args->ind2){
-				fprintf(stderr,"Ind ids must be different while using -doGeno 1 -doInd 1 \n");
+				fprintf(stderr,"[ERROR]\tInd ids must be different while using -doInd 1 \n");
 				free(args);
 				return 0;
 			}
 		}
+
+		fprintf(stderr,"\n\t-> -doAMOVA 1; will use 10 genotype likelihoods from GL tag.\n");
+
+	}else if(args->doAMOVA==2){
+		fprintf(stderr,"\n\t-> -doAMOVA 2; will use genotypes from GT tag.\n");
+
+	}else if(args->doAMOVA==3){
+		fprintf(stderr,"\n\t-> -doAMOVA 2; will do both 1 and 2.\n");
+
+	}else{
+		fprintf(stderr,"\n[ERROR]\tMust supply a value for -doAMOVA; will exit!\n");
+		free(args);
+		return 0;
 	}
 
 	return args;

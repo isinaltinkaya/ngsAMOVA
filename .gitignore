@@ -19,3 +19,8 @@ ngsAMOVA
 # Log files
 *.log
 amovaput*
+
+
+
+# NFS ongoing job
+.nfs*

@@ -19,5 +19,21 @@ int nCk(int n, int k);
 
 int nCk_idx(int nInd, int i1, int i2);
 
+void prepare_LUT_indPair_idx(int nInd, int **LUT_indPair_idx);
+
+namespace MATH {
+
+	double SUM(double M[3][3]);
+	double MEAN(double M[3][3]);
+	double VAR(double M[3][3]);
+	double SD(double M[3][3]);
+
+	namespace EST{
+		double Sij(double M[3][3]);
+		double Fij(double M[3][3]);
+	};
+
+}	
+
 #endif
 

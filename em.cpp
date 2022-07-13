@@ -101,6 +101,37 @@ double EM_2DSFS_GL3(double **lngls, double SFS[3][3], int i1, int i2, size_t nSi
 }
 
 
+// sum [ log [ sum [ M(g1,g2) * GL(g1) * GL(g2) ] ]
+void test_em(double **lngls3, double GLSFS[3][3],int **GTSFS,int i1,int i2,char *id1, char*id2, int pair_idx,size_t nSites, int shared_nSites, FILE *outfile){
+
+	double glres=0.0;
+	double gtres=0.0;
+	for(size_t s=0;s<nSites;s++){
+		if ((lngls3[s][(3*i1)+0]==NEG_INF) && (lngls3[s][(3*i1)+1]==NEG_INF) && (lngls3[s][(3*i1)+2]==NEG_INF)){
+			continue;
+		}else if ((lngls3[s][(3*i2)+0]==NEG_INF) && (lngls3[s][(3*i2)+1]==NEG_INF) && (lngls3[s][(3*i2)+2]==NEG_INF)){
+			continue;
+		}else{
+			double glresi=0.0;
+			double gtresi=0.0;
+			for(int i=0;i<3;i++){
+				for(int j=0;j<3;j++){
+					glresi += GLSFS[i][j] * exp(lngls3[s][(3*i1)+i]) * exp(lngls3[s][(3*i2)+j]);
+					gtresi += ((double) GTSFS[pair_idx][(3*i)+j]/(double) shared_nSites)  * exp(lngls3[s][(3*i1)+i]) * exp(lngls3[s][(3*i2)+j]);
+					// fprintf(stderr,"->->->%d %d\n",GTSFS[pair_idx][(3*i)+j],shared_nSites);
+				}
+			}
+			// fprintf(stderr,"->->%f,%f\n",glresi,gtresi);
+			glres+=log(glresi);
+			gtres+=log(gtresi);
+		}
+	}
+
+	fprintf(outfile,"%s,%s,%f,%f\n",id1,id2,glres,gtres);
+	// fprintf(stderr,"%s,%s,%f,%f\n",id1,id2,glres,gtres);
+}
+
+
 
 //got some help from https://github.com/lz398/distAngsd/blob/main/vcftest.cpp
 // double EM_2DSFS_GL10(double **lngl, double SFS[10][10], int i1, int i2, size_t nSites, double tole){

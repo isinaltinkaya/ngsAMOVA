@@ -101,3 +101,30 @@ char *get_time(){
 	return(asctime(local_time));
 }
 
+
+
+
+// namespace data_structures{
+//
+	// //2D Matrix
+	// template <typename T>
+		// struct M2D{
+			// T **M;
+			// size_t x;
+			// size_t y;
+	// };
+	// template <typename T>
+		// void M2D_destroy(M2D<T> *MS, size_t x){
+			// if(MS){
+				// if(MS->M){
+					// for(size_t i=0;i<x;i++){
+						// if(MS->M[i]){
+							// free(MS->M[i]);
+						// }
+					// }
+					// free(MS->M);
+				// }
+			// }
+		// }
+// }
+//
