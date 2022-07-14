@@ -29,12 +29,12 @@ const double NEG_INF = -std::numeric_limits<double>::infinity();
 
 namespace doAMOVA {
 
-	int get_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngls3, paramStruct *pars, argStruct *args, size_t nSites, int nInd);
+	int get_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t nSites, int nInd);
 	int get_GT(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args, size_t nSites, int nInd, int** LUT_indPair_idx);
 
 }
 
-int doAMOVA::get_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngls3, paramStruct *pars, argStruct *args, size_t nSites, int nInd){
+int doAMOVA::get_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t nSites, int nInd){
 
 			// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
 		get_data<float> lgl;
@@ -46,7 +46,7 @@ int doAMOVA::get_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngls3, paramStruct *
 			exit(1);
 		}
 
-		lngls3[nSites]=(double*)malloc(nInd*3*sizeof(double));
+		lngl[nSites]=(double*)malloc(nInd*3*sizeof(double));
 
 
 		if(bcf_is_snp(bcf)){
@@ -58,7 +58,7 @@ int doAMOVA::get_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngls3, paramStruct *
 			for(int indi=0; indi<nInd; indi++){
 
 				for(int ix=0;ix<3;ix++){
-					lngls3[nSites][(3*indi)+ix]=NEG_INF;
+					lngl[nSites][(3*indi)+ix]=NEG_INF;
 				}
 
 				//TODO only checking the first for now
@@ -74,11 +74,11 @@ int doAMOVA::get_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngls3, paramStruct *
 				}else{
 					// fprintf(stderr,"\n->->gt %d %d\n",bcf_alleles_get_gtidx(bcf->d.allele[0][0],bcf->d.allele[1][0]));
 					// fprintf(stderr,"\n->->gt %d \n",bcf_alleles_get_gtidx(bcf_allele_charToInt[bcf->d.allele[0][0]],bcf_allele_charToInt[bcf->d.allele[1][0]]));
-					lngls3[nSites][(3*indi)+0]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)]);
-					lngls3[nSites][(3*indi)+1]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)]);
-					lngls3[nSites][(3*indi)+2]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
+					lngl[nSites][(3*indi)+0]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)]);
+					lngl[nSites][(3*indi)+1]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)]);
+					lngl[nSites][(3*indi)+2]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
 					// fprintf(stderr,"\n->->lgl %f %f %f\n",lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)],lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)],lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
-					// fprintf(stderr,"\n->->lngls3 %f %f %f\n",lngls3[nSites][(3*indi)+0],lngls3[nSites][(3*indi)+1],lngls3[nSites][(3*indi)+2]);
+					// fprintf(stderr,"\n->->lngl %f %f %f\n",lngl[nSites][(3*indi)+0],lngl[nSites][(3*indi)+1],lngl[nSites][(3*indi)+2]);
 				}
 			}
 
@@ -106,17 +106,17 @@ int doAMOVA::get_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngls3, paramStruct *
 				return 0;
 			}
 
-			// if (set_lngls3(lngls3, lgl.data,args, nInd,a1,a2, nSites)==1){
-				// free(lngls3[nSites]);
-				// lngls3[nSites]=NULL;
-				// // fprintf(stderr,"\nset_lngls3 returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
+			// if (set_lngl(lngl, lgl.data,args, nInd,a1,a2, nSites)==1){
+				// free(lngl[nSites]);
+				// lngl[nSites]=NULL;
+				// // fprintf(stderr,"\nset_lngl returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
 				// return 1;
 			// }
 		}else{
 			//TODO check
 			fprintf(stderr,"\n\nHERE BCF_IS_SNP==0!!!\n\n");
-			free(lngls3[nSites]);
-			lngls3[nSites]=NULL;
+			free(lngl[nSites]);
+			lngl[nSites]=NULL;
 			return 1;
 		}
 
@@ -171,7 +171,9 @@ int doAMOVA::get_GT(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, a
 
 }
 
-
+int read_metadata(){
+	return 0;
+}
 
 int main(int argc, char **argv) {
 
@@ -197,12 +199,19 @@ int main(int argc, char **argv) {
 		FILE *out_emtest_ff=NULL;
 		FILE *out_sfs_ff=NULL;
 
+		//TODO how to avoid init these based on if statement
+		FILE *out_m_ff=NULL;
+
 		if(args->doTest==1){
-			out_emtest_ff=openFile(out_fp, ".emtest.csv");
+			out_emtest_ff=IO::openFILE(out_fp, ".emtest.csv");
+		}
+
+		if(args->printMatrix==1){
+			out_m_ff=IO::openFILE(out_fp,".matrix.csv");
 		}
 
 
-		out_sfs_ff=openFile(out_fp, ".sfs.csv");
+		out_sfs_ff=IO::openFILE(out_fp, ".sfs.csv");
 
 		size_t totSites=0;
 
@@ -221,6 +230,34 @@ int main(int argc, char **argv) {
 			free(args);
 			exit(1);
 		}
+
+
+		const char *in_md=args->in_md;
+
+
+		FILE *in_meta_ff=IO::getFILE(in_md,"r");
+
+
+		char mt_buf[1024];
+		while(fgets(mt_buf,1024,in_meta_ff)){
+
+			char *tok=strtok(mt_buf,"\t \n");
+			char *ind_id=tok;
+			fprintf(stderr,"->->->tok %s\n",tok);
+			fprintf(stderr,"->->->ind_id: %s\n",ind_id);
+
+			tok=strtok(NULL,"\t \n");	
+			char *group_id=tok;
+			fprintf(stderr,"->->->tok %s\n",tok);
+			fprintf(stderr,"->->->group_id: %s\n",group_id);
+fprintf(stderr,"\n\nHERE!!!\n\n");
+
+
+			// METADATA[group_id][ind_id];
+		}
+
+
+
 
 		nInd=bcf_hdr_nsamples(hdr);
 
@@ -284,9 +321,9 @@ int main(int argc, char **argv) {
 		// }
 
 
-		double **lngls3=0;
+		double **lngl=0;
 		if(args->doAMOVA==1 || args->doAMOVA==3){
-			lngls3=(double**) malloc(buf_size*sizeof(double*));
+			lngl=(double**) malloc(buf_size*sizeof(double*));
 		}
 
 		//TODO how to make lookup table better
@@ -308,21 +345,28 @@ int main(int argc, char **argv) {
 
 		//TODO only create if doGeno etc
 		/*
-		 * gt_sfs[n_pairs][9]
+		 * SFS_GT3[n_pairs][9]
 		 */
-		int **gt_sfs;
+		int **SFS_GT3;
 		if(args->doAMOVA==2 || args->doAMOVA==3){
-			gt_sfs=(int**) malloc(n_ind_cmb*sizeof(int*));
+			SFS_GT3=(int**) malloc(n_ind_cmb*sizeof(int*));
 			for (int i=0;i<n_ind_cmb;i++){
 				//9 categories per individual pair
-				gt_sfs[i]=(int*)malloc(9*sizeof(int));
+				SFS_GT3[i]=(int*)malloc(9*sizeof(int));
 				for (int y=0; y<9; y++){
-					gt_sfs[i][y]=0;
+					SFS_GT3[i][y]=0;
 				}
 			}
 		}
 
 
+		//Pairwise distance matrix
+		double *M_PWD;
+		M_PWD=(double*) malloc(n_ind_cmb*sizeof(double));
+		for(int i=0;i<n_ind_cmb;i++){
+			M_PWD[i]=0.0;
+		}
+		
 
 
 
@@ -353,7 +397,7 @@ int main(int argc, char **argv) {
 				// lngls=(double**) realloc(lngls, buf_size * sizeof(*lngls) );
 				
 				if(args->doAMOVA==1 || args->doAMOVA==3){
-					lngls3=(double**) realloc(lngls3, buf_size * sizeof(*lngls3) );
+					lngl=(double**) realloc(lngl, buf_size * sizeof(*lngl) );
 				}
 
 				// if(args->isSim==1){
@@ -383,32 +427,32 @@ int main(int argc, char **argv) {
 			//
 			// lngls[nSites]=(double*)malloc(nInd*10*sizeof(double));
 			if(args->doAMOVA==1){
-				if(doAMOVA::get_GL3(hdr,bcf,lngls3,pars,args,nSites,nInd)==1){
-					free(lngls3[nSites]);
-					lngls3[nSites]=NULL;
+				if(doAMOVA::get_GL3(hdr,bcf,lngl,pars,args,nSites,nInd)==1){
+					free(lngl[nSites]);
+					lngl[nSites]=NULL;
 					continue;
 				}
 
 			}else if(args->doAMOVA==2){
-				if(doAMOVA::get_GT(hdr,bcf,gt_sfs,pars,args,nSites,nInd,LUT_indPair_idx)==1){
+				if(doAMOVA::get_GT(hdr,bcf,SFS_GT3,pars,args,nSites,nInd,LUT_indPair_idx)==1){
 					continue;
 				}
 
 			}else if(args->doAMOVA==3){
-				if(doAMOVA::get_GL3(hdr,bcf,lngls3,pars,args,nSites,nInd)==1){
-					free(lngls3[nSites]);
-					lngls3[nSites]=NULL;
+				if(doAMOVA::get_GL3(hdr,bcf,lngl,pars,args,nSites,nInd)==1){
+					free(lngl[nSites]);
+					lngl[nSites]=NULL;
 					continue;
 				//skip site for gt if skipped by gl
 				}else{
-					if(doAMOVA::get_GT(hdr,bcf,gt_sfs,pars,args,nSites,nInd,LUT_indPair_idx)==1){
+					if(doAMOVA::get_GT(hdr,bcf,SFS_GT3,pars,args,nSites,nInd,LUT_indPair_idx)==1){
 						continue;
 					}
 				}
 
 
-				// int GLRET=doAMOVA::get_GL3(hdr,bcf,lngls3,pars,args,nSites,nInd);
-				// int GTRET=doAMOVA::get_GT(hdr,bcf,gt_sfs,pars,args,nSites,nInd,LUT_indPair_idx);
+				// int GLRET=doAMOVA::get_GL3(hdr,bcf,lngl,pars,args,nSites,nInd);
+				// int GTRET=doAMOVA::get_GT(hdr,bcf,SFS_GT3,pars,args,nSites,nInd,LUT_indPair_idx);
 				// if (GLRET+GTRET>0){
 					// continue;
 				// }
@@ -464,9 +508,9 @@ int main(int argc, char **argv) {
 
 						for(size_t s=0; s<nSites; s++){
 
-							if ((lngls3[s][(3*i1)+0]==NEG_INF) && (lngls3[s][(3*i1)+1]==NEG_INF) && (lngls3[s][(3*i1)+2]==NEG_INF)){
+							if ((lngl[s][(3*i1)+0]==NEG_INF) && (lngl[s][(3*i1)+1]==NEG_INF) && (lngl[s][(3*i1)+2]==NEG_INF)){
 								continue;
-							}else if ((lngls3[s][(3*i2)+0]==NEG_INF) && (lngls3[s][(3*i2)+1]==NEG_INF) && (lngls3[s][(3*i2)+2]==NEG_INF)){
+							}else if ((lngl[s][(3*i2)+0]==NEG_INF) && (lngl[s][(3*i2)+1]==NEG_INF) && (lngl[s][(3*i2)+2]==NEG_INF)){
 								continue;
 							}else{
 								shared_nSites++;
@@ -506,62 +550,76 @@ int main(int argc, char **argv) {
 				int pair_idx=LUT_indPair_idx[i1][i2];
 
 
-
 				if(args->doAMOVA==1 || args->doAMOVA==3){
 
-					double SFS2D3[3][3];
+					double SFS_GLE3[3][3];
 					int n_em_iter=0;
 					double delta;
-					delta=EM_2DSFS_GL3(lngls3,SFS2D3,i1,i2,nSites,shared_nSites,args->tole,&n_em_iter);
+					delta=EM_2DSFS_GL3(lngl,SFS_GLE3,i1,i2,nSites,shared_nSites,args->tole,&n_em_iter);
 
 					// fprintf(out_sfs_ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e\n",
 							// hdr->samples[i1],
 							// hdr->samples[i2],
-							// shared_nSites*SFS2D3[0][0],shared_nSites*SFS2D3[0][1],shared_nSites*SFS2D3[0][2],
-							// shared_nSites*SFS2D3[1][0],shared_nSites*SFS2D3[1][1],shared_nSites*SFS2D3[1][2],
-							// shared_nSites*SFS2D3[2][0],shared_nSites*SFS2D3[2][1],shared_nSites*SFS2D3[2][2],
+							// shared_nSites*SFS_GLE3[0][0],shared_nSites*SFS_GLE3[0][1],shared_nSites*SFS_GLE3[0][2],
+							// shared_nSites*SFS_GLE3[1][0],shared_nSites*SFS_GLE3[1][1],shared_nSites*SFS_GLE3[1][2],
+							// shared_nSites*SFS_GLE3[2][0],shared_nSites*SFS_GLE3[2][1],shared_nSites*SFS_GLE3[2][2],
 							// n_em_iter,
 							// shared_nSites,
 							// delta,
 							// args->tole);
-//
-					// if(printMatrix==1){
-					// }
-					// fprintf(stderr,"\n\t->Sij: %f\n\n",MATH::EST::Sij(SFS2D3));
-					// fprintf(stderr,"\n\t->Fij: %f\n\n",MATH::EST::Fij(SFS2D3));
+					
+					
+					// get_distance_matrix(SFS_GLE3);
+
+
+
+					if(args->doDist==1){
+						M_PWD[pair_idx]=MATH::EST::Sij(SFS_GLE3);
+					}
+
+					
+
+
+						// fprintf(stdout,"gle,Sij,%s,%s,%f\n",
+								// hdr->samples[i1],
+								// hdr->samples[i2],
+								// M_PWD[pair_idx]);
+					
+					// fprintf(stderr,"\n\t->Sij: %f\n\n",MATH::EST::Sij(SFS_GLE3));
+					// fprintf(stderr,"\n\t->Fij: %f\n\n",MATH::EST::Fij(SFS_GLE3));
 					// fprintf(stderr,"\n\t->: %f %f %f %f %f %f\n\n",
-							// MATH::EST::IBS0(SFS2D3),
-							// MATH::EST::IBS1(SFS2D3),
-							// MATH::EST::IBS2(SFS2D3),
-							// MATH::EST::R0(SFS2D3),
-							// MATH::EST::R1(SFS2D3),
-							// MATH::EST::Kin(SFS2D3));
+							// MATH::EST::IBS0(SFS_GLE3),
+							// MATH::EST::IBS1(SFS_GLE3),
+							// MATH::EST::IBS2(SFS_GLE3),
+							// MATH::EST::R0(SFS_GLE3),
+							// MATH::EST::R1(SFS_GLE3),
+							// MATH::EST::Kin(SFS_GLE3));
 
 					fprintf(out_sfs_ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e,%f,%f,%f,%f,%f,%f,%f,%f\n",
 							hdr->samples[i1],
 							hdr->samples[i2],
-							shared_nSites*SFS2D3[0][0],shared_nSites*SFS2D3[0][1],shared_nSites*SFS2D3[0][2],
-							shared_nSites*SFS2D3[1][0],shared_nSites*SFS2D3[1][1],shared_nSites*SFS2D3[1][2],
-							shared_nSites*SFS2D3[2][0],shared_nSites*SFS2D3[2][1],shared_nSites*SFS2D3[2][2],
+							shared_nSites*SFS_GLE3[0][0],shared_nSites*SFS_GLE3[0][1],shared_nSites*SFS_GLE3[0][2],
+							shared_nSites*SFS_GLE3[1][0],shared_nSites*SFS_GLE3[1][1],shared_nSites*SFS_GLE3[1][2],
+							shared_nSites*SFS_GLE3[2][0],shared_nSites*SFS_GLE3[2][1],shared_nSites*SFS_GLE3[2][2],
 							n_em_iter,
 							shared_nSites,
 							delta,
 							args->tole,
-							MATH::EST::Sij(SFS2D3),
-							MATH::EST::Fij(SFS2D3),
-							MATH::EST::IBS0(SFS2D3),
-							MATH::EST::IBS1(SFS2D3),
-							MATH::EST::IBS2(SFS2D3),
-							MATH::EST::R0(SFS2D3),
-							MATH::EST::R1(SFS2D3),
-							MATH::EST::Kin(SFS2D3));
+							MATH::EST::Sij(SFS_GLE3),
+							MATH::EST::Fij(SFS_GLE3),
+							MATH::EST::IBS0(SFS_GLE3),
+							MATH::EST::IBS1(SFS_GLE3),
+							MATH::EST::IBS2(SFS_GLE3),
+							MATH::EST::R0(SFS_GLE3),
+							MATH::EST::R1(SFS_GLE3),
+							MATH::EST::Kin(SFS_GLE3));
 
 
 
 
 					if(args->doTest==1){
 
-							test_em(lngls3,SFS2D3,gt_sfs,i1,i2,
+							test_em(lngl,SFS_GLE3,SFS_GT3,i1,i2,
 									hdr->samples[i1],
 									hdr->samples[i2],
 									pair_idx,nSites,shared_nSites,out_emtest_ff);
@@ -574,17 +632,50 @@ int main(int argc, char **argv) {
 					fprintf(out_sfs_ff,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%e\n",
 							hdr->samples[i1],
 							hdr->samples[i2],
-							gt_sfs[pair_idx][0],gt_sfs[pair_idx][1],gt_sfs[pair_idx][2],
-							gt_sfs[pair_idx][3],gt_sfs[pair_idx][4],gt_sfs[pair_idx][5],
-							gt_sfs[pair_idx][6],gt_sfs[pair_idx][7],gt_sfs[pair_idx][8],
+							SFS_GT3[pair_idx][0],SFS_GT3[pair_idx][1],SFS_GT3[pair_idx][2],
+							SFS_GT3[pair_idx][3],SFS_GT3[pair_idx][4],SFS_GT3[pair_idx][5],
+							SFS_GT3[pair_idx][6],SFS_GT3[pair_idx][7],SFS_GT3[pair_idx][8],
 							"gt",
 							shared_nSites,
 							"gt",
 							args->tole);
 				}
 
+
+
+
+
+			}
+
+		}
+
+
+		//print pair IDs
+		for(int i1=0;i1<nInd-1;i1++){
+			for(int i2=i1+1;i2<nInd;i2++){
+					fprintf(out_m_ff,"%s-%s",
+							hdr->samples[i1],
+							hdr->samples[i2]);
+				// if(i1!=0 && i1!=nInd-2 && i2!=nInd-1){
+				if(i1!=nInd-2 && i2!=nInd-1){
+					fprintf(out_m_ff,",");
+				}
 			}
 		}
+		fprintf(out_m_ff,"\n");
+	
+		//TODO use map maybe?
+		if(args->printMatrix==1){
+			for (int pair=0;pair<n_ind_cmb;pair++){
+				fprintf(out_m_ff,"%f",M_PWD[pair]);
+				// if(pair!=0 && pair!=n_ind_cmb-1){
+				if(pair!=n_ind_cmb-1){
+					fprintf(out_m_ff,",");
+				}
+			}
+		}
+
+
 
 		fprintf(stderr, "Total number of sites processed: %lu\n", totSites);
 		fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", totSites-nSites);
@@ -604,23 +695,26 @@ int main(int argc, char **argv) {
 			for (size_t s=0;s<nSites;s++){
 				// free(lngls[s]);
 				// lngls[s]=NULL;
-				free(lngls3[s]);
-				lngls3[s]=NULL;
+				free(lngl[s]);
+				lngl[s]=NULL;
 			}
 
 			// free(lngls);
-			free(lngls3);
+			free(lngl);
+
+			free(M_PWD);
 
 		}
 		if(args->doAMOVA==2 || args->doAMOVA==3){
 
 			for (int i=0;i<n_ind_cmb;i++){
-				free(gt_sfs[i]);
-				gt_sfs[i]=NULL;
+				free(SFS_GT3[i]);
+				SFS_GT3[i]=NULL;
 			}
-			free(gt_sfs);
+			free(SFS_GT3);
 
 		}
+
 
 
 		for (int i=0;i<nInd;i++){
@@ -642,11 +736,15 @@ int main(int argc, char **argv) {
 
 		paramStruct_destroy(pars);
 
-		if(out_emtest_ff!=0){
+		if(out_emtest_ff!=NULL){
 			fclose(out_emtest_ff);
 		}
 
 		fclose(out_sfs_ff);
+
+		if(out_m_ff!=NULL){
+			fclose(out_m_ff);
+		}
 
 	}else{
 		//if args==NULL

@@ -10,7 +10,20 @@
 #include <sys/stat.h>
 
 
-FILE *getFILE(const char*fname,const char* mode){
+namespace IO {
+
+	
+	FILE *getFILE(const char*fname,const char* mode);
+	FILE *openFILE(const char* a,const char* b);
+
+	namespace readFILE{
+
+		// int METADATA();
+	};
+
+}
+
+FILE *IO::getFILE(const char*fname,const char* mode){
 	FILE *fp;
 	if(NULL==(fp=fopen(fname,mode))){
 		fprintf(stderr,"[%s:%s()]\t->Error opening FILE handle for file:%s exiting\n",__FILE__,__FUNCTION__,fname);
@@ -20,7 +33,7 @@ FILE *getFILE(const char*fname,const char* mode){
 }
 
 
-FILE *openFile(const char* a,const char* b){
+FILE *IO::openFILE(const char* a,const char* b){
 	char *c = (char*)malloc(strlen(a)+strlen(b)+1);
 	strcpy(c,a);
 	strcat(c,b);
@@ -30,6 +43,11 @@ FILE *openFile(const char* a,const char* b){
 	return fp;
 }
 
+//
+// int IO::readFILE::METADATA(const char* a,const char* b){
+	// return 0;
+// }
+//
 
 
 
@@ -63,6 +81,7 @@ argStruct *argStruct_init(){
 	argStruct *args=(argStruct*)calloc(1,sizeof(argStruct));
 
 	args->in_fn=NULL;
+	args->in_md=NULL;
 	args->out_fp=NULL;
 
 	args->seed=-1;
@@ -71,6 +90,8 @@ argStruct *argStruct_init(){
 	args->tole=1e-10;
 
 	args->doTest=0;
+	
+	args->doDist=-1;
 
 	args->isSim=0;
 
@@ -107,6 +128,7 @@ argStruct *argStruct_get(int argc, char **argv){
 		char *val=*(++argv);
 
 		if(strcasecmp("-in",arv)==0) args->in_fn=strdup(val);
+		else if(strcasecmp("-md",arv)==0) args->in_md=strdup(val);
 		else if(strcasecmp("-out",arv)==0) args->out_fp=strdup(val);
 		else if(strcasecmp("-seed",arv)==0) args->seed=atoi(val);
 		else if(strcasecmp("-doAMOVA",arv)==0) args->doAMOVA=atoi(val);
@@ -116,6 +138,7 @@ argStruct *argStruct_get(int argc, char **argv){
 		else if(strcasecmp("-tole",arv)==0) args->tole=atof(val);
 		else if(strcasecmp("-isSim",arv)==0) args->isSim=atoi(val);
 		else if(strcasecmp("-printMatrix",arv)==0) args->printMatrix=atoi(val);
+		else if(strcasecmp("-doDist",arv)==0) args->doDist=atoi(val);
 		else if(strcasecmp("-minInd",arv)==0) args->minInd=atoi(val);
 		else if(strcasecmp("-doTest",arv)==0) args->doTest=atoi(val);
 		else if(strcasecmp("-h",arv) == 0 || strcasecmp( "--help",arv) == 0) {
@@ -130,8 +153,8 @@ argStruct *argStruct_get(int argc, char **argv){
 		++argv; 
 	} 
 
-	//TODO check return 0 vs exit 0 1 etc
 
+	//TODO check mem leaks here
 	// if (args->seed == -1){
 		// srand48(time(NULL));
 	// }else{
@@ -192,6 +215,14 @@ argStruct *argStruct_get(int argc, char **argv){
 
 	if (args->doAMOVA!=3 && args->doTest==1){
 		fprintf(stderr,"\n[ERROR]\t-doTest 1 requires -doAMOVA 3; will exit!\n");
+		free(args);
+		return 0;
+	}
+
+	//TODO exit(1) or return?
+	//maybe dont call these error
+	if (args->doDist<0){
+		fprintf(stderr,"\n[ERROR]\tMust supply -doDist <distance_method>; will exit!\n");
 		free(args);
 		return 0;
 	}

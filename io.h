@@ -5,10 +5,23 @@
 
 
 #include <stdio.h>
-FILE *getFILE(const char*fname,const char* mode);
 
 
-FILE *openFile(const char* a,const char* b);
+
+
+namespace IO {
+
+	
+	FILE *getFILE(const char*fname,const char* mode);
+	FILE *openFILE(const char* a,const char* b);
+
+	// namespace READ{
+//
+		// int Metadata();
+	// };
+//
+}
+
 
 
 /*
@@ -16,6 +29,7 @@ FILE *openFile(const char* a,const char* b);
  * @abstract argStruct - argument structure
  *
  * @field *in_fn	pointer to input file name
+ * @field *in_md	pointer to input metadata file name
  * @field *out_fp	pointer to output file prefix [angsdput]
  * @field seed		random seed
  *
@@ -30,6 +44,9 @@ FILE *openFile(const char* a,const char* b);
  * 					1 use 10 genotype likelihoods (GL)
  * 					2 use genotypes (GT)
  * 
+ * @field doDist	[0] use Sij similarity index
+ * 					[1] use Fij F statistic
+ *
  * @field doInd		do ind pairs
  * @field ind1		ind1 id
  * @field ind2		ind2 id
@@ -44,12 +61,15 @@ typedef struct{
 
 
 	char* in_fn;
+	char* in_md;
 	char* out_fp;
 
 	int doAMOVA;
 	int printMatrix;
 
 	int isSim;
+
+	int doDist;
 
 	int minInd;
 
