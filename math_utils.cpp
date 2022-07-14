@@ -83,8 +83,25 @@ namespace MATH {
 	double SD(double M[3][3]);
 
 	namespace EST{
+		//TODO do these more efficiently
+
+// double A=M[0][0];
+// double D=M[0][1];
+// double G=M[0][2];
+// double B=M[1][0];
+// double E=M[1][1];
+// double H=M[1][2];
+// double C=M[2][0];
+// double F=M[2][1];
+// double I=M[2][2];
 		double Sij(double M[3][3]);
 		double Fij(double M[3][3]);
+		double IBS0(double M[3][3]);
+		double IBS1(double M[3][3]);
+		double IBS2(double M[3][3]);
+		double R0(double M[3][3]);
+		double R1(double M[3][3]);
+		double Kin(double M[3][3]);
 	};
 
 }	
@@ -114,22 +131,62 @@ double MATH::MEAN(double M[3][3]){
 }
 
 //TODO maybe template to allow float etc?
+
+//VAR and SD is for sample (N-1)
 double MATH::VAR(double M[3][3]){
-	double var=0.0;
 	double i=0.0;
 	double N=9;
 	for(int x=0;x<3;x++){
 		for(int y=0;y<3;y++){
-			i= i + pow(M[x][y] - MATH::MEAN(M),2);
+			i= i + pow((double) M[x][y] - (double)MATH::MEAN(M),2);
 		}
 	}
-	var=i/N;
-	return var;
+	return (double) i / (double) (N-1);
 }
 
 double MATH::SD(double M[3][3]){
 	return sqrt(MATH::VAR(M));
 }
+
+/*
+ *
+ * [S_ij Similarity index]
+ *
+ * 00 01 02 10 11 12 20 21 22
+ * A  D  G  B  E  H  C  F  I
+ *
+ * A + I + ((B+D+E+F+H)/2)
+ *
+ */
+double MATH::EST::Sij(double M[3][3]){
+
+	double x=0.0;
+
+	double A=M[0][0];
+	double I=M[2][2];
+	double B=M[1][0];
+	double D=M[0][1];
+	double E=M[1][1];
+	double F=M[2][1];
+	double H=M[1][2];
+
+	x=A+I+((B+D+E+F+H)/2);
+
+	return x;
+}
+
+
+/*
+ * Reference for the estimations:
+ * https://doi.org/10.1111/mec.14954
+		double Fij(double M[3][3]);
+		double IBS0(double M[3][3]);
+		double IBS1(double M[3][3]);
+		double IBS2(double M[3][3]);
+		double R0(double M[3][3]);
+		double R1(double M[3][3]);
+		double Kin(double M[3][3]);
+ */
 
 /*
  *
@@ -158,40 +215,98 @@ double MATH::EST::Fij(double M[3][3]){
 	return x;
 }
 
-
-
-// double A=M[0][0];
-// double D=M[0][1];
-// double G=M[0][2];
-// double B=M[1][0];
-// double E=M[1][1];
-// double H=M[1][2];
-// double C=M[2][0];
-// double F=M[2][1];
-// double I=M[2][2];
-/*
- *
- * [S_ij Similarity index]
- *
- * 00 01 02 10 11 12 20 21 22
- * A  D  G  B  E  H  C  F  I
- *
- * A + I + ((B+D+E+F+H)/2)
- *
- */
-double MATH::EST::Sij(double M[3][3]){
+double MATH::EST::IBS0(double M[3][3]){
 
 	double x=0.0;
 
-	double A=M[0][0];
-	double I=M[2][2];
+	double C=M[2][0];
+	double G=M[0][2];
+
+	x=C+G;
+
+	return x;
+
+}
+
+double MATH::EST::IBS1(double M[3][3]){
+
+	double x=0.0;
+
 	double B=M[1][0];
 	double D=M[0][1];
-	double E=M[1][1];
 	double F=M[2][1];
 	double H=M[1][2];
 
-	x=A+I+((B+D+E+F+H)/2);
+ 	x=B+D+F+H;
+
+	return x;
+}
+
+double MATH::EST::IBS2(double M[3][3]){
+
+	double x=0.0;
+
+
+	double A=M[0][0];
+	double E=M[1][1];
+	double I=M[2][2];
+
+	x=A+E+I;
+
+	return x;
+}
+
+double MATH::EST::R0(double M[3][3]){
+
+	double x=0.0;
+
+	double C=M[2][0];
+	double G=M[0][2];
+	double E=M[1][1];
+
+	x=(C+G)/E;
+	// double xi=MATH::EST::IBS0(M)/E;
+// fprintf(stderr,"\nr0->\t %f %f\n",x,xi);
+
+	return x;
+}
+
+double MATH::EST::R1(double M[3][3]){
+
+	double x=0.0;
+
+	double E=M[1][1];
+	double C=M[2][0];
+	double G=M[0][2];
+	double B=M[1][0];
+	double D=M[0][1];
+	double F=M[2][1];
+	double H=M[1][2];
+
+	x=E/(C+G+B+D+F+H);
+     // double xi=E/(MATH::EST::IBS0(M) + MATH::EST::IBS1(M));
+// fprintf(stderr,"\nr1->\t %f %f\n",x,xi);
+
+	return x;
+}
+
+double MATH::EST::Kin(double M[3][3]){
+
+	double x=0.0;
+
+	double E=M[1][1];
+
+	double C=M[2][0];
+	double G=M[0][2];
+
+	double B=M[1][0];
+	double D=M[0][1];
+	double F=M[2][1];
+	double H=M[1][2];
+
+	 x=(E-((2*C)+(2*G))) /( B+D+F+H+(2*E));
+	// double xi= (E -(2*MATH::EST::IBS0(M)))/(MATH::EST::IBS1(M) + (2*E));
+// fprintf(stderr,"\nkin->\t %f %f\n",x,xi);
 
 	return x;
 }

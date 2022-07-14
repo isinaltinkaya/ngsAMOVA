@@ -27,71 +27,10 @@ using size_t=decltype(sizeof(int));
 
 const double NEG_INF = -std::numeric_limits<double>::infinity();
 
-int set_lngls3(double **lngls3, float *lgldata, argStruct *args, int nInd,char a1, char a2, int site){
-
-	int n_missing_ind=0;
-	for(int indi=0; indi<nInd; indi++){
-
-		for(int ix=0;ix<3;ix++){
-			lngls3[site][(3*indi)+ix]=NEG_INF;
-		}
-
-		//TODO only checking the first for now
-		//what is the expectation in real cases?
-		//should we skip sites where at least one is set to missing?
-		//
-		if(isnan(lgldata[(10*indi)+0])){
-			if(args->minInd==0){
-				return 1;
-			}else{
-				n_missing_ind++;
-			}
-		}else{
-			// fprintf(stderr,"\n->->gt %d %d\n",bcf_alleles_get_gtidx(bcf->d.allele[0][0],bcf->d.allele[1][0]));
-			// fprintf(stderr,"\n->->gt %d \n",bcf_alleles_get_gtidx(bcf_allele_charToInt[bcf->d.allele[0][0]],bcf_allele_charToInt[bcf->d.allele[1][0]]));
-			lngls3[site][(3*indi)+0]=(double) log2ln(lgldata[(10*indi)+bcf_alleles_get_gtidx(a1,a1)]);
-			lngls3[site][(3*indi)+1]=(double) log2ln(lgldata[(10*indi)+bcf_alleles_get_gtidx(a1,a2)]);
-			lngls3[site][(3*indi)+2]=(double) log2ln(lgldata[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
-			// fprintf(stderr,"\n->->lgl %f %f %f\n",lgldata[(10*indi)+bcf_alleles_get_gtidx(a1,a1)],lgldata[(10*indi)+bcf_alleles_get_gtidx(a1,a2)],lgldata[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
-			// fprintf(stderr,"\n->->lngls3 %f %f %f\n",lngls3[site][(3*indi)+0],lngls3[site][(3*indi)+1],lngls3[site][(3*indi)+2]);
-		}
-	}
-
-	//skip site if missing for all individuals
-	if (nInd==n_missing_ind){
-		return 1;
-	}
-
-	// //if there are only 2 individuals, skip site regardless of onlyShared val
-	if (nInd==2){
-		if(n_missing_ind>0){
-			return 1;
-		}
-	}
-
-	if(args->minInd>0){
-		//skip site if minInd is defined and #non-missing inds=<nInd
-		if( (nInd - n_missing_ind) < args->minInd ){
-			fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,nInd-n_missing_ind,site);
-			return 1;
-		}else{
-			return 0;
-		}
-	}else{
-		return 0;
-	}
-
-}
-
-
 namespace doAMOVA {
 
 	int get_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngls3, paramStruct *pars, argStruct *args, size_t nSites, int nInd);
-
 	int get_GT(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args, size_t nSites, int nInd, int** LUT_indPair_idx);
-
-
-
 
 }
 
@@ -114,12 +53,65 @@ int doAMOVA::get_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngls3, paramStruct *
 			char a1=bcf_allele_charToInt[(unsigned char) bcf->d.allele[0][0]];
 			char a2=bcf_allele_charToInt[(unsigned char) bcf->d.allele[1][0]];
 
-			if (set_lngls3(lngls3, lgl.data,args, nInd,a1,a2, nSites)==1){
-				free(lngls3[nSites]);
-				lngls3[nSites]=NULL;
-				// fprintf(stderr,"\nset_lngls3 returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
+
+			int n_missing_ind=0;
+			for(int indi=0; indi<nInd; indi++){
+
+				for(int ix=0;ix<3;ix++){
+					lngls3[nSites][(3*indi)+ix]=NEG_INF;
+				}
+
+				//TODO only checking the first for now
+				//what is the expectation in real cases?
+				//should we skip sites where at least one is set to missing?
+				//
+				if(isnan(lgl.data[(10*indi)+0])){
+					if(args->minInd==0){
+						return 1;
+					}else{
+						n_missing_ind++;
+					}
+				}else{
+					// fprintf(stderr,"\n->->gt %d %d\n",bcf_alleles_get_gtidx(bcf->d.allele[0][0],bcf->d.allele[1][0]));
+					// fprintf(stderr,"\n->->gt %d \n",bcf_alleles_get_gtidx(bcf_allele_charToInt[bcf->d.allele[0][0]],bcf_allele_charToInt[bcf->d.allele[1][0]]));
+					lngls3[nSites][(3*indi)+0]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)]);
+					lngls3[nSites][(3*indi)+1]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)]);
+					lngls3[nSites][(3*indi)+2]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
+					// fprintf(stderr,"\n->->lgl %f %f %f\n",lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)],lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)],lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
+					// fprintf(stderr,"\n->->lngls3 %f %f %f\n",lngls3[nSites][(3*indi)+0],lngls3[nSites][(3*indi)+1],lngls3[nSites][(3*indi)+2]);
+				}
+			}
+
+			//skip site if missing for all individuals
+			if (nInd==n_missing_ind){
 				return 1;
 			}
+
+			// //if there are only 2 individuals, skip site regardless of onlyShared val
+			if (nInd==2){
+				if(n_missing_ind>0){
+					return 1;
+				}
+			}
+
+			if(args->minInd>0){
+				//skip site if minInd is defined and #non-missing inds=<nInd
+				if( (nInd - n_missing_ind) < args->minInd ){
+					// fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,nInd-n_missing_ind,site);
+					return 1;
+				}else{
+					return 0;
+				}
+			}else{
+				return 0;
+			}
+
+			// if (set_lngls3(lngls3, lgl.data,args, nInd,a1,a2, nSites)==1){
+				// free(lngls3[nSites]);
+				// lngls3[nSites]=NULL;
+				// // fprintf(stderr,"\nset_lngls3 returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
+				// return 1;
+			// }
 		}else{
 			//TODO check
 			fprintf(stderr,"\n\nHERE BCF_IS_SNP==0!!!\n\n");
@@ -392,6 +384,8 @@ int main(int argc, char **argv) {
 			// lngls[nSites]=(double*)malloc(nInd*10*sizeof(double));
 			if(args->doAMOVA==1){
 				if(doAMOVA::get_GL3(hdr,bcf,lngls3,pars,args,nSites,nInd)==1){
+					free(lngls3[nSites]);
+					lngls3[nSites]=NULL;
 					continue;
 				}
 
@@ -402,6 +396,8 @@ int main(int argc, char **argv) {
 
 			}else if(args->doAMOVA==3){
 				if(doAMOVA::get_GL3(hdr,bcf,lngls3,pars,args,nSites,nInd)==1){
+					free(lngls3[nSites]);
+					lngls3[nSites]=NULL;
 					continue;
 				//skip site for gt if skipped by gl
 				}else{
@@ -518,7 +514,30 @@ int main(int argc, char **argv) {
 					double delta;
 					delta=EM_2DSFS_GL3(lngls3,SFS2D3,i1,i2,nSites,shared_nSites,args->tole,&n_em_iter);
 
-					fprintf(out_sfs_ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e\n",
+					// fprintf(out_sfs_ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e\n",
+							// hdr->samples[i1],
+							// hdr->samples[i2],
+							// shared_nSites*SFS2D3[0][0],shared_nSites*SFS2D3[0][1],shared_nSites*SFS2D3[0][2],
+							// shared_nSites*SFS2D3[1][0],shared_nSites*SFS2D3[1][1],shared_nSites*SFS2D3[1][2],
+							// shared_nSites*SFS2D3[2][0],shared_nSites*SFS2D3[2][1],shared_nSites*SFS2D3[2][2],
+							// n_em_iter,
+							// shared_nSites,
+							// delta,
+							// args->tole);
+//
+					// if(printMatrix==1){
+					// }
+					// fprintf(stderr,"\n\t->Sij: %f\n\n",MATH::EST::Sij(SFS2D3));
+					// fprintf(stderr,"\n\t->Fij: %f\n\n",MATH::EST::Fij(SFS2D3));
+					// fprintf(stderr,"\n\t->: %f %f %f %f %f %f\n\n",
+							// MATH::EST::IBS0(SFS2D3),
+							// MATH::EST::IBS1(SFS2D3),
+							// MATH::EST::IBS2(SFS2D3),
+							// MATH::EST::R0(SFS2D3),
+							// MATH::EST::R1(SFS2D3),
+							// MATH::EST::Kin(SFS2D3));
+
+					fprintf(out_sfs_ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e,%f,%f,%f,%f,%f,%f,%f,%f\n",
 							hdr->samples[i1],
 							hdr->samples[i2],
 							shared_nSites*SFS2D3[0][0],shared_nSites*SFS2D3[0][1],shared_nSites*SFS2D3[0][2],
@@ -527,12 +546,15 @@ int main(int argc, char **argv) {
 							n_em_iter,
 							shared_nSites,
 							delta,
-							args->tole);
-
-					// if(printMatrix==1){
-					// }
-					// fprintf(stderr,"\n\t->->-> %f\n\n",MATH::SUM(SFS2D3));
-					// fprintf(stderr,"\n\t->->-> %f\n\n",MATH::EST::Sij(SFS2D3));
+							args->tole,
+							MATH::EST::Sij(SFS2D3),
+							MATH::EST::Fij(SFS2D3),
+							MATH::EST::IBS0(SFS2D3),
+							MATH::EST::IBS1(SFS2D3),
+							MATH::EST::IBS2(SFS2D3),
+							MATH::EST::R0(SFS2D3),
+							MATH::EST::R1(SFS2D3),
+							MATH::EST::Kin(SFS2D3));
 
 
 

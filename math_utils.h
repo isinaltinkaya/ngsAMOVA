@@ -31,6 +31,12 @@ namespace MATH {
 	namespace EST{
 		double Sij(double M[3][3]);
 		double Fij(double M[3][3]);
+		double IBS0(double M[3][3]);
+		double IBS1(double M[3][3]);
+		double IBS2(double M[3][3]);
+		double R0(double M[3][3]);
+		double R1(double M[3][3]);
+		double Kin(double M[3][3]);
 	};
 
 }	
