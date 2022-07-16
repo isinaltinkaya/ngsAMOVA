@@ -36,91 +36,92 @@ namespace doAMOVA {
 
 int doAMOVA::get_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t nSites, int nInd){
 
-			// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
-		get_data<float> lgl;
+	// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
+	get_data<float> lgl;
 
-		lgl.n = bcf_get_format_float(hdr,bcf,"GL",&lgl.data,&lgl.size_e);
+	lgl.n = bcf_get_format_float(hdr,bcf,"GL",&lgl.data,&lgl.size_e);
 
-		if(lgl.n<0){
-			fprintf(stderr,"\n[ERROR](File reading)\tVCF tag GL does not exist; will exit!\n\n");
-			exit(1);
-		}
+	if(lgl.n<0){
+		fprintf(stderr,"\n[ERROR](File reading)\tVCF tag GL does not exist; will exit!\n\n");
+		exit(1);
+	}
 
-		lngl[nSites]=(double*)malloc(nInd*3*sizeof(double));
-
-
-		if(bcf_is_snp(bcf)){
-			char a1=bcf_allele_charToInt[(unsigned char) bcf->d.allele[0][0]];
-			char a2=bcf_allele_charToInt[(unsigned char) bcf->d.allele[1][0]];
+	lngl[nSites]=(double*)malloc(nInd*3*sizeof(double));
 
 
-			int n_missing_ind=0;
-			for(int indi=0; indi<nInd; indi++){
+	if(bcf_is_snp(bcf)){
+		char a1=bcf_allele_charToInt[(unsigned char) bcf->d.allele[0][0]];
+		char a2=bcf_allele_charToInt[(unsigned char) bcf->d.allele[1][0]];
 
-				for(int ix=0;ix<3;ix++){
-					lngl[nSites][(3*indi)+ix]=NEG_INF;
-				}
 
-				//TODO only checking the first for now
-				//what is the expectation in real cases?
-				//should we skip sites where at least one is set to missing?
-				//
-				if(isnan(lgl.data[(10*indi)+0])){
-					if(args->minInd==0){
-						return 1;
-					}else{
-						n_missing_ind++;
-					}
-				}else{
-					// fprintf(stderr,"\n->->gt %d %d\n",bcf_alleles_get_gtidx(bcf->d.allele[0][0],bcf->d.allele[1][0]));
-					// fprintf(stderr,"\n->->gt %d \n",bcf_alleles_get_gtidx(bcf_allele_charToInt[bcf->d.allele[0][0]],bcf_allele_charToInt[bcf->d.allele[1][0]]));
-					lngl[nSites][(3*indi)+0]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)]);
-					lngl[nSites][(3*indi)+1]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)]);
-					lngl[nSites][(3*indi)+2]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
-					// fprintf(stderr,"\n->->lgl %f %f %f\n",lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)],lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)],lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
-					// fprintf(stderr,"\n->->lngl %f %f %f\n",lngl[nSites][(3*indi)+0],lngl[nSites][(3*indi)+1],lngl[nSites][(3*indi)+2]);
-				}
+		int n_missing_ind=0;
+		for(int indi=0; indi<nInd; indi++){
+
+			for(int ix=0;ix<3;ix++){
+				lngl[nSites][(3*indi)+ix]=NEG_INF;
 			}
 
-			//skip site if missing for all individuals
-			if (nInd==n_missing_ind){
-				return 1;
-			}
-
-			// //if there are only 2 individuals, skip site regardless of onlyShared val
-			if (nInd==2){
-				if(n_missing_ind>0){
-					return 1;
-				}
-			}
-
-			if(args->minInd>0){
-				//skip site if minInd is defined and #non-missing inds=<nInd
-				if( (nInd - n_missing_ind) < args->minInd ){
-					// fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,nInd-n_missing_ind,site);
+			//TODO only checking the first for now
+			//what is the expectation in real cases?
+			//should we skip sites where at least one is set to missing?
+			//
+			if(isnan(lgl.data[(10*indi)+0])){
+				if(args->minInd==0){
 					return 1;
 				}else{
-					return 0;
+					n_missing_ind++;
 				}
 			}else{
-				return 0;
+				// fprintf(stderr,"\n->->gt %d %d\n",bcf_alleles_get_gtidx(bcf->d.allele[0][0],bcf->d.allele[1][0]));
+				// fprintf(stderr,"\n->->gt %d \n",bcf_alleles_get_gtidx(bcf_allele_charToInt[bcf->d.allele[0][0]],bcf_allele_charToInt[bcf->d.allele[1][0]]));
+				lngl[nSites][(3*indi)+0]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)]);
+				lngl[nSites][(3*indi)+1]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)]);
+				lngl[nSites][(3*indi)+2]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
+				// fprintf(stderr,"\n->->lgl %f %f %f\n",lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)],lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)],lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
+				// fprintf(stderr,"\n->->lngl %f %f %f\n",lngl[nSites][(3*indi)+0],lngl[nSites][(3*indi)+1],lngl[nSites][(3*indi)+2]);
 			}
+		}
 
-			// if (set_lngl(lngl, lgl.data,args, nInd,a1,a2, nSites)==1){
-				// free(lngl[nSites]);
-				// lngl[nSites]=NULL;
-				// // fprintf(stderr,"\nset_lngl returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
-				// return 1;
-			// }
-		}else{
-			//TODO check
-			fprintf(stderr,"\n\nHERE BCF_IS_SNP==0!!!\n\n");
-			free(lngl[nSites]);
-			lngl[nSites]=NULL;
+		//skip site if missing for all individuals
+		if (nInd==n_missing_ind){
 			return 1;
 		}
 
-		return 0;
+		// //if there are only 2 individuals, skip site regardless of onlyShared val
+		if (nInd==2){
+			if(n_missing_ind>0){
+				return 1;
+			}
+		}
+
+		if(args->minInd>0){
+			//skip site if minInd is defined and #non-missing inds=<nInd
+			if( (nInd - n_missing_ind) < args->minInd ){
+				// fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,nInd-n_missing_ind,site);
+				return 1;
+			}else{
+				return 0;
+			}
+		}else{
+			return 0;
+		}
+
+		// if (set_lngl(lngl, lgl.data,args, nInd,a1,a2, nSites)==1){
+		// free(lngl[nSites]);
+		// lngl[nSites]=NULL;
+		// // fprintf(stderr,"\nset_lngl returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
+		// return 1;
+		// }
+	}else{
+		//TODO check
+		fprintf(stderr,"\n\nHERE BCF_IS_SNP==0!!!\n\n");
+		free(lngl[nSites]);
+		lngl[nSites]=NULL;
+		return 1;
+	}
+
+	lgl.destroy();
+	return 0;
 }
 
 
@@ -166,7 +167,7 @@ int doAMOVA::get_GT(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, a
 		}
 	}
 
-
+	gt.destroy();
 	return 0;
 
 }
@@ -232,31 +233,87 @@ int main(int argc, char **argv) {
 		}
 
 
-		const char *in_md=args->in_md;
+		char *in_mtd_fn=args->in_mtd_fn;
 
 
-		FILE *in_meta_ff=IO::getFILE(in_md,"r");
+		FILE *in_mtd_fn_ff=IO::getFILE(in_mtd_fn,"r");
 
 
+		METADATA Metadata;
+		METADATA *MTD;
+		MTD=&Metadata;
+
+		
+
+		//TODO map is probably better due to sorting issues. we cannot have all strata sorted 
 		char mt_buf[1024];
-		while(fgets(mt_buf,1024,in_meta_ff)){
+		while(fgets(mt_buf,1024,in_mtd_fn_ff)){
 
 			char *tok=strtok(mt_buf,"\t \n");
 			char *ind_id=tok;
-			fprintf(stderr,"->->->tok %s\n",tok);
-			fprintf(stderr,"->->->ind_id: %s\n",ind_id);
+			// fprintf(stderr,"->->->tok %s\n",tok);
+			// fprintf(stderr,"->->->ind_id: %s\n",ind_id);
 
 			tok=strtok(NULL,"\t \n");	
 			char *group_id=tok;
-			fprintf(stderr,"->->->tok %s\n",tok);
-			fprintf(stderr,"->->->group_id: %s\n",group_id);
-fprintf(stderr,"\n\nHERE!!!\n\n");
+			// fprintf(stderr,"->->->tok %s\n",tok);
+			// fprintf(stderr,"->->->group_id: %s\n",group_id);
 
+				//increase the size of Strata
+			if(MTD->nStrata > MTD->buf_strata){
+				fprintf(stderr,"->->->increase the size of Strata S[4]!!\n");
+			}
 
-			// METADATA[group_id][ind_id];
+			//if not the first loop
+			if (MTD->S[MTD->nStrata].id!=NULL){
+			// fprintf(stderr,"->->->nStrata: %d\n",MTD->nStrata);
+			// fprintf(stderr,"MYSTRATA->->->strata id: %s\n",MTD->S[MTD->nStrata].id);
+			// fprintf(stderr,"MYGROUP->->->group_id: %s\n",group_id);
+			// fprintf(stderr,"CMP: %d\n",strcmp(MTD->S[MTD->nStrata].id,group_id));
+			
+
+				//group id changed
+				if(strcmp(MTD->S[MTD->nStrata].id,group_id)!=0){
+					MTD->nStrata++;
+					MTD->S[MTD->nStrata].id=strdup(group_id);
+				}
+
+				if(MTD->S[MTD->nStrata].nInds > MTD->S[MTD->nStrata].buf_inds){
+					fprintf(stderr,"->->->increase the size of inds[10]!!\n");
+				}
+
+				MTD->S[MTD->nStrata].inds[MTD->S[MTD->nStrata].nInds]=strdup(ind_id);
+				MTD->S[MTD->nStrata].nInds++;
+			}else{
+			//if first loop
+				MTD->S[MTD->nStrata].id=strdup(group_id);
+				MTD->S[MTD->nStrata].inds[MTD->S[MTD->nStrata].nInds]=strdup(ind_id);
+				MTD->S[MTD->nStrata].nInds++;
+			}
+
+			//TODO then plug in all pairs associated with ind if ind==indid in header in loop
+			// fprintf(stderr,"->->->nInds: %d\n",MTD->S[MTD->nStrata].nInds);
+			// fprintf(stderr,"->->->strata id: %s\n",MTD->S[MTD->nStrata].id);
+			// fprintf(stderr,"->->->nStrata: %d\n",MTD->nStrata);
+			// fprintf(stderr,"\n");
+			// fprintf(stderr,"----");
+			// fprintf(stderr,"\n");
+
 		}
 
 
+
+		for (int sti=0; sti<MTD->nStrata+1; sti++){
+			fprintf(stderr,"\n-> Strata %s contains %d individuals.",MTD->S[sti].id,MTD->S[sti].nInds);
+			fprintf(stderr,"\n-> Individual names are:\n\t");
+			for(int ii=0; ii<MTD->S[sti].nInds;ii++){
+				fprintf(stderr,"%s",MTD->S[sti].inds[ii]);
+				if (ii!=MTD->S[sti].nInds-1){
+					fprintf(stderr,"\t");
+				}
+			}
+			fprintf(stderr,"\n");
+		}
 
 
 		nInd=bcf_hdr_nsamples(hdr);
@@ -366,7 +423,7 @@ fprintf(stderr,"\n\nHERE!!!\n\n");
 		for(int i=0;i<n_ind_cmb;i++){
 			M_PWD[i]=0.0;
 		}
-		
+
 
 
 
@@ -395,7 +452,7 @@ fprintf(stderr,"\n\nHERE!!!\n\n");
 				buf_size=buf_size*2;
 
 				// lngls=(double**) realloc(lngls, buf_size * sizeof(*lngls) );
-				
+
 				if(args->doAMOVA==1 || args->doAMOVA==3){
 					lngl=(double**) realloc(lngl, buf_size * sizeof(*lngl) );
 				}
@@ -443,7 +500,7 @@ fprintf(stderr,"\n\nHERE!!!\n\n");
 					free(lngl[nSites]);
 					lngl[nSites]=NULL;
 					continue;
-				//skip site for gt if skipped by gl
+					//skip site for gt if skipped by gl
 				}else{
 					if(doAMOVA::get_GT(hdr,bcf,SFS_GT3,pars,args,nSites,nInd,LUT_indPair_idx)==1){
 						continue;
@@ -454,24 +511,24 @@ fprintf(stderr,"\n\nHERE!!!\n\n");
 				// int GLRET=doAMOVA::get_GL3(hdr,bcf,lngl,pars,args,nSites,nInd);
 				// int GTRET=doAMOVA::get_GT(hdr,bcf,SFS_GT3,pars,args,nSites,nInd,LUT_indPair_idx);
 				// if (GLRET+GTRET>0){
-					// continue;
+				// continue;
 				// }
 			}
 
 			nSites++;
 
-				//TODO bcf_hdr_set_samples efficient sample parsing
-				// if (args->doInd==1){
+			//TODO bcf_hdr_set_samples efficient sample parsing
+			if (args->doInd==1){
 				// int i1=args->ind1;
 				// int i2=args->ind2;
 				// get_data<int32_t> gt;
 				// gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
-				// }
+			}
 
-				// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
-				// fprintf(stderr,"%d\n\n",nSites);
-				// fprintf(stderr,"\r\t-> Printing at site %lu",nSites);
-				// fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
+			// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
+			// fprintf(stderr,"%d\n\n",nSites);
+			// fprintf(stderr,"\r\t-> Printing at site %lu",nSites);
+			// fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
 
 		}
 		fprintf(stderr,"\n\t-> Finished reading sites\n");
@@ -558,17 +615,17 @@ fprintf(stderr,"\n\nHERE!!!\n\n");
 					delta=EM_2DSFS_GL3(lngl,SFS_GLE3,i1,i2,nSites,shared_nSites,args->tole,&n_em_iter);
 
 					// fprintf(out_sfs_ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e\n",
-							// hdr->samples[i1],
-							// hdr->samples[i2],
-							// shared_nSites*SFS_GLE3[0][0],shared_nSites*SFS_GLE3[0][1],shared_nSites*SFS_GLE3[0][2],
-							// shared_nSites*SFS_GLE3[1][0],shared_nSites*SFS_GLE3[1][1],shared_nSites*SFS_GLE3[1][2],
-							// shared_nSites*SFS_GLE3[2][0],shared_nSites*SFS_GLE3[2][1],shared_nSites*SFS_GLE3[2][2],
-							// n_em_iter,
-							// shared_nSites,
-							// delta,
-							// args->tole);
-					
-					
+					// hdr->samples[i1],
+					// hdr->samples[i2],
+					// shared_nSites*SFS_GLE3[0][0],shared_nSites*SFS_GLE3[0][1],shared_nSites*SFS_GLE3[0][2],
+					// shared_nSites*SFS_GLE3[1][0],shared_nSites*SFS_GLE3[1][1],shared_nSites*SFS_GLE3[1][2],
+					// shared_nSites*SFS_GLE3[2][0],shared_nSites*SFS_GLE3[2][1],shared_nSites*SFS_GLE3[2][2],
+					// n_em_iter,
+					// shared_nSites,
+					// delta,
+					// args->tole);
+
+
 					// get_distance_matrix(SFS_GLE3);
 
 
@@ -577,23 +634,23 @@ fprintf(stderr,"\n\nHERE!!!\n\n");
 						M_PWD[pair_idx]=MATH::EST::Sij(SFS_GLE3);
 					}
 
-					
 
 
-						// fprintf(stdout,"gle,Sij,%s,%s,%f\n",
-								// hdr->samples[i1],
-								// hdr->samples[i2],
-								// M_PWD[pair_idx]);
-					
+
+					// fprintf(stdout,"gle,Sij,%s,%s,%f\n",
+					// hdr->samples[i1],
+					// hdr->samples[i2],
+					// M_PWD[pair_idx]);
+
 					// fprintf(stderr,"\n\t->Sij: %f\n\n",MATH::EST::Sij(SFS_GLE3));
 					// fprintf(stderr,"\n\t->Fij: %f\n\n",MATH::EST::Fij(SFS_GLE3));
 					// fprintf(stderr,"\n\t->: %f %f %f %f %f %f\n\n",
-							// MATH::EST::IBS0(SFS_GLE3),
-							// MATH::EST::IBS1(SFS_GLE3),
-							// MATH::EST::IBS2(SFS_GLE3),
-							// MATH::EST::R0(SFS_GLE3),
-							// MATH::EST::R1(SFS_GLE3),
-							// MATH::EST::Kin(SFS_GLE3));
+					// MATH::EST::IBS0(SFS_GLE3),
+					// MATH::EST::IBS1(SFS_GLE3),
+					// MATH::EST::IBS2(SFS_GLE3),
+					// MATH::EST::R0(SFS_GLE3),
+					// MATH::EST::R1(SFS_GLE3),
+					// MATH::EST::Kin(SFS_GLE3));
 
 					fprintf(out_sfs_ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e,%f,%f,%f,%f,%f,%f,%f,%f\n",
 							hdr->samples[i1],
@@ -619,10 +676,10 @@ fprintf(stderr,"\n\nHERE!!!\n\n");
 
 					if(args->doTest==1){
 
-							test_em(lngl,SFS_GLE3,SFS_GT3,i1,i2,
-									hdr->samples[i1],
-									hdr->samples[i2],
-									pair_idx,nSites,shared_nSites,out_emtest_ff);
+						test_em(lngl,SFS_GLE3,SFS_GT3,i1,i2,
+								hdr->samples[i1],
+								hdr->samples[i2],
+								pair_idx,nSites,shared_nSites,out_emtest_ff);
 					}
 
 				}if(args->doAMOVA==2 || args->doAMOVA==3){
@@ -650,25 +707,24 @@ fprintf(stderr,"\n\nHERE!!!\n\n");
 		}
 
 
-		//print pair IDs
-		for(int i1=0;i1<nInd-1;i1++){
-			for(int i2=i1+1;i2<nInd;i2++){
-					fprintf(out_m_ff,"%s-%s",
-							hdr->samples[i1],
-							hdr->samples[i2]);
-				// if(i1!=0 && i1!=nInd-2 && i2!=nInd-1){
-				if(i1!=nInd-2 && i2!=nInd-1){
-					fprintf(out_m_ff,",");
-				}
-			}
-		}
-		fprintf(out_m_ff,"\n");
-	
-		//TODO use map maybe?
 		if(args->printMatrix==1){
+			// //print pair IDs
+			if(0){
+				for(int i1=0;i1<nInd-1;i1++){
+					for(int i2=i1+1;i2<nInd;i2++){
+						fprintf(out_m_ff,"%s-%s",
+								hdr->samples[i1],
+								hdr->samples[i2]);
+						if(i1!=nInd-2 && i2!=nInd-1){
+							fprintf(out_m_ff,",");
+						}
+					}
+				}
+				fprintf(out_m_ff,"\n");
+			}
+
 			for (int pair=0;pair<n_ind_cmb;pair++){
 				fprintf(out_m_ff,"%f",M_PWD[pair]);
-				// if(pair!=0 && pair!=n_ind_cmb-1){
 				if(pair!=n_ind_cmb-1){
 					fprintf(out_m_ff,",");
 				}
@@ -745,6 +801,11 @@ fprintf(stderr,"\n\nHERE!!!\n\n");
 		if(out_m_ff!=NULL){
 			fclose(out_m_ff);
 		}
+
+
+		//TODO
+		//clean mtbuf METADATA Strata etc
+		//after finalizing metadata reading
 
 	}else{
 		//if args==NULL

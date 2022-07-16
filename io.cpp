@@ -81,7 +81,7 @@ argStruct *argStruct_init(){
 	argStruct *args=(argStruct*)calloc(1,sizeof(argStruct));
 
 	args->in_fn=NULL;
-	args->in_md=NULL;
+	args->in_mtd_fn=NULL;
 	args->out_fp=NULL;
 
 	args->seed=-1;
@@ -128,7 +128,7 @@ argStruct *argStruct_get(int argc, char **argv){
 		char *val=*(++argv);
 
 		if(strcasecmp("-in",arv)==0) args->in_fn=strdup(val);
-		else if(strcasecmp("-md",arv)==0) args->in_md=strdup(val);
+		else if(strcasecmp("-m",arv)==0) args->in_mtd_fn=strdup(val);
 		else if(strcasecmp("-out",arv)==0) args->out_fp=strdup(val);
 		else if(strcasecmp("-seed",arv)==0) args->seed=atoi(val);
 		else if(strcasecmp("-doAMOVA",arv)==0) args->doAMOVA=atoi(val);
@@ -185,10 +185,18 @@ argStruct *argStruct_get(int argc, char **argv){
 	}
 
 
+
+	if(args->in_mtd_fn==NULL){
+		fprintf(stderr,"\n[ERROR]\tMust supply -m <metadata_file>; will exit!\n");
+		free(args);
+		return 0;
+	}
+
 	if(args->in_fn==NULL){
 		fprintf(stderr,"\n[ERROR]\tMust supply -in <input_file>; will exit!\n");
 		free(args);
 		return 0;
+	}
 		//TODO if filename ''
 	// }else{
 		// fprintf(stderr,"len:%d",strcmp(args->in_fn,""));
@@ -200,7 +208,6 @@ argStruct *argStruct_get(int argc, char **argv){
 				// exit(1);
 			// }
 		// }
-	}
 
 	if (args->isSim==0){
 		fprintf(stderr,"Must use -isSim 1 for now\n");

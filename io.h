@@ -29,7 +29,7 @@ namespace IO {
  * @abstract argStruct - argument structure
  *
  * @field *in_fn	pointer to input file name
- * @field *in_md	pointer to input metadata file name
+ * @field *in_mtd_fn	pointer to input metadata file name
  * @field *out_fp	pointer to output file prefix [angsdput]
  * @field seed		random seed
  *
@@ -61,7 +61,7 @@ typedef struct{
 
 
 	char* in_fn;
-	char* in_md;
+	char* in_mtd_fn;
 	char* out_fp;
 
 	int doAMOVA;

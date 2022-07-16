@@ -30,10 +30,6 @@ template<typename T> struct get_data{
 		return data == NULL;
 	}
 
-	// int do_gt_sfs(){
-		// fprintf(stderr,"\n\nHERE!!!\n\n");
-	// };
-
 	void destroy(){
 		free(data);
 		data=NULL;
@@ -43,4 +39,21 @@ template<typename T> struct get_data{
 		free(data);
 	}
 
+};
+
+struct Strata{
+	int nPairs=0;
+	char *pairs=NULL;
+
+	int nInds=0;
+	char *inds[10];
+	int buf_inds=10;
+	
+	char *id=NULL;
+};
+
+struct METADATA{
+	Strata S[4];
+	int nStrata=0;
+	int buf_strata=4;
 };
