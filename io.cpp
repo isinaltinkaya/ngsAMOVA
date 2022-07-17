@@ -21,6 +21,10 @@ namespace IO {
 		// int METADATA();
 	};
 
+	namespace inspectFILE{
+		int count_nColumns(char* line, const char* delims);
+	};
+
 }
 
 FILE *IO::getFILE(const char*fname,const char* mode){
@@ -41,6 +45,22 @@ FILE *IO::openFILE(const char* a,const char* b){
 	FILE *fp = getFILE(c,"w");
 	free(c);
 	return fp;
+}
+
+
+int IO::inspectFILE::count_nColumns(char* line, const char* delims){
+
+	char* str=strdup(line);
+
+	char *p=NULL;
+	int i=0;
+	p=strtok(str, delims);
+	while(p!=NULL){
+		i++;
+		p=strtok(NULL,delims);
+	}
+	return i;
+
 }
 
 //
@@ -83,6 +103,8 @@ argStruct *argStruct_init(){
 	args->in_fn=NULL;
 	args->in_mtd_fn=NULL;
 	args->out_fp=NULL;
+
+	args->whichCol=-1;
 
 	args->seed=-1;
 	args->doAMOVA=0;
@@ -130,6 +152,7 @@ argStruct *argStruct_get(int argc, char **argv){
 		if(strcasecmp("-in",arv)==0) args->in_fn=strdup(val);
 		else if(strcasecmp("-m",arv)==0) args->in_mtd_fn=strdup(val);
 		else if(strcasecmp("-out",arv)==0) args->out_fp=strdup(val);
+		else if(strcasecmp("-mCol",arv)==0) args->whichCol=atoi(val);
 		else if(strcasecmp("-seed",arv)==0) args->seed=atoi(val);
 		else if(strcasecmp("-doAMOVA",arv)==0) args->doAMOVA=atoi(val);
 		else if(strcasecmp("-doInd",arv)==0) args->doInd=atoi(val);
@@ -225,6 +248,20 @@ argStruct *argStruct_get(int argc, char **argv){
 		free(args);
 		return 0;
 	}
+
+//TODO formatthese text [INFO] [ERROR] etc
+
+	if (args->whichCol==1){
+		fprintf(stderr,"\n[ERROR](-mCol 1)\tColumn index 1 was chosen. First column should contain individual IDs instead; will exit!\n");
+		free(args);
+		return 0;
+	}else if (args->whichCol>1){
+		fprintf(stderr,"\n\t-> -mCol is set to %d, will use column %d in metadata file %s as stratification key.\n",args->whichCol, args->whichCol, args->in_mtd_fn);
+	}else if (args->whichCol==-1){
+		args->whichCol=2;
+		fprintf(stderr,"\n\t-> -mCol is not defined, will use column %d in metadata file %s as stratification key.\n",args->whichCol, args->in_mtd_fn);
+	}
+	
 
 	//TODO exit(1) or return?
 	//maybe dont call these error

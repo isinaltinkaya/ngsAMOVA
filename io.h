@@ -15,6 +15,11 @@ namespace IO {
 	FILE *getFILE(const char*fname,const char* mode);
 	FILE *openFILE(const char* a,const char* b);
 
+
+	namespace inspectFILE{
+		int count_nColumns(char* line, const char* delims);
+	};
+
 	// namespace READ{
 //
 		// int Metadata();
@@ -40,6 +45,10 @@ namespace IO {
  * @field minInd	minimum number of individuals needed
  * 					for site to be included in analyses
  *
+ * @field whichCol	[-1] defines the index (1-based) of the
+ * 					column in metadata file 'in_mtd_fn'
+ * 					to use to define stratification levels
+ *
  * @field doAMOVA	[0]
  * 					1 use 10 genotype likelihoods (GL)
  * 					2 use genotypes (GT)
@@ -64,6 +73,7 @@ typedef struct{
 	char* in_mtd_fn;
 	char* out_fp;
 
+	int whichCol;
 	int doAMOVA;
 	int printMatrix;
 

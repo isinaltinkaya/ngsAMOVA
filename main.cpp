@@ -22,6 +22,7 @@
 #include "io.h"
 #include "shared.h"
 
+#include <unordered_map>
 
 using size_t=decltype(sizeof(int));
 
@@ -172,7 +173,119 @@ int doAMOVA::get_GT(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, a
 
 }
 
-int read_metadata(){
+// int read_metadata(METADATA* MTD, FILE* in_mtd_ff, int whichCol, const char* delims){
+int read_metadata(METADATA* MTD, FILE* in_mtd_ff, int whichCol, const char* delims, std::unordered_map<const char*, Strata* > & uMap){
+
+
+	fprintf(stderr,"\n");
+	fprintf(stderr,"--------------------------------------------------");
+	fprintf(stderr,"\n");
+
+	// int whichCol=args->whichCol;
+	int nCols=0;
+	int checkCol=1;
+
+	//TODO map is probably better due to sorting issues. we cannot have all strata sorted 
+	char mt_buf[1024];
+	while(fgets(mt_buf,1024,in_mtd_ff)){
+
+
+		if(checkCol==1){
+			nCols= IO::inspectFILE::count_nColumns(mt_buf,delims);
+			fprintf(stderr,"->\tNumber of columns in input metadata file: %d\n",nCols);
+			checkCol=0;
+
+			if(whichCol!=-1 && whichCol > nCols){
+				fprintf(stderr,"\n[ERROR]\tColumn %d was chosen, but input metadata file only contains %d columns; will exit!\n\n",whichCol,nCols);
+				exit(1);
+			}
+
+		}
+
+		//TODO strtok_r? do we need thread safety here?
+
+		char *tok=strtok(mt_buf,delims);
+		char *ind_id=tok;
+		// fprintf(stderr,"->->->tok %s\n",tok);
+		// fprintf(stderr,"->->->ind_id: %s\n",ind_id);
+		//
+		// char *group_id=NULL;
+		char *group_id=tok;
+
+		for (int coli=0; coli<whichCol-1; coli++){
+			tok=strtok(NULL,"\t \n");
+			group_id=tok;
+		}
+
+		// uMap[group_id]=&MTD->S[MTD->nStrata];
+
+		// fprintf(stderr,"->->->tok %s\n",tok);
+		// fprintf(stderr,"->->->group_id: %s\n",group_id);
+
+		//increase the size of Strata
+		if(MTD->nStrata > MTD->buf_strata){
+			fprintf(stderr,"->->->increase the size of Strata S[4]!!\n");
+		}
+
+		//if not the first loop
+		if (MTD->S[MTD->nStrata].id!=NULL){
+		// fprintf(stderr,"->->->nStrata: %d\n",MTD->nStrata);
+		// fprintf(stderr,"MYSTRATA->->->strata id: %s\n",MTD->S[MTD->nStrata].id);
+		// fprintf(stderr,"MYGROUP->->->group_id: %s\n",group_id);
+		// fprintf(stderr,"CMP: %d\n",strcmp(MTD->S[MTD->nStrata].id,group_id));
+		
+
+			//group id changed
+			if(strcmp(MTD->S[MTD->nStrata].id,group_id)!=0){
+				MTD->nStrata++;
+				MTD->S[MTD->nStrata].id=strdup(group_id);
+			}
+
+			if(MTD->S[MTD->nStrata].nInds > MTD->S[MTD->nStrata].buf_inds){
+				fprintf(stderr,"->->->increase the size of inds[10]!!\n");
+			}
+
+			MTD->S[MTD->nStrata].inds[MTD->S[MTD->nStrata].nInds]=strdup(ind_id);
+			MTD->S[MTD->nStrata].nInds++;
+
+		}else{
+		//if first loop
+			// uMap[group_id]=&MTD->S[MTD->nStrata];
+
+			MTD->S[MTD->nStrata].id=strdup(group_id);
+			MTD->S[MTD->nStrata].inds[MTD->S[MTD->nStrata].nInds]=strdup(ind_id);
+			MTD->S[MTD->nStrata].nInds++;
+
+		}
+
+		//TODO then plug in all pairs associated with ind if ind==indid in header in loop
+		// fprintf(stderr,"->->->nInds: %d\n",MTD->S[MTD->nStrata].nInds);
+		// fprintf(stderr,"->->->strata id: %s\n",MTD->S[MTD->nStrata].id);
+		// fprintf(stderr,"->->->nStrata: %d\n",MTD->nStrata);
+		// fprintf(stderr,"\n");
+		// fprintf(stderr,"----");
+		// fprintf(stderr,"\n");
+
+	}
+
+
+	for (int sti=0; sti<MTD->nStrata+1; sti++){
+		fprintf(stderr,"\n-> Strata %s contains %d individuals.",MTD->S[sti].id,MTD->S[sti].nInds);
+		fprintf(stderr,"\n-> Individual names are:\n\t");
+		for(int ii=0; ii<MTD->S[sti].nInds;ii++){
+			fprintf(stderr,"%s",MTD->S[sti].inds[ii]);
+			if (ii!=MTD->S[sti].nInds-1){
+				fprintf(stderr,"\t");
+			}
+		}
+		fprintf(stderr,"\n");
+	}
+
+	fprintf(stderr,"\n");
+	fprintf(stderr,"--------------------------------------------------");
+	fprintf(stderr,"\n");
+
+
 	return 0;
 }
 
@@ -233,93 +346,32 @@ int main(int argc, char **argv) {
 		}
 
 
+		//// BEGIN Read metadata
+		
 		char *in_mtd_fn=args->in_mtd_fn;
+		FILE *in_mtd_ff=IO::getFILE(in_mtd_fn,"r");
 
-
-		FILE *in_mtd_fn_ff=IO::getFILE(in_mtd_fn,"r");
-
+		//sep can be \t \whitespace or comma
+		const char* delims="\t ,\n";
 
 		METADATA Metadata;
 		METADATA *MTD;
 		MTD=&Metadata;
 
-		
-
-		//TODO map is probably better due to sorting issues. we cannot have all strata sorted 
-		char mt_buf[1024];
-		while(fgets(mt_buf,1024,in_mtd_fn_ff)){
-
-			char *tok=strtok(mt_buf,"\t \n");
-			char *ind_id=tok;
-			// fprintf(stderr,"->->->tok %s\n",tok);
-			// fprintf(stderr,"->->->ind_id: %s\n",ind_id);
-
-			tok=strtok(NULL,"\t \n");	
-			char *group_id=tok;
-			// fprintf(stderr,"->->->tok %s\n",tok);
-			// fprintf(stderr,"->->->group_id: %s\n",group_id);
-
-				//increase the size of Strata
-			if(MTD->nStrata > MTD->buf_strata){
-				fprintf(stderr,"->->->increase the size of Strata S[4]!!\n");
-			}
-
-			//if not the first loop
-			if (MTD->S[MTD->nStrata].id!=NULL){
-			// fprintf(stderr,"->->->nStrata: %d\n",MTD->nStrata);
-			// fprintf(stderr,"MYSTRATA->->->strata id: %s\n",MTD->S[MTD->nStrata].id);
-			// fprintf(stderr,"MYGROUP->->->group_id: %s\n",group_id);
-			// fprintf(stderr,"CMP: %d\n",strcmp(MTD->S[MTD->nStrata].id,group_id));
+		std::unordered_map<const char*, Strata*> uMap;
 			
-
-				//group id changed
-				if(strcmp(MTD->S[MTD->nStrata].id,group_id)!=0){
-					MTD->nStrata++;
-					MTD->S[MTD->nStrata].id=strdup(group_id);
-				}
-
-				if(MTD->S[MTD->nStrata].nInds > MTD->S[MTD->nStrata].buf_inds){
-					fprintf(stderr,"->->->increase the size of inds[10]!!\n");
-				}
-
-				MTD->S[MTD->nStrata].inds[MTD->S[MTD->nStrata].nInds]=strdup(ind_id);
-				MTD->S[MTD->nStrata].nInds++;
-			}else{
-			//if first loop
-				MTD->S[MTD->nStrata].id=strdup(group_id);
-				MTD->S[MTD->nStrata].inds[MTD->S[MTD->nStrata].nInds]=strdup(ind_id);
-				MTD->S[MTD->nStrata].nInds++;
-			}
-
-			//TODO then plug in all pairs associated with ind if ind==indid in header in loop
-			// fprintf(stderr,"->->->nInds: %d\n",MTD->S[MTD->nStrata].nInds);
-			// fprintf(stderr,"->->->strata id: %s\n",MTD->S[MTD->nStrata].id);
-			// fprintf(stderr,"->->->nStrata: %d\n",MTD->nStrata);
-			// fprintf(stderr,"\n");
-			// fprintf(stderr,"----");
-			// fprintf(stderr,"\n");
-
+		if(read_metadata(MTD, in_mtd_ff, args->whichCol, delims, uMap)!=0){
+fprintf(stderr,"\n\nHERE!!!\n\n");
+			exit(1);
 		}
-
-
-
-		for (int sti=0; sti<MTD->nStrata+1; sti++){
-			fprintf(stderr,"\n-> Strata %s contains %d individuals.",MTD->S[sti].id,MTD->S[sti].nInds);
-			fprintf(stderr,"\n-> Individual names are:\n\t");
-			for(int ii=0; ii<MTD->S[sti].nInds;ii++){
-				fprintf(stderr,"%s",MTD->S[sti].inds[ii]);
-				if (ii!=MTD->S[sti].nInds-1){
-					fprintf(stderr,"\t");
-				}
-			}
-			fprintf(stderr,"\n");
-		}
+		//// END Read metadata
 
 
 		nInd=bcf_hdr_nsamples(hdr);
 
 		char *DATETIME=pars->DATETIME;
 		DATETIME=get_time();
+
 
 		fprintf(stderr,"\n%s",DATETIME);
 		fprintf(stderr,"\nngsAMOVA -doAMOVA %d -doTest %d -in %s -out %s -tole %e -isSim %d -minInd %d -printMatrix %d\n",args->doAMOVA,args->doTest,args->in_fn,args->out_fp,args->tole,args->isSim,args->minInd,args->printMatrix);

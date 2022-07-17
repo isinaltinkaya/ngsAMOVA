@@ -41,7 +41,7 @@ template<typename T> struct get_data{
 
 };
 
-struct Strata{
+typedef struct Strata{
 	int nPairs=0;
 	char *pairs=NULL;
 
@@ -50,10 +50,12 @@ struct Strata{
 	int buf_inds=10;
 	
 	char *id=NULL;
-};
+}Strata;
 
-struct METADATA{
+typedef struct METADATA{
 	Strata S[4];
 	int nStrata=0;
 	int buf_strata=4;
-};
+}METADATA;
+
+
