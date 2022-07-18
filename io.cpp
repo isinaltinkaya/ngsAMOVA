@@ -208,13 +208,6 @@ argStruct *argStruct_get(int argc, char **argv){
 	}
 
 
-
-	if(args->in_mtd_fn==NULL){
-		fprintf(stderr,"\n[ERROR]\tMust supply -m <metadata_file>; will exit!\n");
-		free(args);
-		return 0;
-	}
-
 	if(args->in_fn==NULL){
 		fprintf(stderr,"\n[ERROR]\tMust supply -in <input_file>; will exit!\n");
 		free(args);
@@ -251,26 +244,39 @@ argStruct *argStruct_get(int argc, char **argv){
 
 //TODO formatthese text [INFO] [ERROR] etc
 
-	if (args->whichCol==1){
-		fprintf(stderr,"\n[ERROR](-mCol 1)\tColumn index 1 was chosen. First column should contain individual IDs instead; will exit!\n");
-		free(args);
-		return 0;
-	}else if (args->whichCol>1){
-		fprintf(stderr,"\n\t-> -mCol is set to %d, will use column %d in metadata file %s as stratification key.\n",args->whichCol, args->whichCol, args->in_mtd_fn);
-	}else if (args->whichCol==-1){
-		args->whichCol=2;
-		fprintf(stderr,"\n\t-> -mCol is not defined, will use column %d in metadata file %s as stratification key.\n",args->whichCol, args->in_mtd_fn);
+
+	if(args->in_mtd_fn==NULL){
+		if (args->whichCol!=-1){
+			fprintf(stderr,"\n[ERROR]\t-whichCol <col_index> requires using -m <metadata_file>; will exit!\n");
+			free(args);
+			return 0;
+		}
+		// fprintf(stderr,"\n[ERROR]\tMust supply -m <metadata_file>; will exit!\n");
+		// free(args);
+		// return 0;
+		
+	}else{
+		if (args->whichCol==1){
+			fprintf(stderr,"\n[ERROR](-mCol 1)\tColumn index 1 was chosen. First column should contain individual IDs instead; will exit!\n");
+			free(args);
+			return 0;
+		}else if (args->whichCol>1){
+			fprintf(stderr,"\n\t-> -mCol is set to %d, will use column %d in metadata file %s as stratification key.\n",args->whichCol, args->whichCol, args->in_mtd_fn);
+		}else if (args->whichCol==-1){
+			args->whichCol=2;
+			fprintf(stderr,"\n\t-> -mCol is not defined, will use column %d in metadata file %s as stratification key.\n",args->whichCol, args->in_mtd_fn);
+		}
 	}
 	
 
 	//TODO exit(1) or return?
 	//maybe dont call these error
-	if (args->doDist<0){
-		fprintf(stderr,"\n[ERROR]\tMust supply -doDist <distance_method>; will exit!\n");
-		free(args);
-		return 0;
-	}
-
+	// if (args->doDist<0){
+		// fprintf(stderr,"\n[ERROR]\tMust supply -doDist <distance_method>; will exit!\n");
+		// free(args);
+		// return 0;
+	// }
+//
 	if (args->doAMOVA == 1){
 		if(args->doInd==1){
 			if(args->ind1==-1){

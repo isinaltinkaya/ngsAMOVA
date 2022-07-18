@@ -9,9 +9,6 @@
 
 
 //from angsd analysisFunction.cpp
-// extern const char bcf_allele_charToInt[256]={
-// extern const int bcf_allele_charToInt[256]={
-// extern const char bcf_allele_charToInt[256]={
 extern const int bcf_allele_charToInt[256]={
 	0,1,2,3,4,4,4,4,4,4,4,4,4,4,4,4,//15
 	4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,//31

@@ -346,25 +346,27 @@ int main(int argc, char **argv) {
 		}
 
 
-		//// BEGIN Read metadata
-		
-		char *in_mtd_fn=args->in_mtd_fn;
-		FILE *in_mtd_ff=IO::getFILE(in_mtd_fn,"r");
-
-		//sep can be \t \whitespace or comma
-		const char* delims="\t ,\n";
-
-		METADATA Metadata;
-		METADATA *MTD;
-		MTD=&Metadata;
-
-		std::unordered_map<const char*, Strata*> uMap;
+		if(args->in_mtd_fn!=NULL){
+			//// BEGIN Read metadata
 			
-		if(read_metadata(MTD, in_mtd_ff, args->whichCol, delims, uMap)!=0){
-fprintf(stderr,"\n\nHERE!!!\n\n");
-			exit(1);
+			char *in_mtd_fn=args->in_mtd_fn;
+			FILE *in_mtd_ff=IO::getFILE(in_mtd_fn,"r");
+
+			//sep can be \t \whitespace or comma
+			const char* delims="\t ,\n";
+
+			METADATA Metadata;
+			METADATA *MTD;
+			MTD=&Metadata;
+
+			std::unordered_map<const char*, Strata*> uMap;
+				
+			if(read_metadata(MTD, in_mtd_ff, args->whichCol, delims, uMap)!=0){
+	fprintf(stderr,"\n\nHERE!!!\n\n");
+				exit(1);
+			}
+			//// END Read metadata
 		}
-		//// END Read metadata
 
 
 		nInd=bcf_hdr_nsamples(hdr);
@@ -599,6 +601,8 @@ fprintf(stderr,"\n\nHERE!!!\n\n");
 #endif
 
 
+		
+		fprintf(out_sfs_ff,"Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Sij,Fij,IBS0,IBS1,IBS2,R0,R1,Kin\n");
 
 
 		for(int i1=0;i1<nInd-1;i1++){
@@ -633,23 +637,24 @@ fprintf(stderr,"\n\nHERE!!!\n\n");
 
 
 					if(args->doAMOVA==1 || args->doAMOVA==3){
-						fprintf(out_sfs_ff,"gle,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,%d,%s,%e\n",
-								hdr->samples[i1],
-								hdr->samples[i2],
-								shared_nSites,
-								"NA",
-								args->tole);
+						fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
+						// fprintf(out_sfs_ff,"gle,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,%d,%s,%e\n",
+								// hdr->samples[i1],
+								// hdr->samples[i2],
+								// shared_nSites,
+								// "NA",
+								// args->tole);
 
 					}
 					if(args->doAMOVA==2 || args->doAMOVA==3){
-						fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
-						fprintf(out_sfs_ff,"gt,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,%s,%d,%s,%e\n",
-								hdr->samples[i1],
-								hdr->samples[i2],
-								"gt",
-								shared_nSites,
-								"gt",
-								args->tole);
+						fprintf(stderr,"\n->no shared sites found for i1:%d i2:%d\n",i1,i2);
+						// fprintf(out_sfs_ff,"gt,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,%s,%d,%s,%e\n",
+								// hdr->samples[i1],
+								// hdr->samples[i2],
+								// "gt",
+								// shared_nSites,
+								// "gt",
+								// args->tole);
 					}
 
 					continue;
@@ -657,7 +662,6 @@ fprintf(stderr,"\n\nHERE!!!\n\n");
 				}
 
 				int pair_idx=LUT_indPair_idx[i1][i2];
-
 
 				if(args->doAMOVA==1 || args->doAMOVA==3){
 
@@ -678,31 +682,25 @@ fprintf(stderr,"\n\nHERE!!!\n\n");
 					// args->tole);
 
 
-					// get_distance_matrix(SFS_GLE3);
-
 
 
 					if(args->doDist==1){
 						M_PWD[pair_idx]=MATH::EST::Sij(SFS_GLE3);
+					}else if(args->doDist==2){
+						M_PWD[pair_idx]=MATH::EST::Fij(SFS_GLE3);
 					}
 
 
-
-
-					// fprintf(stdout,"gle,Sij,%s,%s,%f\n",
-					// hdr->samples[i1],
-					// hdr->samples[i2],
-					// M_PWD[pair_idx]);
-
-					// fprintf(stderr,"\n\t->Sij: %f\n\n",MATH::EST::Sij(SFS_GLE3));
-					// fprintf(stderr,"\n\t->Fij: %f\n\n",MATH::EST::Fij(SFS_GLE3));
-					// fprintf(stderr,"\n\t->: %f %f %f %f %f %f\n\n",
-					// MATH::EST::IBS0(SFS_GLE3),
-					// MATH::EST::IBS1(SFS_GLE3),
-					// MATH::EST::IBS2(SFS_GLE3),
-					// MATH::EST::R0(SFS_GLE3),
-					// MATH::EST::R1(SFS_GLE3),
-					// MATH::EST::Kin(SFS_GLE3));
+//
+					// fprintf(stderr,"\n\t->: %f %f %f %f %f %f %f %f\n\n",
+							// MATH::EST::Sij(SFS_GLE3),
+							// MATH::EST::Fij(SFS_GLE3),
+							// MATH::EST::IBS0(SFS_GLE3),
+							// MATH::EST::IBS1(SFS_GLE3),
+							// MATH::EST::IBS2(SFS_GLE3),
+							// MATH::EST::R0(SFS_GLE3),
+							// MATH::EST::R1(SFS_GLE3),
+							// MATH::EST::Kin(SFS_GLE3));
 
 					fprintf(out_sfs_ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e,%f,%f,%f,%f,%f,%f,%f,%f\n",
 							hdr->samples[i1],
@@ -734,11 +732,11 @@ fprintf(stderr,"\n\nHERE!!!\n\n");
 								pair_idx,nSites,shared_nSites,out_emtest_ff);
 					}
 
-				}if(args->doAMOVA==2 || args->doAMOVA==3){
+				}
+				if(args->doAMOVA==2 || args->doAMOVA==3){
 
 
-
-					fprintf(out_sfs_ff,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%e\n",
+					fprintf(out_sfs_ff,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%e,%f,%f,%f,%f,%f,%f,%f,%f\n",
 							hdr->samples[i1],
 							hdr->samples[i2],
 							SFS_GT3[pair_idx][0],SFS_GT3[pair_idx][1],SFS_GT3[pair_idx][2],
@@ -747,42 +745,47 @@ fprintf(stderr,"\n\nHERE!!!\n\n");
 							"gt",
 							shared_nSites,
 							"gt",
-							args->tole);
+							args->tole,
+							MATH::EST::Sij(SFS_GT3[pair_idx]),
+							MATH::EST::Fij(SFS_GT3[pair_idx]),
+							MATH::EST::IBS0(SFS_GT3[pair_idx]),
+							MATH::EST::IBS1(SFS_GT3[pair_idx]),
+							MATH::EST::IBS2(SFS_GT3[pair_idx]),
+							MATH::EST::R0(SFS_GT3[pair_idx]),
+							MATH::EST::R1(SFS_GT3[pair_idx]),
+							MATH::EST::Kin(SFS_GT3[pair_idx]));
+
 				}
-
-
-
-
 
 			}
 
 		}
 
-
-		if(args->printMatrix==1){
-			// //print pair IDs
-			if(0){
-				for(int i1=0;i1<nInd-1;i1++){
-					for(int i2=i1+1;i2<nInd;i2++){
-						fprintf(out_m_ff,"%s-%s",
-								hdr->samples[i1],
-								hdr->samples[i2]);
-						if(i1!=nInd-2 && i2!=nInd-1){
-							fprintf(out_m_ff,",");
-						}
-					}
-				}
-				fprintf(out_m_ff,"\n");
-			}
-
-			for (int pair=0;pair<n_ind_cmb;pair++){
-				fprintf(out_m_ff,"%f",M_PWD[pair]);
-				if(pair!=n_ind_cmb-1){
-					fprintf(out_m_ff,",");
-				}
-			}
-		}
-
+//
+		// if(args->printMatrix==1){
+			// // //print pair IDs
+			// if(0){
+				// for(int i1=0;i1<nInd-1;i1++){
+					// for(int i2=i1+1;i2<nInd;i2++){
+						// fprintf(out_m_ff,"%s-%s",
+								// hdr->samples[i1],
+								// hdr->samples[i2]);
+						// if(i1!=nInd-2 && i2!=nInd-1){
+							// fprintf(out_m_ff,",");
+						// }
+					// }
+				// }
+				// fprintf(out_m_ff,"\n");
+			// }
+//
+			// for (int pair=0;pair<n_ind_cmb;pair++){
+				// fprintf(out_m_ff,"%f",M_PWD[pair]);
+				// if(pair!=n_ind_cmb-1){
+					// fprintf(out_m_ff,",");
+				// }
+			// }
+		// }
+//
 
 
 		fprintf(stderr, "Total number of sites processed: %lu\n", totSites);
