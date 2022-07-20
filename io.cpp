@@ -1,31 +1,5 @@
 #include "io.h"
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
 
-#include <stdint.h>
-
-#include <stdio.h>
-
-#include <sys/stat.h>
-
-
-namespace IO {
-
-	
-	FILE *getFILE(const char*fname,const char* mode);
-	FILE *openFILE(const char* a,const char* b);
-
-	namespace readFILE{
-
-		// int METADATA();
-	};
-
-	namespace inspectFILE{
-		int count_nColumns(char* line, const char* delims);
-	};
-
-}
 
 FILE *IO::getFILE(const char*fname,const char* mode){
 	FILE *fp;
@@ -63,12 +37,121 @@ int IO::inspectFILE::count_nColumns(char* line, const char* delims){
 
 }
 
-//
-// int IO::readFILE::METADATA(const char* a,const char* b){
-	// return 0;
-// }
-//
 
+int IO::readFILE::METADATA(DATA::Metadata * MTD, FILE* in_mtd_ff, int whichCol, const char* delims){
+
+
+	fprintf(stderr,"\n");
+	fprintf(stderr,"--------------------------------------------------");
+	fprintf(stderr,"\n");
+
+	// int whichCol=args->whichCol;
+	int nCols=0;
+	int checkCol=1;
+
+	//TODO map is probably better due to sorting issues. we cannot have all strata sorted 
+	char mt_buf[1024];
+	while(fgets(mt_buf,1024,in_mtd_ff)){
+
+
+		if(checkCol==1){
+			nCols= IO::inspectFILE::count_nColumns(mt_buf,delims);
+			fprintf(stderr,"->\tNumber of columns in input metadata file: %d\n",nCols);
+			checkCol=0;
+
+			if(whichCol!=-1 && whichCol > nCols){
+				fprintf(stderr,"\n[ERROR]\tColumn %d was chosen, but input metadata file only contains %d columns; will exit!\n\n",whichCol,nCols);
+				exit(1);
+			}
+
+		}
+
+		//TODO strtok_r? do we need thread safety here?
+
+		char *tok=strtok(mt_buf,delims);
+		char *ind_id=tok;
+		// fprintf(stderr,"->->->tok %s\n",tok);
+		// fprintf(stderr,"->->->ind_id: %s\n",ind_id);
+		//
+		// char *group_id=NULL;
+		char *group_id=tok;
+
+		for (int coli=0; coli<whichCol-1; coli++){
+			tok=strtok(NULL,"\t \n");
+			group_id=tok;
+		}
+
+		// uMap[group_id]=&MTD->S[MTD->nStrata];
+
+		// fprintf(stderr,"->->->tok %s\n",tok);
+		// fprintf(stderr,"->->->group_id: %s\n",group_id);
+
+		//increase the size of Strata
+		if(MTD->nStrata > MTD->buf_strata){
+			fprintf(stderr,"->->->increase the size of Strata S[4]!!\n");
+		}
+
+		//if not the first loop
+		if (MTD->S[MTD->nStrata].id!=NULL){
+		// fprintf(stderr,"->->->nStrata: %d\n",MTD->nStrata);
+		// fprintf(stderr,"MYSTRATA->->->strata id: %s\n",MTD->S[MTD->nStrata].id);
+		// fprintf(stderr,"MYGROUP->->->group_id: %s\n",group_id);
+		// fprintf(stderr,"CMP: %d\n",strcmp(MTD->S[MTD->nStrata].id,group_id));
+		
+
+			//group id changed
+			if(strcmp(MTD->S[MTD->nStrata].id,group_id)!=0){
+				MTD->nStrata++;
+				MTD->S[MTD->nStrata].id=strdup(group_id);
+			}
+
+			if(MTD->S[MTD->nStrata].nInds > MTD->S[MTD->nStrata].buf_inds){
+				fprintf(stderr,"->->->increase the size of inds[10]!!\n");
+			}
+
+			MTD->S[MTD->nStrata].inds[MTD->S[MTD->nStrata].nInds]=strdup(ind_id);
+			MTD->S[MTD->nStrata].nInds++;
+
+		}else{
+		//if first loop
+			// uMap[group_id]=&MTD->S[MTD->nStrata];
+
+			MTD->S[MTD->nStrata].id=strdup(group_id);
+			MTD->S[MTD->nStrata].inds[MTD->S[MTD->nStrata].nInds]=strdup(ind_id);
+			MTD->S[MTD->nStrata].nInds++;
+
+		}
+
+		//TODO then plug in all pairs associated with ind if ind==indid in header in loop
+		// fprintf(stderr,"->->->nInds: %d\n",MTD->S[MTD->nStrata].nInds);
+		// fprintf(stderr,"->->->strata id: %s\n",MTD->S[MTD->nStrata].id);
+		// fprintf(stderr,"->->->nStrata: %d\n",MTD->nStrata);
+		// fprintf(stderr,"\n");
+		// fprintf(stderr,"----");
+		// fprintf(stderr,"\n");
+
+	}
+
+
+	for (int sti=0; sti<MTD->nStrata+1; sti++){
+		fprintf(stderr,"\n-> Strata %s contains %d individuals.",MTD->S[sti].id,MTD->S[sti].nInds);
+		fprintf(stderr,"\n-> Individual names are:\n\t");
+		for(int ii=0; ii<MTD->S[sti].nInds;ii++){
+			fprintf(stderr,"%s",MTD->S[sti].inds[ii]);
+			if (ii!=MTD->S[sti].nInds-1){
+				fprintf(stderr,"\t");
+			}
+		}
+		fprintf(stderr,"\n");
+	}
+
+	fprintf(stderr,"\n");
+	fprintf(stderr,"--------------------------------------------------");
+	fprintf(stderr,"\n");
+
+
+	return 0;
+}
 
 
 // Check if file exists
@@ -80,12 +163,6 @@ int file_exists(const char* in_fn){
 	return (stat(in_fn,&buffer)==0);
 }
 
-
-//TODO use macro or function
-// #define STR_IS_EMPTY(X) ( (1/(sizeof(X[0])==1)) && (X[0]==0) )
-// int str_is_empty(const char* str){
-	// return (strlen(str)==0);
-// }
 
 void usage() {
 	// fprintf(stderr,"");

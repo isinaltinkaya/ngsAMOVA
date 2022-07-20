@@ -1,8 +1,14 @@
 #ifndef __PARAM_STRUCT__
 #define __PARAM_STRUCT__
 
+
+#include <limits>
+#include <cstddef>
+#include <time.h>
+
 using size_t=decltype(sizeof(int));
 
+const double NEG_INF = -std::numeric_limits<double>::infinity();
 
 
 
@@ -49,6 +55,29 @@ void paramStruct_destroy(paramStruct *p);
 extern const int get_3x3_idx[3][3];
 
 char *get_time();
+
+namespace DATA{
+	typedef struct Strata{
+		int nPairs=0;
+		char *pairs=NULL;
+
+		int nInds=0;
+		char *inds[10];
+		int buf_inds=10;
+		
+		char *id=NULL;
+	}Strata;
+
+	typedef struct Metadata{
+		Strata S[4];
+		int nStrata=0;
+		int buf_strata=4;
+	}Metadata;
+
+};
+
+
+
 
 
 

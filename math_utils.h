@@ -2,11 +2,18 @@
 #define __MATH_UTILS__
 
 #include "shared.h"
+#include "io.h"
+#include "vcf_utils.h"
 
+#include <stdio.h>
+#include <math.h>
+#include <string.h>
+#include <limits>
 
 
 void gl_log10(int base, double errate, double *like);
 
+// Convert log10 to ln
 double log2ln(float ivar);
 
 
@@ -16,13 +23,24 @@ double log2ln(float ivar);
  */
 int nCk(int n, int k);
 
+
+/*
+ * Maps a given pair of objects to their index in
+ * the lexicographically ordered binomial coefficients
+ * a.k.a. array of pairs
+ */
 int nCk_idx(int nInd, int i1, int i2);
 
+
+/*
+ * [Look-Up Table]
+ * Find index of individual pairs using individual IDs
+ *
+ */
 void prepare_LUT_indPair_idx(int nInd, int **LUT_indPair_idx);
 
 namespace MATH {
 
-	// double SUM(double M[3][3]);
 	double SUM(double M[3][3]);
 	double SUM(double* M);
 	double MEAN(double M[3][3]);
@@ -34,6 +52,7 @@ namespace MATH {
 	double VAR(int* M);
 	double SD(int* M);
 
+	//ESTIMATE?
 	namespace EST{
 		//TODO do these more efficiently
 
@@ -66,6 +85,7 @@ namespace MATH {
 	};
 
 }	
+
 
 #endif
 

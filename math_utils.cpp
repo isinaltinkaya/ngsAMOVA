@@ -1,13 +1,4 @@
-#include "vcf_utils.h"
 #include "math_utils.h"
-
-#include <stdio.h>
-#include <math.h>
-#include <string.h>
-
-#include <limits>
-
-const double NEG_INF = -std::numeric_limits<double>::infinity();
 
 
 
@@ -15,10 +6,6 @@ double log2ln(float ivar){
 	return (double) ivar/M_LOG10E;
 }
 
-/*
- * Binomial coefficient
- * n choose k
- */
 int nCk(int n, int k){
 	int res = 1;
 	if (k > n-k){
@@ -31,12 +18,6 @@ int nCk(int n, int k){
 	return res;
 }
 
-
-/*
- * Maps a given pair of objects to their index in
- * the lexicographically ordered binomial coefficients
- * a.k.a. array of pairs
- */
 int nCk_idx(int nInd, int i1, int i2){
 	// int ret=(nInd - nCk((nInd-i1),2))+(i2-i1)+1;
 	int ret=(nCk(nInd,2) - nCk((nInd-i1),2))+(i2-i1)-1;
@@ -45,11 +26,6 @@ int nCk_idx(int nInd, int i1, int i2){
 	// return (nInd - nCk((nInd-i1),2))+(i2-i1)+1;
 }
 
-/*
- * [Look-Up Table]
- * Find index of individual pairs using individual IDs
- *
- */
 void prepare_LUT_indPair_idx(int nInd, int **LUT_indPair_idx){
 	for(int i1=0;i1<nInd-1;i1++){
 		for(int i2=i1+1;i2<nInd;i2++){

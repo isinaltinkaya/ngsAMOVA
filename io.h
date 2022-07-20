@@ -1,10 +1,15 @@
+#ifndef __IO__
+#define __IO__
 
-#ifndef __ARGUMENTS__
-#define __ARGUMENTS_
-
-
+#include "shared.h"
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <sys/stat.h>
 
 
 
@@ -15,19 +20,16 @@ namespace IO {
 	FILE *getFILE(const char*fname,const char* mode);
 	FILE *openFILE(const char* a,const char* b);
 
+	namespace readFILE{
+
+		int METADATA(DATA::Metadata* MTD, FILE* in_mtd_ff, int whichCol, const char* delims);
+	};
 
 	namespace inspectFILE{
 		int count_nColumns(char* line, const char* delims);
 	};
 
-	// namespace READ{
-//
-		// int Metadata();
-	// };
-//
 }
-
-
 
 /*
  * @typedef
@@ -65,8 +67,7 @@ namespace IO {
  */
 
 
-
-typedef struct{
+typedef struct {
 
 
 	char* in_fn;
@@ -104,46 +105,6 @@ argStruct *argStruct_get(int argc, char **argv);
 // void *argStruct_destroy(argStruct *arg);
 
 void usage();
-
-
-
-
-//
-//
-// typedef struct{
-//
-	// VCF(char *ptr);
-	// ~VCF();
-//
-	// void print();
-//
-	// struct gt_data{
-		// uint8_t allele1;
-		// uint8_t allele2;
-		// bool is_phased;
-	// };
-	// gt_data gt;
-//
-//
-	// // double **gl;
-//
-//
-	// private:
-	// char *p;
-	// int len;
-//
-// }VCF;
-//
-// VCF VCF;
-//
-// // VCF::VCF(char *ptr);
-// //
-// // VCF::~VCF();
-// //
-// // void VCF::print();
-//
-//
-//
 
 
 #endif

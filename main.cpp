@@ -9,285 +9,19 @@
 #include <htslib/vcfutils.h>
 
 #include <inttypes.h>
-#include <math.h>
-
 #include <limits>
-
+#include <math.h>
 #include <time.h>
 
 #include "main.h"
+#include "shared.h"
+#include "io.h"
 #include "em.h"
 #include "math_utils.h"
 #include "vcf_utils.h"
-#include "io.h"
-#include "shared.h"
-
-#include <unordered_map>
 
 using size_t=decltype(sizeof(int));
 
-const double NEG_INF = -std::numeric_limits<double>::infinity();
-
-namespace doAMOVA {
-
-	int get_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t nSites, int nInd);
-	int get_GT(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args, size_t nSites, int nInd, int** LUT_indPair_idx);
-
-}
-
-int doAMOVA::get_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t nSites, int nInd){
-
-	// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
-	get_data<float> lgl;
-
-	lgl.n = bcf_get_format_float(hdr,bcf,"GL",&lgl.data,&lgl.size_e);
-
-	if(lgl.n<0){
-		fprintf(stderr,"\n[ERROR](File reading)\tVCF tag GL does not exist; will exit!\n\n");
-		exit(1);
-	}
-
-	lngl[nSites]=(double*)malloc(nInd*3*sizeof(double));
-
-
-	if(bcf_is_snp(bcf)){
-		char a1=bcf_allele_charToInt[(unsigned char) bcf->d.allele[0][0]];
-		char a2=bcf_allele_charToInt[(unsigned char) bcf->d.allele[1][0]];
-
-
-		int n_missing_ind=0;
-		for(int indi=0; indi<nInd; indi++){
-
-			for(int ix=0;ix<3;ix++){
-				lngl[nSites][(3*indi)+ix]=NEG_INF;
-			}
-
-			//TODO only checking the first for now
-			//what is the expectation in real cases?
-			//should we skip sites where at least one is set to missing?
-			//
-			if(isnan(lgl.data[(10*indi)+0])){
-				if(args->minInd==0){
-					return 1;
-				}else{
-					n_missing_ind++;
-				}
-			}else{
-				// fprintf(stderr,"\n->->gt %d %d\n",bcf_alleles_get_gtidx(bcf->d.allele[0][0],bcf->d.allele[1][0]));
-				// fprintf(stderr,"\n->->gt %d \n",bcf_alleles_get_gtidx(bcf_allele_charToInt[bcf->d.allele[0][0]],bcf_allele_charToInt[bcf->d.allele[1][0]]));
-				lngl[nSites][(3*indi)+0]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)]);
-				lngl[nSites][(3*indi)+1]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)]);
-				lngl[nSites][(3*indi)+2]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
-				// fprintf(stderr,"\n->->lgl %f %f %f\n",lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)],lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)],lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
-				// fprintf(stderr,"\n->->lngl %f %f %f\n",lngl[nSites][(3*indi)+0],lngl[nSites][(3*indi)+1],lngl[nSites][(3*indi)+2]);
-			}
-		}
-
-		//skip site if missing for all individuals
-		if (nInd==n_missing_ind){
-			return 1;
-		}
-
-		// //if there are only 2 individuals, skip site regardless of onlyShared val
-		if (nInd==2){
-			if(n_missing_ind>0){
-				return 1;
-			}
-		}
-
-		if(args->minInd>0){
-			//skip site if minInd is defined and #non-missing inds=<nInd
-			if( (nInd - n_missing_ind) < args->minInd ){
-				// fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,nInd-n_missing_ind,site);
-				return 1;
-			}else{
-				return 0;
-			}
-		}else{
-			return 0;
-		}
-
-		// if (set_lngl(lngl, lgl.data,args, nInd,a1,a2, nSites)==1){
-		// free(lngl[nSites]);
-		// lngl[nSites]=NULL;
-		// // fprintf(stderr,"\nset_lngl returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
-		// return 1;
-		// }
-	}else{
-		//TODO check
-		fprintf(stderr,"\n\nHERE BCF_IS_SNP==0!!!\n\n");
-		free(lngl[nSites]);
-		lngl[nSites]=NULL;
-		return 1;
-	}
-
-	lgl.destroy();
-	return 0;
-}
-
-
-int doAMOVA::get_GT(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args, size_t nSites, int nInd, int** LUT_indPair_idx){
-	//TODO add check if missing gt return 1
-
-	get_data<int32_t> gt;
-	gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
-	gt.ploidy=gt.n/nInd;
-
-	if(gt.n<0){
-		fprintf(stderr,"\n[ERROR](File reading)\tProblem with reading GT; will exit!\n\n");
-		exit(1);
-	}
-
-	if (gt.ploidy!=2){
-		fprintf(stderr,"ERROR:\n\nploidy: %d not supported\n",gt.ploidy);
-		exit(1);
-	}
-
-	for(int i1=0;i1<nInd-1;i1++){
-		for(int i2=i1+1;i2<nInd;i2++){
-
-			int32_t *ptr1 = gt.data + i1*gt.ploidy;
-			int32_t *ptr2 = gt.data + i2*gt.ploidy;
-			int pair_idx=LUT_indPair_idx[i1][i2];
-
-			// fprintf(stderr,"\n->i1: %d, i2: %d, pair: %d, nInd: %d\n\n", i1, i2, pair_idx,nInd);
-			// fprintf(stderr,"%d\t%d\t%d\n", i1, i2, pair_idx);
-
-			int gti1=0;
-			int gti2=0;
-
-			//using binary input genotypes from VCF GT tag
-			//assume ploidy=2
-			for (int i=0; i<2;i++){
-				gti1 += bcf_gt_allele(ptr1[i]);
-				gti2 += bcf_gt_allele(ptr2[i]);
-			}
-			// fprintf(stderr,"\n%d:%d %d:%d -> %d\n",i1,gti1,i2,gti2,get_3x3_idx[gti1][gti2]);
-			sfs[pair_idx][get_3x3_idx[gti1][gti2]]++;
-
-		}
-	}
-
-	gt.destroy();
-	return 0;
-
-}
-
-// int read_metadata(METADATA* MTD, FILE* in_mtd_ff, int whichCol, const char* delims){
-int read_metadata(METADATA* MTD, FILE* in_mtd_ff, int whichCol, const char* delims, std::unordered_map<const char*, Strata* > & uMap){
-
-
-	fprintf(stderr,"\n");
-	fprintf(stderr,"--------------------------------------------------");
-	fprintf(stderr,"\n");
-
-	// int whichCol=args->whichCol;
-	int nCols=0;
-	int checkCol=1;
-
-	//TODO map is probably better due to sorting issues. we cannot have all strata sorted 
-	char mt_buf[1024];
-	while(fgets(mt_buf,1024,in_mtd_ff)){
-
-
-		if(checkCol==1){
-			nCols= IO::inspectFILE::count_nColumns(mt_buf,delims);
-			fprintf(stderr,"->\tNumber of columns in input metadata file: %d\n",nCols);
-			checkCol=0;
-
-			if(whichCol!=-1 && whichCol > nCols){
-				fprintf(stderr,"\n[ERROR]\tColumn %d was chosen, but input metadata file only contains %d columns; will exit!\n\n",whichCol,nCols);
-				exit(1);
-			}
-
-		}
-
-		//TODO strtok_r? do we need thread safety here?
-
-		char *tok=strtok(mt_buf,delims);
-		char *ind_id=tok;
-		// fprintf(stderr,"->->->tok %s\n",tok);
-		// fprintf(stderr,"->->->ind_id: %s\n",ind_id);
-		//
-		// char *group_id=NULL;
-		char *group_id=tok;
-
-		for (int coli=0; coli<whichCol-1; coli++){
-			tok=strtok(NULL,"\t \n");
-			group_id=tok;
-		}
-
-		// uMap[group_id]=&MTD->S[MTD->nStrata];
-
-		// fprintf(stderr,"->->->tok %s\n",tok);
-		// fprintf(stderr,"->->->group_id: %s\n",group_id);
-
-		//increase the size of Strata
-		if(MTD->nStrata > MTD->buf_strata){
-			fprintf(stderr,"->->->increase the size of Strata S[4]!!\n");
-		}
-
-		//if not the first loop
-		if (MTD->S[MTD->nStrata].id!=NULL){
-		// fprintf(stderr,"->->->nStrata: %d\n",MTD->nStrata);
-		// fprintf(stderr,"MYSTRATA->->->strata id: %s\n",MTD->S[MTD->nStrata].id);
-		// fprintf(stderr,"MYGROUP->->->group_id: %s\n",group_id);
-		// fprintf(stderr,"CMP: %d\n",strcmp(MTD->S[MTD->nStrata].id,group_id));
-		
-
-			//group id changed
-			if(strcmp(MTD->S[MTD->nStrata].id,group_id)!=0){
-				MTD->nStrata++;
-				MTD->S[MTD->nStrata].id=strdup(group_id);
-			}
-
-			if(MTD->S[MTD->nStrata].nInds > MTD->S[MTD->nStrata].buf_inds){
-				fprintf(stderr,"->->->increase the size of inds[10]!!\n");
-			}
-
-			MTD->S[MTD->nStrata].inds[MTD->S[MTD->nStrata].nInds]=strdup(ind_id);
-			MTD->S[MTD->nStrata].nInds++;
-
-		}else{
-		//if first loop
-			// uMap[group_id]=&MTD->S[MTD->nStrata];
-
-			MTD->S[MTD->nStrata].id=strdup(group_id);
-			MTD->S[MTD->nStrata].inds[MTD->S[MTD->nStrata].nInds]=strdup(ind_id);
-			MTD->S[MTD->nStrata].nInds++;
-
-		}
-
-		//TODO then plug in all pairs associated with ind if ind==indid in header in loop
-		// fprintf(stderr,"->->->nInds: %d\n",MTD->S[MTD->nStrata].nInds);
-		// fprintf(stderr,"->->->strata id: %s\n",MTD->S[MTD->nStrata].id);
-		// fprintf(stderr,"->->->nStrata: %d\n",MTD->nStrata);
-		// fprintf(stderr,"\n");
-		// fprintf(stderr,"----");
-		// fprintf(stderr,"\n");
-
-	}
-
-
-	for (int sti=0; sti<MTD->nStrata+1; sti++){
-		fprintf(stderr,"\n-> Strata %s contains %d individuals.",MTD->S[sti].id,MTD->S[sti].nInds);
-		fprintf(stderr,"\n-> Individual names are:\n\t");
-		for(int ii=0; ii<MTD->S[sti].nInds;ii++){
-			fprintf(stderr,"%s",MTD->S[sti].inds[ii]);
-			if (ii!=MTD->S[sti].nInds-1){
-				fprintf(stderr,"\t");
-			}
-		}
-		fprintf(stderr,"\n");
-	}
-
-	fprintf(stderr,"\n");
-	fprintf(stderr,"--------------------------------------------------");
-	fprintf(stderr,"\n");
-
-
-	return 0;
-}
 
 int main(int argc, char **argv) {
 
@@ -355,13 +89,15 @@ int main(int argc, char **argv) {
 			//sep can be \t \whitespace or comma
 			const char* delims="\t ,\n";
 
-			METADATA Metadata;
-			METADATA *MTD;
+			DATA::Metadata Metadata;
+			DATA::Metadata *MTD;
 			MTD=&Metadata;
 
-			std::unordered_map<const char*, Strata*> uMap;
+			// std::unordered_map<const char*, Strata*> uMap;
 				
-			if(read_metadata(MTD, in_mtd_ff, args->whichCol, delims, uMap)!=0){
+			// if(read_metadata(MTD, in_mtd_ff, args->whichCol, delims, uMap)!=0){
+			// if(read_metadata(MTD, in_mtd_ff, args->whichCol, delims)!=0){
+			if(IO::readFILE::METADATA(MTD, in_mtd_ff, args->whichCol, delims)!=0){
 	fprintf(stderr,"\n\nHERE!!!\n\n");
 				exit(1);
 			}
@@ -473,9 +209,11 @@ int main(int argc, char **argv) {
 
 		//Pairwise distance matrix
 		double *M_PWD;
-		M_PWD=(double*) malloc(n_ind_cmb*sizeof(double));
-		for(int i=0;i<n_ind_cmb;i++){
-			M_PWD[i]=0.0;
+		if(args->doDist!=-1){
+			M_PWD=(double*) malloc(n_ind_cmb*sizeof(double));
+			for(int i=0;i<n_ind_cmb;i++){
+				M_PWD[i]=0.0;
+			}
 		}
 
 
@@ -536,37 +274,30 @@ int main(int argc, char **argv) {
 			// if (dp.n_missing>0) continue;
 			//
 			//
-			// lngls[nSites]=(double*)malloc(nInd*10*sizeof(double));
 			if(args->doAMOVA==1){
-				if(doAMOVA::get_GL3(hdr,bcf,lngl,pars,args,nSites,nInd)==1){
+				if(VCF::read_GL10_to_GL3(hdr,bcf,lngl,pars,args,nSites,nInd)==1){
 					free(lngl[nSites]);
 					lngl[nSites]=NULL;
 					continue;
 				}
 
 			}else if(args->doAMOVA==2){
-				if(doAMOVA::get_GT(hdr,bcf,SFS_GT3,pars,args,nSites,nInd,LUT_indPair_idx)==1){
+				if(VCF::GT_to_i2i_SFS(hdr,bcf,SFS_GT3,pars,args,nSites,nInd,LUT_indPair_idx)==1){
 					continue;
 				}
 
 			}else if(args->doAMOVA==3){
-				if(doAMOVA::get_GL3(hdr,bcf,lngl,pars,args,nSites,nInd)==1){
+				if(VCF::read_GL10_to_GL3(hdr,bcf,lngl,pars,args,nSites,nInd)==1){
 					free(lngl[nSites]);
 					lngl[nSites]=NULL;
 					continue;
 					//skip site for gt if skipped by gl
 				}else{
-					if(doAMOVA::get_GT(hdr,bcf,SFS_GT3,pars,args,nSites,nInd,LUT_indPair_idx)==1){
+					if(VCF::GT_to_i2i_SFS(hdr,bcf,SFS_GT3,pars,args,nSites,nInd,LUT_indPair_idx)==1){
 						continue;
 					}
 				}
 
-
-				// int GLRET=doAMOVA::get_GL3(hdr,bcf,lngl,pars,args,nSites,nInd);
-				// int GTRET=doAMOVA::get_GT(hdr,bcf,SFS_GT3,pars,args,nSites,nInd,LUT_indPair_idx);
-				// if (GLRET+GTRET>0){
-				// continue;
-				// }
 			}
 
 			nSites++;
@@ -579,27 +310,16 @@ int main(int argc, char **argv) {
 				// gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
 			}
 
+
 			// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
 			// fprintf(stderr,"%d\n\n",nSites);
 			// fprintf(stderr,"\r\t-> Printing at site %lu",nSites);
 			// fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
 
+
 		}
 		fprintf(stderr,"\n\t-> Finished reading sites\n");
 		// [END] Reading sites
-
-
-#if 0
-		for(int s=0;s<nSites;s++){
-			int i1=0;
-			fprintf(stderr,"\n-> site: %d anc:%d der:%d gtidx ancanc:%d ancder:%d derder:%d",s,anc[s],der[s],bcf_alleles_get_gtidx(anc[s],anc[s]),bcf_alleles_get_gtidx(anc[s],der[s]),bcf_alleles_get_gtidx(der[s],der[s]));
-			fprintf(stderr,"\n-> ind:%s (%f",hdr->samples[i1],lngls[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],anc[s])]);
-			fprintf(stderr," %f",lngls[s][(10*i1)+bcf_alleles_get_gtidx(anc[s],der[s])]);
-			fprintf(stderr," %f",lngls[s][(10*i1)+bcf_alleles_get_gtidx(der[s],der[s])]);
-			fprintf(stderr,")\n");
-		}
-#endif
-
 
 		
 		fprintf(out_sfs_ff,"Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Sij,Fij,IBS0,IBS1,IBS2,R0,R1,Kin\n");
@@ -608,11 +328,9 @@ int main(int argc, char **argv) {
 		for(int i1=0;i1<nInd-1;i1++){
 			for(int i2=i1+1;i2<nInd;i2++){
 
-				//TODO? avoid checking shared sites multiple times for ind pairs
 				int shared_nSites=0;
 
 				if(args->minInd==0){
-
 					shared_nSites=nSites;
 
 				}else{
@@ -634,7 +352,6 @@ int main(int argc, char **argv) {
 				}
 
 				if(shared_nSites==0){
-
 
 					if(args->doAMOVA==1 || args->doAMOVA==3){
 						fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
@@ -761,36 +478,35 @@ int main(int argc, char **argv) {
 
 		}
 
-//
-		// if(args->printMatrix==1){
-			// // //print pair IDs
-			// if(0){
-				// for(int i1=0;i1<nInd-1;i1++){
-					// for(int i2=i1+1;i2<nInd;i2++){
-						// fprintf(out_m_ff,"%s-%s",
-								// hdr->samples[i1],
-								// hdr->samples[i2]);
-						// if(i1!=nInd-2 && i2!=nInd-1){
-							// fprintf(out_m_ff,",");
-						// }
-					// }
-				// }
-				// fprintf(out_m_ff,"\n");
-			// }
-//
-			// for (int pair=0;pair<n_ind_cmb;pair++){
-				// fprintf(out_m_ff,"%f",M_PWD[pair]);
-				// if(pair!=n_ind_cmb-1){
-					// fprintf(out_m_ff,",");
-				// }
-			// }
-		// }
-//
+
+		if(args->printMatrix==1 && args->doDist!=-1){
+			// //print pair IDs
+			if(0){
+				for(int i1=0;i1<nInd-1;i1++){
+					for(int i2=i1+1;i2<nInd;i2++){
+						fprintf(out_m_ff,"%s-%s",
+								hdr->samples[i1],
+								hdr->samples[i2]);
+						if(i1!=nInd-2 && i2!=nInd-1){
+							fprintf(out_m_ff,",");
+						}
+					}
+				}
+				fprintf(out_m_ff,"\n");
+			}
+
+			for (int pair=0;pair<n_ind_cmb;pair++){
+				fprintf(out_m_ff,"%f",M_PWD[pair]);
+				if(pair!=n_ind_cmb-1){
+					fprintf(out_m_ff,",");
+				}
+			}
+		}
+
 
 
 		fprintf(stderr, "Total number of sites processed: %lu\n", totSites);
 		fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", totSites-nSites);
-
 
 		bcf_hdr_destroy(hdr);
 		bcf_destroy(bcf);
@@ -813,7 +529,6 @@ int main(int argc, char **argv) {
 			// free(lngls);
 			free(lngl);
 
-			free(M_PWD);
 
 		}
 		if(args->doAMOVA==2 || args->doAMOVA==3){
@@ -834,6 +549,9 @@ int main(int argc, char **argv) {
 		}
 		free(LUT_indPair_idx);
 
+		if(args->doDist!=-1){
+			free(M_PWD);
+		}
 
 		free(args->in_fn);
 		args->in_fn=NULL;
@@ -842,8 +560,6 @@ int main(int argc, char **argv) {
 		args->out_fp=NULL;
 
 		free(args);
-
-
 
 		paramStruct_destroy(pars);
 
@@ -856,6 +572,7 @@ int main(int argc, char **argv) {
 		if(out_m_ff!=NULL){
 			fclose(out_m_ff);
 		}
+
 
 
 		//TODO
