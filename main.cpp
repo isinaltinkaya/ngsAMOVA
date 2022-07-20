@@ -56,7 +56,11 @@ int main(int argc, char **argv) {
 
 		if(args->printMatrix==1){
 			//distance matrix
-			out_m_ff=IO::openFILE(out_fp,".dm.csv");
+			if(args->doDist==1){
+				out_m_ff=IO::openFILE(out_fp,".dm.sij.csv");
+			}else if(args->doDist==2){
+				out_m_ff=IO::openFILE(out_fp,".dm.fij.csv");
+			}
 		}
 
 
@@ -206,7 +210,6 @@ int main(int argc, char **argv) {
 				}
 			}
 		}
-
 
 		//Pairwise distance matrix
 		double *M_PWD_GL=NULL;
@@ -429,33 +432,10 @@ int main(int argc, char **argv) {
 
 						M_PWD_GL[pair_idx]=MATH::EST::Sij(SFS_GLE3);
 
-						if(args->printMatrix==1){
-
-							fprintf(out_m_ff,"sij,gl,");
-
-							for (int px=0;px<n_ind_cmb;px++){
-								fprintf(out_m_ff,"%f",M_PWD_GL[pair_idx]);
-								if(px!=n_ind_cmb-1){
-									fprintf(out_m_ff,",");
-								}
-							}
-						}
-
 					}else if(args->doDist==2){
 
 						M_PWD_GL[pair_idx]=MATH::EST::Fij(SFS_GLE3);
 
-						if(args->printMatrix==1){
-
-							fprintf(out_m_ff,"fij,gl,");
-
-							for (int px=0;px<n_ind_cmb;px++){
-								fprintf(out_m_ff,"%f",M_PWD_GL[pair_idx]);
-								if(px!=n_ind_cmb-1){
-									fprintf(out_m_ff,",");
-								}
-							}
-						}
 					}
 
 
@@ -509,39 +489,10 @@ int main(int argc, char **argv) {
 
 						M_PWD_GT[pair_idx]=MATH::EST::Sij(SFS_GT3[pair_idx]);
 
-						if(args->printMatrix==1){
-
-							//already started file writing for gls
-							if(args->doAMOVA==3){ fprintf(out_m_ff,"\n"); }
-
-							fprintf(out_m_ff,"sij,gt,");
-
-							for (int px=0;px<n_ind_cmb;px++){
-								fprintf(out_m_ff,"%f",M_PWD_GT[pair_idx]);
-								if(px!=n_ind_cmb-1){
-									fprintf(out_m_ff,",");
-								}
-							}
-						}
-
 					}else if(args->doDist==2){
 
 						M_PWD_GT[pair_idx]=MATH::EST::Fij(SFS_GT3[pair_idx]);
 
-						if(args->printMatrix==1){
-
-							//already started file writing for gls
-							if(args->doAMOVA==3){ fprintf(out_m_ff,"\n"); }
-
-							fprintf(out_m_ff,"fij,gt,");
-
-							for (int px=0;px<n_ind_cmb;px++){
-								fprintf(out_m_ff,"%f",M_PWD_GT[pair_idx]);
-								if(px!=n_ind_cmb-1){
-									fprintf(out_m_ff,",");
-								}
-							}
-						}
 					}
 					
 				}
@@ -556,10 +507,9 @@ int main(int argc, char **argv) {
 				}
 			}
 		}
-		if(args->printMatrix==1){ fprintf(out_m_ff,"\n"); } //file end
+//end i1i2 loop
 
-
-		// if(args->printMatrix==1 && args->doDist!=-1){
+		if(args->printMatrix==1){
 			// // //print pair IDs
 			// if(0){
 				// for(int i1=0;i1<nInd-1;i1++){
@@ -574,15 +524,34 @@ int main(int argc, char **argv) {
 				// }
 				// fprintf(out_m_ff,"\n");
 			// }
-//
-			// for (int pair=0;pair<n_ind_cmb;pair++){
-				// fprintf(out_m_ff,"%f",M_PWD[pair]);
-				// if(pair!=n_ind_cmb-1){
-					// fprintf(out_m_ff,",");
-				// }
-			// }
-		// }
-//
+			
+			if(args->doAMOVA==1||args->doAMOVA==3){
+
+				fprintf(out_m_ff,"gl,");
+				for (int px=0;px<n_ind_cmb;px++){
+					fprintf(out_m_ff,"%f",M_PWD_GL[px]);
+					if(px!=n_ind_cmb-1){
+						fprintf(out_m_ff,",");
+					}else{
+						fprintf(out_m_ff,"\n");
+					}
+				}
+
+			}else if(args->doAMOVA==2||args->doAMOVA==3){
+
+				fprintf(out_m_ff,"gt,");
+				for (int px=0;px<n_ind_cmb;px++){
+					fprintf(out_m_ff,"%f",M_PWD_GT[px]);
+					if(px!=n_ind_cmb-1){
+						fprintf(out_m_ff,",");
+					}else{
+						fprintf(out_m_ff,"\n");
+					}
+				}
+
+			}
+		}
+
 
 
 		fprintf(stderr, "Total number of sites processed: %lu\n", totSites);
