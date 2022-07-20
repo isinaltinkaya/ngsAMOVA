@@ -381,6 +381,7 @@ argStruct *argStruct_get(int argc, char **argv){
 	}else if(args->doAMOVA==3){
 		fprintf(stderr,"\n\t-> -doAMOVA 2; will do both 1 and 2.\n");
 
+
 	}else{
 		fprintf(stderr,"\n[ERROR]\tMust supply a value for -doAMOVA; will exit!\n");
 		free(args);

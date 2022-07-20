@@ -55,7 +55,8 @@ int main(int argc, char **argv) {
 		}
 
 		if(args->printMatrix==1){
-			out_m_ff=IO::openFILE(out_fp,".matrix.csv");
+			//distance matrix
+			out_m_ff=IO::openFILE(out_fp,".dm.csv");
 		}
 
 
@@ -208,11 +209,31 @@ int main(int argc, char **argv) {
 
 
 		//Pairwise distance matrix
-		double *M_PWD;
+		double *M_PWD_GL=NULL;
+		double *M_PWD_GT=NULL;
 		if(args->doDist!=-1){
-			M_PWD=(double*) malloc(n_ind_cmb*sizeof(double));
-			for(int i=0;i<n_ind_cmb;i++){
-				M_PWD[i]=0.0;
+			if(args->doAMOVA==1){
+				M_PWD_GL=(double*) malloc(n_ind_cmb*sizeof(double));
+				for(int i=0;i<n_ind_cmb;i++){
+					M_PWD_GL[i]=0.0;
+				}
+			}else if(args->doAMOVA==2){
+				M_PWD_GT=(double*) malloc(n_ind_cmb*sizeof(double));
+				for(int i=0;i<n_ind_cmb;i++){
+					M_PWD_GT[i]=0.0;
+				}
+			}else if(args->doAMOVA==3){
+				M_PWD_GL=(double*) malloc(n_ind_cmb*sizeof(double));
+				for(int i=0;i<n_ind_cmb;i++){
+					M_PWD_GL[i]=0.0;
+				}
+				M_PWD_GT=(double*) malloc(n_ind_cmb*sizeof(double));
+				for(int i=0;i<n_ind_cmb;i++){
+					M_PWD_GT[i]=0.0;
+				}
+			}else{
+				//never
+				exit(1);
 			}
 		}
 
@@ -273,7 +294,9 @@ int main(int argc, char **argv) {
 			// }
 			// if (dp.n_missing>0) continue;
 			//
-			//
+			
+
+
 			if(args->doAMOVA==1){
 				if(VCF::read_GL10_to_GL3(hdr,bcf,lngl,pars,args,nSites,nInd)==1){
 					free(lngl[nSites]);
@@ -380,9 +403,10 @@ int main(int argc, char **argv) {
 
 				int pair_idx=LUT_indPair_idx[i1][i2];
 
+				double SFS_GLE3[3][3];
+
 				if(args->doAMOVA==1 || args->doAMOVA==3){
 
-					double SFS_GLE3[3][3];
 					int n_em_iter=0;
 					double delta;
 					delta=EM_2DSFS_GL3(lngl,SFS_GLE3,i1,i2,nSites,shared_nSites,args->tole,&n_em_iter);
@@ -402,22 +426,38 @@ int main(int argc, char **argv) {
 
 
 					if(args->doDist==1){
-						M_PWD[pair_idx]=MATH::EST::Sij(SFS_GLE3);
+
+						M_PWD_GL[pair_idx]=MATH::EST::Sij(SFS_GLE3);
+
+						if(args->printMatrix==1){
+
+							fprintf(out_m_ff,"sij,gl,");
+
+							for (int px=0;px<n_ind_cmb;px++){
+								fprintf(out_m_ff,"%f",M_PWD_GL[pair_idx]);
+								if(px!=n_ind_cmb-1){
+									fprintf(out_m_ff,",");
+								}
+							}
+						}
+
 					}else if(args->doDist==2){
-						M_PWD[pair_idx]=MATH::EST::Fij(SFS_GLE3);
+
+						M_PWD_GL[pair_idx]=MATH::EST::Fij(SFS_GLE3);
+
+						if(args->printMatrix==1){
+
+							fprintf(out_m_ff,"fij,gl,");
+
+							for (int px=0;px<n_ind_cmb;px++){
+								fprintf(out_m_ff,"%f",M_PWD_GL[pair_idx]);
+								if(px!=n_ind_cmb-1){
+									fprintf(out_m_ff,",");
+								}
+							}
+						}
 					}
 
-
-//
-					// fprintf(stderr,"\n\t->: %f %f %f %f %f %f %f %f\n\n",
-							// MATH::EST::Sij(SFS_GLE3),
-							// MATH::EST::Fij(SFS_GLE3),
-							// MATH::EST::IBS0(SFS_GLE3),
-							// MATH::EST::IBS1(SFS_GLE3),
-							// MATH::EST::IBS2(SFS_GLE3),
-							// MATH::EST::R0(SFS_GLE3),
-							// MATH::EST::R1(SFS_GLE3),
-							// MATH::EST::Kin(SFS_GLE3));
 
 					fprintf(out_sfs_ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e,%f,%f,%f,%f,%f,%f,%f,%f\n",
 							hdr->samples[i1],
@@ -440,16 +480,8 @@ int main(int argc, char **argv) {
 
 
 
-
-					if(args->doTest==1){
-
-						test_em(lngl,SFS_GLE3,SFS_GT3,i1,i2,
-								hdr->samples[i1],
-								hdr->samples[i2],
-								pair_idx,nSites,shared_nSites,out_emtest_ff);
-					}
-
 				}
+
 				if(args->doAMOVA==2 || args->doAMOVA==3){
 
 
@@ -472,37 +504,85 @@ int main(int argc, char **argv) {
 							MATH::EST::R1(SFS_GT3[pair_idx]),
 							MATH::EST::Kin(SFS_GT3[pair_idx]));
 
-				}
 
-			}
+					if(args->doDist==1){
 
-		}
+						M_PWD_GT[pair_idx]=MATH::EST::Sij(SFS_GT3[pair_idx]);
 
+						if(args->printMatrix==1){
 
-		if(args->printMatrix==1 && args->doDist!=-1){
-			// //print pair IDs
-			if(0){
-				for(int i1=0;i1<nInd-1;i1++){
-					for(int i2=i1+1;i2<nInd;i2++){
-						fprintf(out_m_ff,"%s-%s",
-								hdr->samples[i1],
-								hdr->samples[i2]);
-						if(i1!=nInd-2 && i2!=nInd-1){
-							fprintf(out_m_ff,",");
+							//already started file writing for gls
+							if(args->doAMOVA==3){ fprintf(out_m_ff,"\n"); }
+
+							fprintf(out_m_ff,"sij,gt,");
+
+							for (int px=0;px<n_ind_cmb;px++){
+								fprintf(out_m_ff,"%f",M_PWD_GT[pair_idx]);
+								if(px!=n_ind_cmb-1){
+									fprintf(out_m_ff,",");
+								}
+							}
+						}
+
+					}else if(args->doDist==2){
+
+						M_PWD_GT[pair_idx]=MATH::EST::Fij(SFS_GT3[pair_idx]);
+
+						if(args->printMatrix==1){
+
+							//already started file writing for gls
+							if(args->doAMOVA==3){ fprintf(out_m_ff,"\n"); }
+
+							fprintf(out_m_ff,"fij,gt,");
+
+							for (int px=0;px<n_ind_cmb;px++){
+								fprintf(out_m_ff,"%f",M_PWD_GT[pair_idx]);
+								if(px!=n_ind_cmb-1){
+									fprintf(out_m_ff,",");
+								}
+							}
 						}
 					}
+					
 				}
-				fprintf(out_m_ff,"\n");
-			}
 
-			for (int pair=0;pair<n_ind_cmb;pair++){
-				fprintf(out_m_ff,"%f",M_PWD[pair]);
-				if(pair!=n_ind_cmb-1){
-					fprintf(out_m_ff,",");
+				//doTest 1 requires doAMOVA 3; handled in io.cpp
+				if(args->doTest==1){
+
+					test_em(lngl,SFS_GLE3,SFS_GT3,i1,i2,
+							hdr->samples[i1],
+							hdr->samples[i2],
+							pair_idx,nSites,shared_nSites,out_emtest_ff);
 				}
 			}
 		}
+		if(args->printMatrix==1){ fprintf(out_m_ff,"\n"); } //file end
 
+
+		// if(args->printMatrix==1 && args->doDist!=-1){
+			// // //print pair IDs
+			// if(0){
+				// for(int i1=0;i1<nInd-1;i1++){
+					// for(int i2=i1+1;i2<nInd;i2++){
+						// fprintf(out_m_ff,"%s-%s",
+								// hdr->samples[i1],
+								// hdr->samples[i2]);
+						// if(i1!=nInd-2 && i2!=nInd-1){
+							// fprintf(out_m_ff,",");
+						// }
+					// }
+				// }
+				// fprintf(out_m_ff,"\n");
+			// }
+//
+			// for (int pair=0;pair<n_ind_cmb;pair++){
+				// fprintf(out_m_ff,"%f",M_PWD[pair]);
+				// if(pair!=n_ind_cmb-1){
+					// fprintf(out_m_ff,",");
+				// }
+			// }
+		// }
+//
 
 
 		fprintf(stderr, "Total number of sites processed: %lu\n", totSites);
@@ -550,7 +630,17 @@ int main(int argc, char **argv) {
 		free(LUT_indPair_idx);
 
 		if(args->doDist!=-1){
-			free(M_PWD);
+			if(args->doAMOVA==1){
+				free(M_PWD_GL);
+			}else if(args->doAMOVA==2){
+				free(M_PWD_GT);
+			}else if(args->doAMOVA==3){
+				free(M_PWD_GL);
+				free(M_PWD_GT);
+			}else{
+				//never
+				exit(1);
+			}
 		}
 
 		free(args->in_fn);
@@ -572,7 +662,6 @@ int main(int argc, char **argv) {
 		if(out_m_ff!=NULL){
 			fclose(out_m_ff);
 		}
-
 
 
 		//TODO
