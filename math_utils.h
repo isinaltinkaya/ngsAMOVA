@@ -74,14 +74,14 @@ namespace MATH {
 		double R1(double M[3][3]);
 		double Kin(double M[3][3]);
 
-		double Sij(int* M);
-		double Fij(int* M);
-		double IBS0(int* M);
-		double IBS1(int* M);
-		double IBS2(int* M);
-		double R0(int* M);
-		double R1(int* M);
-		double Kin(int* M);
+		double Sij(int* M,int S);
+		double Fij(int* M, int S);
+		double IBS0(int* M, int S);
+		double IBS1(int* M, int S);
+		double IBS2(int* M, int S);
+		double R0(int* M, int S);
+		double R1(int* M, int S);
+		double Kin(int* M, int S);
 	};
 
 }	

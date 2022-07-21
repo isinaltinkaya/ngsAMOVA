@@ -155,27 +155,27 @@ double MATH::EST::Sij(double M[3][3]){
 }
 
 //
-	// double A=(double) M[0];
-	// double D=(double) M[1];
-	// double G=(double) M[2];
-	// double B=(double) M[3];
-	// double E=(double) M[4];
-	// double H=(double) M[5];
-	// double C=(double) M[6];
-	// double F=(double) M[7];
-	// double I=(double) M[8];
+	// double A = (double) M[0];
+	// double D = (double) M[1];
+	// double G = (double) M[2];
+	// double B = (double) M[3];
+	// double E = (double) M[4];
+	// double H = (double) M[5];
+	// double C = (double) M[6];
+	// double F = (double) M[7];
+	// double I = (double) M[8];
 //
-double MATH::EST::Sij(int* M){
+double MATH::EST::Sij(int* M, int S){
 
 	double x=0.0;
 
-	double A=(double) M[0];
-	double I=(double) M[8];
-	double B=(double) M[3];
-	double D=(double) M[1];
-	double E=(double) M[4];
-	double F=(double) M[7];
-	double H=(double) M[5];
+	double A = (double) M[0] / (double) S;
+	double I = (double) M[8] / (double) S;
+	double B = (double) M[3] / (double) S;
+	double D = (double) M[1] / (double) S;
+	double E = (double) M[4] / (double) S;
+	double F = (double) M[7] / (double) S;
+	double H = (double) M[5] / (double) S;
 
 	x=A+I+((B+D+E+F+H)/2);
 
@@ -222,17 +222,17 @@ double MATH::EST::Fij(double M[3][3]){
 	return x;
 }
 
-double MATH::EST::Fij(int* M){
+double MATH::EST::Fij(int* M, int S){
 
 	double x=0.0;
 
-	double C=(double) M[6];
-	double G=(double) M[2];
-	double E=(double) M[4];
-	double B=(double) M[3];
-	double D=(double) M[1];
-	double F=(double) M[7];
-	double H=(double) M[5];
+	double C = (double) M[6] / (double) S;
+	double G = (double) M[2] / (double) S;
+	double E = (double) M[4] / (double) S;
+	double B = (double) M[3] / (double) S;
+	double D = (double) M[1] / (double) S;
+	double F = (double) M[7] / (double) S;
+	double H = (double) M[5] / (double) S;
 
  	x=((2*C)+(2*G)-E) / ((2*C)+(2*G)+B+D+E+F+H);
 
@@ -254,12 +254,12 @@ double MATH::EST::IBS0(double M[3][3]){
 }
 
 
-double MATH::EST::IBS0(int* M){
+double MATH::EST::IBS0(int* M, int S){
 
 	double x=0.0;
 
-	double C=(double) M[6];
-	double G=(double) M[2];
+	double C = (double) M[6] / (double) S;
+	double G = (double) M[2] / (double) S;
 
 	x=C+G;
 
@@ -282,14 +282,14 @@ double MATH::EST::IBS1(double M[3][3]){
 	return x;
 }
 
-double MATH::EST::IBS1(int* M){
+double MATH::EST::IBS1(int* M, int S){
 
 	double x=0.0;
 
-	double B=(double) M[3];
-	double D=(double) M[1];
-	double F=(double) M[7];
-	double H=(double) M[5];
+	double B = (double) M[3] / (double) S;
+	double D = (double) M[1] / (double) S;
+	double F = (double) M[7] / (double) S;
+	double H = (double) M[5] / (double) S;
 
  	x=B+D+F+H;
 
@@ -310,14 +310,14 @@ double MATH::EST::IBS2(double M[3][3]){
 	return x;
 }
 
-double MATH::EST::IBS2(int* M){
+double MATH::EST::IBS2(int* M, int S){
 
 	double x=0.0;
 
 
-	double A=(double) M[0];
-	double E=(double) M[4];
-	double I=(double) M[8];
+	double A = (double) M[0] / (double) S;
+	double E = (double) M[4] / (double) S;
+	double I = (double) M[8] / (double) S;
 
 	x=A+E+I;
 
@@ -339,13 +339,13 @@ double MATH::EST::R0(double M[3][3]){
 	return x;
 }
 
-double MATH::EST::R0(int* M){
+double MATH::EST::R0(int* M, int S){
 
 	double x=0.0;
 
-	double C=(double) M[6];
-	double G=(double) M[2];
-	double E=(double) M[4];
+	double C = (double) M[6] / (double) S;
+	double G = (double) M[2] / (double) S;
+	double E = (double) M[4] / (double) S;
 
 	x=(C+G)/E;
 	// double xi=MATH::EST::IBS0(M)/E;
@@ -374,17 +374,17 @@ double MATH::EST::R1(double M[3][3]){
 }
 
 
-double MATH::EST::R1(int* M){
+double MATH::EST::R1(int* M, int S){
 
 	double x=0.0;
 
-	double E=(double) M[4];
-	double C=(double) M[6];
-	double G=(double) M[2];
-	double B=(double) M[3];
-	double D=(double) M[1];
-	double F=(double) M[7];
-	double H=(double) M[5];
+	double E = (double) M[4] / (double) S;
+	double C = (double) M[6] / (double) S;
+	double G = (double) M[2] / (double) S;
+	double B = (double) M[3] / (double) S;
+	double D = (double) M[1] / (double) S;
+	double F = (double) M[7] / (double) S;
+	double H = (double) M[5] / (double) S;
 
 	x=E/(C+G+B+D+F+H);
      // double xi=E/(MATH::EST::IBS0(M) + MATH::EST::IBS1(M));
@@ -416,17 +416,17 @@ double MATH::EST::Kin(double M[3][3]){
 }
 
 
-double MATH::EST::Kin(int* M){
+double MATH::EST::Kin(int* M, int S){
 
 	double x=0.0;
 
-	double E=(double) M[4];
-	double C=(double) M[6];
-	double G=(double) M[2];
-	double B=(double) M[3];
-	double D=(double) M[1];
-	double F=(double) M[7];
-	double H=(double) M[5];
+	double E = (double) M[4] / (double) S;
+	double C = (double) M[6] / (double) S;
+	double G = (double) M[2] / (double) S;
+	double B = (double) M[3] / (double) S;
+	double D = (double) M[1] / (double) S;
+	double F = (double) M[7] / (double) S;
+	double H = (double) M[5] / (double) S;
 
 	x=(E-((2*C)+(2*G))) /( B+D+F+H+(2*E));
 	// double xi= (E -(2*MATH::EST::IBS0(M)))/(MATH::EST::IBS1(M) + (2*E));

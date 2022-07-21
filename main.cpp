@@ -390,7 +390,7 @@ int main(int argc, char **argv) {
 
 					}
 					if(args->doAMOVA==2 || args->doAMOVA==3){
-						fprintf(stderr,"\n->no shared sites found for i1:%d i2:%d\n",i1,i2);
+						fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
 						// fprintf(out_sfs_ff,"gt,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,%s,%d,%s,%e\n",
 								// hdr->samples[i1],
 								// hdr->samples[i2],
@@ -475,23 +475,23 @@ int main(int argc, char **argv) {
 							shared_nSites,
 							"gt",
 							args->tole,
-							MATH::EST::Sij(SFS_GT3[pair_idx]),
-							MATH::EST::Fij(SFS_GT3[pair_idx]),
-							MATH::EST::IBS0(SFS_GT3[pair_idx]),
-							MATH::EST::IBS1(SFS_GT3[pair_idx]),
-							MATH::EST::IBS2(SFS_GT3[pair_idx]),
-							MATH::EST::R0(SFS_GT3[pair_idx]),
-							MATH::EST::R1(SFS_GT3[pair_idx]),
-							MATH::EST::Kin(SFS_GT3[pair_idx]));
+							MATH::EST::Sij(SFS_GT3[pair_idx], shared_nSites),
+							MATH::EST::Fij(SFS_GT3[pair_idx], shared_nSites),
+							MATH::EST::IBS0(SFS_GT3[pair_idx], shared_nSites),
+							MATH::EST::IBS1(SFS_GT3[pair_idx], shared_nSites),
+							MATH::EST::IBS2(SFS_GT3[pair_idx], shared_nSites),
+							MATH::EST::R0(SFS_GT3[pair_idx], shared_nSites),
+							MATH::EST::R1(SFS_GT3[pair_idx], shared_nSites),
+							MATH::EST::Kin(SFS_GT3[pair_idx], shared_nSites));
 
 
 					if(args->doDist==1){
 
-						M_PWD_GT[pair_idx]=MATH::EST::Sij(SFS_GT3[pair_idx]);
+						M_PWD_GT[pair_idx]=MATH::EST::Sij(SFS_GT3[pair_idx], shared_nSites);
 
 					}else if(args->doDist==2){
 
-						M_PWD_GT[pair_idx]=MATH::EST::Fij(SFS_GT3[pair_idx]);
+						M_PWD_GT[pair_idx]=MATH::EST::Fij(SFS_GT3[pair_idx], shared_nSites);
 
 					}
 					
