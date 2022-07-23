@@ -36,7 +36,7 @@ get_df_ag<-function(d, G_cols){
 }
 
 # Get "AG" SSD
-get_ssd_ag<-function(d, d_col, G_cols, I_cols, N_cols){
+get_ssd_ag<-function(d, d_col, N_cols, G_cols, I_cols, N_cols){
 
 	Gs<-unique(c(unique(d[G_cols][1][[1]]),unique(d[G_cols][2][[1]])))
 	nG<-length(Gs)
@@ -63,7 +63,7 @@ get_ssd_ag<-function(d, d_col, G_cols, I_cols, N_cols){
 
 		for(i_g in seq(1,nI)){
 			data_iter_i_g<-data_iter_g_i[data_iter_g_i[I_cols][1]==Is[i_g] & data_iter_g_i[I_cols][1]==Is[i_g],]
-			N_i_g<-nrow(data_iter_i_g)
+			N_i_g<-length(unique(c(unique(data_iter_i_g[N_cols][1][[1]]),unique(data_iter_i_g[N_cols][2][[1]]))))
 			tmp_lower<-tmp_lower + (N_i_g)
 		}
 		tmp_right<- tmp_right + (tmp_upper/tmp_lower)
@@ -100,7 +100,6 @@ get_df_wp<-function(d, N_cols, G_cols, I_cols){
 	i=0
 	for(g_i in seq(1,nG)){
 		data_iter_g_i<-d[d[G_cols][1]==Gs[g_i] & d[G_cols][2]==Gs[g_i],]
-		unique(c(unique(data_iter_g_i[N_cols][1][[1]]),unique(data_iter_g_i[N_cols][2][[1]])))
 		data_iter_g_i_I_g<-unique(c(unique(data_iter_g_i[I_cols][1][[1]]),unique(data_iter_g_i[I_cols][2][[1]])))
 		n_I_g<-length(data_iter_g_i_I_g)
 		i=i+n_I_g
@@ -111,7 +110,7 @@ get_df_wp<-function(d, N_cols, G_cols, I_cols){
 }
 
 # Get "WP" SSD
-get_ssd_wp<-function(d, d_col, G_cols, I_cols){
+get_ssd_wp<-function(d, d_col, N_cols, G_cols, I_cols){
 	Gs<-unique(c(unique(d[G_cols][1][[1]]),unique(d[G_cols][2][[1]])))
 	nG<-length(Gs)
 
@@ -123,7 +122,7 @@ get_ssd_wp<-function(d, d_col, G_cols, I_cols){
 		data_iter_g_i<-d[d[G_cols][1]==Gs[g_i] & d[G_cols][2]==Gs[g_i],]
 		for(i_g in seq(1,nI)){
 			data_iter_i_g<-data_iter_g_i[data_iter_g_i[I_cols][1]==Is[i_g] & data_iter_g_i[I_cols][1]==Is[i_g],]
-			N_i_g<-nrow(data_iter_i_g)
+			N_i_g<-length(unique(c(unique(data_iter_i_g[N_cols][1][[1]]),unique(data_iter_i_g[N_cols][2][[1]]))))
 			i<-i + (sum(data_iter_i_g[d_col][[1]]^2)/(N_i_g))
 		}
 	}
@@ -146,7 +145,7 @@ get_df_total<-function(d, N_cols){
 }
 
 # Get "Total" SSD
-get_ssd_total<-function(d, N_cols){
+get_ssd_total<-function(d, d_col, N_cols){
 	Ns<-unique(c(unique(d[N_cols][1][[1]]),unique(d[N_cols][2][[1]])))
 	nN<-length(Ns)
 	res<-(sum(d[d_col][[1]]^2))/nN
@@ -172,7 +171,7 @@ get_ssd_total<-function(d, N_cols){
 #
 #   D = {\sum^G_{g=1} I_g } 
 #
-get_n_0<-function(d, G_cols, I_cols){
+get_n_0<-function(d, N_cols, G_cols, I_cols){
 
 	res<-0
 
@@ -190,7 +189,7 @@ get_n_0<-function(d, G_cols, I_cols){
 		for(i_g in seq(1,nI)){
 			N_i_g <- 0
 			data_iter_i_g<-data_iter_g_i[data_iter_g_i[I_cols][1]==Is[i_g] & data_iter_g_i[I_cols][1]==Is[i_g],]
-			N_i_g<-nrow(data_iter_i_g)
+			N_i_g<-length(unique(c(unique(data_iter_i_g[N_cols][1][[1]]),unique(data_iter_i_g[N_cols][2][[1]]))))
 			UL <- UL+N_i_g
 		}
 	}
@@ -205,7 +204,7 @@ get_n_0<-function(d, G_cols, I_cols){
 		for(i_g in seq(1,nI)){
 			N_i_g <- 0
 			data_iter_i_g<-data_iter_g_i[data_iter_g_i[I_cols][1]==Is[i_g] & data_iter_g_i[I_cols][1]==Is[i_g],]
-			N_i_g<-nrow(data_iter_i_g)
+			N_i_g<-length(unique(c(unique(data_iter_i_g[N_cols][1][[1]]),unique(data_iter_i_g[N_cols][2][[1]]))))
 			URU <- URU + (N_i_g^2)
 			URD <- URD + (N_i_g)
 		}
@@ -241,7 +240,7 @@ get_n_0<-function(d, G_cols, I_cols){
 #
 #   D = { G - 1 } 
 #
-get_n_1<-function(d, G_cols, I_cols){
+get_n_1<-function(d, N_cols, G_cols, I_cols){
 
 	res<-0
 
@@ -261,7 +260,7 @@ get_n_1<-function(d, G_cols, I_cols){
 		for(i_g in seq(1,nI)){
 			N_i_g <- 0
 			data_iter_i_g<-data_iter_g_i[data_iter_g_i[I_cols][1]==Is[i_g] & data_iter_g_i[I_cols][1]==Is[i_g],]
-			N_i_g<-nrow(data_iter_i_g)
+			N_i_g<-length(unique(c(unique(data_iter_i_g[N_cols][1][[1]]),unique(data_iter_i_g[N_cols][2][[1]]))))
 			ULU <- ULU + (N_i_g)^2
 			ULD <- ULD + (N_i_g)
 		}
@@ -280,7 +279,7 @@ get_n_1<-function(d, G_cols, I_cols){
 		for(i_g in seq(1,nI)){
 			N_i_g <- 0
 			data_iter_i_g<-data_iter_g_i[data_iter_g_i[I_cols][1]==Is[i_g] & data_iter_g_i[I_cols][1]==Is[i_g],]
-			N_i_g<-nrow(data_iter_i_g)
+			N_i_g<-length(unique(c(unique(data_iter_i_g[N_cols][1][[1]]),unique(data_iter_i_g[N_cols][2][[1]]))))
 			URU <- URU + (N_i_g^2)
 			URD <- URD + (N_i_g)
 		}
@@ -305,7 +304,7 @@ get_n_1<-function(d, G_cols, I_cols){
 #
 #   D = { G - 1 }
 #
-get_n_2<-function(d, G_cols, I_cols){
+get_n_2<-function(d, N_cols, G_cols, I_cols){
 
 	res<-0
 
@@ -323,11 +322,10 @@ get_n_2<-function(d, G_cols, I_cols){
 		for(i_g in seq(1,nI)){
 			N_i_g <- 0
 			data_iter_i_g<-data_iter_g_i[data_iter_g_i[I_cols][1]==Is[i_g] & data_iter_g_i[I_cols][1]==Is[i_g],]
-			N_i_g<-nrow(data_iter_i_g)
+			N_i_g<-length(unique(c(unique(data_iter_i_g[N_cols][1][[1]]),unique(data_iter_i_g[N_cols][2][[1]]))))
 			UL <- UL + (N_i_g)
 		}
 	}
-
 
 	UR<-0
 
@@ -339,7 +337,7 @@ get_n_2<-function(d, G_cols, I_cols){
 		for(i_g in seq(1,nI)){
 			N_i_g <- 0
 			data_iter_i_g<-data_iter_g_i[data_iter_g_i[I_cols][1]==Is[i_g] & data_iter_g_i[I_cols][1]==Is[i_g],]
-			N_i_g<-nrow(data_iter_i_g)
+			N_i_g<-length(unique(c(unique(data_iter_i_g[N_cols][1][[1]]),unique(data_iter_i_g[N_cols][2][[1]]))))
 			URUR <- URUR + (N_i_g)
 		}
 		URU<-URU + ((URUR)^2)
@@ -352,7 +350,7 @@ get_n_2<-function(d, G_cols, I_cols){
 		for(i_g in seq(1,nI)){
 			N_i_g <- 0
 			data_iter_i_g<-data_iter_g_i[data_iter_g_i[I_cols][1]==Is[i_g] & data_iter_g_i[I_cols][1]==Is[i_g],]
-			N_i_g<-nrow(data_iter_i_g)
+			N_i_g<-length(unique(c(unique(data_iter_i_g[N_cols][1][[1]]),unique(data_iter_i_g[N_cols][2][[1]]))))
 			URD <- URD + (N_i_g)
 		}
 	}
@@ -364,7 +362,6 @@ get_n_2<-function(d, G_cols, I_cols){
 	res <- (UL - UR) / D
 	return(res)
 }
-
 
 
 
