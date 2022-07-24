@@ -38,7 +38,8 @@ int IO::inspectFILE::count_nColumns(char* line, const char* delims){
 }
 
 
-int IO::readFILE::METADATA(DATA::Metadata * MTD, FILE* in_mtd_ff, int whichCol, const char* delims){
+// int IO::readFILE::METADATA(DATA::Metadata * MTD, FILE* in_mtd_ff, int whichCol, const char* delims){
+int IO::readFILE::METADATA(DATA::Metadata * MTD, FILE* in_mtd_ff, int whichCol, const char* delims, DATA::Inds *INDS){
 
 
 	fprintf(stderr,"\n");
@@ -51,6 +52,7 @@ int IO::readFILE::METADATA(DATA::Metadata * MTD, FILE* in_mtd_ff, int whichCol, 
 
 	//TODO map is probably better due to sorting issues. we cannot have all strata sorted 
 	char mt_buf[1024];
+
 	while(fgets(mt_buf,1024,in_mtd_ff)){
 
 
@@ -70,10 +72,6 @@ int IO::readFILE::METADATA(DATA::Metadata * MTD, FILE* in_mtd_ff, int whichCol, 
 
 		char *tok=strtok(mt_buf,delims);
 		char *ind_id=tok;
-		// fprintf(stderr,"->->->tok %s\n",tok);
-		// fprintf(stderr,"->->->ind_id: %s\n",ind_id);
-		//
-		// char *group_id=NULL;
 		char *group_id=tok;
 
 		for (int coli=0; coli<whichCol-1; coli++){
@@ -81,59 +79,48 @@ int IO::readFILE::METADATA(DATA::Metadata * MTD, FILE* in_mtd_ff, int whichCol, 
 			group_id=tok;
 		}
 
-		// uMap[group_id]=&MTD->S[MTD->nStrata];
-
-		// fprintf(stderr,"->->->tok %s\n",tok);
-		// fprintf(stderr,"->->->group_id: %s\n",group_id);
 
 		//increase the size of Strata
-		if(MTD->nStrata > MTD->buf_strata){
-			fprintf(stderr,"->->->increase the size of Strata S[4]!!\n");
+		// while(MTD->nStrata > MTD->_size_Strata){
+		if(MTD->nStrata > MTD->_size_Strata){
+			fprintf(stderr,"->->->increase the size of Strata S[]!!\n");
 		}
 
 		//if not the first loop
 		if (MTD->S[MTD->nStrata].id!=NULL){
-		// fprintf(stderr,"->->->nStrata: %d\n",MTD->nStrata);
-		// fprintf(stderr,"MYSTRATA->->->strata id: %s\n",MTD->S[MTD->nStrata].id);
-		// fprintf(stderr,"MYGROUP->->->group_id: %s\n",group_id);
-		// fprintf(stderr,"CMP: %d\n",strcmp(MTD->S[MTD->nStrata].id,group_id));
 		
-
 			//group id changed
 			if(strcmp(MTD->S[MTD->nStrata].id,group_id)!=0){
-				MTD->nStrata++;
-				MTD->S[MTD->nStrata].id=strdup(group_id);
+					MTD->nStrata++;
+					MTD->S[MTD->nStrata].id=strdup(group_id);
 			}
 
-			if(MTD->S[MTD->nStrata].nInds > MTD->S[MTD->nStrata].buf_inds){
-				fprintf(stderr,"->->->increase the size of inds[10]!!\n");
-			}
 
-			MTD->S[MTD->nStrata].inds[MTD->S[MTD->nStrata].nInds]=strdup(ind_id);
+			INDS->strata[MTD->nInds_total]+=(int) pow(2,(int) MTD->nStrata);
+
 			MTD->S[MTD->nStrata].nInds++;
+			MTD->nInds_total++;
 
 		}else{
 		//if first loop
-			// uMap[group_id]=&MTD->S[MTD->nStrata];
+
+			INDS->strata[MTD->nInds_total]+=(int) pow(2,(int) MTD->nStrata);
 
 			MTD->S[MTD->nStrata].id=strdup(group_id);
-			MTD->S[MTD->nStrata].inds[MTD->S[MTD->nStrata].nInds]=strdup(ind_id);
 			MTD->S[MTD->nStrata].nInds++;
+			MTD->nInds_total++;
 
 		}
 
 		//TODO then plug in all pairs associated with ind if ind==indid in header in loop
-		// fprintf(stderr,"->->->nInds: %d\n",MTD->S[MTD->nStrata].nInds);
-		// fprintf(stderr,"->->->strata id: %s\n",MTD->S[MTD->nStrata].id);
-		// fprintf(stderr,"->->->nStrata: %d\n",MTD->nStrata);
-		// fprintf(stderr,"\n");
-		// fprintf(stderr,"----");
-		// fprintf(stderr,"\n");
 
 	}
+	//add the last one since increase is at the beginning of change
+	MTD->nStrata++;
 
 
-	for (int sti=0; sti<MTD->nStrata+1; sti++){
+#if 0
+	for (int sti=0; sti<MTD->nStrata; sti++){
 		fprintf(stderr,"\n-> Strata %s contains %d individuals.",MTD->S[sti].id,MTD->S[sti].nInds);
 		fprintf(stderr,"\n-> Individual names are:\n\t");
 		for(int ii=0; ii<MTD->S[sti].nInds;ii++){
@@ -148,6 +135,8 @@ int IO::readFILE::METADATA(DATA::Metadata * MTD, FILE* in_mtd_ff, int whichCol, 
 	fprintf(stderr,"\n");
 	fprintf(stderr,"--------------------------------------------------");
 	fprintf(stderr,"\n");
+#endif
+
 
 
 	return 0;
@@ -193,7 +182,6 @@ argStruct *argStruct_init(){
 	args->doDist=-1;
 
 	args->isSim=0;
-
 	args->minInd=-1;
 
 	args->printMatrix=0;

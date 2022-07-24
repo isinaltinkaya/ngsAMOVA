@@ -57,28 +57,44 @@ extern const int get_3x3_idx[3][3];
 char *get_time();
 
 namespace DATA{
+
+
+	typedef struct Inds{
+
+		typedef int strataArr[200];
+		int _size_strataArr=200;
+		strataArr strata={0};
+
+
+	}Inds;
+
 	typedef struct Strata{
-		int nPairs=0;
-		char *pairs=NULL;
 
 		int nInds=0;
-		char *inds[10];
-		int buf_inds=10;
-		
 		char *id=NULL;
+
+		// Strata();
+		// ~Strata();
+
 	}Strata;
 
 	typedef struct Metadata{
-		Strata S[4];
+
+		// Strata *S;
+		Strata S[3];
+		int _size_Strata=3;
+
+		int nInds_total=0;
+
 		int nStrata=0;
-		int buf_strata=4;
+
+		// Metadata();
+		// ~Metadata();
+
+
 	}Metadata;
 
 };
-
-
-
-
 
 
 #endif

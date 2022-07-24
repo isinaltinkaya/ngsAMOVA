@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
+//for metadata binary set flags
+#include <math.h>
 
 
 
@@ -22,7 +24,8 @@ namespace IO {
 
 	namespace readFILE{
 
-		int METADATA(DATA::Metadata* MTD, FILE* in_mtd_ff, int whichCol, const char* delims);
+		// int METADATA(DATA::Metadata* MTD, FILE* in_mtd_ff, int whichCol, const char* delims);
+		int METADATA(DATA::Metadata* MTD, FILE* in_mtd_ff, int whichCol, const char* delims, DATA::Inds* INDS);
 	};
 
 	namespace inspectFILE{
@@ -77,14 +80,9 @@ typedef struct {
 	int whichCol;
 	int doAMOVA;
 	int printMatrix;
-
 	int isSim;
-
 	int doDist;
-
 	int minInd;
-
-	int doTest;
 
 	int seed;
 
@@ -94,6 +92,7 @@ typedef struct {
 	int ind1;
 	int ind2;
 
+	int doTest;
 	
 }argStruct;
 

@@ -84,6 +84,15 @@ int main(int argc, char **argv) {
 			exit(1);
 		}
 
+		//todo only construct if metadata given
+		DATA::Inds *INDS;
+		DATA::Inds Individuals;
+		INDS=&Individuals;
+		DATA::Metadata *MTD;
+		DATA::Metadata Metadata;
+		MTD=&Metadata;
+
+		nInd=bcf_hdr_nsamples(hdr);
 
 		if(args->in_mtd_fn!=NULL){
 			//// BEGIN Read metadata
@@ -94,23 +103,35 @@ int main(int argc, char **argv) {
 			//sep can be \t \whitespace or comma
 			const char* delims="\t ,\n";
 
-			DATA::Metadata Metadata;
-			DATA::Metadata *MTD;
-			MTD=&Metadata;
 
-			// std::unordered_map<const char*, Strata*> uMap;
-				
-			// if(read_metadata(MTD, in_mtd_ff, args->whichCol, delims, uMap)!=0){
-			// if(read_metadata(MTD, in_mtd_ff, args->whichCol, delims)!=0){
-			if(IO::readFILE::METADATA(MTD, in_mtd_ff, args->whichCol, delims)!=0){
+			if(IO::readFILE::METADATA(MTD, in_mtd_ff, args->whichCol, delims,INDS)!=0){
 	fprintf(stderr,"\n\nHERE!!!\n\n");
 				exit(1);
 			}
 			//// END Read metadata
+
+
+			if( nInd != MTD->nInds_total){
+				fprintf(stderr,"\n[ERROR]: Number of samples in input file (%i) is not equal to number of samples in metadata file (%i); will exit!\n\n", nInd, MTD->nInds_total);
+				exit(1);
+			}
+
+			for(int ii=0; ii<nInd; ii++){
+
+				for(int sti=0; sti<MTD->nStrata;sti++){
+
+					//if individual belongs to strata sti
+					if(INDS->strata[ii] & (1 << sti)){
+						fprintf(stderr, "\n-> Individual (%s,idx:%i) belongs to strata (%s,idx:%i)\n",hdr->samples[ii],ii,MTD->S[sti].id,sti);
+					}
+
+				}
+
+			}
+
 		}
 
 
-		nInd=bcf_hdr_nsamples(hdr);
 
 		char *DATETIME=pars->DATETIME;
 		DATETIME=get_time();
@@ -508,6 +529,47 @@ int main(int argc, char **argv) {
 			}
 		}
 //end i1i2 loop
+		if(args->in_mtd_fn!=NULL){
+
+			//// END Read metadata
+
+			// for(int i=0;i<nInd;i++){
+// fprintf(stderr,"\n\nHERE!!! %d\n\n",i);
+				//
+			// }
+//
+
+			//assume same sorting for vcf inds and metadata inds, at least for now
+			// for(int indi=0;indi<nInd;indi++){
+//
+			// }
+//
+			// for(int i1=0;i1<nInd-1;i1++){
+				// for(int i2=i1+1;i2<nInd;i2++){
+//
+					// // MTD->S[sti].inds[stindi]
+					// for(int sti=0; sti<MTD->nStrata;sti++){
+							// for(int stindi=0; stindi<MTD->S[sti].nInds;stindi++){
+								// if(strcmp(MTD->S[sti].inds[stindi], hdr->samples[i1])==0){
+									// fprintf(stderr, "\n->->xxx %s %s\n",MTD->S[sti].inds[i1], hdr->samples[i1]);
+								// }
+							// }
+					// }
+				// }
+			// }
+//
+			// int pair_idx=LUT_indPair_idx[i1][i2];
+
+			// for(int sti=0; sti<MTD->nStrata;sti++){
+
+				// for(int stindi=0; stindi<MTD->S[sti].nInds;stindi++){
+					// fprintf(stderr, "\n->->xxx %s\n",MTD->S[sti].inds[stindi]);
+					// fprintf(stderr, "\n");
+				// }
+			// }
+		}
+
+
 
 		if(args->printMatrix==1){
 			// // //print pair IDs
@@ -550,6 +612,7 @@ int main(int argc, char **argv) {
 				}
 
 			}
+
 		}
 
 

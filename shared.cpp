@@ -8,6 +8,7 @@
  */
 
 #include "shared.h"
+#include <stdlib.h>
 
 
 using size_t=decltype(sizeof(int));
@@ -98,10 +99,21 @@ char *get_time(){
 	local_time=localtime(&current_time);
 	return(asctime(local_time));
 }
-
-
-
-
+//
+// DATA::Metadata::Metadata(){
+	// S = new DATA::Strata[_size_Strata];
+// }
+//
+// DATA::Metadata::~Metadata(){
+	// delete[] S;
+// }
+//
+// DATA::Strata::Strata(){
+	// inds=(char**)malloc(_size_inds * sizeof(char*));
+// }
+//
+// DATA::Strata::~Strata(){
+// }
 // namespace data_structures{
 //
 	// //2D Matrix
