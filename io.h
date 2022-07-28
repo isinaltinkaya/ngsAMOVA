@@ -47,7 +47,8 @@ namespace IO {
  * 					anc=ref and der=alt[0]
  *
  *
- * @field minInd	minimum number of individuals needed
+ * @field minInd	[-1 = not set]
+ * 					minimum number of individuals needed
  * 					for site to be included in analyses
  *
  * @field whichCol	[-1] defines the index (1-based) of the
@@ -56,7 +57,7 @@ namespace IO {
  *
  * @field doAMOVA	[0]
  * 					1 use 10 genotype likelihoods (GL)
- * 					2 use genotypes (GT)
+ * 					2 use genotypes (GT) (NOTE: Only for benchmark purposes)
  * 
  * @field doDist	[0] use Sij similarity index
  * 					[1] use Fij F statistic

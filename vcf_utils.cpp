@@ -93,7 +93,7 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 			}
 		}
 
-		if(args->minInd>0){
+		if(args->minInd>1){
 			//skip site if minInd is defined and #non-missing inds=<nInd
 			if( (nInd - n_missing_ind) < args->minInd ){
 				// fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,nInd-n_missing_ind,site);
@@ -119,7 +119,7 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 		return 1;
 	}
 
-	lgl.destroy();
+	// lgl.destroy();
 	return 0;
 }
 
@@ -166,7 +166,28 @@ int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars
 		}
 	}
 
-	gt.destroy();
+	// gt.destroy();
 	return 0;
 
 }
+
+
+
+// check dp
+				// TAG="DP";
+				// get_data<int32_t> dp;
+				// dp.n = bcf_get_format_int32(hdr,bcf,TAG,&dp.data,&dp.size_e);
+				// if(dp.n<0){
+				// fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
+				// exit(1);
+				// }
+//
+				// //TODO use only sites non-missing for all individuals for now
+				// for(int indi=0; indi<nInd; indi++){
+				// if(dp.data[indi]==0){
+				// // fprintf(stderr,"\nDepth: %d at (site_i: %d, pos: %d) in (ind_i: %d, ind_id: %s)\n",dp.data[indi],nSites,bcf->pos,indi,hdr->samples[indi]);
+				// dp.n_missing++;
+				// }
+				// }
+				// if (dp.n_missing>0) continue;
+//

@@ -71,7 +71,7 @@ int IO::readFILE::METADATA(DATA::Metadata * MTD, FILE* in_mtd_ff, int whichCol, 
 		//TODO strtok_r? do we need thread safety here?
 
 		char *tok=strtok(mt_buf,delims);
-		char *ind_id=tok;
+		// char *ind_id=tok;
 		char *group_id=tok;
 
 		for (int coli=0; coli<whichCol-1; coli++){
@@ -260,17 +260,16 @@ argStruct *argStruct_get(int argc, char **argv){
 	
 	if(args->minInd==0){
 		fprintf(stderr,"\n\t-> -minInd 0; will use sites with data for all individuals.\n");
-
 	}else if(args->minInd==-1){
-		fprintf(stderr,"\n\t-> -minInd not set; will use sites with data for all individuals.\n");
-		args->minInd=0;
-	}
-
-	if(args->minInd==1){
+		fprintf(stderr,"\n\t-> -minInd not set; will use sites that is nonmissing for both individuals in a pair.\n");
+	}else if(args->minInd==2){
+		fprintf(stderr,"\n\t-> -minInd 2; will use sites that is nonmissing for both individuals in a pair.\n");
+	}else if(args->minInd==1){
 		fprintf(stderr,"\n[ERROR]\tMinimum value allowed for minInd is 2; will exit!\n");
 		free(args);
 		return 0;
 	}
+
 
 
 	if(args->in_fn==NULL){

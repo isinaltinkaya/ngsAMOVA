@@ -116,19 +116,6 @@ int main(int argc, char **argv) {
 				exit(1);
 			}
 
-			for(int ii=0; ii<nInd; ii++){
-
-				for(int sti=0; sti<MTD->nStrata;sti++){
-
-					//if individual belongs to strata sti
-					if(INDS->strata[ii] & (1 << sti)){
-						fprintf(stderr, "\n-> Individual (%s,idx:%i) belongs to strata (%s,idx:%i)\n",hdr->samples[ii],ii,MTD->S[sti].id,sti);
-					}
-
-				}
-
-			}
-
 		}
 
 
@@ -138,6 +125,7 @@ int main(int argc, char **argv) {
 
 
 		fprintf(stderr,"\n%s",DATETIME);
+		//TODO print based on analysis type, and to args file
 		fprintf(stderr,"\nngsAMOVA -doAMOVA %d -doTest %d -in %s -out %s -tole %e -isSim %d -minInd %d -printMatrix %d\n",args->doAMOVA,args->doTest,args->in_fn,args->out_fp,args->tole,args->isSim,args->minInd,args->printMatrix);
 
 		fprintf(stderr, "\nReading file: \"%s\"", in_fn);
@@ -395,6 +383,10 @@ int main(int argc, char **argv) {
 							}
 						}
 
+					}else if(args->doAMOVA==2){
+
+						shared_nSites=nSites;
+
 					}
 				}
 
@@ -530,45 +522,23 @@ int main(int argc, char **argv) {
 		}
 //end i1i2 loop
 		if(args->in_mtd_fn!=NULL){
+			for(int i1=0;i1<nInd-1;i1++){
+				for(int i2=i1+1;i2<nInd;i2++){
 
-			//// END Read metadata
+					for(int sti=0; sti<MTD->nStrata;sti++){
 
-			// for(int i=0;i<nInd;i++){
-// fprintf(stderr,"\n\nHERE!!! %d\n\n",i);
-				//
-			// }
-//
+					//if individual belongs to strata sti
+						if(INDS->strata[i1] & (1 << sti)){
+							fprintf(stderr, "\n-> Individual (%s,idx:%i) belongs to strata (%s,idx:%i)\n",hdr->samples[i1],i1,MTD->S[sti].id,sti);
+						}
 
-			//assume same sorting for vcf inds and metadata inds, at least for now
-			// for(int indi=0;indi<nInd;indi++){
-//
-			// }
-//
-			// for(int i1=0;i1<nInd-1;i1++){
-				// for(int i2=i1+1;i2<nInd;i2++){
-//
-					// // MTD->S[sti].inds[stindi]
-					// for(int sti=0; sti<MTD->nStrata;sti++){
-							// for(int stindi=0; stindi<MTD->S[sti].nInds;stindi++){
-								// if(strcmp(MTD->S[sti].inds[stindi], hdr->samples[i1])==0){
-									// fprintf(stderr, "\n->->xxx %s %s\n",MTD->S[sti].inds[i1], hdr->samples[i1]);
-								// }
-							// }
-					// }
-				// }
-			// }
-//
-			// int pair_idx=LUT_indPair_idx[i1][i2];
+					}
 
-			// for(int sti=0; sti<MTD->nStrata;sti++){
-
-				// for(int stindi=0; stindi<MTD->S[sti].nInds;stindi++){
-					// fprintf(stderr, "\n->->xxx %s\n",MTD->S[sti].inds[stindi]);
-					// fprintf(stderr, "\n");
-				// }
-			// }
+				}
+			}
 		}
 
+		/// END Read metadata
 
 
 		if(args->printMatrix==1){

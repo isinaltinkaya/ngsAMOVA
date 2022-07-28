@@ -24,3 +24,7 @@ amovaput*
 
 # NFS ongoing job
 .nfs*
+
+
+wd/
+wd/*
