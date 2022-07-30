@@ -340,7 +340,15 @@ argStruct *argStruct_get(int argc, char **argv){
 		// free(args);
 		// return 0;
 	// }
-//
+
+	if(args->printMatrix==1){
+		if(args->doDist<0){
+			//default
+			args->doDist=1;
+		}
+	}
+
+
 	if (args->doAMOVA == 1){
 		if(args->doInd==1){
 			if(args->ind1==-1){

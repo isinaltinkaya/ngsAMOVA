@@ -357,7 +357,7 @@ int main(int argc, char **argv) {
 		// [END] Reading sites
 
 		
-		fprintf(out_sfs_ff,"Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Sij,Fij,IBS0,IBS1,IBS2,R0,R1,Kin\n");
+		fprintf(out_sfs_ff,"Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Sij,Fij,Fij2,IBS0,IBS1,IBS2,R0,R1,Kin\n");
 
 
 		for(int i1=0;i1<nInd-1;i1++){
@@ -447,12 +447,13 @@ int main(int argc, char **argv) {
 
 					}else if(args->doDist==2){
 
-						M_PWD_GL[pair_idx]=MATH::EST::Fij(SFS_GLE3);
+						// M_PWD_GL[pair_idx]=MATH::EST::Fij(SFS_GLE3);
+						M_PWD_GL[pair_idx]=MATH::SQUARE(MATH::EST::Fij(SFS_GLE3));
 
 					}
 
 
-					fprintf(out_sfs_ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e,%f,%f,%f,%f,%f,%f,%f,%f\n",
+					fprintf(out_sfs_ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
 							hdr->samples[i1],
 							hdr->samples[i2],
 							shared_nSites*SFS_GLE3[0][0],shared_nSites*SFS_GLE3[0][1],shared_nSites*SFS_GLE3[0][2],
@@ -464,6 +465,7 @@ int main(int argc, char **argv) {
 							args->tole,
 							MATH::EST::Sij(SFS_GLE3),
 							MATH::EST::Fij(SFS_GLE3),
+							MATH::SQUARE(MATH::EST::Fij(SFS_GLE3)),
 							MATH::EST::IBS0(SFS_GLE3),
 							MATH::EST::IBS1(SFS_GLE3),
 							MATH::EST::IBS2(SFS_GLE3),
@@ -478,7 +480,7 @@ int main(int argc, char **argv) {
 				if(args->doAMOVA==2 || args->doAMOVA==3){
 
 
-					fprintf(out_sfs_ff,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%e,%f,%f,%f,%f,%f,%f,%f,%f\n",
+					fprintf(out_sfs_ff,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
 							hdr->samples[i1],
 							hdr->samples[i2],
 							SFS_GT3[pair_idx][0],SFS_GT3[pair_idx][1],SFS_GT3[pair_idx][2],
@@ -487,9 +489,10 @@ int main(int argc, char **argv) {
 							"gt",
 							shared_nSites,
 							"gt",
-							args->tole,
+							"gt",
 							MATH::EST::Sij(SFS_GT3[pair_idx], shared_nSites),
 							MATH::EST::Fij(SFS_GT3[pair_idx], shared_nSites),
+							MATH::SQUARE(MATH::EST::Fij(SFS_GT3[pair_idx], shared_nSites)),
 							MATH::EST::IBS0(SFS_GT3[pair_idx], shared_nSites),
 							MATH::EST::IBS1(SFS_GT3[pair_idx], shared_nSites),
 							MATH::EST::IBS2(SFS_GT3[pair_idx], shared_nSites),

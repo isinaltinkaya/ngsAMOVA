@@ -34,6 +34,8 @@ void prepare_LUT_indPair_idx(int nInd, int **LUT_indPair_idx){
 	}
 }
 
+
+
 // // double A=M[0][0];
 // // double D=M[0][1];
 // // double G=M[0][2];
@@ -97,7 +99,7 @@ double MATH::MEAN(double M[3][3]){
 	return mean;
 }
 
-//TODO maybe template to allow float etc?
+//TODO maybe template to allow float etc? 
 
 //VAR and SD is for sample (N-1)
 double MATH::VAR(double M[3][3]){
@@ -105,7 +107,7 @@ double MATH::VAR(double M[3][3]){
 	double N=9;
 	for(int x=0;x<3;x++){
 		for(int y=0;y<3;y++){
-			i= i + pow((double) M[x][y] - (double)MATH::MEAN(M),2);
+			i= i + MATH::SQUARE((double) M[x][y] - (double)MATH::MEAN(M));
 		}
 	}
 	return (double) i / (double) (N-1);
@@ -115,7 +117,7 @@ double MATH::VAR(int* M){
 	double i=0.0;
 	double N=9;
 	for(int x=0;x<N;x++){
-		i= i + pow((double) M[x] - (double)MATH::MEAN(M),2);
+		i= i + MATH::SQUARE((double) M[x] - (double)MATH::MEAN(M));
 	}
 	return (double) i / (double) (N-1);
 }

@@ -52,6 +52,9 @@ namespace MATH {
 	double VAR(int* M);
 	double SD(int* M);
 
+	template<typename T>
+	T SQUARE(T n){ 	return n*n; }
+
 	//ESTIMATE?
 	namespace EST{
 		//TODO do these more efficiently
