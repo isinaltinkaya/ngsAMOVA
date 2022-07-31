@@ -23,8 +23,6 @@ namespace IO {
 	FILE *openFILE(const char* a,const char* b);
 
 	namespace readFILE{
-
-		// int METADATA(DATA::Metadata* MTD, FILE* in_mtd_ff, int whichCol, const char* delims);
 		int METADATA(DATA::Metadata* MTD, FILE* in_mtd_ff, int whichCol, const char* delims, DATA::Inds* INDS);
 	};
 

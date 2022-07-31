@@ -38,7 +38,6 @@ int IO::inspectFILE::count_nColumns(char* line, const char* delims){
 }
 
 
-// int IO::readFILE::METADATA(DATA::Metadata * MTD, FILE* in_mtd_ff, int whichCol, const char* delims){
 int IO::readFILE::METADATA(DATA::Metadata * MTD, FILE* in_mtd_ff, int whichCol, const char* delims, DATA::Inds *INDS){
 
 

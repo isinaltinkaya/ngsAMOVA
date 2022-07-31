@@ -2,6 +2,9 @@
 
 
 
+//TODO less loops by jointly estimating some stats
+
+
 double log2ln(float ivar){
 	return (double) ivar/M_LOG10E;
 }
@@ -436,4 +439,6 @@ double MATH::EST::Kin(int* M, int S){
 
 	return x;
 }
+
+
 

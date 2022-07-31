@@ -523,6 +523,14 @@ int main(int argc, char **argv) {
 				}
 			}
 		}
+#if 0
+		//print lookup table
+			for(int i1=0;i1<nInd-1;i1++){
+				for(int i2=i1+1;i2<nInd;i2++){
+					fprintf(stderr,"\n%i %i %i\n",LUT_indPair_idx[i1][i2],i1,i2);
+				}
+			}
+#endif
 //end i1i2 loop
 		if(args->in_mtd_fn!=NULL){
 			for(int i1=0;i1<nInd-1;i1++){
@@ -530,9 +538,26 @@ int main(int argc, char **argv) {
 
 					for(int sti=0; sti<MTD->nStrata;sti++){
 
-					//if individual belongs to strata sti
-						if(INDS->strata[i1] & (1 << sti)){
-							fprintf(stderr, "\n-> Individual (%s,idx:%i) belongs to strata (%s,idx:%i)\n",hdr->samples[i1],i1,MTD->S[sti].id,sti);
+						//TODO maybe associative array to map pairs to stratas and store in lookup table?
+						//
+					// if individual belongs to strata sti
+						if( (INDS->strata[i1] & (1 << sti)) && (INDS->strata[i2] & (1 << sti)) ){
+							// fprintf(stderr, "\n-> Individual (%s,idx:%i) belongs to strata (%s,idx:%i)\n",
+									// hdr->samples[i1],
+									// i1,
+									// MTD->S[sti].id,
+									// sti);
+							//
+							// fprintf(stderr, "\n-> Pair %i ((%s,%s),idx:(%i,%i)) belongs to strata (%s,idx:%i)\n",
+									// LUT_indPair_idx[i1][i2],
+									// hdr->samples[i1],
+									// hdr->samples[i2],
+									// i1,
+									// i2,
+									// MTD->S[sti].id,
+									// sti);
+//
+
 						}
 
 					}
@@ -585,6 +610,127 @@ int main(int argc, char **argv) {
 				}
 
 			}
+
+
+			double ssd_TOTAL=0.0;
+			double msd_TOTAL=0.0;
+			double sum=0.0;
+			int df_TOTAL=0;
+			double delta_sq=0.0;
+
+			for (int px=0;px<n_ind_cmb;px++){
+				delta_sq= MATH::SQUARE(M_PWD_GT[px]);
+				sum += delta_sq;
+			}
+			ssd_TOTAL=sum/(double)nInd;
+
+			df_TOTAL=nInd - 1;
+			msd_TOTAL=ssd_TOTAL/df_TOTAL;
+
+
+			double ssd_AG=0.0;
+			double ssd_WG=0.0;
+			double msd_AG=0.0;
+			int df_AG=0;
+
+			df_AG=MTD->nStrata - 1;
+
+
+			double ssd_WP=0.0;
+			double msd_WP=0.0;
+
+			int df_WP=0;
+			
+			df_WP=nInd - MTD->nStrata;
+
+			// int df_AP_WG=0;
+
+			double s=0.0;
+			double d_sq=0.0;
+			int px=0;
+			
+			for(int sti=0; sti<MTD->nStrata;sti++){
+				s=0.0;
+				for(int i1=0;i1<nInd-1;i1++){
+					for(int i2=i1+1;i2<nInd;i2++){
+
+						if( (INDS->strata[i1] & (1 << sti)) && (INDS->strata[i2] & (1 << sti)) ){
+							// fprintf(stderr, "\n-> Pair %i ((%s,%s),idx:(%i,%i)) belongs to strata (%s,idx:%i)\n",
+									// LUT_indPair_idx[i1][i2],
+									// hdr->samples[i1],
+									// hdr->samples[i2],
+									// i1,
+									// i2,
+									// MTD->S[sti].id,
+									// sti);
+
+									px=LUT_indPair_idx[i1][i2];
+									d_sq= MATH::SQUARE(M_PWD_GT[px]);
+									s += d_sq;
+						}
+					}
+				}
+
+				ssd_WG += s / (double) MTD->S[sti].nInds;
+
+			}
+
+
+			//TODO only because we have one strata level. change this
+			ssd_WP=ssd_WG;
+			msd_WP=ssd_WP/(double)df_WP;
+
+			ssd_AG=ssd_TOTAL-ssd_WG;
+			msd_AG=ssd_AG/(double)df_AG;
+
+
+			fprintf(stderr,"\n");
+			fprintf(stderr,"\n");
+			fprintf(stderr,"\n");
+			fprintf(stderr,"==========================================  AMOVA  =========================================="); 
+			fprintf(stderr,"\n");
+			fprintf(stderr,"Source of variation\t\t\td.f.\tSSD\t\tMSD");
+			fprintf(stderr,"\n");
+			fprintf(stderr,"---------------------------------------------------------------------------------------------");
+			fprintf(stderr,"\n");
+			fprintf(stderr,"\n");
+			fprintf(stderr,"Among strata");
+			fprintf(stderr,"\t\t\t\t");
+			fprintf(stderr,"%d",df_AG);
+			fprintf(stderr,"\t");
+			fprintf(stderr,"%f",ssd_AG);
+			fprintf(stderr,"\t");
+			fprintf(stderr,"%f",msd_AG);
+			fprintf(stderr,"\n");
+			fprintf(stderr,"Among populations within strata");
+			fprintf(stderr,"\t\t");
+			// fprintf(stderr,"%d",df_AP_WG);
+			fprintf(stderr,"\n");
+			fprintf(stderr,"Among individuals within populations");
+			fprintf(stderr,"\t");
+			fprintf(stderr,"%d",df_WP);
+			fprintf(stderr,"\t");
+			fprintf(stderr,"%f",ssd_WP);
+			fprintf(stderr,"\t");
+			fprintf(stderr,"%f",msd_WP);
+			fprintf(stderr,"\n");
+			fprintf(stderr,"\n");
+			fprintf(stderr,"\n");
+			fprintf(stderr,"Total");
+			fprintf(stderr,"\t\t\t\t\t");
+			fprintf(stderr,"%d",df_TOTAL);
+			fprintf(stderr,"\t");
+			fprintf(stderr,"%f",ssd_TOTAL);
+			fprintf(stderr,"\t");
+			fprintf(stderr,"%f",msd_TOTAL);
+			fprintf(stderr,"\n");
+			fprintf(stderr,"\n");
+			fprintf(stderr,"\n");
+
+			fprintf(stderr,"============================================================================================="); 
+			fprintf(stderr,"\n");
+
+			
 
 		}
 
