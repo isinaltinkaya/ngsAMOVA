@@ -58,7 +58,11 @@ namespace IO {
  * 					2 use genotypes (GT) (NOTE: Only for benchmark purposes)
  * 
  * @field doDist	[0] use Sij similarity index
- * 					[1] use Fij F statistic
+ * 					[1] use Dij (1-Sij) dissimilarity index
+ * 					[2] use Fij F statistic
+ *
+ * @field sqDist	[0] use absolute value of distance measure (|dist_ij|)
+ * 					[1] use squared distance measure (dist_ij^2)
  *
  * @field doInd		do ind pairs
  * @field ind1		ind1 id
@@ -81,6 +85,7 @@ typedef struct {
 	int printMatrix;
 	int isSim;
 	int doDist;
+	int sqDist;
 	int minInd;
 
 	int seed;

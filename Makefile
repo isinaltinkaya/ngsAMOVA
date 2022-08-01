@@ -6,6 +6,14 @@ CXXFLAGS  := -g -Wall
 LIBS = -lz -lm -lbz2 -llzma -lcurl -lpthread
 
 
+CRYPTO_TRY=$(shell echo 'int main(){}'|$(CXX) -x c++ - -lcrypto 2>/dev/null -o /dev/null; echo $$?)
+ifeq "$(CRYPTO_TRY)" "0"
+$(info Crypto library is available to link; adding -lcrypto to LIBS)
+LIBS += -lcrypto
+else
+$(info Crypto library is not available to link; will not use -lcrypto)
+endif
+
 #if htslib source is defined
 ifdef HTSSRC
 

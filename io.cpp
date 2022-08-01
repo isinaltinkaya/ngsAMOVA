@@ -15,7 +15,7 @@ FILE *IO::openFILE(const char* a,const char* b){
 	char *c = (char*)malloc(strlen(a)+strlen(b)+1);
 	strcpy(c,a);
 	strcat(c,b);
-	// fprintf(stderr,"\t-> Dumping file: %s\n",c);
+	fprintf(stderr,"\t-> Dumping file: %s\n",c);
 	FILE *fp = getFILE(c,"w");
 	free(c);
 	return fp;
@@ -179,6 +179,7 @@ argStruct *argStruct_init(){
 	args->doTest=0;
 	
 	args->doDist=-1;
+	args->sqDist=1;
 
 	args->isSim=0;
 	args->minInd=-1;
@@ -226,6 +227,7 @@ argStruct *argStruct_get(int argc, char **argv){
 		else if(strcasecmp("-isSim",arv)==0) args->isSim=atoi(val);
 		else if(strcasecmp("-printMatrix",arv)==0) args->printMatrix=atoi(val);
 		else if(strcasecmp("-doDist",arv)==0) args->doDist=atoi(val);
+		else if(strcasecmp("-sqDist",arv)==0) args->sqDist=atoi(val);
 		else if(strcasecmp("-minInd",arv)==0) args->minInd=atoi(val);
 		else if(strcasecmp("-doTest",arv)==0) args->doTest=atoi(val);
 		else if(strcasecmp("-h",arv) == 0 || strcasecmp( "--help",arv) == 0) {
@@ -309,15 +311,9 @@ argStruct *argStruct_get(int argc, char **argv){
 
 
 	if(args->in_mtd_fn==NULL){
-		if (args->whichCol!=-1){
-			fprintf(stderr,"\n[ERROR]\t-whichCol <col_index> requires using -m <metadata_file>; will exit!\n");
+		fprintf(stderr,"\n[ERROR]\tMust supply -m <metadata_file>; will exit!\n");
 			free(args);
 			return 0;
-		}
-		// fprintf(stderr,"\n[ERROR]\tMust supply -m <metadata_file>; will exit!\n");
-		// free(args);
-		// return 0;
-		
 	}else{
 		if (args->whichCol==1){
 			fprintf(stderr,"\n[ERROR](-mCol 1)\tColumn index 1 was chosen. First column should contain individual IDs instead; will exit!\n");
@@ -334,21 +330,30 @@ argStruct *argStruct_get(int argc, char **argv){
 
 	//TODO exit(1) or return?
 	//maybe dont call these error
-	// if (args->doDist<0){
-		// fprintf(stderr,"\n[ERROR]\tMust supply -doDist <distance_method>; will exit!\n");
-		// free(args);
-		// return 0;
-	// }
-
-	if(args->printMatrix==1){
-		if(args->doDist<0){
-			//default
-			args->doDist=1;
-		}
+	if (args->doDist==-1){
+		fprintf(stderr,"\n[ERROR]\tMust supply -doDist <distance_method>; will exit!\n");
+		free(args);
+		return 0;
+	}else if(args->doDist==0){
+			fprintf(stderr,"\n\t-> -doDist is set to 0, will use Sij similarity index as distance measure.\n");
+	}else if(args->doDist==1){
+			fprintf(stderr,"\n\t-> -doDist is set to 1, will use Dij (1-Sij) dissimilarity index as distance measure.\n");
+	}else if(args->doDist==2){
+			fprintf(stderr,"\n\t-> -doDist is set to 2, will use Fij as distance measure.\n");
+	}else{
+		fprintf(stderr,"\n[ERROR]\t-doDist %d is not available; will exit!\n",args->doDist);
+		free(args);
+		return 0;
 	}
 
+	if (args->sqDist==1){
+		fprintf(stderr,"\n\t-> -sqDist is set to 1, will use squared distance measure (dist_ij^2).\n");
+	}else{
+		fprintf(stderr,"\n\t-> -sqDist is set to 0, will use absolute value of distance measure (|dist_ij|).\n");
+	}
 
 	if (args->doAMOVA == 1){
+
 		if(args->doInd==1){
 			if(args->ind1==-1){
 				fprintf(stderr,"[ERROR]\tMust supply -ind1 while using -doInd 1 \n");

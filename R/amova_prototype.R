@@ -36,7 +36,7 @@ get_df_ag<-function(d, G_cols){
 }
 
 # Get "AG" SSD
-get_ssd_ag<-function(d, d_col, N_cols, G_cols, I_cols, N_cols){
+get_ssd_ag<-function(d, d_col, G_cols, I_cols, N_cols, square_it=1){
 
 	Gs<-unique(c(unique(d[G_cols][1][[1]]),unique(d[G_cols][2][[1]])))
 	nG<-length(Gs)
@@ -48,7 +48,11 @@ get_ssd_ag<-function(d, d_col, N_cols, G_cols, I_cols, N_cols){
 	nN<-length(Ns)
 
 	tmp_left<-0
-	tmp_left<-sum(d[d_col][[1]]^2) / nN
+	if(square_it==1){
+		tmp_left<-sum(d[d_col][[1]]^2) / nN
+	}else{
+		tmp_left<-sum(abs(d[d_col][[1]])) / nN
+	}
 
 	tmp_right<-0  
 
@@ -59,7 +63,12 @@ get_ssd_ag<-function(d, d_col, N_cols, G_cols, I_cols, N_cols){
 
 		data_iter_g_i<-d[d[G_cols][1]==Gs[g_i] & d[G_cols][2]==Gs[g_i],]
 
-		tmp_upper<-sum(data_iter_g_i[d_col][[1]]^2)
+		if(square_it==1){
+			tmp_upper<-sum(data_iter_g_i[d_col][[1]]^2)
+		}else{
+			tmp_upper<-sum(abs(data_iter_g_i[d_col][[1]]))
+		}
+
 
 		for(i_g in seq(1,nI)){
 			data_iter_i_g<-data_iter_g_i[data_iter_g_i[I_cols][1]==Is[i_g] & data_iter_g_i[I_cols][1]==Is[i_g],]
@@ -110,7 +119,7 @@ get_df_wp<-function(d, N_cols, G_cols, I_cols){
 }
 
 # Get "WP" SSD
-get_ssd_wp<-function(d, d_col, N_cols, G_cols, I_cols){
+get_ssd_wp<-function(d, N_cols, d_col, G_cols, I_cols, square_it=1){
 	Gs<-unique(c(unique(d[G_cols][1][[1]]),unique(d[G_cols][2][[1]])))
 	nG<-length(Gs)
 
@@ -123,12 +132,16 @@ get_ssd_wp<-function(d, d_col, N_cols, G_cols, I_cols){
 		for(i_g in seq(1,nI)){
 			data_iter_i_g<-data_iter_g_i[data_iter_g_i[I_cols][1]==Is[i_g] & data_iter_g_i[I_cols][1]==Is[i_g],]
 			N_i_g<-length(unique(c(unique(data_iter_i_g[N_cols][1][[1]]),unique(data_iter_i_g[N_cols][2][[1]]))))
-			i<-i + (sum(data_iter_i_g[d_col][[1]]^2)/(N_i_g))
+			if(square_it==1){
+				i<-i + (sum(data_iter_i_g[d_col][[1]]^2)/(N_i_g))
+			}else{
+				i<-i + abs(sum(data_iter_i_g[d_col][[1]])/(N_i_g))
+			}
+
 		}
 	}
 	return(i)
 }
-
 
 
 ################################################################################
@@ -145,10 +158,17 @@ get_df_total<-function(d, N_cols){
 }
 
 # Get "Total" SSD
-get_ssd_total<-function(d, d_col, N_cols){
+get_ssd_total<-function(d,d_col, N_cols, square_it=1){
 	Ns<-unique(c(unique(d[N_cols][1][[1]]),unique(d[N_cols][2][[1]])))
 	nN<-length(Ns)
-	res<-(sum(d[d_col][[1]]^2))/nN
+
+	if(square_it==1){
+		res<-(sum(d[d_col][[1]]^2))/nN
+
+	}else{
+		res<-(abs(sum(d[d_col][[1]])))/nN
+
+	}
 	return(res)
 }
 
@@ -171,7 +191,7 @@ get_ssd_total<-function(d, d_col, N_cols){
 #
 #   D = {\sum^G_{g=1} I_g } 
 #
-get_n_0<-function(d, N_cols, G_cols, I_cols){
+get_n_0<-function(d,  N_cols, G_cols, I_cols){
 
 	res<-0
 
@@ -240,7 +260,7 @@ get_n_0<-function(d, N_cols, G_cols, I_cols){
 #
 #   D = { G - 1 } 
 #
-get_n_1<-function(d, N_cols, G_cols, I_cols){
+get_n_1<-function(d,  N_cols, G_cols, I_cols){
 
 	res<-0
 
@@ -365,6 +385,7 @@ get_n_2<-function(d, N_cols, G_cols, I_cols){
 
 
 
+
 ################################################################################
 # Expected MSD, variance components and variance coefficients
 #
@@ -418,5 +439,34 @@ get_phi_stats<-function(sigmasq_a, msd_wp){
 
 # While the strata-specific errors contribute %
 # 1 - get_phi_stats(sigmasq_a,msd_wp)
+
+
+
+
+doAMOVA<-function(d, d_col, G_cols, I_cols, N_cols, square_it=1){
+
+	df_ag<-get_df_ag(d=d, G_cols=gcols)
+	ssd_ag<-get_ssd_ag(d=d,d_col=dcol,G_cols=gcols,I_cols=icols,N_cols=ncols, square_it=square_it)
+	msd_ag<-get_msd(ssd = ssd_ag,df=df_ag)
+
+	df_wp<-get_df_wp(d=d, N_cols=ncols,G_cols=gcols, I_cols=icols)
+	ssd_wp<-get_ssd_wp(d=d,d_col=dcol,N_cols=ncols,G_cols=gcols,I_cols=icols, square_it=square_it)
+	msd_wp<-get_msd(ssd = ssd_wp,df=df_wp)
+
+
+	df_total<-get_df_total(d=d, N_cols=ncols)
+	ssd_total<-get_ssd_total(d=d,d_col=dcol,N_cols=ncols, square_it=square_it)
+	msd_total<-get_msd(ssd = ssd_total,df=df_total)
+
+	n0<-get_n_0(d=d,G_cols=gcols,I_cols=icols)
+	n1<-get_n_1(d=d,G_cols=gcols,I_cols=icols)
+	n2<-get_n_2(d=d,N_cols=ncols,G_cols=gcols,I_cols=icols)
+
+	sigmasq_a<-get_sigmasq_a(msd_ag=msd_ag,msd_wp=msd_wp,n2=n2)
+
+	phi_stats<-get_phi_stats(sigmasq_a=sigmasq_a, msd_wp=msd_wp)
+	return(data.frame(SSD_AG = ssd_ag, MSD_AG=msd_ag,SSD_WP=ssd_wp,MSD_WP=msd_wp,SSD_TOTAL=ssd_total, MSD_TOTAL=msd_total,SIGMASQA=sigmasq_a,PHI=phi_stats))
+}
+
 
 

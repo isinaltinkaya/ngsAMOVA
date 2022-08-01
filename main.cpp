@@ -19,6 +19,7 @@
 #include "em.h"
 #include "math_utils.h"
 #include "vcf_utils.h"
+#include "amova.h"
 
 using size_t=decltype(sizeof(int));
 
@@ -49,6 +50,8 @@ int main(int argc, char **argv) {
 
 		//TODO how to avoid init these based on if statement
 		FILE *out_m_ff=NULL;
+		
+		FILE *out_amova_ff=NULL;
 
 		if(args->doTest==1){
 			out_emtest_ff=IO::openFILE(out_fp, ".emtest.csv");
@@ -56,8 +59,10 @@ int main(int argc, char **argv) {
 
 		if(args->printMatrix==1){
 			//distance matrix
-			if(args->doDist==1){
+			if(args->doDist==0){
 				out_m_ff=IO::openFILE(out_fp,".dm.sij.csv");
+			}else if(args->doDist==1){
+				out_m_ff=IO::openFILE(out_fp,".dm.dij.csv");
 			}else if(args->doDist==2){
 				out_m_ff=IO::openFILE(out_fp,".dm.fij.csv");
 			}
@@ -65,6 +70,8 @@ int main(int argc, char **argv) {
 
 
 		out_sfs_ff=IO::openFILE(out_fp, ".sfs.csv");
+
+		out_amova_ff=IO::openFILE(out_fp, ".amova.csv");
 
 		size_t totSites=0;
 
@@ -440,16 +447,13 @@ int main(int argc, char **argv) {
 
 
 
-
-					if(args->doDist==1){
-
+					if(args->doDist==0){
 						M_PWD_GL[pair_idx]=MATH::EST::Sij(SFS_GLE3);
-
+					}else if(args->doDist==1){
+						M_PWD_GL[pair_idx]=(double) (1-MATH::EST::Sij(SFS_GLE3));
 					}else if(args->doDist==2){
-
-						// M_PWD_GL[pair_idx]=MATH::EST::Fij(SFS_GLE3);
-						M_PWD_GL[pair_idx]=MATH::SQUARE(MATH::EST::Fij(SFS_GLE3));
-
+						M_PWD_GL[pair_idx]=MATH::EST::Fij(SFS_GLE3);
+					}else{
 					}
 
 
@@ -501,12 +505,11 @@ int main(int argc, char **argv) {
 							MATH::EST::Kin(SFS_GT3[pair_idx], shared_nSites));
 
 
-					if(args->doDist==1){
-
+					if(args->doDist==0){
 						M_PWD_GT[pair_idx]=MATH::EST::Sij(SFS_GT3[pair_idx], shared_nSites);
-
+					}else if(args->doDist==1){
+						M_PWD_GT[pair_idx]=(double) (1-MATH::EST::Sij(SFS_GT3[pair_idx], shared_nSites));
 					}else if(args->doDist==2){
-
 						M_PWD_GT[pair_idx]=MATH::EST::Fij(SFS_GT3[pair_idx], shared_nSites);
 
 					}
@@ -612,126 +615,25 @@ int main(int argc, char **argv) {
 			}
 
 
-			double ssd_TOTAL=0.0;
-			double msd_TOTAL=0.0;
-			double sum=0.0;
-			int df_TOTAL=0;
-			double delta_sq=0.0;
+		}
 
-			for (int px=0;px<n_ind_cmb;px++){
-				delta_sq= MATH::SQUARE(M_PWD_GT[px]);
-				sum += delta_sq;
+		if(args->doAMOVA==1){
+			if(doAMOVA(n_ind_cmb, nInd, MTD, INDS, out_amova_ff, args->sqDist, M_PWD_GL, LUT_indPair_idx)==0){
+			}else{
+				exit(1);
 			}
-			ssd_TOTAL=sum/(double)nInd;
-
-			df_TOTAL=nInd - 1;
-			msd_TOTAL=ssd_TOTAL/df_TOTAL;
-
-
-			double ssd_AG=0.0;
-			double ssd_WG=0.0;
-			double msd_AG=0.0;
-			int df_AG=0;
-
-			df_AG=MTD->nStrata - 1;
-
-
-			double ssd_WP=0.0;
-			double msd_WP=0.0;
-
-			int df_WP=0;
-			
-			df_WP=nInd - MTD->nStrata;
-
-			// int df_AP_WG=0;
-
-			double s=0.0;
-			double d_sq=0.0;
-			int px=0;
-			
-			for(int sti=0; sti<MTD->nStrata;sti++){
-				s=0.0;
-				for(int i1=0;i1<nInd-1;i1++){
-					for(int i2=i1+1;i2<nInd;i2++){
-
-						if( (INDS->strata[i1] & (1 << sti)) && (INDS->strata[i2] & (1 << sti)) ){
-							// fprintf(stderr, "\n-> Pair %i ((%s,%s),idx:(%i,%i)) belongs to strata (%s,idx:%i)\n",
-									// LUT_indPair_idx[i1][i2],
-									// hdr->samples[i1],
-									// hdr->samples[i2],
-									// i1,
-									// i2,
-									// MTD->S[sti].id,
-									// sti);
-
-									px=LUT_indPair_idx[i1][i2];
-									d_sq= MATH::SQUARE(M_PWD_GT[px]);
-									s += d_sq;
-						}
-					}
-				}
-
-				ssd_WG += s / (double) MTD->S[sti].nInds;
-
+		}else if (args->doAMOVA==2){
+			if(doAMOVA(n_ind_cmb, nInd, MTD, INDS, out_amova_ff, args->sqDist, M_PWD_GT, LUT_indPair_idx)==0){
+			}else{
+				exit(1);
 			}
-
-
-			//TODO only because we have one strata level. change this
-			ssd_WP=ssd_WG;
-			msd_WP=ssd_WP/(double)df_WP;
-
-			ssd_AG=ssd_TOTAL-ssd_WG;
-			msd_AG=ssd_AG/(double)df_AG;
-
-
-			fprintf(stderr,"\n");
-			fprintf(stderr,"\n");
-			fprintf(stderr,"\n");
-			fprintf(stderr,"==========================================  AMOVA  =========================================="); 
-			fprintf(stderr,"\n");
-			fprintf(stderr,"Source of variation\t\t\td.f.\tSSD\t\tMSD");
-			fprintf(stderr,"\n");
-			fprintf(stderr,"---------------------------------------------------------------------------------------------");
-			fprintf(stderr,"\n");
-			fprintf(stderr,"\n");
-			fprintf(stderr,"Among strata");
-			fprintf(stderr,"\t\t\t\t");
-			fprintf(stderr,"%d",df_AG);
-			fprintf(stderr,"\t");
-			fprintf(stderr,"%f",ssd_AG);
-			fprintf(stderr,"\t");
-			fprintf(stderr,"%f",msd_AG);
-			fprintf(stderr,"\n");
-			fprintf(stderr,"Among populations within strata");
-			fprintf(stderr,"\t\t");
-			// fprintf(stderr,"%d",df_AP_WG);
-			fprintf(stderr,"\n");
-			fprintf(stderr,"Among individuals within populations");
-			fprintf(stderr,"\t");
-			fprintf(stderr,"%d",df_WP);
-			fprintf(stderr,"\t");
-			fprintf(stderr,"%f",ssd_WP);
-			fprintf(stderr,"\t");
-			fprintf(stderr,"%f",msd_WP);
-			fprintf(stderr,"\n");
-			fprintf(stderr,"\n");
-			fprintf(stderr,"\n");
-			fprintf(stderr,"Total");
-			fprintf(stderr,"\t\t\t\t\t");
-			fprintf(stderr,"%d",df_TOTAL);
-			fprintf(stderr,"\t");
-			fprintf(stderr,"%f",ssd_TOTAL);
-			fprintf(stderr,"\t");
-			fprintf(stderr,"%f",msd_TOTAL);
-			fprintf(stderr,"\n");
-			fprintf(stderr,"\n");
-			fprintf(stderr,"\n");
-
-			fprintf(stderr,"============================================================================================="); 
-			fprintf(stderr,"\n");
-
-			
-
+		}else if (args->doAMOVA==3){
+			if(doAMOVA(n_ind_cmb, nInd, MTD, INDS, out_amova_ff, args->sqDist, M_PWD_GL, LUT_indPair_idx)==0){
+			}else{
+				exit(1);
+			}
+		}else{
+			exit(1);
 		}
 
 
@@ -812,6 +714,10 @@ int main(int argc, char **argv) {
 
 		if(out_m_ff!=NULL){
 			fclose(out_m_ff);
+		}
+
+		if(out_amova_ff!=NULL){
+			fclose(out_amova_ff);
 		}
 
 
