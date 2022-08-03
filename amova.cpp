@@ -52,14 +52,15 @@ int doAMOVA(int n_ind_cmb, int nInd, DATA::Metadata *MTD, DATA::Inds *INDS, FILE
 			for(int i2=i1+1;i2<nInd;i2++){
 
 				if( (INDS->strata[i1] & (1 << sti)) && (INDS->strata[i2] & (1 << sti)) ){
-					// fprintf(stderr, "\n-> Pair %i ((%s,%s),idx:(%i,%i)) belongs to strata (%s,idx:%i)\n",
-							// LUT_indPair_idx[i1][i2],
-							// hdr->samples[i1],
-							// hdr->samples[i2],
-							// i1,
-							// i2,
-							// MTD->S[sti].id,
-							// sti);
+
+#if 0
+					fprintf(stderr, "\n-> Pair %i,idx:(%i,%i)) belongs to strata (%s,idx:%i)\n",
+							LUT_indPair_idx[i1][i2],
+							i1,
+							i2,
+							MTD->S[sti].id,
+							sti);
+#endif
 
 							px=LUT_indPair_idx[i1][i2];
 
@@ -71,6 +72,8 @@ int doAMOVA(int n_ind_cmb, int nInd, DATA::Metadata *MTD, DATA::Inds *INDS, FILE
 								return 1;
 							}
 							s += d_sq;
+
+
 				}
 			}
 		}

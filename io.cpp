@@ -24,7 +24,8 @@ FILE *IO::openFILE(const char* a,const char* b){
 
 int IO::inspectFILE::count_nColumns(char* line, const char* delims){
 
-	char* str=strdup(line);
+	char* str=NULL;
+	str=strdup(line);
 
 	char *p=NULL;
 	int i=0;
@@ -33,6 +34,9 @@ int IO::inspectFILE::count_nColumns(char* line, const char* delims){
 		i++;
 		p=strtok(NULL,delims);
 	}
+
+	free(p);
+	free(str);
 	return i;
 
 }
@@ -70,7 +74,6 @@ int IO::readFILE::METADATA(DATA::Metadata * MTD, FILE* in_mtd_ff, int whichCol, 
 		//TODO strtok_r? do we need thread safety here?
 
 		char *tok=strtok(mt_buf,delims);
-		// char *ind_id=tok;
 		char *group_id=tok;
 
 		for (int coli=0; coli<whichCol-1; coli++){
@@ -80,7 +83,6 @@ int IO::readFILE::METADATA(DATA::Metadata * MTD, FILE* in_mtd_ff, int whichCol, 
 
 
 		//increase the size of Strata
-		// while(MTD->nStrata > MTD->_size_Strata){
 		if(MTD->nStrata > MTD->_size_Strata){
 			fprintf(stderr,"->->->increase the size of Strata S[]!!\n");
 		}
@@ -121,11 +123,10 @@ int IO::readFILE::METADATA(DATA::Metadata * MTD, FILE* in_mtd_ff, int whichCol, 
 #if 0
 	for (int sti=0; sti<MTD->nStrata; sti++){
 		fprintf(stderr,"\n-> Strata %s contains %d individuals.",MTD->S[sti].id,MTD->S[sti].nInds);
-		fprintf(stderr,"\n-> Individual names are:\n\t");
-		for(int ii=0; ii<MTD->S[sti].nInds;ii++){
-			fprintf(stderr,"%s",MTD->S[sti].inds[ii]);
-			if (ii!=MTD->S[sti].nInds-1){
-				fprintf(stderr,"\t");
+		fprintf(stderr,"\n-> Individual indexes are:\t");
+		for(int ii=0; ii<MTD->nInds_total;ii++){
+			if( (INDS->strata[ii] & (1 << sti))){
+				fprintf(stderr,"%i",ii);
 			}
 		}
 		fprintf(stderr,"\n");

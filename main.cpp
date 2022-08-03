@@ -41,9 +41,7 @@ int main(int argc, char **argv) {
 
 		int nInd=pars->nInd;
 		size_t nSites=pars->nSites;
-		char *in_fn=args->in_fn;
 
-		char *out_fp=args->out_fp;
 
 		FILE *out_emtest_ff=NULL;
 		FILE *out_sfs_ff=NULL;
@@ -53,29 +51,31 @@ int main(int argc, char **argv) {
 		
 		FILE *out_amova_ff=NULL;
 
+		FILE *in_mtd_ff=NULL;
+
 		if(args->doTest==1){
-			out_emtest_ff=IO::openFILE(out_fp, ".emtest.csv");
+			out_emtest_ff=IO::openFILE(args->out_fp, ".emtest.csv");
 		}
 
 		if(args->printMatrix==1){
 			//distance matrix
 			if(args->doDist==0){
-				out_m_ff=IO::openFILE(out_fp,".dm.sij.csv");
+				out_m_ff=IO::openFILE(args->out_fp,".dm.sij.csv");
 			}else if(args->doDist==1){
-				out_m_ff=IO::openFILE(out_fp,".dm.dij.csv");
+				out_m_ff=IO::openFILE(args->out_fp,".dm.dij.csv");
 			}else if(args->doDist==2){
-				out_m_ff=IO::openFILE(out_fp,".dm.fij.csv");
+				out_m_ff=IO::openFILE(args->out_fp,".dm.fij.csv");
 			}
 		}
 
 
-		out_sfs_ff=IO::openFILE(out_fp, ".sfs.csv");
+		out_sfs_ff=IO::openFILE(args->out_fp, ".sfs.csv");
 
-		out_amova_ff=IO::openFILE(out_fp, ".amova.csv");
+		out_amova_ff=IO::openFILE(args->out_fp, ".amova.csv");
 
 		size_t totSites=0;
 
-		vcfFile *in_ff = bcf_open(in_fn, "r");
+		vcfFile *in_ff = bcf_open(args->in_fn, "r");
 
 		if (in_ff == NULL) {
 			free(args);
@@ -104,15 +104,14 @@ int main(int argc, char **argv) {
 		if(args->in_mtd_fn!=NULL){
 			//// BEGIN Read metadata
 			
-			char *in_mtd_fn=args->in_mtd_fn;
-			FILE *in_mtd_ff=IO::getFILE(in_mtd_fn,"r");
+			in_mtd_ff=IO::getFILE(args->in_mtd_fn,"r");
 
 			//sep can be \t \whitespace or comma
 			const char* delims="\t ,\n";
 
 
 			if(IO::readFILE::METADATA(MTD, in_mtd_ff, args->whichCol, delims,INDS)!=0){
-	fprintf(stderr,"\n\nHERE!!!\n\n");
+				fprintf(stderr,"\n\nHERE!!!\n\n");
 				exit(1);
 			}
 			//// END Read metadata
@@ -135,7 +134,7 @@ int main(int argc, char **argv) {
 		//TODO print based on analysis type, and to args file
 		fprintf(stderr,"\nngsAMOVA -doAMOVA %d -doTest %d -in %s -out %s -tole %e -isSim %d -minInd %d -printMatrix %d\n",args->doAMOVA,args->doTest,args->in_fn,args->out_fp,args->tole,args->isSim,args->minInd,args->printMatrix);
 
-		fprintf(stderr, "\nReading file: \"%s\"", in_fn);
+		fprintf(stderr, "\nReading file: \"%s\"", args->in_fn);
 		fprintf(stderr, "\nNumber of samples: %i", bcf_hdr_nsamples(hdr));
 		fprintf(stderr,	"\nNumber of chromosomes: %d",hdr->n[BCF_DT_CTG]);
 
@@ -639,14 +638,16 @@ int main(int argc, char **argv) {
 
 
 		fprintf(stderr, "Total number of sites processed: %lu\n", totSites);
-		fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", totSites-nSites);
+		if(args->minInd != -1){
+			fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", totSites-nSites);
+		}
 
 		bcf_hdr_destroy(hdr);
 		bcf_destroy(bcf);
 
 		int BCF_CLOSE;
 		if ( (BCF_CLOSE=bcf_close(in_ff))){
-			fprintf(stderr,"bcf_close(%s): non-zero status %d\n",in_fn,BCF_CLOSE);
+			fprintf(stderr,"bcf_close(%s): non-zero status %d\n",args->in_fn,BCF_CLOSE);
 			exit(BCF_CLOSE);
 		}
 
@@ -702,6 +703,9 @@ int main(int argc, char **argv) {
 		free(args->out_fp);
 		args->out_fp=NULL;
 
+		free(args->in_mtd_fn);
+		args->in_mtd_fn=NULL;
+
 		free(args);
 
 		paramStruct_destroy(pars);
@@ -720,6 +724,9 @@ int main(int argc, char **argv) {
 			fclose(out_amova_ff);
 		}
 
+		if(in_mtd_ff!=NULL){
+			fclose(in_mtd_ff);
+		}
 
 		//TODO
 		//clean mtbuf METADATA Strata etc

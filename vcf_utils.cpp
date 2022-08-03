@@ -119,7 +119,6 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 		return 1;
 	}
 
-	// lgl.destroy();
 	return 0;
 }
 
@@ -166,7 +165,6 @@ int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars
 		}
 	}
 
-	// gt.destroy();
 	return 0;
 
 }

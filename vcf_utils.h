@@ -62,13 +62,10 @@ namespace VCF {
 			return data == NULL;
 		}
 
-		void destroy(){
-			free(data);
-			data=NULL;
-		}
 
 		~get_data(){
 			free(data);
+			data=NULL;
 		}
 
 	};

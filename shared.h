@@ -6,6 +6,8 @@
 #include <cstddef>
 #include <time.h>
 
+#include <cstdlib>
+
 using size_t=decltype(sizeof(int));
 
 const double NEG_INF = -std::numeric_limits<double>::infinity();
@@ -61,38 +63,54 @@ namespace DATA{
 
 	typedef struct Inds{
 
-		typedef int strataArr[200];
+		int *strata;
 		int _size_strataArr=200;
-		strataArr strata={0};
 
+		Inds(){
+			strata=new int[_size_strataArr];
+			for(int i=0;i<_size_strataArr;i++){
+				strata[i]=0;
+			}
+		}
+		~Inds(){
+			delete [] strata;
+		}
 
 	}Inds;
 
 	typedef struct Strata{
 
 		int nInds=0;
-		char *id=NULL;
+		char *id;
 
-		// Strata();
-		// ~Strata();
+		Strata(){
+			id=NULL;
+		}
+		~Strata(){
+			free(id);
+		}
 
 	}Strata;
 
 	typedef struct Metadata{
 
-		// Strata *S;
-		Strata S[3];
+		Strata *S;
 		int _size_Strata=3;
 
 		int nInds_total=0;
 
 		int nStrata=0;
 
-		// Metadata();
-		// ~Metadata();
-
+		Metadata(){
+			S=new Strata[_size_Strata];
+		};
+		~Metadata(){
+			delete [] S;
+		}
 
 	}Metadata;
+
+
 
 };
 

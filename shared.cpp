@@ -55,24 +55,11 @@ void paramStruct_destroy(paramStruct *pars){
 	delete pars->DATETIME;
 	pars->DATETIME=NULL;
 
-	//
-	// if(pars->post){
-	// for(int i=0;i<pars->nSites;i++)
-	// delete [] pars->post[i];
-	// delete [] pars->post;
-	// pars->post=NULL;
-	// }
-	// if(pars->likes){
-	// for(int i=0;i<pars->nSites;i++)
-	// delete [] pars->likes[i];
-	// delete [] pars->likes;
-	// pars->likes=NULL;
-	// }
 	delete pars;
 
 }
 
-
+//
 //0 1 2
 //00 01 02
 //MMMM MMMm MMmm
@@ -99,42 +86,3 @@ char *get_time(){
 	local_time=localtime(&current_time);
 	return(asctime(local_time));
 }
-//
-// DATA::Metadata::Metadata(){
-	// S = new DATA::Strata[_size_Strata];
-// }
-//
-// DATA::Metadata::~Metadata(){
-	// delete[] S;
-// }
-//
-// DATA::Strata::Strata(){
-	// inds=(char**)malloc(_size_inds * sizeof(char*));
-// }
-//
-// DATA::Strata::~Strata(){
-// }
-// namespace data_structures{
-//
-	// //2D Matrix
-	// template <typename T>
-		// struct M2D{
-			// T **M;
-			// size_t x;
-			// size_t y;
-	// };
-	// template <typename T>
-		// void M2D_destroy(M2D<T> *MS, size_t x){
-			// if(MS){
-				// if(MS->M){
-					// for(size_t i=0;i<x;i++){
-						// if(MS->M[i]){
-							// free(MS->M[i]);
-						// }
-					// }
-					// free(MS->M);
-				// }
-			// }
-		// }
-// }
-//
