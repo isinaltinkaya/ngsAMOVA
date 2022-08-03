@@ -80,6 +80,7 @@ int doAMOVA(int n_ind_cmb, int nInd, DATA::Metadata *MTD, DATA::Inds *INDS, FILE
 	}
 
 
+
 	//TODO only because we have one strata level. change this
 	ssd_AIWG=ssd_WG;
 	msd_AIWG=ssd_AIWG/(double)df_AIWG;
@@ -87,8 +88,32 @@ int doAMOVA(int n_ind_cmb, int nInd, DATA::Metadata *MTD, DATA::Inds *INDS, FILE
 	ssd_AG=ssd_TOTAL-ssd_WG;
 	msd_AG=ssd_AG/(double)df_AG;
 
-	fprintf(out_amova_ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL\n");
-	fprintf(out_amova_ff,"%i,%f,%f,%i,%f,%f,%i,%f,%f\n",df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL);
+
+
+	// n variance coefficient
+	// n = [ N - \sum_{g \in G} ( N^2_{g}/N) ) ]  /   G - 1 
+	double n_gi=0.0;
+
+	for(int sti=0; sti<MTD->nStrata;sti++){
+		n_gi += (double) MATH::SQUARE(MTD->S[sti].nInds) / (double) nInd;
+	}
+
+	//TODO double and castings are probably not necessary here
+	double coef_n=(double) ((double) nInd - (double) n_gi) / (double) (MTD->nStrata - 1);
+
+
+	double sigmasq_a=0.0;
+	double sigmasq_b=0.0;
+	double phi_a=0.0;
+	sigmasq_a=(double) (msd_AG - msd_AIWG) / (double) coef_n;
+	sigmasq_b=msd_AIWG;
+
+	phi_a=(double) sigmasq_a / (double)(sigmasq_a + sigmasq_b);
+
+	//TODO maybe increase print precision?
+
+	fprintf(out_amova_ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
+	fprintf(out_amova_ff,"%i,%f,%f,%i,%f,%f,%i,%f,%f,%f,%f,%f,%f\n",df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a);
 #if 1
 
 	fprintf(stderr,"\n");
@@ -129,8 +154,26 @@ int doAMOVA(int n_ind_cmb, int nInd, DATA::Metadata *MTD, DATA::Inds *INDS, FILE
 	fprintf(stderr,"\n");
 	fprintf(stderr,"\n");
 	fprintf(stderr,"\n");
+	fprintf(stderr,"\n");
+	fprintf(stderr,"Variance coefficients:");
+	fprintf(stderr,"\n");
+	fprintf(stderr,"a");
+	fprintf(stderr,"\t");
+	fprintf(stderr,"%f", sigmasq_a);
+	fprintf(stderr,"\n");
+	fprintf(stderr,"\n");
+	fprintf(stderr,"\n");
+	fprintf(stderr,"Phi-statistic:");
+	fprintf(stderr,"\n");
+	fprintf(stderr,"a");
+	fprintf(stderr,"\t");
+	fprintf(stderr,"%f",phi_a);
+	fprintf(stderr,"\n");
+	fprintf(stderr,"\n");
 
 	fprintf(stderr,"============================================================================================="); 
+	fprintf(stderr,"\n");
+	fprintf(stderr,"\n");
 	fprintf(stderr,"\n");
 #endif
 
