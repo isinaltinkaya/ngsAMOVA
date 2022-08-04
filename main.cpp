@@ -29,7 +29,6 @@ int main(int argc, char **argv) {
 
 	if(argc==1){
 		usage();
-		//TODO already exit(0) in usage
 		exit(0);
 	}
 
@@ -42,6 +41,8 @@ int main(int argc, char **argv) {
 		int nInd=pars->nInd;
 		size_t nSites=pars->nSites;
 
+		//return code
+		int RET=0;
 
 		FILE *out_emtest_ff=NULL;
 		FILE *out_sfs_ff=NULL;
@@ -69,12 +70,23 @@ int main(int argc, char **argv) {
 		}
 
 
-		out_sfs_ff=IO::openFILE(args->out_fp, ".sfs.csv");
-
-		out_amova_ff=IO::openFILE(args->out_fp, ".amova.csv");
 
 		size_t totSites=0;
 
+		char *DATETIME=pars->DATETIME;
+		DATETIME=get_time();
+
+
+		fprintf(stderr,"\n%s",DATETIME);
+		//TODO print based on analysis type, and to args file
+		fprintf(stderr,"\nngsAMOVA -doAMOVA %d -doTest %d -in %s -out %s -isSim %d -minInd %d -printMatrix %d -m %s -doDist %d",args->doAMOVA,args->doTest,args->in_fn,args->out_fp,args->isSim,args->minInd,args->printMatrix,args->in_mtd_fn,args->doDist);
+
+
+		if(args->doAMOVA == 1 || args->doAMOVA == 3){
+			fprintf(stderr," -tole %e ",args->tole);
+		}
+
+		fprintf(stderr,"\n");
 		vcfFile *in_ff = bcf_open(args->in_fn, "r");
 
 		if (in_ff == NULL) {
@@ -91,7 +103,14 @@ int main(int argc, char **argv) {
 			exit(1);
 		}
 
-		//todo only construct if metadata given
+		fprintf(stderr, "\n\t-> Reading file: %s\n", args->in_fn);
+		fprintf(stderr, "\nNumber of samples: %i", bcf_hdr_nsamples(hdr));
+		fprintf(stderr,	"\nNumber of chromosomes: %d",hdr->n[BCF_DT_CTG]);
+
+
+
+
+		//TODO do below properly
 		DATA::Inds *INDS;
 		DATA::Inds Individuals;
 		INDS=&Individuals;
@@ -125,18 +144,6 @@ int main(int argc, char **argv) {
 		}
 
 
-
-		char *DATETIME=pars->DATETIME;
-		DATETIME=get_time();
-
-
-		fprintf(stderr,"\n%s",DATETIME);
-		//TODO print based on analysis type, and to args file
-		fprintf(stderr,"\nngsAMOVA -doAMOVA %d -doTest %d -in %s -out %s -tole %e -isSim %d -minInd %d -printMatrix %d\n",args->doAMOVA,args->doTest,args->in_fn,args->out_fp,args->tole,args->isSim,args->minInd,args->printMatrix);
-
-		fprintf(stderr, "\nReading file: \"%s\"", args->in_fn);
-		fprintf(stderr, "\nNumber of samples: %i", bcf_hdr_nsamples(hdr));
-		fprintf(stderr,	"\nNumber of chromosomes: %d",hdr->n[BCF_DT_CTG]);
 
 		if(args->minInd==nInd){
 			fprintf(stderr,"\n\t-> -minInd %d is equal to the number of individuals found in file: %d. Setting -minInd to 0 for more efficient analysis.\n",args->minInd, nInd);
@@ -212,15 +219,16 @@ int main(int argc, char **argv) {
 
 		//TODO only create if doGeno etc
 		/*
-		 * SFS_GT3[n_pairs][9]
+		 * SFS_GT3[n_pairs][9+1]
+		 * last element contains total number of sites shared
 		 */
 		int **SFS_GT3;
 		if(args->doAMOVA==2 || args->doAMOVA==3){
 			SFS_GT3=(int**) malloc(n_ind_cmb*sizeof(int*));
 			for (int i=0;i<n_ind_cmb;i++){
 				//9 categories per individual pair
-				SFS_GT3[i]=(int*)malloc(9*sizeof(int));
-				for (int y=0; y<9; y++){
+				SFS_GT3[i]=(int*)malloc(10*sizeof(int));
+				for (int y=0; y<10; y++){
 					SFS_GT3[i][y]=0;
 				}
 			}
@@ -294,62 +302,41 @@ int main(int argc, char **argv) {
 				// }
 			}
 
-			//
-			// TAG="DP";
-			// get_data<int32_t> dp;
-			// dp.n = bcf_get_format_int32(hdr,bcf,TAG,&dp.data,&dp.size_e);
-			// if(dp.n<0){
-			// fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
-			// exit(1);
-			// }
-			//
-			// //TODO use only sites non-missing for all individuals for now
-			// for(int indi=0; indi<nInd; indi++){
-			// if(dp.data[indi]==0){
-			// // fprintf(stderr,"\nDepth: %d at (site_i: %d, pos: %d) in (ind_i: %d, ind_id: %s)\n",dp.data[indi],nSites,bcf->pos,indi,hdr->samples[indi]);
-			// dp.n_missing++;
-			// }
-			// }
-			// if (dp.n_missing>0) continue;
-			//
 			
 
+			RET=0;
 
-			if(args->doAMOVA==1){
-				if(VCF::read_GL10_to_GL3(hdr,bcf,lngl,pars,args,nSites,nInd)==1){
-					free(lngl[nSites]);
-					lngl[nSites]=NULL;
-					continue;
-				}
+			if(args->doAMOVA==1 || args->doAMOVA==3){
+				RET=VCF::read_GL10_to_GL3(hdr,bcf,lngl,pars,args,nSites,nInd);
 
-			}else if(args->doAMOVA==2){
-				if(VCF::GT_to_i2i_SFS(hdr,bcf,SFS_GT3,pars,args,nSites,nInd,LUT_indPair_idx)==1){
-					continue;
-				}
+			}
 
-			}else if(args->doAMOVA==3){
-				if(VCF::read_GL10_to_GL3(hdr,bcf,lngl,pars,args,nSites,nInd)==1){
-					free(lngl[nSites]);
-					lngl[nSites]=NULL;
-					continue;
-					//skip site for gt if skipped by gl
-				}else{
-					if(VCF::GT_to_i2i_SFS(hdr,bcf,SFS_GT3,pars,args,nSites,nInd,LUT_indPair_idx)==1){
-						continue;
-					}
-				}
+			if(RET>0){
+				free(lngl[nSites]);
+				lngl[nSites]=NULL;
+				continue;
+			}
 
+	
+			if(args->doAMOVA==2 || args->doAMOVA ==3 ){
+				RET=VCF::GT_to_i2i_SFS(hdr,bcf,SFS_GT3,pars,args,nSites,nInd,LUT_indPair_idx);
+			}
+				
+			if(RET>0){
+				continue;
 			}
 
 			nSites++;
 
+
+
 			//TODO bcf_hdr_set_samples efficient sample parsing
-			if (args->doInd==1){
+			// if (args->doInd==1){
 				// int i1=args->ind1;
 				// int i2=args->ind2;
 				// get_data<int32_t> gt;
 				// gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
-			}
+			// }
 
 
 			// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
@@ -362,6 +349,8 @@ int main(int argc, char **argv) {
 		fprintf(stderr,"\n\t-> Finished reading sites\n");
 		// [END] Reading sites
 
+		out_sfs_ff=IO::openFILE(args->out_fp, ".sfs.csv");
+		out_amova_ff=IO::openFILE(args->out_fp, ".amova.csv");
 		
 		fprintf(out_sfs_ff,"Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Sij,Fij,Fij2,IBS0,IBS1,IBS2,R0,R1,Kin\n");
 
@@ -369,17 +358,18 @@ int main(int argc, char **argv) {
 		for(int i1=0;i1<nInd-1;i1++){
 			for(int i2=i1+1;i2<nInd;i2++){
 
+				int pair_idx=LUT_indPair_idx[i1][i2];
+
 				int shared_nSites=0;
 
+				//if requires all individuals to have data; already handled in main while loop
 				if(args->minInd==0){
 					shared_nSites=nSites;
-
 				}else{
 
 					if(args->doAMOVA==1 || args->doAMOVA==3){
 
 						for(size_t s=0; s<nSites; s++){
-
 							if ((lngl[s][(3*i1)+0]==NEG_INF) && (lngl[s][(3*i1)+1]==NEG_INF) && (lngl[s][(3*i1)+2]==NEG_INF)){
 								continue;
 							}else if ((lngl[s][(3*i2)+0]==NEG_INF) && (lngl[s][(3*i2)+1]==NEG_INF) && (lngl[s][(3*i2)+2]==NEG_INF)){
@@ -389,41 +379,23 @@ int main(int argc, char **argv) {
 							}
 						}
 
+						if(args->doAMOVA==3){
+							if(shared_nSites!=SFS_GT3[pair_idx][9]){
+
+								fprintf(stderr,"\n[ERROR] shared_nSites for GT (%d) and GLE(%d) is not equal for i1:%d i2:%d\n",shared_nSites, SFS_GT3[pair_idx][9],i1,i2);
+								exit(1);
+							}
+						}
+
 					}else if(args->doAMOVA==2){
-
-						shared_nSites=nSites;
-
+							shared_nSites=SFS_GT3[pair_idx][9];
 					}
 				}
 
 				if(shared_nSites==0){
-
-					if(args->doAMOVA==1 || args->doAMOVA==3){
-						fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
-						// fprintf(out_sfs_ff,"gle,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,%d,%s,%e\n",
-								// hdr->samples[i1],
-								// hdr->samples[i2],
-								// shared_nSites,
-								// "NA",
-								// args->tole);
-
-					}
-					if(args->doAMOVA==2 || args->doAMOVA==3){
-						fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
-						// fprintf(out_sfs_ff,"gt,%s,%s,NA,NA,NA,NA,NA,NA,NA,NA,NA,%s,%d,%s,%e\n",
-								// hdr->samples[i1],
-								// hdr->samples[i2],
-								// "gt",
-								// shared_nSites,
-								// "gt",
-								// args->tole);
-					}
-
-					continue;
-
+					fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
+					exit(1);
 				}
-
-				int pair_idx=LUT_indPair_idx[i1][i2];
 
 				double SFS_GLE3[3][3];
 
@@ -432,18 +404,6 @@ int main(int argc, char **argv) {
 					int n_em_iter=0;
 					double delta;
 					delta=EM_2DSFS_GL3(lngl,SFS_GLE3,i1,i2,nSites,shared_nSites,args->tole,&n_em_iter);
-
-					// fprintf(out_sfs_ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e\n",
-					// hdr->samples[i1],
-					// hdr->samples[i2],
-					// shared_nSites*SFS_GLE3[0][0],shared_nSites*SFS_GLE3[0][1],shared_nSites*SFS_GLE3[0][2],
-					// shared_nSites*SFS_GLE3[1][0],shared_nSites*SFS_GLE3[1][1],shared_nSites*SFS_GLE3[1][2],
-					// shared_nSites*SFS_GLE3[2][0],shared_nSites*SFS_GLE3[2][1],shared_nSites*SFS_GLE3[2][2],
-					// n_em_iter,
-					// shared_nSites,
-					// delta,
-					// args->tole);
-
 
 
 					if(args->doDist==0){
@@ -525,6 +485,9 @@ int main(int argc, char **argv) {
 				}
 			}
 		}
+//end i1i2 loop
+
+
 #if 0
 		//print lookup table
 			for(int i1=0;i1<nInd-1;i1++){
@@ -533,7 +496,8 @@ int main(int argc, char **argv) {
 				}
 			}
 #endif
-//end i1i2 loop
+
+#if 0
 		if(args->in_mtd_fn!=NULL){
 			for(int i1=0;i1<nInd-1;i1++){
 				for(int i2=i1+1;i2<nInd;i2++){
@@ -557,16 +521,13 @@ int main(int argc, char **argv) {
 									// i1,
 									// i2,
 									// MTD->S[sti].id,
-									// sti);
-//
 
 						}
-
 					}
-
 				}
 			}
 		}
+#endif
 
 		/// END Read metadata
 
@@ -610,24 +571,24 @@ int main(int argc, char **argv) {
 						fprintf(out_m_ff,"\n");
 					}
 				}
-
 			}
-
-
 		}
 
 		if(args->doAMOVA==1){
 			if(doAMOVA(n_ind_cmb, nInd, MTD, INDS, out_amova_ff, args->sqDist, M_PWD_GL, LUT_indPair_idx)==0){
+				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			}else{
 				exit(1);
 			}
 		}else if (args->doAMOVA==2){
 			if(doAMOVA(n_ind_cmb, nInd, MTD, INDS, out_amova_ff, args->sqDist, M_PWD_GT, LUT_indPair_idx)==0){
+				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			}else{
 				exit(1);
 			}
 		}else if (args->doAMOVA==3){
 			if(doAMOVA(n_ind_cmb, nInd, MTD, INDS, out_amova_ff, args->sqDist, M_PWD_GL, LUT_indPair_idx)==0){
+				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			}else{
 				exit(1);
 			}
@@ -638,9 +599,13 @@ int main(int argc, char **argv) {
 
 
 		fprintf(stderr, "Total number of sites processed: %lu\n", totSites);
-		if(args->minInd != -1){
+		fprintf(stderr, "\n");
+		if(args->minInd != 2){
 			fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", totSites-nSites);
 		}
+
+		fflush(out_sfs_ff);
+
 
 		bcf_hdr_destroy(hdr);
 		bcf_destroy(bcf);
@@ -654,13 +619,10 @@ int main(int argc, char **argv) {
 		if(args->doAMOVA==1 || args->doAMOVA==3){
 
 			for (size_t s=0;s<nSites;s++){
-				// free(lngls[s]);
-				// lngls[s]=NULL;
 				free(lngl[s]);
 				lngl[s]=NULL;
 			}
 
-			// free(lngls);
 			free(lngl);
 
 
@@ -714,7 +676,9 @@ int main(int argc, char **argv) {
 			fclose(out_emtest_ff);
 		}
 
-		fclose(out_sfs_ff);
+		if(out_sfs_ff!=NULL){
+			fclose(out_sfs_ff);
+		}
 
 		if(out_m_ff!=NULL){
 			fclose(out_m_ff);
@@ -728,13 +692,8 @@ int main(int argc, char **argv) {
 			fclose(in_mtd_ff);
 		}
 
-		//TODO
-		//clean mtbuf METADATA Strata etc
-		//after finalizing metadata reading
 
 	}else{
-		//if args==NULL
-		//already freed in io.cpp
 		exit(1);
 	}
 

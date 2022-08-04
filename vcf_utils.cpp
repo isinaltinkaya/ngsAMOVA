@@ -38,6 +38,7 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2){
 	return bcf_alleles2gt(bcf_allele_charToInt[a1],bcf_allele_charToInt[a2]);
 }
 
+// return 1: skip site for all individuals
 int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t nSites, int nInd){
 
 	// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
@@ -52,12 +53,12 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 
 	lngl[nSites]=(double*)malloc(nInd*3*sizeof(double));
 
+	//TODO check why neccessary
 	if(bcf_is_snp(bcf)){
 		char a1=bcf_allele_charToInt[(unsigned char) bcf->d.allele[0][0]];
 		char a2=bcf_allele_charToInt[(unsigned char) bcf->d.allele[1][0]];
 
 
-		int n_missing_ind=0;
 		for(int indi=0; indi<nInd; indi++){
 
 			for(int ix=0;ix<3;ix++){
@@ -69,10 +70,10 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 			//should we skip sites where at least one is set to missing?
 			//
 			if(isnan(lgl.data[(10*indi)+0])){
-				if(args->minInd==0){
+				if(args->minInd==0){ //only use sites shared across all individuals
 					return 1;
 				}else{
-					n_missing_ind++;
+					lgl.n_missing_ind++;
 				}
 			}else{
 				lngl[nSites][(3*indi)+0]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)]);
@@ -82,20 +83,20 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 		}
 
 		//skip site if missing for all individuals
-		if (nInd==n_missing_ind){
+		if (nInd==lgl.n_missing_ind){
 			return 1;
 		}
 
 		// //if there are only 2 individuals, skip site regardless of onlyShared val
 		if (nInd==2){
-			if(n_missing_ind>0){
+			if(lgl.n_missing_ind>0){
 				return 1;
 			}
 		}
 
-		if(args->minInd>1){
+		if(args->minInd>2){
 			//skip site if minInd is defined and #non-missing inds=<nInd
-			if( (nInd - n_missing_ind) < args->minInd ){
+			if( (nInd - lgl.n_missing_ind) < args->minInd ){
 				// fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,nInd-n_missing_ind,site);
 				return 1;
 			}else{
@@ -122,10 +123,13 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 	return 0;
 }
 
+
+//if doAMOVA==3; both gl and gt; if gl returns 1 to skip all sites, this never runs
+//if gl returns 0; this will check again for shared sites using DP tag as an indicator
+// return 1: skip site for all individuals
 int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args, size_t nSites, int nInd, int** LUT_indPair_idx){
 
 	//TODO add check if missing gt return 1
-
 	VCF::get_data<int32_t> gt;
 	gt.n = bcf_get_genotypes(hdr,bcf,&gt.data,&gt.size_e);
 	gt.ploidy=gt.n/nInd;
@@ -140,15 +144,38 @@ int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars
 		exit(1);
 	}
 
+
+	const char* TAG="DP";
+	get_data<int32_t> dp;
+	dp.n = bcf_get_format_int32(hdr,bcf,TAG,&dp.data,&dp.size_e);
+	if(dp.n<0){
+		fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
+		exit(1);
+	}
+
+	if(args->minInd>2){
+		for(int indi=0; indi<nInd; indi++){
+			if(dp.data[indi]==0){
+				dp.n_missing_ind++;
+			}
+		}
+		if ( (nInd - dp.n_missing_ind) < args->minInd ){
+			return 1;
+		}
+	}
+
+
 	for(int i1=0;i1<nInd-1;i1++){
 		for(int i2=i1+1;i2<nInd;i2++){
+
+			if(dp.data[i1]==0 || dp.data[i2]==0){
+				//skip the pair
+				continue;
+			}
 
 			int32_t *ptr1 = gt.data + i1*gt.ploidy;
 			int32_t *ptr2 = gt.data + i2*gt.ploidy;
 			int pair_idx=LUT_indPair_idx[i1][i2];
-
-			// fprintf(stderr,"\n->i1: %d, i2: %d, pair: %d, nInd: %d\n\n", i1, i2, pair_idx,nInd);
-			// fprintf(stderr,"%d\t%d\t%d\n", i1, i2, pair_idx);
 
 			int gti1=0;
 			int gti2=0;
@@ -159,33 +186,14 @@ int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars
 				gti1 += bcf_gt_allele(ptr1[i]);
 				gti2 += bcf_gt_allele(ptr2[i]);
 			}
-			// fprintf(stderr,"\n%d:%d %d:%d -> %d\n",i1,gti1,i2,gti2,get_3x3_idx[gti1][gti2]);
 			sfs[pair_idx][get_3x3_idx[gti1][gti2]]++;
+
+			//shared_nSites
+			sfs[pair_idx][9]++;
 
 		}
 	}
-
 	return 0;
-
 }
 
 
-
-// check dp
-				// TAG="DP";
-				// get_data<int32_t> dp;
-				// dp.n = bcf_get_format_int32(hdr,bcf,TAG,&dp.data,&dp.size_e);
-				// if(dp.n<0){
-				// fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);
-				// exit(1);
-				// }
-//
-				// //TODO use only sites non-missing for all individuals for now
-				// for(int indi=0; indi<nInd; indi++){
-				// if(dp.data[indi]==0){
-				// // fprintf(stderr,"\nDepth: %d at (site_i: %d, pos: %d) in (ind_i: %d, ind_id: %s)\n",dp.data[indi],nSites,bcf->pos,indi,hdr->samples[indi]);
-				// dp.n_missing++;
-				// }
-				// }
-				// if (dp.n_missing>0) continue;
-//

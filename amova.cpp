@@ -117,7 +117,7 @@ int doAMOVA(int n_ind_cmb, int nInd, DATA::Metadata *MTD, DATA::Inds *INDS, FILE
 
 	fprintf(out_amova_ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
 	fprintf(out_amova_ff,"%i,%f,%f,%i,%f,%f,%i,%f,%f,%f,%f,%f,%f\n",df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a);
-#if 1
+#if 0
 
 	fprintf(stderr,"\n");
 	fprintf(stderr,"\n");

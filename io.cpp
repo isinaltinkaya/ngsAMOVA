@@ -2,6 +2,9 @@
 
 
 FILE *IO::getFILE(const char*fname,const char* mode){
+	if(strcmp(mode,"r")==0){
+		fprintf(stderr,"\n\t-> Reading file: %s\n",fname);
+	}
 	FILE *fp;
 	if(NULL==(fp=fopen(fname,mode))){
 		fprintf(stderr,"[%s:%s()]\t->Error opening FILE handle for file:%s exiting\n",__FILE__,__FUNCTION__,fname);
@@ -15,12 +18,11 @@ FILE *IO::openFILE(const char* a,const char* b){
 	char *c = (char*)malloc(strlen(a)+strlen(b)+1);
 	strcpy(c,a);
 	strcat(c,b);
-	fprintf(stderr,"\t-> Dumping file: %s\n",c);
+	fprintf(stderr,"\t-> Opening output file to write: %s\n",c);
 	FILE *fp = getFILE(c,"w");
 	free(c);
 	return fp;
 }
-
 
 int IO::inspectFILE::count_nColumns(char* line, const char* delims){
 
@@ -61,7 +63,7 @@ int IO::readFILE::METADATA(DATA::Metadata * MTD, FILE* in_mtd_ff, int whichCol, 
 
 		if(checkCol==1){
 			nCols= IO::inspectFILE::count_nColumns(mt_buf,delims);
-			fprintf(stderr,"->\tNumber of columns in input metadata file: %d\n",nCols);
+			fprintf(stderr,"\n\t-> Number of columns in input metadata file: %d\n",nCols);
 			checkCol=0;
 
 			if(whichCol!=-1 && whichCol > nCols){
@@ -264,6 +266,7 @@ argStruct *argStruct_get(int argc, char **argv){
 		fprintf(stderr,"\n\t-> -minInd 0; will use sites with data for all individuals.\n");
 	}else if(args->minInd==-1){
 		fprintf(stderr,"\n\t-> -minInd not set; will use sites that is nonmissing for both individuals in a pair.\n");
+		args->minInd=2;
 	}else if(args->minInd==2){
 		fprintf(stderr,"\n\t-> -minInd 2; will use sites that is nonmissing for both individuals in a pair.\n");
 	}else if(args->minInd==1){
