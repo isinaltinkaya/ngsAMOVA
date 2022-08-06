@@ -2,7 +2,6 @@
 #define __MATH_UTILS__
 
 #include "shared.h"
-#include "io.h"
 #include "vcf_utils.h"
 
 #include <stdio.h>

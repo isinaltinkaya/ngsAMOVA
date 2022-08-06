@@ -2,7 +2,7 @@
 
 
 
-int doAMOVA(int n_ind_cmb, int nInd, DATA::Metadata *MTD, DATA::Inds *INDS, FILE *out_amova_ff, int sqDist, double *M_PWD, int **LUT_indPair_idx){
+int doAMOVA(int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::sampleStruct *SAMPLES, FILE *out_amova_ff, int sqDist, double *M_PWD, int **LUT_indPair_idx){
 
 	double ssd_TOTAL=0.0;
 	double msd_TOTAL=0.0;
@@ -51,14 +51,14 @@ int doAMOVA(int n_ind_cmb, int nInd, DATA::Metadata *MTD, DATA::Inds *INDS, FILE
 		for(int i1=0;i1<nInd-1;i1++){
 			for(int i2=i1+1;i2<nInd;i2++){
 
-				if( (INDS->strata[i1] & (1 << sti)) && (INDS->strata[i2] & (1 << sti)) ){
+				if( (SAMPLES->sampleArr[i1] & (1 << sti)) && (SAMPLES->sampleArr[i2] & (1 << sti)) ){
 
 #if 0
 					fprintf(stderr, "\n-> Pair %i,idx:(%i,%i)) belongs to strata (%s,idx:%i)\n",
 							LUT_indPair_idx[i1][i2],
 							i1,
 							i2,
-							MTD->S[sti].id,
+							MTD->strataArr[sti].id,
 							sti);
 #endif
 
@@ -78,7 +78,7 @@ int doAMOVA(int n_ind_cmb, int nInd, DATA::Metadata *MTD, DATA::Inds *INDS, FILE
 			}
 		}
 
-		ssd_WG += s / (double) MTD->S[sti].nInds;
+		ssd_WG += s / (double) MTD->strataArr[sti].nInds;
 
 	}
 
@@ -98,7 +98,7 @@ int doAMOVA(int n_ind_cmb, int nInd, DATA::Metadata *MTD, DATA::Inds *INDS, FILE
 	double n_gi=0.0;
 
 	for(int sti=0; sti<MTD->nStrata;sti++){
-		n_gi += (double) MATH::SQUARE(MTD->S[sti].nInds) / (double) nInd;
+		n_gi += (double) MATH::SQUARE(MTD->strataArr[sti].nInds) / (double) nInd;
 	}
 
 	//TODO double and castings are probably not necessary here

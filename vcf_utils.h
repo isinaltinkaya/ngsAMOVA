@@ -3,7 +3,6 @@
 
 #include "shared.h"
 #include "math_utils.h"
-#include "io.h"
 
 #include <htslib/vcf.h>
 #include <htslib/vcfutils.h>
@@ -32,7 +31,7 @@ namespace VCF {
 
 	/*
 	 * @template struct
-	 * @abstract	wrapper for bcf_get_data_*
+	 * @abstract		wrapper for bcf_get_data_*
 	 *
 	 * @field data
 	 * @field size_e	watermark for number of elements
