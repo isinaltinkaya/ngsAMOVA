@@ -63,10 +63,6 @@ int main(int argc, char **argv) {
 		IO::outputStruct* out_amova_fs=OUTS->out_amova_fs;
 
 
-		int nInd=pars->nInd;
-		size_t nSites=pars->nSites;
-
-		size_t totSites=0;
 
 		char *DATETIME=pars->DATETIME;
 		DATETIME=get_time();
@@ -113,7 +109,7 @@ int main(int argc, char **argv) {
 		DATA::metadataStruct Metadata;
 		MTD=&Metadata;
 
-		nInd=bcf_hdr_nsamples(hdr);
+		pars->nInd=bcf_hdr_nsamples(hdr);
 
 		if(args->in_mtd_fn!=NULL){
 			//// BEGIN Read metadata
@@ -131,8 +127,8 @@ int main(int argc, char **argv) {
 			//// END Read metadata
 
 
-			if( nInd != MTD->nInds_total){
-				fprintf(stderr,"\n[ERROR]: Number of samples in input file (%i) is not equal to number of samples in metadata file (%i); will exit!\n\n", nInd, MTD->nInds_total);
+			if( pars->nInd != MTD->nInds_total){
+				fprintf(stderr,"\n[ERROR]: Number of samples in input file (%i) is not equal to number of samples in metadata file (%i); will exit!\n\n", pars->nInd, MTD->nInds_total);
 				exit(1);
 			}
 
@@ -140,12 +136,12 @@ int main(int argc, char **argv) {
 
 
 
-		if(args->minInd==nInd){
-			fprintf(stderr,"\n\t-> -minInd %d is equal to the number of individuals found in file: %d. Setting -minInd to 0 for more efficient analysis.\n",args->minInd, nInd);
+		if(args->minInd==pars->nInd){
+			fprintf(stderr,"\n\t-> -minInd %d is equal to the number of individuals found in file: %d. Setting -minInd to 0 for more efficient analysis.\n",args->minInd, pars->nInd);
 			args->minInd=0;
 		}
 		//
-		// if(nInd==1){
+		// if(pars->nInd==1){
 		// fprintf(stderr,"\n\n[ERROR]\tOnly one sample; will exit\n\n");
 		// free(args->in_fn);
 		// args->in_fn=NULL;
@@ -155,8 +151,8 @@ int main(int argc, char **argv) {
 		//
 		// exit(1);
 		// }
-		if(nInd<args->minInd){
-			fprintf(stderr,"\n\n[ERROR]\tMinimum number of individuals -minInd is set to %d, but input file contains %d individuals; will exit!\n\n",args->minInd,nInd);
+		if(pars->nInd<args->minInd){
+			fprintf(stderr,"\n\n[ERROR]\tMinimum number of individuals -minInd is set to %d, but input file contains %d individuals; will exit!\n\n",args->minInd,pars->nInd);
 
 			free(args->in_fn);
 			args->in_fn=NULL;
@@ -171,12 +167,10 @@ int main(int argc, char **argv) {
 		//print args nicely to an arg file and use -out
 		//but smart -out. if output prefix is given detect and truncate
 		//so it would play nicely with smk pipelines
-		nSites=0;
 
 
 
 		int buf_size=1024;
-		// int buf2_size=1024;
 
 
 		/*
@@ -186,8 +180,9 @@ int main(int argc, char **argv) {
 		//
 		// lngls=(double**) malloc(buf_size*sizeof(double*));
 		// for (int i=0;i<buf_size;i++){
-		// lngls[i]=(double*)malloc(nInd*10*sizeof(double));
+		// lngls[i]=(double*)malloc(pars->nInd*10*sizeof(double));
 		// }
+
 
 
 		double **lngl=0;
@@ -196,19 +191,19 @@ int main(int argc, char **argv) {
 		}
 
 		//TODO how to make lookup table better
-		int n_ind_cmb=nCk(nInd,2);
+		int n_ind_cmb=nCk(pars->nInd,2);
 
 		int **LUT_indPair_idx=0;
 
 
 
-		LUT_indPair_idx=(int **)malloc(nInd * sizeof (int*)); 
+		LUT_indPair_idx=(int **)malloc(pars->nInd * sizeof (int*)); 
 
-		for (int mi=0;mi<nInd;mi++){
-			LUT_indPair_idx[mi]=(int*) malloc( nInd * sizeof(int)) ;
+		for (int mi=0;mi<pars->nInd;mi++){
+			LUT_indPair_idx[mi]=(int*) malloc( pars->nInd * sizeof(int)) ;
 		}
 
-		prepare_LUT_indPair_idx(nInd, LUT_indPair_idx);
+		prepare_LUT_indPair_idx(pars->nInd, LUT_indPair_idx);
 
 		fprintf(stderr,"\nNumber of individual pairs: %d\n",n_ind_cmb);
 
@@ -260,14 +255,31 @@ int main(int argc, char **argv) {
 
 
 
-
-
 		/*
 		 * [START] Reading sites
 		 *
 		 * hdr	header
 		 * bcf	struct for storing each record
+		 *
+		 *
+		 *
+		 * nSites=0
+		 * totSites=0
+		 *
+		 *
+		 * if minInd is set
+		 * nSites==where minInd threshold can be passed
+		 * totSites==all sites processed
+		 *
+		 *
+		 * lngl
+		 *
+		 *
 		 */
+
+		pars->totSites=0;
+		pars->nSites=0;
+
 
 		while (bcf_read(in_ff, hdr, bcf) == 0) {
 
@@ -279,10 +291,10 @@ int main(int argc, char **argv) {
 			}
 
 
-			totSites++;
-			while((int) nSites >= buf_size){
 
-				// fprintf(stderr,"\n\nrealloc %d at site %d\n",buf_size,nSites);
+			while((int) pars->nSites >= buf_size){
+
+				// fprintf(stderr,"\n\nrealloc %d at site %d\n",buf_size,pars->nSites);
 				// fprintf(stderr,"new size: %d\n",buf_size);
 				buf_size=buf_size*2;
 
@@ -297,32 +309,45 @@ int main(int argc, char **argv) {
 				// }
 			}
 
-			
+
 
 			RET=0;
 
 			if(args->doAMOVA==1 || args->doAMOVA==3){
-				RET=VCF::read_GL10_to_GL3(hdr,bcf,lngl,pars,args,nSites,nInd);
-
+				RET=VCF::read_GL10_to_GL3(hdr,bcf,lngl,pars,args, pars->nSites);
 			}
 
 			if(RET>0){
-				free(lngl[nSites]);
-				lngl[nSites]=NULL;
+			
+				fprintf(stderr,"\n->\tSkipping site %lu for all individuals\n\n",pars->totSites);
+
+
+				pars->totSites++;
+
+				//next loop will skip this and use the same site_i
+				free(lngl[pars->nSites]);
+				lngl[pars->nSites]=NULL;
+
 				continue;
 			}
 
+			//if doAMOVA==3 and site is skipped for gle; it will be skipped for gt, too
 	
 			if(args->doAMOVA==2 || args->doAMOVA ==3 ){
-				RET=VCF::GT_to_i2i_SFS(hdr,bcf,SFS_GT3,pars,args,nSites,nInd,LUT_indPair_idx);
+				RET=VCF::GT_to_i2i_SFS(hdr,bcf,SFS_GT3,pars,args,pars->nSites,pars->nInd,LUT_indPair_idx);
 			}
 				
 			if(RET>0){
-				continue;
+				//not handled yet
+				// if(args->minInd!=2){
+				// }
+				// pars->totSites++;
+				exit(1);
+				// continue;
 			}
 
-			nSites++;
-
+			pars->nSites++;
+			pars->totSites++;
 
 
 			//TODO bcf_hdr_set_samples efficient sample parsing
@@ -334,10 +359,10 @@ int main(int argc, char **argv) {
 			// }
 
 
-			// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
-			// fprintf(stderr,"%d\n\n",nSites);
-			// fprintf(stderr,"\r\t-> Printing at site %lu",nSites);
-			// fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
+			// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",pars->nSites);
+			// fprintf(stderr,"%d\n\n",pars->nSites);
+			// fprintf(stderr,"\r\t-> Printing at site %lu",pars->nSites);
+			// fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu) totSites:%d\n\n",pars->nSites,bcf->pos,bcf->pos+1,pars->totSites);
 
 
 		}
@@ -347,57 +372,36 @@ int main(int argc, char **argv) {
 		
 		fprintf(out_sfs_fs->ff,"Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Sij,Fij,Fij2,IBS0,IBS1,IBS2,R0,R1,Kin\n");
 
-//
-		int nThreads=0;
 
-		if(args->mThreads <= n_ind_cmb){
-			nThreads=args->mThreads;
-		}else{
-			nThreads=n_ind_cmb;
-		}
-		pthread_t pairThreads[nThreads];
-		// pthread_t* pairThreads;
-//
-		// for(int pt=0; pt < args->mThreads; pt++){
-			// pairThreads[pt] = new pthread_t;
-		// }
-
-		IO::threadStruct* PTHREADS[n_ind_cmb];
+		pthread_t pairThreads[n_ind_cmb];
+		threadStruct* PTHREADS[n_ind_cmb];
 		DATA::pairStruct* PAIRS[n_ind_cmb];
 
-		for(int i1=0;i1<nInd-1;i1++){
-			for(int i2=i1+1;i2<nInd;i2++){
+		for(int i1=0;i1<pars->nInd-1;i1++){
+			for(int i2=i1+1;i2<pars->nInd;i2++){
+
+
 				int pidx=LUT_indPair_idx[i1][i2];
 				PAIRS[pidx] = new DATA::pairStruct(i1,i2,pidx);
-				double* pM_PWD_GL = &M_PWD_GL[pidx];
-				// PTHREADS[pidx] = new IO::threadStruct(PAIRS[pidx], lngl, nSites, args->tole, out_sfs_fs, M_PWD_GL[pidx]);
-				PTHREADS[pidx] = new IO::threadStruct(PAIRS[pidx], lngl, nSites,  out_sfs_fs, pM_PWD_GL,args->tole,args->doDist);
+				// double* pM_PWD_GL = &M_PWD_GL[pidx];
+				// PTHREADS[pidx] = new threadStruct(PAIRS[pidx], lngl, pars->nSites, out_sfs_fs, pM_PWD_GL,args->tole,args->doDist, args->mEmIter);
+				PTHREADS[pidx] = new threadStruct(PAIRS[pidx], lngl, pars->nSites, out_sfs_fs, args->tole, args->mEmIter);
 
-			}
-		}
 
-		int nJobs_sent=0;
+				for(size_t s=0; s<pars->nSites; s++){
 
-		for(int i1=0;i1<nInd-1;i1++){
-			for(int i2=i1+1;i2<nInd;i2++){
 
-				int pidx=LUT_indPair_idx[i1][i2];
-
-				if(args->minInd==0){
-					PAIRS[pidx]->shared_nSites=nSites;
-				}else{
-
-					for(size_t s=0; s<nSites; s++){
-						if ((lngl[s][(3*i1)+0]==NEG_INF) && (lngl[s][(3*i1)+1]==NEG_INF) && (lngl[s][(3*i1)+2]==NEG_INF)){
-							continue;
-						}else if ((lngl[s][(3*i2)+0]==NEG_INF) && (lngl[s][(3*i2)+1]==NEG_INF) && (lngl[s][(3*i2)+2]==NEG_INF)){
-							continue;
-						}else{
-							PAIRS[pidx]->shared_nSites++;
-						}
+					if ((lngl[s][(3*i1)+0]==NEG_INF) && (lngl[s][(3*i1)+1]==NEG_INF) && (lngl[s][(3*i1)+2]==NEG_INF)){
+						continue;
+					}else if ((lngl[s][(3*i2)+0]==NEG_INF) && (lngl[s][(3*i2)+1]==NEG_INF) && (lngl[s][(3*i2)+2]==NEG_INF)){
+						continue;
+					}else{
+						PAIRS[pidx]->snSites++;
 					}
+
 				}
-				if(PAIRS[pidx]->shared_nSites==0){
+
+				if(PAIRS[pidx]->snSites==0){
 					fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
 					exit(1);
 				}
@@ -405,11 +409,15 @@ int main(int argc, char **argv) {
 			}
 		}
 
-		if(args->doAMOVA==1){
 
 
-			for(int i1=0;i1<nInd-1;i1++){
-				for(int i2=i1+1;i2<nInd;i2++){
+		int nJobs_sent=0;
+
+		if(args->doAMOVA==1 || args->doAMOVA==3){
+
+
+			for(int i1=0;i1<pars->nInd-1;i1++){
+				for(int i2=i1+1;i2<pars->nInd;i2++){
 
 
 					int pidx=LUT_indPair_idx[i1][i2];
@@ -420,7 +428,6 @@ int main(int argc, char **argv) {
 							int t=0;
 							while(nJobs_sent>0){
 								t=pidx-nJobs_sent;
-							// for (int t=pidx-nJobs_sent;t<pidx;t++){
 
 								if(pthread_join( pairThreads[t], NULL) != 0){
 									fprintf(stderr,"\n[ERROR] Problem with joining thread.\n");
@@ -434,7 +441,6 @@ int main(int argc, char **argv) {
 
 
 					if(args->mThreads>1){
-						// if(pthread_create( &pairThreads[pidx], NULL,t_EM_2DSFS_GL3, &PAIRS[pidx]) == 0){
 						if(pthread_create( &pairThreads[pidx], NULL,t_EM_2DSFS_GL3, PTHREADS[pidx]) == 0){
 							nJobs_sent++;
 						}else{
@@ -457,11 +463,11 @@ int main(int argc, char **argv) {
 				}
 
 			}
+			//finished indPair loop
+			
 			int t=0;
 			while(nJobs_sent>0){
 				t=n_ind_cmb-nJobs_sent;
-fprintf(stderr,"\n\nHERE!!!%d\n\n",t);
-				// for (int t=n_ind_cmb-nJobs_sent;t<n_ind_cmb;t++){
 				if(pthread_join( pairThreads[t], NULL) != 0){
 					fprintf(stderr,"\n[ERROR] Problem with joining thread.\n");
 					exit(1);
@@ -470,100 +476,110 @@ fprintf(stderr,"\n\nHERE!!!%d\n\n",t);
 				}
 			}
 
+			for (int pidx=0; pidx<n_ind_cmb; pidx++){
+
+				DATA::pairStruct* pair=PTHREADS[pidx]->pair;
 
 
-		// for(int i1=0;i1<nInd-1;i1++){
-			// for(int i2=i1+1;i2<nInd;i2++){
-					// int pidx=LUT_indPair_idx[i1][i2];
-				// if(args->doDist==0){
-					// M_PWD_GL[pidx]=MATH::EST::Sij(PAIRS[pidx]->SFS);
-				// }else if(args->doDist==1){
-					// M_PWD_GL[pidx]=(double) (1-MATH::EST::Sij(PAIRS[pidx]->SFS));
-				// }else if(args->doDist==2){
-					// M_PWD_GL[pidx]=MATH::EST::Fij(PAIRS[pidx]->SFS);
-				// }else{
-					// exit(1);
-				// }
-			// }
-		// }
-
-		}else if(args->doAMOVA==2){
+				//TODO using probs not expected counts here
+				if(args->doDist==0){
+					M_PWD_GL[pidx]=MATH::EST::Sij(pair->SFS);
+				}else if(args->doDist==1){
+					M_PWD_GL[pidx]=(double) (1-MATH::EST::Sij(pair->SFS));
+				}else if(args->doDist==2){
+					M_PWD_GL[pidx]=MATH::EST::Fij(pair->SFS);
+				}else{
+					exit(1);
+				}
 
 
-			for(int i1=0;i1<nInd-1;i1++){
-				for(int i2=i1+1;i2<nInd;i2++){
 
-					int shared_nSites=0;
+				fprintf(out_sfs_fs->ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
+						hdr->samples[pair->i1],
+						hdr->samples[pair->i2],
+						pair->snSites * pair->SFS[0][0],pair->snSites * pair->SFS[0][1],pair->snSites * pair->SFS[0][2],
+						pair->snSites * pair->SFS[1][0],pair->snSites * pair->SFS[1][1],pair->snSites * pair->SFS[1][2],
+						pair->snSites * pair->SFS[2][0],pair->snSites * pair->SFS[2][1],pair->snSites * pair->SFS[2][2],
+						pair->n_em_iter,
+						pair->snSites,
+						pair->d,
+						args->tole,
+						MATH::EST::Sij(pair->SFS),
+						MATH::EST::Fij(pair->SFS),
+						MATH::SQUARE(MATH::EST::Fij(pair->SFS)),
+						MATH::EST::IBS0(pair->SFS),
+						MATH::EST::IBS1(pair->SFS),
+						MATH::EST::IBS2(pair->SFS),
+						MATH::EST::R0(pair->SFS),
+						MATH::EST::R1(pair->SFS),
+						MATH::EST::Kin(pair->SFS));
+
+
+
+
+			}
+
+
+			//TODO maybe join this loop 
+
+		}
+		if(args->doAMOVA==2||args->doAMOVA==3){
+
+			for(int i1=0;i1<pars->nInd-1;i1++){
+				for(int i2=i1+1;i2<pars->nInd;i2++){
+
+					int snSites=0;
 
 					int pidx=LUT_indPair_idx[i1][i2];
 
-					if(args->minInd==0){
-						PAIRS[pidx]->shared_nSites=nSites;
-						shared_nSites=PAIRS[pidx]->shared_nSites;
-					}else{
+					if(args->doAMOVA==3){
 
-						PAIRS[pidx]->shared_nSites=SFS_GT3[pidx][9];
-						shared_nSites=PAIRS[pidx]->shared_nSites;
-
-
-						if(args->doDist==0){
-							M_PWD_GT[pidx]=MATH::EST::Sij(SFS_GT3[pidx], shared_nSites);
-						}else if(args->doDist==1){
-							M_PWD_GT[pidx]=(double) (1-MATH::EST::Sij(SFS_GT3[pidx], shared_nSites));
-						}else if(args->doDist==2){
-							M_PWD_GT[pidx]=MATH::EST::Fij(SFS_GT3[pidx], shared_nSites);
+						if(PAIRS[pidx]->snSites!=SFS_GT3[pidx][9]){
+							fprintf(stderr,"\n[ERROR] Number of shared sites in gle analysis is different than in gt, will exit!\n\n");
+							exit(1);
 						}
-
-						// fprintf(out_sfs_ff,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
-								// hdr->samples[i1],
-								// hdr->samples[i2],
-								// SFS_GT3[pair_idx][0],SFS_GT3[pair_idx][1],SFS_GT3[pair_idx][2],
-								// SFS_GT3[pair_idx][3],SFS_GT3[pair_idx][4],SFS_GT3[pair_idx][5],
-								// SFS_GT3[pair_idx][6],SFS_GT3[pair_idx][7],SFS_GT3[pair_idx][8],
-								// "gt",
-								// shared_nSites,
-								// "gt",
-								// "gt",
-								// MATH::EST::Sij(SFS_GT3[pair_idx], shared_nSites),
-								// MATH::EST::Fij(SFS_GT3[pair_idx], shared_nSites),
-								// MATH::SQUARE(MATH::EST::Fij(SFS_GT3[pair_idx], shared_nSites)),
-								// MATH::EST::IBS0(SFS_GT3[pair_idx], shared_nSites),
-								// MATH::EST::IBS1(SFS_GT3[pair_idx], shared_nSites),
-								// MATH::EST::IBS2(SFS_GT3[pair_idx], shared_nSites),
-								// MATH::EST::R0(SFS_GT3[pair_idx], shared_nSites),
-								// MATH::EST::R1(SFS_GT3[pair_idx], shared_nSites),
-								// MATH::EST::Kin(SFS_GT3[pair_idx], shared_nSites));
-
-
 					}
+
+					snSites=SFS_GT3[pidx][9];
+
+
+					if(args->doDist==0){
+						M_PWD_GT[pidx]=MATH::EST::Sij(SFS_GT3[pidx], snSites);
+					}else if(args->doDist==1){
+						M_PWD_GT[pidx]=(double) (1-MATH::EST::Sij(SFS_GT3[pidx], snSites));
+					}else if(args->doDist==2){
+						M_PWD_GT[pidx]=MATH::EST::Fij(SFS_GT3[pidx], snSites);
+					}else{
+						exit(1);
+					}
+
+					fprintf(out_sfs_fs->ff,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
+							hdr->samples[i1],
+							hdr->samples[i2],
+							SFS_GT3[pidx][0],SFS_GT3[pidx][1],SFS_GT3[pidx][2],
+							SFS_GT3[pidx][3],SFS_GT3[pidx][4],SFS_GT3[pidx][5],
+							SFS_GT3[pidx][6],SFS_GT3[pidx][7],SFS_GT3[pidx][8],
+							"gt",
+							snSites,
+							"gt",
+							"gt",
+							MATH::EST::Sij(SFS_GT3[pidx], snSites),
+							MATH::EST::Fij(SFS_GT3[pidx], snSites),
+							MATH::SQUARE(MATH::EST::Fij(SFS_GT3[pidx], snSites)),
+							MATH::EST::IBS0(SFS_GT3[pidx], snSites),
+							MATH::EST::IBS1(SFS_GT3[pidx], snSites),
+							MATH::EST::IBS2(SFS_GT3[pidx], snSites),
+							MATH::EST::R0(SFS_GT3[pidx], snSites),
+							MATH::EST::R1(SFS_GT3[pidx], snSites),
+							MATH::EST::Kin(SFS_GT3[pidx], snSites));
+
+
 				}
 			}
 
 
-		}else if(args->doAMOVA==3){
-
 		}
 
-
-
-
-				// int pair_idx=LUT_indPair_idx[i1][i2];
-
-				// int shared_nSites=0;
-
-				//if requires all individuals to have data; already handled in main while loop
-						// if(args->doAMOVA==3){
-							// if(shared_nSites!=SFS_GT3[pair_idx][9]){
-//
-								// fprintf(stderr,"\n[ERROR] shared_nSites for GT (%d) and GLE(%d) is not equal for i1:%d i2:%d\n",shared_nSites, SFS_GT3[pair_idx][9],i1,i2);
-								// exit(1);
-							// }
-						// }
-//
-					// }else if(args->doAMOVA==2){
-					// }
-				// }
-//
 
 
 				//doTest 1 requires doAMOVA 3; handled in io.cpp
@@ -572,7 +588,7 @@ fprintf(stderr,"\n\nHERE!!!%d\n\n",t);
 					// test_em(lngl,PAIRS[pidx]->SFS,SFS_GT3,i1,i2,
 							// hdr->samples[i1],
 							// hdr->samples[i2],
-							// pair_idx,nSites,shared_nSites,out_emtest_fs->ff);
+							// pair_idx,nSites,snSites,out_emtest_fs->ff);
 				// }
 			// }
 		// }
@@ -581,8 +597,8 @@ fprintf(stderr,"\n\nHERE!!!%d\n\n",t);
 
 #if 0
 		//print lookup table
-			for(int i1=0;i1<nInd-1;i1++){
-				for(int i2=i1+1;i2<nInd;i2++){
+			for(int i1=0;i1<pars->nInd-1;i1++){
+				for(int i2=i1+1;i2<pars->nInd;i2++){
 					fprintf(stderr,"\n%i %i %i\n",LUT_indPair_idx[i1][i2],i1,i2);
 				}
 			}
@@ -590,8 +606,8 @@ fprintf(stderr,"\n\nHERE!!!%d\n\n",t);
 
 #if 0
 		if(args->in_mtd_fn!=NULL){
-			for(int i1=0;i1<nInd-1;i1++){
-				for(int i2=i1+1;i2<nInd;i2++){
+			for(int i1=0;i1<pars->nInd-1;i1++){
+				for(int i2=i1+1;i2<pars->nInd;i2++){
 
 					for(int sti=0; sti<MTD->nStrata;sti++){
 
@@ -626,12 +642,12 @@ fprintf(stderr,"\n\nHERE!!!%d\n\n",t);
 		if(args->printMatrix==1){
 			// // //print pair IDs
 			// if(0){
-				// for(int i1=0;i1<nInd-1;i1++){
-					// for(int i2=i1+1;i2<nInd;i2++){
+				// for(int i1=0;i1<pars->nInd-1;i1++){
+					// for(int i2=i1+1;i2<pars->nInd;i2++){
 						// fprintf(out_dm_fs->ff,"%s-%s",
 								// hdr->samples[i1],
 								// hdr->samples[i2]);
-						// if(i1!=nInd-2 && i2!=nInd-1){
+						// if(i1!=pars->nInd-2 && i2!=nInd-1){
 							// fprintf(out_dm_fs->ff,",");
 						// }
 					// }
@@ -666,19 +682,19 @@ fprintf(stderr,"\n\nHERE!!!%d\n\n",t);
 		}
 
 		if(args->doAMOVA==1){
-			if(doAMOVA(n_ind_cmb, nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GL, LUT_indPair_idx)==0){
+			if(doAMOVA(n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GL, LUT_indPair_idx)==0){
 				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			}else{
 				exit(1);
 			}
 		}else if (args->doAMOVA==2){
-			if(doAMOVA(n_ind_cmb, nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GT, LUT_indPair_idx)==0){
+			if(doAMOVA(n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GT, LUT_indPair_idx)==0){
 				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			}else{
 				exit(1);
 			}
 		}else if (args->doAMOVA==3){
-			if(doAMOVA(n_ind_cmb, nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GL, LUT_indPair_idx)==0){
+			if(doAMOVA(n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GL, LUT_indPair_idx)==0){
 				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			}else{
 				exit(1);
@@ -689,12 +705,12 @@ fprintf(stderr,"\n\nHERE!!!%d\n\n",t);
 
 
 
-		fprintf(stderr, "Total number of sites processed: %lu\n", totSites);
+		fprintf(stderr, "Total number of sites processed: %lu\n", pars->totSites);
 		fprintf(stderr, "\n");
-		if(args->minInd != 2){
-			fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", totSites-nSites);
-		}
+		fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", pars->totSites-pars->nSites);
 
+		//TODO output is not sorted when threads are used
+		//and ind indexes are written instead of ind ids
 		fflush(out_sfs_fs->ff);
 
 
@@ -714,7 +730,7 @@ fprintf(stderr,"\n\nHERE!!!%d\n\n",t);
 
 		if(args->doAMOVA==1 || args->doAMOVA==3){
 
-			for (size_t s=0;s<nSites;s++){
+			for (size_t s=0;s<pars->nSites;s++){
 				free(lngl[s]);
 				lngl[s]=NULL;
 			}
@@ -723,6 +739,7 @@ fprintf(stderr,"\n\nHERE!!!%d\n\n",t);
 
 
 		}
+
 		if(args->doAMOVA==2 || args->doAMOVA==3){
 
 			for (int i=0;i<n_ind_cmb;i++){
@@ -735,7 +752,7 @@ fprintf(stderr,"\n\nHERE!!!%d\n\n",t);
 
 
 
-		for (int i=0;i<nInd;i++){
+		for (int i=0;i<pars->nInd;i++){
 			free(LUT_indPair_idx[i]);
 			LUT_indPair_idx[i]=NULL;
 		}
@@ -754,6 +771,7 @@ fprintf(stderr,"\n\nHERE!!!%d\n\n",t);
 				exit(1);
 			}
 		}
+
 
 		free(args->in_fn);
 		args->in_fn=NULL;

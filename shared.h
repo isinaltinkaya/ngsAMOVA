@@ -30,19 +30,15 @@ namespace DATA{
 		int i2;
 		int idx;
 
-		int shared_nSites=0;
-
+		int snSites=0;
 		// int nDim;
 
 		double d;
 		int n_em_iter;
 
-		// double SFS[3][3]={NEG_INF};
 		double SFS[3][3]={{NEG_INF,NEG_INF,NEG_INF},
 			{NEG_INF,NEG_INF,NEG_INF},
 			{NEG_INF,NEG_INF,NEG_INF}};
-		// double **SFS;
-		// double SFS[nDim][nDim];
 
 		pairStruct(int ind1, int ind2, int pair_idx){
 			i1=ind1;
@@ -128,6 +124,16 @@ namespace DATA{
  * @field minInd		[-1 = not set]
  * 						minimum number of individuals needed
  * 						for site to be included in analyses
+ * 						
+ * 						if minInd not set; set minInd=2
+ * 						== no filter, include all sites that exist in pair
+ *
+ * 						if minInd==nInd; set minInd=0
+ * 						== site should be nonmissing for all individuals
+ * 						to be included
+ *
+ *
+ *
  *
  * @field whichCol		[-1] defines the index (1-based) of the
  * 						column in metadata file 'in_mtd_fn'
@@ -153,6 +159,7 @@ namespace DATA{
  *
  *
  * @field mThreads		maximum number of threads defined by user
+ * @field mEmIter		maximum number of iterations allowed for em
  *
  */
 
@@ -184,6 +191,7 @@ typedef struct {
 
 
 	int mThreads;
+	int mEmIter;
 	
 
 }argStruct;
@@ -261,37 +269,39 @@ namespace IO {
 
 	}outFilesStruct;
 
-	typedef struct threadStruct{
-
-		DATA::pairStruct* pair;
-		double **lngls;
-
-		size_t total_nSites;
-
-
-		FILE* out_sfs_ff;
-
-		double* M_PWD_GL_PAIR;
-
-		int doDist;
-		double tole;
-
-		threadStruct(DATA::pairStruct* tPair, double **lngl, size_t nSites, outputStruct* out_sfs_fs, double* M_PWD_GL_P, double toleArg, int doDistArg){
-			pair=tPair;
-			lngls=lngl;
-			total_nSites=nSites;
-			out_sfs_ff=out_sfs_fs->ff;
-			M_PWD_GL_PAIR=M_PWD_GL_P;
-			tole=toleArg;
-			doDist=doDistArg;
-			// if(args->minInd!=0){
-				// pair->shared_nSites=nSites;
-			// }
-		}
-
-	}threadStruct;
 }
 
+
+typedef struct threadStruct{
+
+	DATA::pairStruct* pair;
+	double **lngls;
+
+
+
+	FILE* out_sfs_ff;
+
+	// double* M_PWD_GL_PAIR;
+
+	//TODO use them globally?
+	double tole;
+	int mEmIter;
+
+
+	size_t nSites;
+
+	threadStruct(DATA::pairStruct* tPair, double **lngl, size_t nSites_t, IO::outputStruct* out_sfs_fs, double toleArg, int mEmIterArg){
+		pair=tPair;
+		lngls=lngl;
+		nSites=nSites_t;
+		out_sfs_ff=out_sfs_fs->ff;
+		// M_PWD_GL_PAIR=M_PWD_GL_P;
+		tole=toleArg;
+		// doDist=doDistArg;
+		mEmIter=mEmIterArg;
+	}
+
+}threadStruct;
 
 
 /*
@@ -301,7 +311,6 @@ namespace IO {
  * @field nSites	number of sites
  * @field nInd		number of individuals
  * @field pos		position
- * @field keepSites	int array with values indicating if a site will be kept
  * @field major		major allele
  * @field minor		minor allele
  * @field ref		reference allele
@@ -313,11 +322,13 @@ namespace IO {
 typedef struct{
 
 	size_t nSites;
+	size_t totSites;
+
 	int nInd;
 
 	int *pos;
 
-	int *keepSites;
+
 
 	char *major;
 	char *minor;

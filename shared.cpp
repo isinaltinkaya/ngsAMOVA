@@ -240,6 +240,8 @@ argStruct *argStruct_init(){
 
 	args->mThreads=0;
 
+	args->mEmIter=1e3;
+
 	args->tole=1e-10;
 
 	args->doTest=0;
@@ -282,8 +284,10 @@ argStruct *argStruct_get(int argc, char **argv){
 		char *val=*(++argv);
 
 		if(strcasecmp("-in",arv)==0) args->in_fn=strdup(val);
+		else if(strcasecmp("-i",arv)==0) args->in_fn=strdup(val);
 		else if(strcasecmp("-m",arv)==0) args->in_mtd_fn=strdup(val);
 		else if(strcasecmp("-out",arv)==0) args->out_fp=strdup(val);
+		else if(strcasecmp("-o",arv)==0) args->out_fp=strdup(val);
 		else if(strcasecmp("-mCol",arv)==0) args->whichCol=atoi(val);
 		else if(strcasecmp("-seed",arv)==0) args->seed=atoi(val);
 		else if(strcasecmp("-doAMOVA",arv)==0) args->doAMOVA=atoi(val);
@@ -297,6 +301,7 @@ argStruct *argStruct_get(int argc, char **argv){
 		else if(strcasecmp("-sqDist",arv)==0) args->sqDist=atoi(val);
 		else if(strcasecmp("-minInd",arv)==0) args->minInd=atoi(val);
 		else if(strcasecmp("-doTest",arv)==0) args->doTest=atoi(val);
+		else if(strcasecmp("-maxIter",arv)==0) args->mEmIter=atoi(val);
 		else if(strcasecmp("-P",arv)==0) args->mThreads=atoi(val);
 		else if(strcasecmp("-nThreads",arv)==0) args->mThreads=atoi(val);
 		else if(strcasecmp("-h",arv) == 0 || strcasecmp( "--help",arv) == 0) {
@@ -465,10 +470,16 @@ paramStruct *paramStruct_init(argStruct *args){
 
 	paramStruct *pars= new paramStruct;
 
+	//number of sites non skipped for all individuals
+	//nSites may not be !=totSites if minInd is set
+	//or if a site is missing for all inds
 	pars->nSites=0;
+
+	//total number of sites processed
+	pars->totSites=0;
+
 	pars->nInd=0;
 
-	pars->keepSites=NULL;
 	pars->DATETIME=NULL;
 
 	pars->pos=NULL;
@@ -486,7 +497,7 @@ paramStruct *paramStruct_init(argStruct *args){
 
 void paramStruct_destroy(paramStruct *pars){
 
-	delete[] pars->keepSites;
+
 	delete[] pars->pos;
 
 	if(pars->major){

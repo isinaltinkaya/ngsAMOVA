@@ -24,17 +24,20 @@ int bcf_alleles_get_gtidx(char a1, char a2);
 
 namespace VCF {
 
-	int read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t nSites, int nInd);
+	int read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i);
 	int GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args, size_t nSites, int nInd, int** LUT_indPair_idx);
 
 
 
 	/*
-	 * @template struct
+	 * @template struct get_data
+	 *
 	 * @abstract		wrapper for bcf_get_data_*
 	 *
 	 * @field data
+	 *
 	 * @field size_e	watermark for number of elements
+	 *
 	 * @field n			number of returned values
 	 * 					if <0; error
 	 * 					else; number of written values

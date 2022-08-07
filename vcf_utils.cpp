@@ -38,8 +38,9 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2){
 	return bcf_alleles2gt(bcf_allele_charToInt[a1],bcf_allele_charToInt[a2]);
 }
 
+
 // return 1: skip site for all individuals
-int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t nSites, int nInd){
+int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i){
 
 	// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
 	VCF::get_data<float> lgl;
@@ -51,7 +52,7 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 		exit(1);
 	}
 
-	lngl[nSites]=(double*)malloc(nInd*3*sizeof(double));
+	lngl[site_i]=(double*)malloc(pars->nInd*3*sizeof(double));
 
 	//TODO check why neccessary
 	if(bcf_is_snp(bcf)){
@@ -59,10 +60,10 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 		char a2=bcf_allele_charToInt[(unsigned char) bcf->d.allele[1][0]];
 
 
-		for(int indi=0; indi<nInd; indi++){
+		for(int indi=0; indi<pars->nInd; indi++){
 
 			for(int ix=0;ix<3;ix++){
-				lngl[nSites][(3*indi)+ix]=NEG_INF;
+				lngl[site_i][(3*indi)+ix]=NEG_INF;
 			}
 
 			//TODO only checking the first for now
@@ -70,34 +71,35 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 			//should we skip sites where at least one is set to missing?
 			//
 			if(isnan(lgl.data[(10*indi)+0])){
-				if(args->minInd==0){ //only use sites shared across all individuals
+
+				//if only use sites shared across all individuals; skip site when you first encounter nan
+				if(args->minInd==0){ 
 					return 1;
 				}else{
 					lgl.n_missing_ind++;
 				}
 			}else{
-				lngl[nSites][(3*indi)+0]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)]);
-				lngl[nSites][(3*indi)+1]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)]);
-				lngl[nSites][(3*indi)+2]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
+				lngl[site_i][(3*indi)+0]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)]);
+				lngl[site_i][(3*indi)+1]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)]);
+				lngl[site_i][(3*indi)+2]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
 			}
 		}
 
-		//skip site if missing for all individuals
-		if (nInd==lgl.n_missing_ind){
+		if (pars->nInd==lgl.n_missing_ind){
 			return 1;
 		}
 
-		// //if there are only 2 individuals, skip site regardless of onlyShared val
-		if (nInd==2){
+		//if there are only 2 individuals, skip site 
+		if (pars->nInd==2){
 			if(lgl.n_missing_ind>0){
 				return 1;
 			}
 		}
 
-		if(args->minInd>2){
+		if(args->minInd!=2){
 			//skip site if minInd is defined and #non-missing inds=<nInd
-			if( (nInd - lgl.n_missing_ind) < args->minInd ){
-				// fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,nInd-n_missing_ind,site);
+			if( (pars->nInd - lgl.n_missing_ind) < args->minInd ){
+				// fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,pars->nInd-n_missing_ind,site);
 				return 1;
 			}else{
 				return 0;
@@ -106,18 +108,13 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 			return 0;
 		}
 
-		// if (set_lngl(lngl, lgl.data,args, nInd,a1,a2, nSites)==1){
-		// free(lngl[nSites]);
-		// lngl[nSites]=NULL;
-		// // fprintf(stderr,"\nset_lngl returns 1 at site (idx: %lu, pos: %lu 1based: %lu)\n\n",nSites,bcf->pos,bcf->pos+1);
-		// return 1;
-		// }
 	}else{
 		//TODO check
 		fprintf(stderr,"\n\nHERE BCF_IS_SNP==0!!!\n\n");
-		free(lngl[nSites]);
-		lngl[nSites]=NULL;
-		return 1;
+		exit(1);
+		// free(lngl[nSites]);
+		// lngl[nSites]=NULL;
+		// return 1;
 	}
 
 	return 0;
@@ -127,6 +124,8 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 //if doAMOVA==3; both gl and gt; if gl returns 1 to skip all sites, this never runs
 //if gl returns 0; this will check again for shared sites using DP tag as an indicator
 // return 1: skip site for all individuals
+//
+// sfs[pair_idx][9] holds snSites
 int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args, size_t nSites, int nInd, int** LUT_indPair_idx){
 
 	//TODO add check if missing gt return 1
@@ -188,12 +187,15 @@ int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars
 			}
 			sfs[pair_idx][get_3x3_idx[gti1][gti2]]++;
 
-			//shared_nSites
+			//last field is for snSites
 			sfs[pair_idx][9]++;
 
 		}
 	}
+
 	return 0;
 }
+
+
 
 
