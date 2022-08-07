@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
 
 		fprintf(stderr,"\n%s",DATETIME);
 		//TODO print based on analysis type, and to args file
-		fprintf(stderr,"\nngsAMOVA -doAMOVA %d -doTest %d -in %s -out %s -isSim %d -minInd %d -printMatrix %d -m %s -doDist %d",args->doAMOVA,args->doTest,args->in_fn,args->out_fp,args->isSim,args->minInd,args->printMatrix,args->in_mtd_fn,args->doDist);
+		fprintf(stderr,"\nngsAMOVA -doAMOVA %d -doTest %d -in %s -out %s -isSim %d -minInd %d -printMatrix %d -m %s -doDist %d -maxIter %d -nThreads %d",args->doAMOVA,args->doTest,args->in_fn,args->out_fp,args->isSim,args->minInd,args->printMatrix,args->in_mtd_fn,args->doDist, args->mEmIter, args->mThreads);
 
 
 		if(args->doAMOVA == 1 || args->doAMOVA == 3){

@@ -240,7 +240,7 @@ argStruct *argStruct_init(){
 
 	args->mThreads=0;
 
-	args->mEmIter=1e3;
+	args->mEmIter=1e2;
 
 	args->tole=1e-10;
 
