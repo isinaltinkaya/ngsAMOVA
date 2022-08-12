@@ -334,7 +334,18 @@ int main(int argc, char **argv) {
 			//if doAMOVA==3 and site is skipped for gle; it will be skipped for gt, too
 	
 			if(args->doAMOVA==2 || args->doAMOVA ==3 ){
-				RET=VCF::GT_to_i2i_SFS(hdr,bcf,SFS_GT3,pars,args,pars->nSites,pars->nInd,LUT_indPair_idx);
+
+				if(args->gl2gt==1){
+					if(VCF::GL_to_GT_1_SFS(hdr,bcf,SFS_GT3,pars,args,LUT_indPair_idx)==0){
+					}else{
+						exit(1);
+					}
+				}else if(args->gl2gt==-1){
+					RET=VCF::GT_to_i2i_SFS(hdr,bcf,SFS_GT3,pars,args,LUT_indPair_idx);
+				}else{
+					exit(1);
+				}
+
 			}
 				
 			if(RET>0){

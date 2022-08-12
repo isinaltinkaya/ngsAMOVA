@@ -121,12 +121,112 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 }
 
 
+
+//minInd already checked before this
+//
+int VCF::GL_to_GT_1_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args,int** LUT_indPair_idx){
+
+	// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
+	VCF::get_data<float> lgl;
+
+	lgl.n = bcf_get_format_float(hdr,bcf,"GL",&lgl.data,&lgl.size_e);
+
+	if(lgl.n<0){
+		fprintf(stderr,"\n[ERROR](File reading)\tVCF tag GL does not exist; will exit!\n\n");
+		exit(1);
+	}
+
+
+	VCF::get_data<int32_t> new_gt;
+
+	// hts_expand(int32_t, pars->nInd*2, new_gt.n, new_gt.data);
+	// new_gt.ploidy=new_gt.n/pars->nInd;
+	new_gt.ploidy=2;
+
+	if (new_gt.ploidy!=2){
+		fprintf(stderr,"ERROR:\n\nploidy: %d not supported\n",new_gt.ploidy);
+		exit(1);
+	}
+
+
+
+	if(bcf_is_snp(bcf)){
+
+
+		for(int indi=0; indi<pars->nInd; indi++){
+
+
+			//pointer to genotype likelihoods
+			float *pgl = lgl.data + indi*new_gt.ploidy;
+
+			if(bcf_float_is_missing(pgl[0])){
+				new_gt.data[2*indi]=new_gt.data[2*indi+1]=bcf_gt_missing;
+				continue;
+			}
+			if(isnan(lgl.data[(10*indi)+0])){
+				new_gt.data[2*indi]=new_gt.data[2*indi+1]=bcf_gt_missing;
+				continue;
+			}
+
+
+			float max_like=NEG_INF;
+			int max_idx=-1;
+			//TODO
+			//max is 0 in simulated data input due to rescaling
+			//ignore multiple 0
+			//
+			for(int i=0; i<10; i++){
+				if(lgl.data[(10*indi)+i] >= max_like){
+					max_like=lgl.data[(10*indi)+i];
+					max_idx=i;
+				}
+			}
+
+			int a,b;
+			bcf_gt2alleles(max_idx, &a, &b);
+			new_gt.data[2*indi] = bcf_gt_unphased(a);
+			new_gt.data[2*indi+1] = bcf_gt_unphased(b);
+
+		}
+	}
+
+	for(int i1=0;i1<pars->nInd-1;i1++){
+		for(int i2=i1+1;i2<pars->nInd;i2++){
+
+			int32_t *ptr1 = new_gt.data + i1*new_gt.ploidy;
+			int32_t *ptr2 = new_gt.data + i2*new_gt.ploidy;
+			int pair_idx=LUT_indPair_idx[i1][i2];
+
+			int gti1=0;
+			int gti2=0;
+
+			//using binary input genotypes from VCF GT tag
+			//assume ploidy=2
+			for (int i=0; i<2;i++){
+				gti1 += bcf_gt_allele(ptr1[i]);
+				gti2 += bcf_gt_allele(ptr2[i]);
+			}
+			sfs[pair_idx][get_3x3_idx[gti1][gti2]]++;
+
+			//last field is for snSites
+			sfs[pair_idx][9]++;
+
+		}
+	}
+
+	return 0;
+}
+
+
 //if doAMOVA==3; both gl and gt; if gl returns 1 to skip all sites, this never runs
 //if gl returns 0; this will check again for shared sites using DP tag as an indicator
 // return 1: skip site for all individuals
 //
 // sfs[pair_idx][9] holds snSites
-int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args, size_t nSites, int nInd, int** LUT_indPair_idx){
+
+int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args,int** LUT_indPair_idx){
+
+	int nInd=pars->nInd;
 
 	//TODO add check if missing gt return 1
 	VCF::get_data<int32_t> gt;
@@ -145,7 +245,7 @@ int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars
 
 
 	const char* TAG="DP";
-	get_data<int32_t> dp;
+	VCF::get_data<int32_t> dp;
 	dp.n = bcf_get_format_int32(hdr,bcf,TAG,&dp.data,&dp.size_e);
 	if(dp.n<0){
 		fprintf(stderr,"\n[ERROR](File reading)\tVCF tag \"%s\" does not exist; will exit!\n\n",TAG);

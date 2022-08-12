@@ -17,6 +17,12 @@
 
 #include <math.h>
 
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#define MAX(a,b) (((a)>(b))?(a):(b))
+
+
+extern const int get_3x3_idx[3][3];
+
 const double NEG_INF = -std::numeric_limits<double>::infinity();
 
 using size_t=decltype(sizeof(int));
@@ -90,7 +96,7 @@ namespace DATA{
 	typedef struct metadataStruct{
 
 		strataStruct *strataArr;
-		int _size_strataArr=3;
+		int _size_strataArr=10;
 
 		int nInds_total=0;
 
@@ -168,6 +174,7 @@ typedef struct {
 
 
 	char* in_fn;
+	char* in_sfs_fn;
 	char* in_mtd_fn;
 	char* out_fp;
 
@@ -192,6 +199,9 @@ typedef struct {
 
 	int mThreads;
 	int mEmIter;
+
+
+	int gl2gt;
 	
 
 }argStruct;
@@ -212,13 +222,14 @@ namespace IO {
 
 	char *setFileName(const char* a,const char* b);
 
-	
+
 	FILE *getFILE(const char*fname,const char* mode);
 	FILE *openFILE(const char* a,const char* b);
 	FILE* openFILE(char* c);
 
 	namespace readFILE{
 		int METADATA(DATA::metadataStruct * MTD, FILE* in_mtd_ff, int whichCol, const char* delims, DATA::sampleStruct *SAMPLES);
+		int SFS(FILE* in_sfs_ff, const char* delims, DATA::sampleStruct *SAMPLES);
 	};
 
 	namespace inspectFILE{
@@ -346,7 +357,6 @@ typedef struct{
 paramStruct *paramStruct_init(argStruct *args);
 void paramStruct_destroy(paramStruct *p);
 
-extern const int get_3x3_idx[3][3];
 
 char *get_time();
 // void *argStruct_destroy(argStruct *arg);

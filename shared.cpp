@@ -14,6 +14,7 @@
 using size_t=decltype(sizeof(int));
 
 
+
 //
 //0 1 2
 //00 01 02
@@ -44,7 +45,7 @@ char *get_time(){
 
 
 
-FILE *IO::getFILE(const char*fname,const char* mode){
+FILE *IO::getFILE(const char* fname,const char* mode){
 	if(strcmp(mode,"r")==0){
 		fprintf(stderr,"\n\t-> Reading file: %s\n",fname);
 	}
@@ -101,6 +102,44 @@ int IO::inspectFILE::count_nColumns(char* line, const char* delims){
 	return i;
 
 }
+
+
+int IO::readFILE::SFS(FILE* in_sfs_ff, const char* delims, DATA::sampleStruct *SAMPLES){
+
+	int nCols=0;
+	int checkCol=1;
+
+	char sfs_buf[1024];
+	while(fgets(sfs_buf,1024,in_sfs_ff)){
+
+
+		char *tok=strtok(sfs_buf,delims);
+		char *col=tok;
+
+		for (int coli=0; coli<9-1; coli++){
+			tok=strtok(NULL,"\t \n");
+			col=tok;
+		}
+
+#if 1
+		fprintf(stderr,"\n");
+		fprintf(stderr,"\n");
+	fprintf(stderr,"--------------------------------------------------");
+		fprintf(stderr,"\n");
+
+				fprintf(stderr,"%s",col);
+	fprintf(stderr,"\n");
+	fprintf(stderr,"--------------------------------------------------");
+	fprintf(stderr,"\n");
+#endif
+
+	}
+
+
+	return 0;
+}
+
+
 
 
 int IO::readFILE::METADATA(DATA::metadataStruct* MTD, FILE* in_mtd_ff, int whichCol, const char* delims, DATA::sampleStruct *SAMPLES){
@@ -230,6 +269,7 @@ argStruct *argStruct_init(){
 	argStruct *args=(argStruct*)calloc(1,sizeof(argStruct));
 
 	args->in_fn=NULL;
+	args->in_sfs_fn=NULL;
 	args->in_mtd_fn=NULL;
 	args->out_fp=NULL;
 
@@ -258,6 +298,7 @@ argStruct *argStruct_init(){
 	args->ind1=-1;
 	args->ind2=-1;
 
+	args->gl2gt=-1;
 
 	return args;
 
@@ -285,6 +326,7 @@ argStruct *argStruct_get(int argc, char **argv){
 
 		if(strcasecmp("-in",arv)==0) args->in_fn=strdup(val);
 		else if(strcasecmp("-i",arv)==0) args->in_fn=strdup(val);
+		else if(strcasecmp("-s",arv)==0) args->in_sfs_fn=strdup(val);
 		else if(strcasecmp("-m",arv)==0) args->in_mtd_fn=strdup(val);
 		else if(strcasecmp("-out",arv)==0) args->out_fp=strdup(val);
 		else if(strcasecmp("-o",arv)==0) args->out_fp=strdup(val);
@@ -304,6 +346,7 @@ argStruct *argStruct_get(int argc, char **argv){
 		else if(strcasecmp("-maxIter",arv)==0) args->mEmIter=atoi(val);
 		else if(strcasecmp("-P",arv)==0) args->mThreads=atoi(val);
 		else if(strcasecmp("-nThreads",arv)==0) args->mThreads=atoi(val);
+		else if(strcasecmp("-gl2gt",arv)==0) args->gl2gt=atoi(val);
 		else if(strcasecmp("-h",arv) == 0 || strcasecmp( "--help",arv) == 0) {
 			free(args);
 			usage();
