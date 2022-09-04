@@ -27,7 +27,7 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 
 	int mEmIter=THREAD->mEmIter;
 
-	size_t nSites=THREAD->nSites;
+	// size_t nSites=THREAD->nSites;
 
 	//TODO check underflow
 	// fprintf(stderr,"\nEM begin for ind1:%d and ind2:%d \n",pair->i1,pair->i2);
@@ -69,17 +69,20 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 			}
 		}
 
-		for(size_t s=0; s<nSites; s++){
+		//loop through sharedSites for pair
+		for(size_t sn=0; sn<pair->snSites; sn++){
+		// for(size_t s=0; s<nSites; s++){
 
 
+			size_t s=pair->sSites[sn];
 
 			// skip the sites containing missing values for the individual pair
-			if ((lngls[s][(3*pair->i1)+0]==NEG_INF) && (lngls[s][(3*pair->i1)+1]==NEG_INF) && (lngls[s][(3*pair->i1)+2]==NEG_INF)){
-				continue;
-			}
-			if ((lngls[s][(3*pair->i2)+0]==NEG_INF) && (lngls[s][(3*pair->i2)+1]==NEG_INF) && (lngls[s][(3*pair->i2)+2]==NEG_INF)){
-				continue;
-			}
+			// if ((lngls[s][(3*pair->i1)+0]==NEG_INF) && (lngls[s][(3*pair->i1)+1]==NEG_INF) && (lngls[s][(3*pair->i1)+2]==NEG_INF)){
+				// continue;
+			// }
+			// if ((lngls[s][(3*pair->i2)+0]==NEG_INF) && (lngls[s][(3*pair->i2)+1]==NEG_INF) && (lngls[s][(3*pair->i2)+2]==NEG_INF)){
+				// continue;
+			// }
 
 			sum=0.0;
 
@@ -128,8 +131,8 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 	// }else{
 		// exit(1);
 	// }
-//
-// //
+
+
 			// fprintf(out_sfs_ff,"gle,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
 					// pair->i1,
 					// pair->i2,
@@ -149,7 +152,7 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 					// MATH::EST::R0(pair->SFS),
 					// MATH::EST::R1(pair->SFS),
 					// MATH::EST::Kin(pair->SFS));
-//
+
 	
 	return 0;
 }

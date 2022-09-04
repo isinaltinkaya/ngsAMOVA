@@ -40,7 +40,7 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2){
 
 
 // return 1: skip site for all individuals
-int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i){
+int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i, DATA::pairStruct** PAIRS){
 
 	// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
 	VCF::get_data<float> lgl;
@@ -53,6 +53,14 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 	}
 
 	lngl[site_i]=(double*)malloc(pars->nInd*3*sizeof(double));
+
+
+	int* cmbArr=NULL;
+	cmbArr=new int[pars->n_ind_cmb];
+	for(int i=0; i<pars->n_ind_cmb; i++){
+		cmbArr[i]=0;
+	}
+
 
 	//TODO check why neccessary
 	if(bcf_is_snp(bcf)){
@@ -79,6 +87,38 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 					lgl.n_missing_ind++;
 				}
 			}else{
+
+				//if not first individual, check previous individuals pairing with current ind
+				if(indi!=0){
+					for (int indi2=indi-1; indi2>-1; indi2--){
+						if(cmbArr[pars->LUT_indPair_idx[indi2][indi]]==1){
+							//both inds has data
+
+							int pidx=pars->LUT_indPair_idx[indi2][indi];
+
+							//append site to sSites shared sites list
+							PAIRS[pidx]->sSites[PAIRS[pidx]->snSites]=site_i;
+
+							PAIRS[pidx]->snSites++;
+
+							if(PAIRS[pidx]->snSites == PAIRS[pidx]->_sSites){
+								PAIRS[pidx]->_sSites = 2 * PAIRS[pidx]->_sSites;
+								PAIRS[pidx]->sSites=(int*) realloc(PAIRS[pidx]->sSites, PAIRS[pidx]->_sSites * sizeof(int));
+							}
+
+						
+						}
+					}
+
+				}
+
+				//if not last individual, check latter individuals pairing with current ind
+				if(indi!= pars->nInd-1){
+					for (int indi2=indi+1; indi2<pars->nInd; indi2++){
+						cmbArr[pars->LUT_indPair_idx[indi][indi2]]++;
+					}
+				}
+
 				lngl[site_i][(3*indi)+0]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)]);
 				lngl[site_i][(3*indi)+1]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)]);
 				lngl[site_i][(3*indi)+2]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
@@ -124,7 +164,7 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 
 //minInd already checked before this
 //
-int VCF::GL_to_GT_1_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args,int** LUT_indPair_idx){
+int VCF::GL_to_GT_1_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args){
 
 	// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
 	VCF::get_data<float> lgl;
@@ -195,7 +235,7 @@ int VCF::GL_to_GT_1_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *par
 
 			int32_t *ptr1 = new_gt.data + i1*new_gt.ploidy;
 			int32_t *ptr2 = new_gt.data + i2*new_gt.ploidy;
-			int pair_idx=LUT_indPair_idx[i1][i2];
+			int pair_idx=pars->LUT_indPair_idx[i1][i2];
 
 			int gti1=0;
 			int gti2=0;
@@ -224,7 +264,8 @@ int VCF::GL_to_GT_1_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *par
 //
 // sfs[pair_idx][9] holds snSites
 
-int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args,int** LUT_indPair_idx){
+int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args){
+// fprintf(stderr,"\n\nHERE!!!\n\n");
 
 	int nInd=pars->nInd;
 
@@ -274,7 +315,7 @@ int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars
 
 			int32_t *ptr1 = gt.data + i1*gt.ploidy;
 			int32_t *ptr2 = gt.data + i2*gt.ploidy;
-			int pair_idx=LUT_indPair_idx[i1][i2];
+			int pair_idx=pars->LUT_indPair_idx[i1][i2];
 
 			int gti1=0;
 			int gti2=0;

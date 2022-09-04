@@ -191,21 +191,23 @@ int main(int argc, char **argv) {
 		}
 
 		//TODO how to make lookup table better
-		int n_ind_cmb=nCk(pars->nInd,2);
-
-		int **LUT_indPair_idx=0;
+		pars->n_ind_cmb=nCk(pars->nInd,2);
 
 
+		// int **LUT_indPair_idx=0;
 
-		LUT_indPair_idx=(int **)malloc(pars->nInd * sizeof (int*)); 
+
+
+		pars->LUT_indPair_idx=(int **)malloc(pars->nInd * sizeof (int*)); 
 
 		for (int mi=0;mi<pars->nInd;mi++){
-			LUT_indPair_idx[mi]=(int*) malloc( pars->nInd * sizeof(int)) ;
+			pars->LUT_indPair_idx[mi]=(int*) malloc( pars->nInd * sizeof(int)) ;
 		}
 
-		prepare_LUT_indPair_idx(pars->nInd, LUT_indPair_idx);
+		prepare_LUT_indPair_idx(pars->nInd, pars->LUT_indPair_idx);
 
-		fprintf(stderr,"\nNumber of individual pairs: %d\n",n_ind_cmb);
+
+		fprintf(stderr,"\nNumber of individual pairs: %d\n",pars->n_ind_cmb);
 
 		//TODO only create if doGeno etc
 		/*
@@ -214,8 +216,8 @@ int main(int argc, char **argv) {
 		 */
 		int **SFS_GT3;
 		if(args->doAMOVA==2 || args->doAMOVA==3){
-			SFS_GT3=(int**) malloc(n_ind_cmb*sizeof(int*));
-			for (int i=0;i<n_ind_cmb;i++){
+			SFS_GT3=(int**) malloc(pars->n_ind_cmb*sizeof(int*));
+			for (int i=0;i<pars->n_ind_cmb;i++){
 				//9 categories per individual pair
 				SFS_GT3[i]=(int*)malloc(10*sizeof(int));
 				for (int y=0; y<10; y++){
@@ -229,22 +231,22 @@ int main(int argc, char **argv) {
 		double *M_PWD_GT=NULL;
 		if(args->doDist!=-1){
 			if(args->doAMOVA==1){
-				M_PWD_GL=(double*) malloc(n_ind_cmb*sizeof(double));
-				for(int i=0;i<n_ind_cmb;i++){
+				M_PWD_GL=(double*) malloc(pars->n_ind_cmb*sizeof(double));
+				for(int i=0;i<pars->n_ind_cmb;i++){
 					M_PWD_GL[i]=0.0;
 				}
 			}else if(args->doAMOVA==2){
-				M_PWD_GT=(double*) malloc(n_ind_cmb*sizeof(double));
-				for(int i=0;i<n_ind_cmb;i++){
+				M_PWD_GT=(double*) malloc(pars->n_ind_cmb*sizeof(double));
+				for(int i=0;i<pars->n_ind_cmb;i++){
 					M_PWD_GT[i]=0.0;
 				}
 			}else if(args->doAMOVA==3){
-				M_PWD_GL=(double*) malloc(n_ind_cmb*sizeof(double));
-				for(int i=0;i<n_ind_cmb;i++){
+				M_PWD_GL=(double*) malloc(pars->n_ind_cmb*sizeof(double));
+				for(int i=0;i<pars->n_ind_cmb;i++){
 					M_PWD_GL[i]=0.0;
 				}
-				M_PWD_GT=(double*) malloc(n_ind_cmb*sizeof(double));
-				for(int i=0;i<n_ind_cmb;i++){
+				M_PWD_GT=(double*) malloc(pars->n_ind_cmb*sizeof(double));
+				for(int i=0;i<pars->n_ind_cmb;i++){
 					M_PWD_GT[i]=0.0;
 				}
 			}else{
@@ -281,6 +283,17 @@ int main(int argc, char **argv) {
 		pars->nSites=0;
 
 
+		DATA::pairStruct* PAIRS[pars->n_ind_cmb];
+
+		for(int i1=0;i1<pars->nInd-1;i1++){
+			for(int i2=i1+1;i2<pars->nInd;i2++){
+				int pidx=pars->LUT_indPair_idx[i1][i2];
+
+				PAIRS[pidx] = new DATA::pairStruct(i1,i2,pidx);
+			}
+		}
+
+
 		while (bcf_read(in_ff, hdr, bcf) == 0) {
 
 
@@ -314,7 +327,9 @@ int main(int argc, char **argv) {
 			RET=0;
 
 			if(args->doAMOVA==1 || args->doAMOVA==3){
-				RET=VCF::read_GL10_to_GL3(hdr,bcf,lngl,pars,args, pars->nSites);
+				
+
+				RET=VCF::read_GL10_to_GL3(hdr,bcf,lngl,pars,args, pars->nSites, PAIRS);
 			}
 
 			if(RET>0){
@@ -336,12 +351,13 @@ int main(int argc, char **argv) {
 			if(args->doAMOVA==2 || args->doAMOVA ==3 ){
 
 				if(args->gl2gt==1){
-					if(VCF::GL_to_GT_1_SFS(hdr,bcf,SFS_GT3,pars,args,LUT_indPair_idx)==0){
-					}else{
-						exit(1);
-					}
-				}else if(args->gl2gt==-1){
-					RET=VCF::GT_to_i2i_SFS(hdr,bcf,SFS_GT3,pars,args,LUT_indPair_idx);
+					RET=VCF::GT_to_i2i_SFS(hdr,bcf,SFS_GT3,pars,args);
+					// if(VCF::GL_to_GT_1_SFS(hdr,bcf,SFS_GT3,pars,args,LUT_indPair_idx)==0){
+					// }else{
+						// exit(1);
+					// }
+				}else if(args->gl2gt<0){
+					RET=VCF::GT_to_i2i_SFS(hdr,bcf,SFS_GT3,pars,args);
 				}else{
 					exit(1);
 				}
@@ -380,46 +396,59 @@ int main(int argc, char **argv) {
 		fprintf(stderr,"\n\t-> Finished reading sites\n");
 		// [END] Reading sites
 
+
+		pthread_t pairThreads[pars->n_ind_cmb];
+		threadStruct* PTHREADS[pars->n_ind_cmb];
+
+
+		for(int i1=0;i1<pars->nInd-1;i1++){
+			for(int i2=i1+1;i2<pars->nInd;i2++){
+				int pidx=pars->LUT_indPair_idx[i1][i2];
+
+				PTHREADS[pidx] = new threadStruct(PAIRS[pidx], lngl, pars->nSites, out_sfs_fs, args->tole, args->mEmIter);
+			}
+		}
+
 		
 		fprintf(out_sfs_fs->ff,"Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Sij,Fij,Fij2,IBS0,IBS1,IBS2,R0,R1,Kin\n");
 
 
-		pthread_t pairThreads[n_ind_cmb];
-		threadStruct* PTHREADS[n_ind_cmb];
-		DATA::pairStruct* PAIRS[n_ind_cmb];
-
-		for(int i1=0;i1<pars->nInd-1;i1++){
-			for(int i2=i1+1;i2<pars->nInd;i2++){
-
-
-				int pidx=LUT_indPair_idx[i1][i2];
-				PAIRS[pidx] = new DATA::pairStruct(i1,i2,pidx);
-				// double* pM_PWD_GL = &M_PWD_GL[pidx];
-				// PTHREADS[pidx] = new threadStruct(PAIRS[pidx], lngl, pars->nSites, out_sfs_fs, pM_PWD_GL,args->tole,args->doDist, args->mEmIter);
-				PTHREADS[pidx] = new threadStruct(PAIRS[pidx], lngl, pars->nSites, out_sfs_fs, args->tole, args->mEmIter);
-
-
-				for(size_t s=0; s<pars->nSites; s++){
-
-
-					if ((lngl[s][(3*i1)+0]==NEG_INF) && (lngl[s][(3*i1)+1]==NEG_INF) && (lngl[s][(3*i1)+2]==NEG_INF)){
-						continue;
-					}else if ((lngl[s][(3*i2)+0]==NEG_INF) && (lngl[s][(3*i2)+1]==NEG_INF) && (lngl[s][(3*i2)+2]==NEG_INF)){
-						continue;
-					}else{
-						PAIRS[pidx]->snSites++;
-					}
-
-				}
-
-				if(PAIRS[pidx]->snSites==0){
-					fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
-					exit(1);
-				}
-
-			}
-		}
-
+		// pthread_t pairThreads[pars->n_ind_cmb];
+		// threadStruct* PTHREADS[pars->n_ind_cmb];
+		// DATA::pairStruct* PAIRS[pars->n_ind_cmb];
+//
+		// for(int i1=0;i1<pars->nInd-1;i1++){
+			// for(int i2=i1+1;i2<pars->nInd;i2++){
+//
+//
+				// int pidx=pars->LUT_indPair_idx[i1][i2];
+				// PAIRS[pidx] = new DATA::pairStruct(i1,i2,pidx);
+				// // double* pM_PWD_GL = &M_PWD_GL[pidx];
+				// // PTHREADS[pidx] = new threadStruct(PAIRS[pidx], lngl, pars->nSites, out_sfs_fs, pM_PWD_GL,args->tole,args->doDist, args->mEmIter);
+				// PTHREADS[pidx] = new threadStruct(PAIRS[pidx], lngl, pars->nSites, out_sfs_fs, args->tole, args->mEmIter);
+//
+//
+				// for(size_t s=0; s<pars->nSites; s++){
+//
+//
+					// if ((lngl[s][(3*i1)+0]==NEG_INF) && (lngl[s][(3*i1)+1]==NEG_INF) && (lngl[s][(3*i1)+2]==NEG_INF)){
+						// continue;
+					// }else if ((lngl[s][(3*i2)+0]==NEG_INF) && (lngl[s][(3*i2)+1]==NEG_INF) && (lngl[s][(3*i2)+2]==NEG_INF)){
+						// continue;
+					// }else{
+						// PAIRS[pidx]->snSites++;
+					// }
+//
+				// }
+//
+				// if(PAIRS[pidx]->snSites==0){
+					// fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
+					// exit(1);
+				// }
+//
+			// }
+		// }
+//
 
 
 		int nJobs_sent=0;
@@ -431,7 +460,7 @@ int main(int argc, char **argv) {
 				for(int i2=i1+1;i2<pars->nInd;i2++){
 
 
-					int pidx=LUT_indPair_idx[i1][i2];
+					int pidx=pars->LUT_indPair_idx[i1][i2];
 
 					if(args->mThreads>1){
 
@@ -478,7 +507,7 @@ int main(int argc, char **argv) {
 			
 			int t=0;
 			while(nJobs_sent>0){
-				t=n_ind_cmb-nJobs_sent;
+				t=pars->n_ind_cmb-nJobs_sent;
 				if(pthread_join( pairThreads[t], NULL) != 0){
 					fprintf(stderr,"\n[ERROR] Problem with joining thread.\n");
 					exit(1);
@@ -487,7 +516,7 @@ int main(int argc, char **argv) {
 				}
 			}
 
-			for (int pidx=0; pidx<n_ind_cmb; pidx++){
+			for (int pidx=0; pidx<pars->n_ind_cmb; pidx++){
 
 				DATA::pairStruct* pair=PTHREADS[pidx]->pair;
 
@@ -541,7 +570,7 @@ int main(int argc, char **argv) {
 
 					int snSites=0;
 
-					int pidx=LUT_indPair_idx[i1][i2];
+					int pidx=pars->LUT_indPair_idx[i1][i2];
 
 					if(args->doAMOVA==3){
 
@@ -669,9 +698,9 @@ int main(int argc, char **argv) {
 			if(args->doAMOVA==1||args->doAMOVA==3){
 
 				fprintf(out_dm_fs->ff,"gl,");
-				for (int px=0;px<n_ind_cmb;px++){
+				for (int px=0;px<pars->n_ind_cmb;px++){
 					fprintf(out_dm_fs->ff,"%f",M_PWD_GL[px]);
-					if(px!=n_ind_cmb-1){
+					if(px!=pars->n_ind_cmb-1){
 						fprintf(out_dm_fs->ff,",");
 					}else{
 						fprintf(out_dm_fs->ff,"\n");
@@ -681,9 +710,9 @@ int main(int argc, char **argv) {
 			}else if(args->doAMOVA==2||args->doAMOVA==3){
 
 				fprintf(out_dm_fs->ff,"gt,");
-				for (int px=0;px<n_ind_cmb;px++){
+				for (int px=0;px<pars->n_ind_cmb;px++){
 					fprintf(out_dm_fs->ff,"%f",M_PWD_GT[px]);
-					if(px!=n_ind_cmb-1){
+					if(px!=pars->n_ind_cmb-1){
 						fprintf(out_dm_fs->ff,",");
 					}else{
 						fprintf(out_dm_fs->ff,"\n");
@@ -693,19 +722,19 @@ int main(int argc, char **argv) {
 		}
 
 		if(args->doAMOVA==1){
-			if(doAMOVA(n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GL, LUT_indPair_idx)==0){
+			if(doAMOVA(pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GL, pars->LUT_indPair_idx)==0){
 				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			}else{
 				exit(1);
 			}
 		}else if (args->doAMOVA==2){
-			if(doAMOVA(n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GT, LUT_indPair_idx)==0){
+			if(doAMOVA(pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GT, pars->LUT_indPair_idx)==0){
 				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			}else{
 				exit(1);
 			}
 		}else if (args->doAMOVA==3){
-			if(doAMOVA(n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GL, LUT_indPair_idx)==0){
+			if(doAMOVA(pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GL, pars->LUT_indPair_idx)==0){
 				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			}else{
 				exit(1);
@@ -734,7 +763,7 @@ int main(int argc, char **argv) {
 			exit(BCF_CLOSE);
 		}
 
-		for (int i=0;i<n_ind_cmb;i++){
+		for (int i=0;i<pars->n_ind_cmb;i++){
 			delete PAIRS[i];
 			delete PTHREADS[i];
 		}
@@ -753,7 +782,7 @@ int main(int argc, char **argv) {
 
 		if(args->doAMOVA==2 || args->doAMOVA==3){
 
-			for (int i=0;i<n_ind_cmb;i++){
+			for (int i=0;i<pars->n_ind_cmb;i++){
 				free(SFS_GT3[i]);
 				SFS_GT3[i]=NULL;
 			}
@@ -763,11 +792,11 @@ int main(int argc, char **argv) {
 
 
 
-		for (int i=0;i<pars->nInd;i++){
-			free(LUT_indPair_idx[i]);
-			LUT_indPair_idx[i]=NULL;
-		}
-		free(LUT_indPair_idx);
+		// for (int i=0;i<pars->nInd;i++){
+			// free(LUT_indPair_idx[i]);
+			// LUT_indPair_idx[i]=NULL;
+		// }
+		// free(LUT_indPair_idx);
 
 		if(args->doDist!=-1){
 			if(args->doAMOVA==1){

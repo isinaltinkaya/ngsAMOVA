@@ -37,11 +37,17 @@ namespace DATA{
 		int idx;
 
 		int snSites=0;
+
+		int *sSites;
+		size_t _sSites=100;
+
+
 		// int nDim;
 
 		double d;
 		int n_em_iter;
 
+		//TODO should not always create below
 		double SFS[3][3]={{NEG_INF,NEG_INF,NEG_INF},
 			{NEG_INF,NEG_INF,NEG_INF},
 			{NEG_INF,NEG_INF,NEG_INF}};
@@ -52,8 +58,21 @@ namespace DATA{
 			idx=pair_idx;
 			d=0.0;
 			n_em_iter=0;
+			// sSites=new int[_sSites];
+			sSites=(int*) malloc(_sSites*sizeof(int));
+			for (size_t i=0;i<_sSites;i++){
+				sSites[i]=-1;
+			}
 		}
-
+		~pairStruct(){
+			free(sSites);
+			sSites=NULL;
+			// for(size_t i=0; i<_sSites;i++){
+				// free(sSites[i]);
+				// sSites[i]=NULL;
+			// }
+			// delete [] sSites;
+		}
 		
 	}pairStruct;
 
@@ -61,16 +80,25 @@ namespace DATA{
 	typedef struct sampleStruct{
 
 		int *sampleArr;
-		int _size_sampleArr=200;
+		// int _sampleArr=200;
+		size_t _sampleArr=200;
+		//TODO increase if overflow
 
 		sampleStruct(){
-			sampleArr=new int[_size_sampleArr];
-			for(int i=0;i<_size_sampleArr;i++){
+			// sampleArr=new int[_sampleArr];
+			sampleArr=(int*) malloc(_sampleArr*sizeof(int));
+			for (size_t i=0;i<_sampleArr;i++){
 				sampleArr[i]=0;
 			}
 		}
 		~sampleStruct(){
-			delete [] sampleArr;
+			free(sampleArr);
+			sampleArr=NULL;
+			// for (size_t i=0;i<_sampleArr;i++){
+				// free(sampleArr[i]);
+				// sampleArr[i]=NULL;
+			// }
+			// delete [] sampleArr;
 		}
 
 	}sampleStruct;
@@ -96,14 +124,14 @@ namespace DATA{
 	typedef struct metadataStruct{
 
 		strataStruct *strataArr;
-		int _size_strataArr=10;
+		int _strataArr=10;
 
 		int nInds_total=0;
 
 		int nStrata=0;
 
 		metadataStruct(){
-			strataArr=new strataStruct[_size_strataArr];
+			strataArr=new strataStruct[_strataArr];
 		};
 		~metadataStruct(){
 			delete [] strataArr;
@@ -138,6 +166,8 @@ namespace DATA{
  * 						== site should be nonmissing for all individuals
  * 						to be included
  *
+ * @field blockSize		[0 = not set]
+ *						Block size to be used in block bootstrapping
  *
  *
  *
@@ -179,6 +209,7 @@ typedef struct {
 	char* out_fp;
 
 	int whichCol;
+	int blockSize;
 	int doAMOVA;
 	int printMatrix;
 	int isSim;
@@ -319,14 +350,19 @@ typedef struct threadStruct{
  * @typedef
  * @abstract paramStruct - parameter structure
  *
- * @field nSites	number of sites
- * @field nInd		number of individuals
- * @field pos		position
- * @field major		major allele
- * @field minor		minor allele
- * @field ref		reference allele
- * @field anc		ancestral allele
- * @field der		derived allele
+ * @field nSites				number of sites
+ * @field nInd					number of individuals
+ * @field pos					position
+ *
+ * @field LUT_indPair_idx		lookup table for mapping two individuals
+ * 								to their pair index
+ * @field n_ind_cmb				number of unique pairwise individual combinations
+ *
+ * @field major					major allele
+ * @field minor					minor allele
+ * @field ref					reference allele
+ * @field anc					ancestral allele
+ * @field der					derived allele
  */
 
 
@@ -339,6 +375,8 @@ typedef struct{
 
 	int *pos;
 
+	int **LUT_indPair_idx;
+	int n_ind_cmb;
 
 
 	char *major;

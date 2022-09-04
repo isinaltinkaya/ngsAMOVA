@@ -30,9 +30,16 @@ int nCk_idx(int nInd, int i1, int i2){
 }
 
 void prepare_LUT_indPair_idx(int nInd, int **LUT_indPair_idx){
+	int idxi=0;
 	for(int i1=0;i1<nInd-1;i1++){
 		for(int i2=i1+1;i2<nInd;i2++){
-			LUT_indPair_idx[i1][i2]=nCk_idx(nInd,i1,i2);
+			idxi=nCk_idx(nInd,i1,i2);
+			// LUT_indPair_idx[i1][i1]=nCk_idx(nInd,i1,i2);
+			// order of individuals does not matter
+			// TODO maybe instead of inflating other half of triangle
+			//     set other half to null or -1 so that the rerun with reverse order is needed?
+			LUT_indPair_idx[i1][i2]=idxi;
+			LUT_indPair_idx[i2][i1]=idxi;
 		}
 	}
 }

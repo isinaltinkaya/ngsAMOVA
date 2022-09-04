@@ -183,7 +183,7 @@ int IO::readFILE::METADATA(DATA::metadataStruct* MTD, FILE* in_mtd_ff, int which
 
 
 		//increase the size of Strata
-		if(MTD->nStrata > MTD->_size_strataArr){
+		if(MTD->nStrata > MTD->_strataArr){
 			fprintf(stderr,"->->->increase the size of Strata S[]!!\n");
 		}
 
@@ -275,6 +275,9 @@ argStruct *argStruct_init(){
 
 	args->whichCol=-1;
 
+
+	args->blockSize=0;
+
 	args->seed=-1;
 	args->doAMOVA=0;
 
@@ -330,6 +333,7 @@ argStruct *argStruct_get(int argc, char **argv){
 		else if(strcasecmp("-m",arv)==0) args->in_mtd_fn=strdup(val);
 		else if(strcasecmp("-out",arv)==0) args->out_fp=strdup(val);
 		else if(strcasecmp("-o",arv)==0) args->out_fp=strdup(val);
+		else if(strcasecmp("-bs",arv)==0) args->blockSize=atoi(val);
 		else if(strcasecmp("-mCol",arv)==0) args->whichCol=atoi(val);
 		else if(strcasecmp("-seed",arv)==0) args->seed=atoi(val);
 		else if(strcasecmp("-doAMOVA",arv)==0) args->doAMOVA=atoi(val);
@@ -521,6 +525,9 @@ paramStruct *paramStruct_init(argStruct *args){
 	//total number of sites processed
 	pars->totSites=0;
 
+	pars->LUT_indPair_idx=NULL;
+	pars->n_ind_cmb=0;
+
 	pars->nInd=0;
 
 	pars->DATETIME=NULL;
@@ -556,6 +563,11 @@ void paramStruct_destroy(paramStruct *pars){
 
 	delete pars->DATETIME;
 	pars->DATETIME=NULL;
+
+	for (int i=0; i<pars->nInd;i++){
+		free(pars->LUT_indPair_idx[i]);
+		pars->LUT_indPair_idx[i]=NULL;
+	}
 
 	delete pars;
 
