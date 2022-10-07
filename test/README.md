@@ -1,6 +1,31 @@
 ## Tests
 
 
+### Prepare sites.txt for angsd comparison
+```sh
+cat test_s9_d1_1K.vcf |grep -v "#"|cut -f1,2,4,5|cut -d',' -f1 > test_s9_d1_1K_sites.txt
+```
+
+
+```sh
+ANGSD=/maps/projects/lundbeck/scratch/pfs488/AMOVA/method/dev_2210/angsd/angsd
+OUT1=testout1
+OUT2=testout2
+INVCF=/maps/projects/lundbeck/scratch/pfs488/AMOVA/method/dev_2210/ngsAMOVA/test/test_s9_d1_1K.vcf
+INSITES=/maps/projects/lundbeck/scratch/pfs488/AMOVA/method/dev_2210/ngsAMOVA/test/test_s9_d1_1K_sites.txt
+
+${ANGSD} sites index ${INSITES}
+
+P1I1=${INVCF%.vcf}.pop1_ind1.vcf
+P1I2=${INVCF%.vcf}.pop1_ind2.vcf
+bcftools view -s pop1_ind1 ${INVCF} > ${P1I1}
+bcftools view -s pop1_ind2 ${INVCF} > ${P1I2}
+
+${ANGSD} -vcf-gl ${P1I1} -doSaf 5 -doMajorMinor 3 -sites ${INSITES} -out ${P1I1}
+${ANGSD} -vcf-gl ${P1I2} -doSaf 5 -doMajorMinor 3 -sites ${INSITES} -out ${P1I2}
+
+${ANGSD%angsd}/misc/realSFS -m 0 -cores 1 ${P1I1}.saf.idx ${P1I2}.saf.idx > pop1_ind1-pop2_ind2.sfs.txt
+```
 
 ### Test missing sites
 
@@ -101,5 +126,7 @@ $ for l in `bcftools query -f '[%DP]\n'  -s pop2_ind1,pop3_ind2 test/test_s9_d1_
 $ cat amovaput.sfs.csv |grep "pop2_ind1,pop3_ind2"|cut -f14 -d,|uniq
 359
 ```
+
+
 
 
