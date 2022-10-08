@@ -94,11 +94,36 @@ int main(int argc, char **argv) {
 			exit(1);
 		}
 
+
 		fprintf(stderr, "\n\t-> Reading file: %s\n", args->in_fn);
-		fprintf(stderr, "\nNumber of samples: %i", bcf_hdr_nsamples(hdr));
-		fprintf(stderr,	"\nNumber of chromosomes: %d",hdr->n[BCF_DT_CTG]);
+
+		pars->nInd=bcf_hdr_nsamples(hdr);
+		fprintf(stderr, "\nNumber of samples: %i", pars->nInd);
+
+		const int nContigs=hdr->n[BCF_DT_CTG];
+		fprintf(stderr,	"\nNumber of contigs: %d",nContigs);
 
 
+
+		for(int ci=0; ci < nContigs; ci++){
+			// const bcf_idpair_t& idPair=hdr->id[BCF_DT_CTG][ci];
+			// const int contigSize=idPair.val->info[0];
+			const int contigSize=hdr->id[BCF_DT_CTG][ci].val->info[0];
+			fprintf(stderr,"\nContig %d length:%d\n",ci,contigSize);
+
+			int nBlocks=0;
+			if(args->blockSize!=0){
+				if(args->blockSize < contigSize)
+				nBlocks=(contigSize / args->blockSize) + 1;
+				fprintf(stderr,"\nContig %d length:%d nBlocks: %d\n",ci,contigSize,nBlocks);
+				for(int bi=0; bi<nBlocks; bi++){
+					int blockStart=bi * args->blockSize;
+					fprintf(stderr,"\nBlock %d starts at %d\n",bi,blockStart);
+					//TODO collect these as pointers to start locations in lngl
+				}
+			}
+			
+		}
 
 
 		//TODO do below properly
@@ -109,7 +134,6 @@ int main(int argc, char **argv) {
 		DATA::metadataStruct Metadata;
 		MTD=&Metadata;
 
-		pars->nInd=bcf_hdr_nsamples(hdr);
 
 		if(args->in_mtd_fn!=NULL){
 			//// BEGIN Read metadata

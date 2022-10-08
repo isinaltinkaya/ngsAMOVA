@@ -334,6 +334,7 @@ argStruct *argStruct_get(int argc, char **argv){
 		else if(strcasecmp("-out",arv)==0) args->out_fp=strdup(val);
 		else if(strcasecmp("-o",arv)==0) args->out_fp=strdup(val);
 		else if(strcasecmp("-bs",arv)==0) args->blockSize=atoi(val);
+		else if(strcasecmp("-bSize",arv)==0) args->blockSize=atoi(val);
 		else if(strcasecmp("-mCol",arv)==0) args->whichCol=atoi(val);
 		else if(strcasecmp("-seed",arv)==0) args->seed=atoi(val);
 		else if(strcasecmp("-doAMOVA",arv)==0) args->doAMOVA=atoi(val);

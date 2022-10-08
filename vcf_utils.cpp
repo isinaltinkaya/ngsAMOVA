@@ -84,8 +84,29 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 				if(args->minInd==0){ 
 					return 1;
 				}else{
+
+					//if there are only 2 individuals any missing will skip the site 
+					if (pars->nInd==2){
+						return 1;
+					}
+
 					lgl.n_missing_ind++;
+
+					if (pars->nInd==lgl.n_missing_ind){
+						return 1;
+					}
+					
+
+					if(args->minInd!=2){
+						//skip site if minInd is defined and #non-missing inds=<nInd
+						if( (pars->nInd - lgl.n_missing_ind) < args->minInd ){
+							// fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,pars->nInd-n_missing_ind,site);
+							return 1;
+						}
+					}
+
 				}
+
 			}else{
 
 				//if not first individual, check previous individuals pairing with current ind
@@ -125,28 +146,6 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 			}
 		}
 
-		if (pars->nInd==lgl.n_missing_ind){
-			return 1;
-		}
-
-		//if there are only 2 individuals, skip site 
-		if (pars->nInd==2){
-			if(lgl.n_missing_ind>0){
-				return 1;
-			}
-		}
-
-		if(args->minInd!=2){
-			//skip site if minInd is defined and #non-missing inds=<nInd
-			if( (pars->nInd - lgl.n_missing_ind) < args->minInd ){
-				// fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,pars->nInd-n_missing_ind,site);
-				return 1;
-			}else{
-				return 0;
-			}
-		}else{
-			return 0;
-		}
 
 	}else{
 		//TODO check
