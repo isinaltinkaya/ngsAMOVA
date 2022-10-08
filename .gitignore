@@ -15,6 +15,9 @@ ngsAMOVA
 ./t*.vcf
 !test/t*vcf
 
+# Test output files
+*testput*
+
 
 # Log files
 *.log

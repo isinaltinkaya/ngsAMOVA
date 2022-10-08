@@ -76,4 +76,7 @@ $(PROGRAM): $(OBJ)
 clean:
 	$(RM) *.o *.d $(PROGRAM)
 
-# test:
+test:
+	./ngsAMOVA -in test/test_s9_d1_1K.vcf -m test/metadata.tsv -doDist 1 -doAMOVA 3 -isSim 1 -out test/test_s9_1K.vcf_testput;
+	bash -c "diff <(cut -d, -f4-12 test/test_s9_1K.vcf_testput.sfs.csv)  test/test_s9_d1_1K_god.sfs";
+

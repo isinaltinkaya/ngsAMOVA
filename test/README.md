@@ -27,6 +27,28 @@ ${ANGSD} -vcf-gl ${P1I2} -doSaf 5 -doMajorMinor 3 -sites ${INSITES} -out ${P1I2}
 ${ANGSD%angsd}/misc/realSFS -m 0 -cores 1 ${P1I1}.saf.idx ${P1I2}.saf.idx > pop1_ind1-pop2_ind2.sfs.txt
 ```
 
+```sh
+./ngsAMOVA -in test/test_s9_d1_1K.vcf -m test/metadata.tsv -doDist 1 -doAMOVA 3 -isSim 1  -out testput -tole 1e-10 -maxIter 100
+cat testput.sfs.csv |grep "^gle,pop1_ind1,pop1_ind2" | cut -d, -f4-12 > testput
+```
+
+
+Difference between angsd-realSFS result and ngsAMOVA result
+
+```R
+> range(scan("testput",sep=",")-scan("test/pop1_ind1-pop1_ind2.realSFS.txt"))                                                                 
+Read 9 items                                                                                                                                  
+Read 9 items                                                                                                                                  
+[1] -1e-06  1e-06
+```
+
+
+Create "good file" for test comparison
+
+```sh
+cut -d, -f4-12 testput.sfs.csv > test_s9_d1_1K_god.sfs
+```
+
 ### Test missing sites
 
 - test_mis, test_mis2

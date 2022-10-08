@@ -62,7 +62,7 @@ char *IO::setFileName(const char* a,const char* b){
 	char *c = (char*)malloc(strlen(a)+strlen(b)+1);
 	strcpy(c,a);
 	strcat(c,b);
-	// fprintf(stderr,"\t-> Opening output file for writing: %s\n",c);
+	fprintf(stderr,"\t-> Opening output file for writing: %s\n",c);
 	return c;
 }
 
@@ -348,6 +348,8 @@ argStruct *argStruct_get(int argc, char **argv){
 		else if(strcasecmp("-minInd",arv)==0) args->minInd=atoi(val);
 		else if(strcasecmp("-doTest",arv)==0) args->doTest=atoi(val);
 		else if(strcasecmp("-maxIter",arv)==0) args->mEmIter=atoi(val);
+		else if(strcasecmp("-maxEmIter",arv)==0) args->mEmIter=atoi(val);
+		else if(strcasecmp("-mEmIter",arv)==0) args->mEmIter=atoi(val);
 		else if(strcasecmp("-P",arv)==0) args->mThreads=atoi(val);
 		else if(strcasecmp("-nThreads",arv)==0) args->mThreads=atoi(val);
 		else if(strcasecmp("-gl2gt",arv)==0) args->gl2gt=atoi(val);
