@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
 		fprintf(stderr,"\nngsAMOVA -doAMOVA %d -doTest %d -in %s -out %s -isSim %d -minInd %d -printMatrix %d -m %s -doDist %d -maxIter %d -nThreads %d",args->doAMOVA,args->doTest,args->in_fn,args->out_fp,args->isSim,args->minInd,args->printMatrix,args->in_mtd_fn,args->doDist, args->mEmIter, args->mThreads);
 
 
-		if(args->doAMOVA == 1 || args->doAMOVA == 3){
+		if(args->doAMOVA == -1 || args->doAMOVA == 3 || args->doAMOVA==1){
 			fprintf(stderr," -tole %e ",args->tole);
 		}
 
@@ -100,32 +100,32 @@ int main(int argc, char **argv) {
 		pars->nInd=bcf_hdr_nsamples(hdr);
 		fprintf(stderr, "\nNumber of samples: %i", pars->nInd);
 
-		const int nContigs=hdr->n[BCF_DT_CTG];
-		fprintf(stderr,	"\nNumber of contigs: %d",nContigs);
+		// const int nContigs=hdr->n[BCF_DT_CTG];
+		// fprintf(stderr,	"\nNumber of contigs: %d",nContigs);
 
-
-
-		for(int ci=0; ci < nContigs; ci++){
-			// const bcf_idpair_t& idPair=hdr->id[BCF_DT_CTG][ci];
-			// const int contigSize=idPair.val->info[0];
-			const int contigSize=hdr->id[BCF_DT_CTG][ci].val->info[0];
-			fprintf(stderr,"\nContig %d length:%d\n",ci,contigSize);
-
-			int nBlocks=0;
-			if(args->blockSize!=0){
-				if(args->blockSize < contigSize)
-				nBlocks=(contigSize / args->blockSize) + 1;
-				fprintf(stderr,"\nContig %d length:%d nBlocks: %d\n",ci,contigSize,nBlocks);
-				for(int bi=0; bi<nBlocks; bi++){
-					int blockStart=bi * args->blockSize;
-					fprintf(stderr,"\nBlock %d starts at %d\n",bi,blockStart);
-					//TODO collect these as pointers to start locations in lngl
-				}
-			}
-			
-		}
-
-
+//
+//
+		// for(int ci=0; ci < nContigs; ci++){
+			// // const bcf_idpair_t& idPair=hdr->id[BCF_DT_CTG][ci];
+			// // const int contigSize=idPair.val->info[0];
+			// const int contigSize=hdr->id[BCF_DT_CTG][ci].val->info[0];
+			// fprintf(stderr,"\nContig %d length:%d\n",ci,contigSize);
+//
+			// int nBlocks=0;
+			// if(args->blockSize!=0){
+				// if(args->blockSize < contigSize)
+				// nBlocks=(contigSize / args->blockSize) + 1;
+				// fprintf(stderr,"\nContig %d length:%d nBlocks: %d\n",ci,contigSize,nBlocks);
+				// for(int bi=0; bi<nBlocks; bi++){
+					// int blockStart=bi * args->blockSize;
+					// fprintf(stderr,"\nBlock %d starts at %d\n",bi,blockStart);
+					// //TODO collect these as pointers to start locations in lngl
+				// }
+			// }
+			//
+		// }
+//
+//
 		//TODO do below properly
 		DATA::sampleStruct *SAMPLES;
 		DATA::sampleStruct Samples;
@@ -210,7 +210,8 @@ int main(int argc, char **argv) {
 
 
 		double **lngl=0;
-		if(args->doAMOVA==1 || args->doAMOVA==3){
+		// if(args->doAMOVA==1 || args->doAMOVA==3){
+		if(args->doAMOVA==-1 ||args->doAMOVA==1||args->doAMOVA==3){
 			lngl=(double**) malloc(buf_size*sizeof(double*));
 		}
 
@@ -254,7 +255,12 @@ int main(int argc, char **argv) {
 		double *M_PWD_GL=NULL;
 		double *M_PWD_GT=NULL;
 		if(args->doDist!=-1){
-			if(args->doAMOVA==1){
+			if(args->doAMOVA==-1){
+				M_PWD_GL=(double*) malloc(pars->n_ind_cmb*sizeof(double));
+				for(int i=0;i<pars->n_ind_cmb;i++){
+					M_PWD_GL[i]=0.0;
+				}
+			}else if(args->doAMOVA==1){
 				M_PWD_GL=(double*) malloc(pars->n_ind_cmb*sizeof(double));
 				for(int i=0;i<pars->n_ind_cmb;i++){
 					M_PWD_GL[i]=0.0;
@@ -303,8 +309,6 @@ int main(int argc, char **argv) {
 		 *
 		 */
 
-		pars->totSites=0;
-		pars->nSites=0;
 
 
 		DATA::pairStruct* PAIRS[pars->n_ind_cmb];
@@ -336,7 +340,8 @@ int main(int argc, char **argv) {
 				buf_size=buf_size*2;
 
 
-				if(args->doAMOVA==1 || args->doAMOVA==3){
+				// if(args->doAMOVA==1 || args->doAMOVA==3){
+		if(args->doAMOVA==-1 ||args->doAMOVA==1||args->doAMOVA==3){
 					lngl=(double**) realloc(lngl, buf_size * sizeof(*lngl) );
 				}
 
@@ -350,7 +355,8 @@ int main(int argc, char **argv) {
 
 			RET=0;
 
-			if(args->doAMOVA==1 || args->doAMOVA==3){
+			// if(args->doAMOVA==1 || args->doAMOVA==3){
+		if(args->doAMOVA==-1 ||args->doAMOVA==1||args->doAMOVA==3){
 				
 
 				RET=VCF::read_GL10_to_GL3(hdr,bcf,lngl,pars,args, pars->nSites, PAIRS);
@@ -434,50 +440,14 @@ int main(int argc, char **argv) {
 		}
 
 		
+				if(args->doAMOVA!=-1)
 		fprintf(out_sfs_fs->ff,"Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Sij,Fij,Fij2,IBS0,IBS1,IBS2,R0,R1,Kin\n");
-
-
-		// pthread_t pairThreads[pars->n_ind_cmb];
-		// threadStruct* PTHREADS[pars->n_ind_cmb];
-		// DATA::pairStruct* PAIRS[pars->n_ind_cmb];
-//
-		// for(int i1=0;i1<pars->nInd-1;i1++){
-			// for(int i2=i1+1;i2<pars->nInd;i2++){
-//
-//
-				// int pidx=pars->LUT_indPair_idx[i1][i2];
-				// PAIRS[pidx] = new DATA::pairStruct(i1,i2,pidx);
-				// // double* pM_PWD_GL = &M_PWD_GL[pidx];
-				// // PTHREADS[pidx] = new threadStruct(PAIRS[pidx], lngl, pars->nSites, out_sfs_fs, pM_PWD_GL,args->tole,args->doDist, args->mEmIter);
-				// PTHREADS[pidx] = new threadStruct(PAIRS[pidx], lngl, pars->nSites, out_sfs_fs, args->tole, args->mEmIter);
-//
-//
-				// for(size_t s=0; s<pars->nSites; s++){
-//
-//
-					// if ((lngl[s][(3*i1)+0]==NEG_INF) && (lngl[s][(3*i1)+1]==NEG_INF) && (lngl[s][(3*i1)+2]==NEG_INF)){
-						// continue;
-					// }else if ((lngl[s][(3*i2)+0]==NEG_INF) && (lngl[s][(3*i2)+1]==NEG_INF) && (lngl[s][(3*i2)+2]==NEG_INF)){
-						// continue;
-					// }else{
-						// PAIRS[pidx]->snSites++;
-					// }
-//
-				// }
-//
-				// if(PAIRS[pidx]->snSites==0){
-					// fprintf(stderr,"\n->No shared sites found for i1:%d i2:%d\n",i1,i2);
-					// exit(1);
-				// }
-//
-			// }
-		// }
-//
 
 
 		int nJobs_sent=0;
 
-		if(args->doAMOVA==1 || args->doAMOVA==3){
+		// if(args->doAMOVA==1 || args->doAMOVA==3){
+		if(args->doAMOVA==-1 ||args->doAMOVA==1||args->doAMOVA==3){
 
 
 			for(int i1=0;i1<pars->nInd-1;i1++){
@@ -540,12 +510,13 @@ int main(int argc, char **argv) {
 				}
 			}
 
+
 			for (int pidx=0; pidx<pars->n_ind_cmb; pidx++){
 
 				DATA::pairStruct* pair=PTHREADS[pidx]->pair;
 
+				ASSERT(pair->snSites>0);
 
-				//TODO using probs not expected counts here
 				if(args->doDist==0){
 					M_PWD_GL[pidx]=MATH::EST::Sij(pair->SFS);
 				}else if(args->doDist==1){
@@ -556,6 +527,14 @@ int main(int argc, char **argv) {
 					exit(1);
 				}
 
+
+
+				// fprintf(stderr,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
+						// hdr->samples[pair->i1],
+						// hdr->samples[pair->i2],
+						// pair->SFS[0][0],pair->SFS[0][1],pair->SFS[0][2],
+						// pair->SFS[1][0],pair->SFS[1][1],pair->SFS[1][2],
+						// pair->SFS[2][0],pair->SFS[2][1],pair->SFS[2][2]);
 
 
 				fprintf(out_sfs_fs->ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
@@ -578,10 +557,8 @@ int main(int argc, char **argv) {
 						MATH::EST::R1(pair->SFS),
 						MATH::EST::Kin(pair->SFS));
 
-
-
-
 			}
+
 
 
 			//TODO maybe join this loop 
@@ -617,6 +594,7 @@ int main(int argc, char **argv) {
 						exit(1);
 					}
 
+#if 1
 					fprintf(out_sfs_fs->ff,"gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
 							hdr->samples[i1],
 							hdr->samples[i2],
@@ -637,12 +615,12 @@ int main(int argc, char **argv) {
 							MATH::EST::R1(SFS_GT3[pidx], snSites),
 							MATH::EST::Kin(SFS_GT3[pidx], snSites));
 
+#endif
 
 				}
 			}
-
-
 		}
+
 
 
 
@@ -719,7 +697,8 @@ int main(int argc, char **argv) {
 				// fprintf(out_dm_fs->ff,"\n");
 			// }
 			
-			if(args->doAMOVA==1||args->doAMOVA==3){
+			// if(args->doAMOVA==1||args->doAMOVA==3){
+			if(args->doAMOVA==-1 ||args->doAMOVA==1||args->doAMOVA==3){
 
 				fprintf(out_dm_fs->ff,"gl,");
 				for (int px=0;px<pars->n_ind_cmb;px++){
@@ -745,28 +724,27 @@ int main(int argc, char **argv) {
 			}
 		}
 
-		if(args->doAMOVA==1){
-			if(doAMOVA(pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GL, pars->LUT_indPair_idx)==0){
-				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
-			}else{
-				exit(1);
-			}
-		}else if (args->doAMOVA==2){
-			if(doAMOVA(pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GT, pars->LUT_indPair_idx)==0){
-				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
-			}else{
-				exit(1);
-			}
-		}else if (args->doAMOVA==3){
-			if(doAMOVA(pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GL, pars->LUT_indPair_idx)==0){
-				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
-			}else{
-				exit(1);
-			}
-		}else{
-			exit(1);
-		}
+		switch (args->doAMOVA){
 
+			case 1:
+				ASSERT(doAMOVA(pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GL, pars->LUT_indPair_idx)==0);
+				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
+				break;
+			case 2:
+				ASSERT(doAMOVA(pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GT, pars->LUT_indPair_idx)==0);
+				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
+				break;
+			case 3:
+				ASSERT(doAMOVA(pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GL, pars->LUT_indPair_idx)==0);
+				ASSERT(doAMOVA(pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GT, pars->LUT_indPair_idx)==0);
+				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
+				break;
+			case -1:
+				fprintf(stderr, "\n\t-> Skipped running AMOVA\n");
+				break;
+			default:
+				exit(1);
+		}
 
 
 		fprintf(stderr, "Total number of sites processed: %lu\n", pars->totSites);
@@ -823,7 +801,9 @@ int main(int argc, char **argv) {
 		// free(LUT_indPair_idx);
 
 		if(args->doDist!=-1){
-			if(args->doAMOVA==1){
+			if(args->doAMOVA==-1){
+				free(M_PWD_GL);
+			}else if(args->doAMOVA==1){
 				free(M_PWD_GL);
 			}else if(args->doAMOVA==2){
 				free(M_PWD_GT);

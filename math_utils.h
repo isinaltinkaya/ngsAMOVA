@@ -10,10 +10,16 @@
 #include <limits>
 
 
+
+/*
+ * Macro:[LOG2LN]
+ * convert log_10(x) to log_e(x)
+ */
+#define LOG2LN(x) (x/M_LOG10E)
+
+
 void gl_log10(int base, double errate, double *like);
 
-// Convert log10 to ln
-double log2ln(float ivar);
 
 
 /*

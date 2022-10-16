@@ -5,9 +5,6 @@
 //TODO less loops by jointly estimating some stats
 
 
-double log2ln(float ivar){
-	return (double) ivar/M_LOG10E;
-}
 
 int nCk(int n, int k){
 	int res = 1;

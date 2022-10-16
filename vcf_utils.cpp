@@ -140,9 +140,9 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 					}
 				}
 
-				lngl[site_i][(3*indi)+0]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)]);
-				lngl[site_i][(3*indi)+1]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)]);
-				lngl[site_i][(3*indi)+2]=(double) log2ln(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
+				lngl[site_i][(3*indi)+0]=(double) LOG2LN(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)]);
+				lngl[site_i][(3*indi)+1]=(double) LOG2LN(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)]);
+				lngl[site_i][(3*indi)+2]=(double) LOG2LN(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
 			}
 		}
 

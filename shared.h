@@ -21,6 +21,22 @@
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
 
+/*
+ * Macro:[AT]
+ * Injects the file and line info as string
+ */
+
+#define STRINGIFY(x) #x
+#define ASSTR(x) STRINGIFY(x)
+#define AT __FILE__ ":" ASSTR(__LINE__)
+
+/*
+ * Macro:[ASSERT]
+ * shortcut to evaluate an expression, works the same way as the C-macro assert
+ */
+#define ASSERT(expr) if (!(expr)) {fprintf(stderr,"\n\n*******\n[ERROR](%s:%d) %s\n*******\n",__FILE__,__LINE__,#expr);exit(1);}
+
+
 extern const int get_3x3_idx[3][3];
 
 const double NEG_INF = -std::numeric_limits<double>::infinity();

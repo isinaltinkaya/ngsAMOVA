@@ -19,17 +19,10 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 	double **lngls=THREAD->lngls;
 	DATA::pairStruct* pair=THREAD->pair;
 	FILE* out_sfs_ff=THREAD->out_sfs_ff;
-
-	// int doDist=THREAD->doDist;
-	// double* M_PWD_GL_P=THREAD->M_PWD_GL_PAIR;
-
 	double tole=THREAD->tole;
-
 	int mEmIter=THREAD->mEmIter;
 
-	// size_t nSites=THREAD->nSites;
 
-	//TODO check underflow
 	// fprintf(stderr,"\nEM begin for ind1:%d and ind2:%d \n",pair->i1,pair->i2);
 
 	double temp;
@@ -52,7 +45,6 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 					}
 				}
 		fprintf(stderr,"\n");
-
 #endif
 		
 		if(pair->n_em_iter >= mEmIter){
@@ -71,27 +63,17 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 
 		//loop through sharedSites for pair
 		for(size_t sn=0; sn<pair->snSites; sn++){
-		// for(size_t s=0; s<nSites; s++){
 
 
 			size_t s=pair->sSites[sn];
-
-			// skip the sites containing missing values for the individual pair
-			// if ((lngls[s][(3*pair->i1)+0]==NEG_INF) && (lngls[s][(3*pair->i1)+1]==NEG_INF) && (lngls[s][(3*pair->i1)+2]==NEG_INF)){
-				// continue;
-			// }
-			// if ((lngls[s][(3*pair->i2)+0]==NEG_INF) && (lngls[s][(3*pair->i2)+1]==NEG_INF) && (lngls[s][(3*pair->i2)+2]==NEG_INF)){
-				// continue;
-			// }
-
 			sum=0.0;
 
 			// SFS * ind1 * ind2
 			//lngls3 (anc,anc),(anc,der),(der,der)
-			for(int idx1=0;idx1<3;idx1++){
-				for(int idx2=0;idx2<3;idx2++){
-					TMP[idx1][idx2]= pair->SFS[idx1][idx2] * exp(lngls[s][(3*pair->i1)+idx1]) * exp(lngls[s][(3*pair->i2)+idx2]);
-					sum += TMP[idx1][idx2];
+			for(int i=0;i<3;i++){
+				for(int j=0;j<3;j++){
+					TMP[i][j] = pair->SFS[i][j] * exp( lngls[s][(3*pair->i1)+i] + lngls[s][(3*pair->i2)+j]);
+					sum += TMP[i][j];
 				}
 			}
 
@@ -120,39 +102,6 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 	}while(d>tole);
 
 	pair->d=d;
-
-// TODO moved to main.cpp due to multiple threads ending up unsorted, but maybe makes more sense to do it here
-	// if(doDist==0){
-		// *M_PWD_GL_P=MATH::EST::Sij(pair->SFS);
-	// }else if(doDist==1){
-		// *M_PWD_GL_P=(double) (1-MATH::EST::Sij(pair->SFS));
-	// }else if(doDist==2){
-		// *M_PWD_GL_P=MATH::EST::Fij(pair->SFS);
-	// }else{
-		// exit(1);
-	// }
-
-
-			// fprintf(out_sfs_ff,"gle,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
-					// pair->i1,
-					// pair->i2,
-					// pair->snSites * pair->SFS[0][0],pair->snSites * pair->SFS[0][1],pair->snSites * pair->SFS[0][2],
-					// pair->snSites * pair->SFS[1][0],pair->snSites * pair->SFS[1][1],pair->snSites * pair->SFS[1][2],
-					// pair->snSites * pair->SFS[2][0],pair->snSites * pair->SFS[2][1],pair->snSites * pair->SFS[2][2],
-					// pair->n_em_iter,
-					// pair->snSites,
-					// pair->d,
-					// tole,
-					// MATH::EST::Sij(pair->SFS),
-					// MATH::EST::Fij(pair->SFS),
-					// MATH::SQUARE(MATH::EST::Fij(pair->SFS)),
-					// MATH::EST::IBS0(pair->SFS),
-					// MATH::EST::IBS1(pair->SFS),
-					// MATH::EST::IBS2(pair->SFS),
-					// MATH::EST::R0(pair->SFS),
-					// MATH::EST::R1(pair->SFS),
-					// MATH::EST::Kin(pair->SFS));
-
 	
 	return 0;
 }

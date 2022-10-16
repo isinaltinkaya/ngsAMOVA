@@ -436,9 +436,11 @@ argStruct *argStruct_get(int argc, char **argv){
 
 
 	if(args->in_mtd_fn==NULL){
-		fprintf(stderr,"\n[ERROR]\tMust supply -m <metadata_file>; will exit!\n");
-			free(args);
-			return 0;
+		if(args->doAMOVA!=-1){
+			fprintf(stderr,"\n[ERROR]\tMust supply -m <metadata_file>; will exit!\n");
+				free(args);
+				return 0;
+		}
 	}else{
 		if (args->whichCol==1){
 			fprintf(stderr,"\n[ERROR](-mCol 1)\tColumn index 1 was chosen. First column should contain individual IDs instead; will exit!\n");
@@ -505,7 +507,8 @@ argStruct *argStruct_get(int argc, char **argv){
 	}else if(args->doAMOVA==3){
 		fprintf(stderr,"\n\t-> -doAMOVA 2; will do both 1 and 2.\n");
 
-
+	}else if(args->doAMOVA==-1){
+		fprintf(stderr,"\n\t-> -doAMOVA -1; will not run AMOVA\n");
 	}else{
 		fprintf(stderr,"\n[ERROR]\tMust supply a value for -doAMOVA; will exit!\n");
 		free(args);
