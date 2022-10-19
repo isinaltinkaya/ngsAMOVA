@@ -52,9 +52,10 @@ namespace DATA{
 		int i2;
 		int idx;
 
-		int snSites=0;
+		size_t snSites=0;
 
 		int *sSites;
+		// TODO init better
 		size_t _sSites=100;
 
 
@@ -96,7 +97,6 @@ namespace DATA{
 	typedef struct sampleStruct{
 
 		int *sampleArr;
-		// int _sampleArr=200;
 		size_t _sampleArr=200;
 		//TODO increase if overflow
 
@@ -140,7 +140,7 @@ namespace DATA{
 	typedef struct metadataStruct{
 
 		strataStruct *strataArr;
-		int _strataArr=10;
+		size_t _strataArr=10;
 
 		int nInds_total=0;
 

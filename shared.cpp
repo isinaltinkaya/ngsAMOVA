@@ -106,8 +106,6 @@ int IO::inspectFILE::count_nColumns(char* line, const char* delims){
 
 int IO::readFILE::SFS(FILE* in_sfs_ff, const char* delims, DATA::sampleStruct *SAMPLES){
 
-	int nCols=0;
-	int checkCol=1;
 
 	char sfs_buf[1024];
 	while(fgets(sfs_buf,1024,in_sfs_ff)){
@@ -183,7 +181,7 @@ int IO::readFILE::METADATA(DATA::metadataStruct* MTD, FILE* in_mtd_ff, int which
 
 
 		//increase the size of Strata
-		if(MTD->nStrata > MTD->_strataArr){
+		if(MTD->nStrata > (int) MTD->_strataArr){
 			fprintf(stderr,"->->->increase the size of Strata S[]!!\n");
 		}
 

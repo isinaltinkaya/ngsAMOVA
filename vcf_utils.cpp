@@ -299,6 +299,7 @@ int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars
 			}
 		}
 		if ( (nInd - dp.n_missing_ind) < args->minInd ){
+fprintf(stderr,"\n\nHERE!!!\n\n");
 			return 1;
 		}
 	}
