@@ -55,12 +55,13 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 	lngl[site_i]=(double*)malloc(pars->nInd*3*sizeof(double));
 
 
-	int* cmbArr=NULL;
-	cmbArr=new int[pars->n_ind_cmb];
+	int* cmbArr;
+	// ASSERT(pars->n_ind_cmb!=0);
+	cmbArr=(int*) malloc(pars->n_ind_cmb * sizeof(int));
+	ASSERT(cmbArr);
 	for(int i=0; i<pars->n_ind_cmb; i++){
 		cmbArr[i]=0;
 	}
-
 
 	//TODO check why neccessary
 	if(bcf_is_snp(bcf)){
@@ -68,17 +69,17 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 		char a2=bcf_allele_charToInt[(unsigned char) bcf->d.allele[1][0]];
 
 
-		for(int indi=0; indi<pars->nInd; indi++){
+		for(int indi1=0; indi1<pars->nInd; indi1++){
 
 			for(int ix=0;ix<3;ix++){
-				lngl[site_i][(3*indi)+ix]=NEG_INF;
+				lngl[site_i][(3*indi1)+ix]=NEG_INF;
 			}
 
 			//TODO only checking the first for now
 			//what is the expectation in real cases?
 			//should we skip sites where at least one is set to missing?
 			//
-			if(isnan(lgl.data[(10*indi)+0])){
+			if(isnan(lgl.data[(10*indi1)+0])){
 
 				//if only use sites shared across all individuals; skip site when you first encounter nan
 				if(args->minInd==0){ 
@@ -110,12 +111,12 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 			}else{
 
 				//if not first individual, check previous individuals pairing with current ind
-				if(indi!=0){
-					for (int indi2=indi-1; indi2>-1; indi2--){
-						if(cmbArr[pars->LUT_indPair_idx[indi2][indi]]==1){
+				if(indi1!=0){
+					for (int indi2=indi1-1; indi2>-1; indi2--){
+						if(cmbArr[pars->LUT_indPair_idx[indi2][indi1]]==1){
 							//both inds has data
 
-							int pidx=pars->LUT_indPair_idx[indi2][indi];
+							int pidx=pars->LUT_indPair_idx[indi2][indi1];
 
 							//append site to sSites shared sites list
 							PAIRS[pidx]->sSites[PAIRS[pidx]->snSites]=site_i;
@@ -134,15 +135,15 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 				}
 
 				//if not last individual, check latter individuals pairing with current ind
-				if(indi!= pars->nInd-1){
-					for (int indi2=indi+1; indi2<pars->nInd; indi2++){
-						cmbArr[pars->LUT_indPair_idx[indi][indi2]]++;
+				if(indi1!= pars->nInd-1){
+					for (int indi2=indi1+1; indi2<pars->nInd; indi2++){
+						cmbArr[pars->LUT_indPair_idx[indi1][indi2]]++;
 					}
 				}
 
-				lngl[site_i][(3*indi)+0]=(double) LOG2LN(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)]);
-				lngl[site_i][(3*indi)+1]=(double) LOG2LN(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)]);
-				lngl[site_i][(3*indi)+2]=(double) LOG2LN(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
+				lngl[site_i][(3*indi1)+0]=(double) LOG2LN(lgl.data[(10*indi1)+bcf_alleles_get_gtidx(a1,a1)]);
+				lngl[site_i][(3*indi1)+1]=(double) LOG2LN(lgl.data[(10*indi1)+bcf_alleles_get_gtidx(a1,a2)]);
+				lngl[site_i][(3*indi1)+2]=(double) LOG2LN(lgl.data[(10*indi1)+bcf_alleles_get_gtidx(a2,a2)]);
 			}
 		}
 
@@ -156,12 +157,13 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 		// return 1;
 	}
 
+	free(cmbArr);
 	return 0;
 }
 
 
 
-//minInd already checked before this
+//minInd is already checked before this
 //
 int VCF::GL_to_GT_1_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args){
 

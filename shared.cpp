@@ -62,7 +62,7 @@ char *IO::setFileName(const char* a,const char* b){
 	char *c = (char*)malloc(strlen(a)+strlen(b)+1);
 	strcpy(c,a);
 	strcat(c,b);
-	fprintf(stderr,"\t-> Opening output file for writing: %s\n",c);
+	// fprintf(stderr,"\t-> Opening output file for writing: %s\n",c);
 	return c;
 }
 
@@ -572,6 +572,7 @@ void paramStruct_destroy(paramStruct *pars){
 		free(pars->LUT_indPair_idx[i]);
 		pars->LUT_indPair_idx[i]=NULL;
 	}
+	free(pars->LUT_indPair_idx);
 
 	delete pars;
 

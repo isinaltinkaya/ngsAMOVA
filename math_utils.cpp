@@ -19,28 +19,33 @@ int nCk(int n, int k){
 }
 
 int nCk_idx(int nInd, int i1, int i2){
-	// int ret=(nInd - nCk((nInd-i1),2))+(i2-i1)+1;
-	int ret=(nCk(nInd,2) - nCk((nInd-i1),2))+(i2-i1)-1;
-	// fprintf(stderr,"\n->ret: %d, nInd:%d, %d + %d + 1\n",ret,nInd,nCk((nInd-i1),2),(i2-i1));
-	return ret;
-	// return (nInd - nCk((nInd-i1),2))+(i2-i1)+1;
+	if(i2>i1){
+		return (nCk(nInd,2) - nCk((nInd-i1),2))+(i2-i1)-1;
+	}else{
+		return (nCk(nInd,2) - nCk((nInd-i2),2))+(i1-i2)-1;
+	}
 }
 
 void prepare_LUT_indPair_idx(int nInd, int **LUT_indPair_idx){
-	int idxi=0;
 	for(int i1=0;i1<nInd-1;i1++){
 		for(int i2=i1+1;i2<nInd;i2++){
-			idxi=nCk_idx(nInd,i1,i2);
-			// LUT_indPair_idx[i1][i1]=nCk_idx(nInd,i1,i2);
-			// order of individuals does not matter
-			// TODO maybe instead of inflating other half of triangle
-			//     set other half to null or -1 so that the rerun with reverse order is needed?
-			LUT_indPair_idx[i1][i2]=idxi;
-			LUT_indPair_idx[i2][i1]=idxi;
+			LUT_indPair_idx[i1][i2]=nCk_idx(nInd,i1,i2);
 		}
 	}
 }
 
+int** prepare_LUT_indPair_idx(int nInd){
+	int** LUT_indPair_idx=(int **)malloc(nInd * sizeof(int*));
+	for (int i=0; i<nInd; i++){
+		LUT_indPair_idx[i]=(int*) malloc(nInd * sizeof(int));
+	}
+
+	for(int i1=0;i1<nInd-1;i1++){
+		for(int i2=i1+1;i2<nInd;i2++){
+			LUT_indPair_idx[i1][i2]=nCk_idx(nInd,i1,i2);
+		}
+	}
+}
 
 
 // // double A=M[0][0];

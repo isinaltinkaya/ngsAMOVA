@@ -205,8 +205,7 @@ int main(int argc, char **argv) {
 
 
 
-
-		pars->LUT_indPair_idx=(int **)malloc(pars->nInd * sizeof (int*)); 
+		pars->LUT_indPair_idx=(int **)malloc(pars->nInd * sizeof (int*));
 
 		for (int mi=0;mi<pars->nInd;mi++){
 			pars->LUT_indPair_idx[mi]=(int*) malloc( pars->nInd * sizeof(int)) ;
@@ -773,6 +772,7 @@ int main(int argc, char **argv) {
 						break;
 					case 3:
 						free(M_PWD_GL);
+						free(M_PWD_GT);
 						break;
 				}
 			}
