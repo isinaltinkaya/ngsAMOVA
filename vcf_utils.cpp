@@ -69,31 +69,34 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 		char a2=bcf_allele_charToInt[(unsigned char) bcf->d.allele[1][0]];
 
 
-		for(int indi1=0; indi1<pars->nInd; indi1++){
+		for(int indi=0; indi<pars->nInd; indi++){
 
 			for(int ix=0;ix<3;ix++){
-				lngl[site_i][(3*indi1)+ix]=NEG_INF;
+				lngl[site_i][(3*indi)+ix]=NEG_INF;
 			}
 
 			//TODO only checking the first for now
 			//what is the expectation in real cases?
 			//should we skip sites where at least one is set to missing?
 			//
-			if(isnan(lgl.data[(10*indi1)+0])){
+			if(isnan(lgl.data[(10*indi)+0])){
 
 				//if only use sites shared across all individuals; skip site when you first encounter nan
 				if(args->minInd==0){ 
+					free(cmbArr);
 					return 1;
 				}else{
 
 					//if there are only 2 individuals any missing will skip the site 
 					if (pars->nInd==2){
+						free(cmbArr);
 						return 1;
 					}
 
 					lgl.n_missing_ind++;
 
 					if (pars->nInd==lgl.n_missing_ind){
+						free(cmbArr);
 						return 1;
 					}
 					
@@ -102,6 +105,7 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 						//skip site if minInd is defined and #non-missing inds=<nInd
 						if( (pars->nInd - lgl.n_missing_ind) < args->minInd ){
 							// fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,pars->nInd-n_missing_ind,site);
+							free(cmbArr);
 							return 1;
 						}
 					}
@@ -111,12 +115,12 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 			}else{
 
 				//if not first individual, check previous individuals pairing with current ind
-				if(indi1!=0){
-					for (int indi2=indi1-1; indi2>-1; indi2--){
-						if(cmbArr[pars->LUT_indPair_idx[indi2][indi1]]==1){
+				if(indi!=0){
+					for (int indi2=indi-1; indi2>-1; indi2--){
+						if(cmbArr[pars->LUT_indPair_idx[indi2][indi]]==1){
 							//both inds has data
 
-							int pidx=pars->LUT_indPair_idx[indi2][indi1];
+							int pidx=pars->LUT_indPair_idx[indi2][indi];
 
 							//append site to sSites shared sites list
 							PAIRS[pidx]->sSites[PAIRS[pidx]->snSites]=site_i;
@@ -135,15 +139,15 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 				}
 
 				//if not last individual, check latter individuals pairing with current ind
-				if(indi1!= pars->nInd-1){
-					for (int indi2=indi1+1; indi2<pars->nInd; indi2++){
-						cmbArr[pars->LUT_indPair_idx[indi1][indi2]]++;
+				if(indi!= pars->nInd-1){
+					for (int indi2=indi+1; indi2<pars->nInd; indi2++){
+						cmbArr[pars->LUT_indPair_idx[indi][indi2]]++;
 					}
 				}
 
-				lngl[site_i][(3*indi1)+0]=(double) LOG2LN(lgl.data[(10*indi1)+bcf_alleles_get_gtidx(a1,a1)]);
-				lngl[site_i][(3*indi1)+1]=(double) LOG2LN(lgl.data[(10*indi1)+bcf_alleles_get_gtidx(a1,a2)]);
-				lngl[site_i][(3*indi1)+2]=(double) LOG2LN(lgl.data[(10*indi1)+bcf_alleles_get_gtidx(a2,a2)]);
+				lngl[site_i][(3*indi)+0]=(double) LOG2LN(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a1)]);
+				lngl[site_i][(3*indi)+1]=(double) LOG2LN(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a1,a2)]);
+				lngl[site_i][(3*indi)+2]=(double) LOG2LN(lgl.data[(10*indi)+bcf_alleles_get_gtidx(a2,a2)]);
 			}
 		}
 
