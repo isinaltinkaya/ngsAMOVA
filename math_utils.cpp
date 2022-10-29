@@ -45,6 +45,7 @@ int** prepare_LUT_indPair_idx(int nInd){
 			LUT_indPair_idx[i1][i2]=nCk_idx(nInd,i1,i2);
 		}
 	}
+	return LUT_indPair_idx;
 }
 
 
