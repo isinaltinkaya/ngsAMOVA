@@ -253,12 +253,56 @@ int file_exists(const char* in_fn){
 }
 
 
-void usage() {
+void usage(FILE *fp) {
 	// fprintf(stderr,"");
-	fprintf(stderr,"\n");
-	fprintf(stderr,"  --help         : Print this help\n");
-	fprintf(stderr,"  --in         : input\n");
-	exit(0);
+	// fprintf(stderr,"\n");
+	// fprintf(stderr,"  --help         : Print this help\n");
+	// fprintf(stderr,"\t--in\t\t\t: input VCF/BCF filed\n");
+
+    fprintf(fp,
+"\n"
+"Program: ngsAMOVA\n");
+// "Version: %s (using htslib %s)\n\n", program_version(), hts_version());
+	  // "build(%s %s)\n",__DATE__,__TIME__);
+
+    fprintf(fp,
+"\n"
+"Usage:\tngsAMOVA <command> [options]\n"
+"\n"
+"Tool for performing the Analysis of Molecular Variance [AMOVA]\n"
+"\n"
+"Commands:\n"
+"\t-- Analyses\n"
+"\n"
+"Options:\n"
+" -in/-i\n"
+"\n"
+"\t-s\n"
+"\t-m\n"
+"\t-out/o\n"
+"\n"
+
+"\t-bs/bSize\n"
+"\t-mCol\n"
+"\t-seed\n"
+"\t-doAMOVA\n"
+"\t-doInd\n"
+"\t-ind1\n"
+"\t-ind2\n"
+"\t-printMatrix\n"
+"\t-doDist\n"
+"\t-sqDist\n"
+"\t-minInd\n"
+"\t-doTest\n"
+"\t-maxIter/maxEmIter/mEmIter\n"
+"\t-P/nThreads\n"
+"\t-gl2gt\n"
+"\n");
+
+
+	//
+	//
+	// exit(0);
 }
 
 argStruct *argStruct_init(){
@@ -354,7 +398,8 @@ argStruct *argStruct_get(int argc, char **argv){
 		else if(strcasecmp("-gl2gt",arv)==0) args->gl2gt=atoi(val);
 		else if(strcasecmp("-h",arv) == 0 || strcasecmp( "--help",arv) == 0) {
 			free(args);
-			usage();
+			usage(stdout);
+			return 0;
 		}
 		else{
 			fprintf(stderr,"Unknown arg:%s\n",arv);

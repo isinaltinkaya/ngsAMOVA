@@ -415,6 +415,6 @@ void paramStruct_destroy(paramStruct *p);
 char *get_time();
 // void *argStruct_destroy(argStruct *arg);
 
-void usage();
+void usage(FILE *fp);
 
 #endif
