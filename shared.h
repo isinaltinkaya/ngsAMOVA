@@ -21,6 +21,21 @@
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
 
+
+/*
+ * Macro:[DBL_MAXDIG10]
+ * Defines the maximum number of decimal digits that can be represented by a
+ * double-precision floating-point number on a 64-bit system
+ *
+ * Calculates the max number of decimal digits that a double-precision
+ * floating-point number can have on a 64-bit system using the value of DBL_MANT_DIG
+ * The UL suffix ensures that our constant values are unsigned long 
+ * to prevent any overflow issues.
+ *
+ */
+#define DBL_MAXDIG10 (2+ (DBL_MANT_DIG * 30103UL)/100000UL)
+
+
 /*
  * Macro:[AT]
  * Injects the file and line info as string
@@ -65,9 +80,12 @@ namespace DATA{
 		int n_em_iter;
 
 		//TODO should not always create below
-		double SFS[3][3]={{NEG_INF,NEG_INF,NEG_INF},
-			{NEG_INF,NEG_INF,NEG_INF},
-			{NEG_INF,NEG_INF,NEG_INF}};
+		// double SFS[3][3]={{NEG_INF,NEG_INF,NEG_INF},
+			// {NEG_INF,NEG_INF,NEG_INF},
+			// {NEG_INF,NEG_INF,NEG_INF}};
+
+		double *SFS = NULL;
+
 
 		pairStruct(int ind1, int ind2, int pair_idx){
 			i1=ind1;
@@ -75,22 +93,24 @@ namespace DATA{
 			idx=pair_idx;
 			d=0.0;
 			n_em_iter=0;
-			// sSites=new int[_sSites];
 			sSites=(int*) malloc(_sSites*sizeof(int));
 			for (size_t i=0;i<_sSites;i++){
 				sSites[i]=-1;
+			}
+
+			SFS = (double *) malloc (9*sizeof(double));
+			for (int i = 0; i < 9; i++) {
+				SFS[i] = NEG_INF;
 			}
 		}
 		~pairStruct(){
 			free(sSites);
 			sSites=NULL;
-			// for(size_t i=0; i<_sSites;i++){
-				// free(sSites[i]);
-				// sSites[i]=NULL;
-			// }
-			// delete [] sSites;
+
+			free(SFS);
+			SFS=NULL;
 		}
-		
+
 	}pairStruct;
 
 
@@ -111,8 +131,8 @@ namespace DATA{
 			free(sampleArr);
 			sampleArr=NULL;
 			// for (size_t i=0;i<_sampleArr;i++){
-				// free(sampleArr[i]);
-				// sampleArr[i]=NULL;
+			// free(sampleArr[i]);
+			// sampleArr[i]=NULL;
 			// }
 			// delete [] sampleArr;
 		}
@@ -124,8 +144,8 @@ namespace DATA{
 		int nInds=0;
 		char *id;
 
-	//TODO Associate hierarchical levels
-	//
+		//TODO Associate hierarchical levels
+		//
 		int assoc=0;
 
 		strataStruct(){
@@ -249,7 +269,7 @@ typedef struct {
 
 
 	int gl2gt;
-	
+
 
 }argStruct;
 
@@ -327,6 +347,28 @@ namespace IO {
 
 	}outFilesStruct;
 
+	namespace print{
+
+
+		/* IO::print::Array
+		 * Prints the elements of an array to a file or stream.
+		 *
+		 * @param arr: the array to print
+		 * @param N: the number of rows, dimension 1 
+		 * @param M: the number of columns, dimension 2
+		 * @param out: the file or stream to print to
+		 * @param sep: the character to use as a separator
+		 *
+		 * @example
+		 * IO::print::Array(stdout, myArray, DOUBLE, 3, 3, ',');
+		 */
+		void Array(FILE *fp, double *arr, size_t N, size_t M, char sep);
+
+		// IO::print::Array
+		// :overload: int array
+		void Array(FILE *fp, int *arr, size_t N, size_t M, char sep);
+	}
+
 }
 
 
@@ -403,7 +445,7 @@ typedef struct{
 
 	char *DATETIME;
 
-	
+
 }paramStruct;
 
 

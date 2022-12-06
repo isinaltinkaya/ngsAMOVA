@@ -243,6 +243,74 @@ int IO::readFILE::METADATA(DATA::metadataStruct* MTD, FILE* in_mtd_ff, int which
 }
 
 
+
+/* IO::print::Array
+ * Prints the elements of an array to a file or stream.
+ *
+ * @param arr: the array to print
+ * @param N: the number of rows, dimension 1 
+ * @param M: the number of columns, dimension 2
+ * @param out: the file or stream to print to
+ * @param sep: the character to use as a separator
+ *
+ * @example
+ * IO::print::Array(stdout, myArray, DOUBLE, 3, 3, ',');
+ */
+void IO::print::Array(FILE *fp, double *arr, size_t N, size_t M, char sep){
+
+	ASSERT(arr != NULL);
+
+	double *p = arr;
+	size_t n = 0;
+	size_t m = 0;
+
+	while (n < N && p < arr + N*M) {
+
+
+		fprintf(fp,"%f%c",*p, (n == M - 1 && m == M - 1) ? '\n' : sep);
+
+		m++;
+
+		// If the column index m reaches the end of the row, reset it and increment the row index n
+		if (m == M) {
+			m = 0;
+			n++;
+		}
+
+		// Increment the pointer to the next element of the array
+		p++;
+	}
+}
+
+
+// IO::print::Array
+// :overload: int array
+void IO::print::Array(FILE *fp, int *arr, size_t N, size_t M, char sep){
+
+	ASSERT(arr != NULL);
+
+	int *p = arr;
+	size_t n = 0;
+	size_t m = 0;
+
+	while (n < N && p < arr + N*M) {
+
+
+		fprintf(fp,"%d%c",*p, (n == M - 1 && m == M - 1) ? '\n' : sep);
+
+		m++;
+
+		if (m == M) {
+			m = 0;
+			n++;
+		}
+
+		p++;
+	}
+}
+
+
+
 // Check if file exists
 // @param in_fn	input filename
 // @return		1 if file exists; 0 otherwise

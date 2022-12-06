@@ -49,16 +49,6 @@ int** prepare_LUT_indPair_idx(int nInd){
 }
 
 
-// // double A=M[0][0];
-// // double D=M[0][1];
-// // double G=M[0][2];
-// // double B=M[1][0];
-// // double E=M[1][1];
-// // double H=M[1][2];
-// // double C=M[2][0];
-// // double F=M[2][1];
-// // double I=M[2][2];
-
 double MATH::SUM(double* M){
 	double sum=0.0;
 	for(int x=0;x<9;x++){
@@ -77,29 +67,19 @@ double MATH::SUM(int* M){
 	return sum;
 }
 
-
-double MATH::SUM(double M[3][3]){
-	double sum=0.0;
-	for(int x=0;x<3;x++){
-		for(int y=0;y<3;y++){
-			sum=sum + M[x][y];
-			// fprintf(stderr,"->->%f\n",M[x][y]);
-		}
-	}
-	return sum;
-}
-
-
-
-double MATH::MEAN(int* M){
-	double mean=0.0;
-	double N=9;
-	for(int x=0;x<9;x++){
-		mean=mean + ((double)M[x]/(double)N);
-	}
-	return mean;
-}
-
+// // Use Kahan summation algorithm
+// double MATH::KAHANMEAN(double* M){
+// double sum = 0.0;
+// double c = 0.0;  // Compensating value
+// for (int x = 0; x < 9; x++){
+// double y = M[x] / 9.0 - c;  // Correcting error
+// double t = sum + y;         // New sum
+// c = (t - sum) - y;          // New error
+// sum = t;                    // Save new sum
+// }
+// return sum;
+// }
+//
 
 double MATH::MEAN(double M[3][3]){
 	double mean=0.0;
@@ -112,7 +92,22 @@ double MATH::MEAN(double M[3][3]){
 	return mean;
 }
 
-//TODO maybe template to allow float etc? 
+double MATH::MEAN(double* M){
+	double mean=0.0;
+	for(int x=0;x<9;x++){
+		mean=mean + ((double)M[x]/(double)9);
+	}
+	return mean;
+}
+
+
+double MATH::MEAN(int* M){
+	double mean=0.0;
+	for(int x=0;x<9;x++){
+		mean=mean + ((double)M[x]/(double)9);
+	}
+	return mean;
+}
 
 //VAR and SD is for sample (N-1)
 double MATH::VAR(double M[3][3]){
@@ -126,6 +121,16 @@ double MATH::VAR(double M[3][3]){
 	return (double) i / (double) (N-1);
 }
 
+double MATH::VAR(double* M){
+	double i=0.0;
+	double N=9;
+	for(int x=0;x<N;x++){
+		i= i + MATH::SQUARE((double) M[x] - (double)MATH::MEAN(M));
+	}
+	return (double) i / (double) (N-1);
+}
+
+
 double MATH::VAR(int* M){
 	double i=0.0;
 	double N=9;
@@ -136,6 +141,10 @@ double MATH::VAR(int* M){
 }
 
 double MATH::SD(double M[3][3]){
+	return sqrt(MATH::VAR(M));
+}
+
+double MATH::SD(double* M){
 	return sqrt(MATH::VAR(M));
 }
 
@@ -169,16 +178,33 @@ double MATH::EST::Sij(double M[3][3]){
 	return x;
 }
 
+double MATH::EST::Sij(double* M){
+
+	double x=0.0;
+
+	double A = (double) M[0];
+	double I = (double) M[8];
+	double B = (double) M[3];
+	double D = (double) M[1];
+	double E = (double) M[4];
+	double F = (double) M[7];
+	double H = (double) M[5];
+
+	x=A+I+((B+D+E+F+H)/2);
+
+	return x;
+}
+
 //
-	// double A = (double) M[0];
-	// double D = (double) M[1];
-	// double G = (double) M[2];
-	// double B = (double) M[3];
-	// double E = (double) M[4];
-	// double H = (double) M[5];
-	// double C = (double) M[6];
-	// double F = (double) M[7];
-	// double I = (double) M[8];
+// double A = (double) M[0];
+// double D = (double) M[1];
+// double G = (double) M[2];
+// double B = (double) M[3];
+// double E = (double) M[4];
+// double H = (double) M[5];
+// double C = (double) M[6];
+// double F = (double) M[7];
+// double I = (double) M[8];
 //
 double MATH::EST::Sij(int* M, int S){
 
@@ -201,13 +227,13 @@ double MATH::EST::Sij(int* M, int S){
 /*
  * Reference for the estimations:
  * https://doi.org/10.1111/mec.14954
-		double Fij(double M[3][3]);
-		double IBS0(double M[3][3]);
-		double IBS1(double M[3][3]);
-		double IBS2(double M[3][3]);
-		double R0(double M[3][3]);
-		double R1(double M[3][3]);
-		double Kin(double M[3][3]);
+ double Fij(double M[3][3]);
+ double IBS0(double M[3][3]);
+ double IBS1(double M[3][3]);
+ double IBS2(double M[3][3]);
+ double R0(double M[3][3]);
+ double R1(double M[3][3]);
+ double Kin(double M[3][3]);
  */
 
 /*
@@ -232,7 +258,25 @@ double MATH::EST::Fij(double M[3][3]){
 	double F=M[2][1];
 	double H=M[1][2];
 
- 	x=((2*C)+(2*G)-E) / ((2*C)+(2*G)+B+D+E+F+H);
+	x=((2*C)+(2*G)-E) / ((2*C)+(2*G)+B+D+E+F+H);
+
+	return x;
+}
+
+double MATH::EST::Fij(double* M){
+
+
+	double x=0.0;
+
+	double C = (double) M[6];
+	double G = (double) M[2];
+	double E = (double) M[4];
+	double B = (double) M[3];
+	double D = (double) M[1];
+	double F = (double) M[7];
+	double H = (double) M[5];
+
+	x=((2*C)+(2*G)-E) / ((2*C)+(2*G)+B+D+E+F+H);
 
 	return x;
 }
@@ -249,7 +293,7 @@ double MATH::EST::Fij(int* M, int S){
 	double F = (double) M[7] / (double) S;
 	double H = (double) M[5] / (double) S;
 
- 	x=((2*C)+(2*G)-E) / ((2*C)+(2*G)+B+D+E+F+H);
+	x=((2*C)+(2*G)-E) / ((2*C)+(2*G)+B+D+E+F+H);
 
 	return x;
 }
@@ -261,6 +305,21 @@ double MATH::EST::IBS0(double M[3][3]){
 
 	double C=M[2][0];
 	double G=M[0][2];
+
+	x=C+G;
+
+	return x;
+
+}
+
+
+
+double MATH::EST::IBS0(double * M){
+
+	double x=0.0;
+
+	double C = (double) M[6]; 
+	double G = (double) M[2];
 
 	x=C+G;
 
@@ -292,7 +351,22 @@ double MATH::EST::IBS1(double M[3][3]){
 	double F=M[2][1];
 	double H=M[1][2];
 
- 	x=B+D+F+H;
+	x=B+D+F+H;
+
+	return x;
+}
+
+
+double MATH::EST::IBS1(double* M){
+
+	double x=0.0;
+
+	double B = (double) M[3];
+	double D = (double) M[1];
+	double F = (double) M[7];
+	double H = (double) M[5];
+
+	x=B+D+F+H;
 
 	return x;
 }
@@ -306,7 +380,7 @@ double MATH::EST::IBS1(int* M, int S){
 	double F = (double) M[7] / (double) S;
 	double H = (double) M[5] / (double) S;
 
- 	x=B+D+F+H;
+	x=B+D+F+H;
 
 	return x;
 }
@@ -319,6 +393,21 @@ double MATH::EST::IBS2(double M[3][3]){
 	double A=M[0][0];
 	double E=M[1][1];
 	double I=M[2][2];
+
+	x=A+E+I;
+
+	return x;
+}
+
+
+double MATH::EST::IBS2(double* M){
+
+	double x=0.0;
+
+
+	double A = (double) M[0];
+	double E = (double) M[4];
+	double I = (double) M[8];
 
 	x=A+E+I;
 
@@ -349,7 +438,20 @@ double MATH::EST::R0(double M[3][3]){
 
 	x=(C+G)/E;
 	// double xi=MATH::EST::IBS0(M)/E;
-// fprintf(stderr,"\nr0->\t %f %f\n",x,xi);
+	// fprintf(stderr,"\nr0->\t %f %f\n",x,xi);
+
+	return x;
+}
+
+double MATH::EST::R0(double* M){
+
+	double x=0.0;
+
+	double C = (double) M[6];
+	double G = (double) M[2];
+	double E = (double) M[4];
+
+	x=(C+G)/E;
 
 	return x;
 }
@@ -364,7 +466,7 @@ double MATH::EST::R0(int* M, int S){
 
 	x=(C+G)/E;
 	// double xi=MATH::EST::IBS0(M)/E;
-// fprintf(stderr,"\nr0->\t %f %f\n",x,xi);
+	// fprintf(stderr,"\nr0->\t %f %f\n",x,xi);
 
 	return x;
 }
@@ -382,8 +484,27 @@ double MATH::EST::R1(double M[3][3]){
 	double H=M[1][2];
 
 	x=E/(C+G+B+D+F+H);
-     // double xi=E/(MATH::EST::IBS0(M) + MATH::EST::IBS1(M));
-// fprintf(stderr,"\nr1->\t %f %f\n",x,xi);
+	// double xi=E/(MATH::EST::IBS0(M) + MATH::EST::IBS1(M));
+	// fprintf(stderr,"\nr1->\t %f %f\n",x,xi);
+
+	return x;
+}
+
+
+
+double MATH::EST::R1(double* M){
+
+	double x=0.0;
+
+	double E = (double) M[4];
+	double C = (double) M[6];
+	double G = (double) M[2];
+	double B = (double) M[3];
+	double D = (double) M[1];
+	double F = (double) M[7];
+	double H = (double) M[5];
+
+	x=E/(C+G+B+D+F+H);
 
 	return x;
 }
@@ -402,8 +523,8 @@ double MATH::EST::R1(int* M, int S){
 	double H = (double) M[5] / (double) S;
 
 	x=E/(C+G+B+D+F+H);
-     // double xi=E/(MATH::EST::IBS0(M) + MATH::EST::IBS1(M));
-// fprintf(stderr,"\nr1->\t %f %f\n",x,xi);
+	// double xi=E/(MATH::EST::IBS0(M) + MATH::EST::IBS1(M));
+	// fprintf(stderr,"\nr1->\t %f %f\n",x,xi);
 
 	return x;
 }
@@ -425,11 +546,29 @@ double MATH::EST::Kin(double M[3][3]){
 
 	x=(E-((2*C)+(2*G))) /( B+D+F+H+(2*E));
 	// double xi= (E -(2*MATH::EST::IBS0(M)))/(MATH::EST::IBS1(M) + (2*E));
-// fprintf(stderr,"\nkin->\t %f %f\n",x,xi);
+	// fprintf(stderr,"\nkin->\t %f %f\n",x,xi);
 
 	return x;
 }
 
+
+
+double MATH::EST::Kin(double* M){
+
+	double x=0.0;
+
+	double E = (double) M[4]; 
+	double C = (double) M[6];
+	double G = (double) M[2];
+	double B = (double) M[3];
+	double D = (double) M[1];
+	double F = (double) M[7];
+	double H = (double) M[5];
+
+	x=(E-((2*C)+(2*G))) /( B+D+F+H+(2*E));
+
+	return x;
+}
 
 double MATH::EST::Kin(int* M, int S){
 
@@ -445,7 +584,7 @@ double MATH::EST::Kin(int* M, int S){
 
 	x=(E-((2*C)+(2*G))) /( B+D+F+H+(2*E));
 	// double xi= (E -(2*MATH::EST::IBS0(M)))/(MATH::EST::IBS1(M) + (2*E));
-// fprintf(stderr,"\nkin->\t %f %f\n",x,xi);
+	// fprintf(stderr,"\nkin->\t %f %f\n",x,xi);
 
 	return x;
 }

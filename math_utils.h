@@ -49,8 +49,11 @@ namespace MATH {
 	double SUM(double M[3][3]);
 	double SUM(double* M);
 	double MEAN(double M[3][3]);
+	double MEAN(double* M);
 	double VAR(double M[3][3]);
+	double VAR(double* M);
 	double SD(double M[3][3]);
+	double SD(double* M);
 	
 	double SUM(int* M);
 	double MEAN(int* M);
@@ -81,6 +84,15 @@ namespace MATH {
 		double R0(double M[3][3]);
 		double R1(double M[3][3]);
 		double Kin(double M[3][3]);
+		
+		double Sij(double* M);
+		double Fij(double* M);
+		double IBS0(double* M);
+		double IBS1(double* M);
+		double IBS2(double* M);
+		double R0(double* M);
+		double R1(double* M);
+		double Kin(double* M);
 
 		double Sij(int* M,int S);
 		double Fij(int* M, int S);

@@ -1,5 +1,5 @@
 /*
- *
+ * ngsAMOVA
  */
 
 
@@ -495,21 +495,12 @@ int main(int argc, char **argv) {
 
 
 
-					// fprintf(stderr,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
-					// hdr->samples[pair->i1],
-					// hdr->samples[pair->i2],
-					// pair->SFS[0][0],pair->SFS[0][1],pair->SFS[0][2],
-					// pair->SFS[1][0],pair->SFS[1][1],pair->SFS[1][2],
-					// pair->SFS[2][0],pair->SFS[2][1],pair->SFS[2][2]);
-
-
-					// fprintf(out_sfs_fs->ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%e,%e,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
 					fprintf(out_sfs_fs->ff,"gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%ld,%e,%e,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
 							hdr->samples[pair->i1],
 							hdr->samples[pair->i2],
-							pair->snSites * pair->SFS[0][0],pair->snSites * pair->SFS[0][1],pair->snSites * pair->SFS[0][2],
-							pair->snSites * pair->SFS[1][0],pair->snSites * pair->SFS[1][1],pair->snSites * pair->SFS[1][2],
-							pair->snSites * pair->SFS[2][0],pair->snSites * pair->SFS[2][1],pair->snSites * pair->SFS[2][2],
+							pair->snSites * pair->SFS[0],pair->snSites * pair->SFS[1],pair->snSites * pair->SFS[2],
+							pair->snSites * pair->SFS[3],pair->snSites * pair->SFS[4],pair->snSites * pair->SFS[5],
+							pair->snSites * pair->SFS[6],pair->snSites * pair->SFS[7],pair->snSites * pair->SFS[8],
 							pair->n_em_iter,
 							pair->snSites,
 							pair->d,
@@ -591,19 +582,6 @@ int main(int argc, char **argv) {
 
 
 
-			//doTest 1 requires doAMOVA 3; handled in io.cpp
-			// if(args->doTest==1){
-			//
-			// test_em(lngl,PAIRS[pidx]->SFS,SFS_GT3,i1,i2,
-			// hdr->samples[i1],
-			// hdr->samples[i2],
-			// pair_idx,nSites,snSites,out_emtest_fs->ff);
-			// }
-			// }
-			// }
-			//end i1i2 loop
-
-
 #if 0
 			//print lookup table
 			for(int i1=0;i1<pars->nInd-1;i1++){
@@ -649,6 +627,7 @@ int main(int argc, char **argv) {
 
 
 			if(args->printMatrix==1){
+
 				// // //print pair IDs
 				// if(0){
 				// for(int i1=0;i1<pars->nInd-1;i1++){
