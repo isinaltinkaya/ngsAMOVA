@@ -217,7 +217,7 @@ namespace DATA{
  * 
  * @field doDist		[0] use Sij similarity index
  * 						[1] use Dij (1-Sij) dissimilarity index
- * 						[2] use Fij F statistic
+ * 						[2] use Fij F statistic [DEPRECATED]
  *
  * @field sqDist		[0] use absolute value of distance measure (|dist_ij|)
  * 						[1] use squared distance measure (dist_ij^2)

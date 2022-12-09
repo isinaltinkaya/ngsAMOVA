@@ -98,9 +98,10 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 
 
 		pair->n_em_iter++;
+
 #if 0
 		fprintf(stdout,"%d,%d,",pair->idx,pair->n_em_iter);
-		fprintf(stdout,"%f,", d);
+		fprintf(stdout,"%f,", log10(d));
 		IO::print::Array(stdout,pair->SFS, 3, 3, ',');
 #endif
 

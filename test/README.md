@@ -59,23 +59,12 @@ test_mis2 contains only the 5 sites that has data for both individuals.
 
 ### Comparing AMOVA results with pegas
 
-- test_s9_d5_1K_pegas_amova_result.txt
 
-```R
-d<-read.csv("test_s9_d5_1K_test_minInd2_doAMOVA3.sfs.csv")
-d$Pop1<-unlist(lapply(strsplit(d$Ind1,split="_"),"[[",1))
-d$Pop2<-unlist(lapply(strsplit(d$Ind2,split="_"),"[[",1))
-d=d[d$Method=="gt",]
-m<-matrix(NA,9,9)
-diag(m)<-0
-dcol<-"Fij"
-m[lower.tri(m,diag=FALSE)]<- d[dcol][[1]]
-dd.d<-as.dist(m)
-dd.pops<-factor(c(rep("pop1",3),rep("pop2",3),rep("pop3",3)))
-(amv<-pegas::amova(dd.d ~ dd.pops,is.squared=FALSE))
-pegas::write.pegas.amova(amv,file="test_s9_d5_1K_pegas_amova_result.txt")
 ```
-
+cd test;
+../ngsAMOVA -in test_s9_d5_1K.vcf -m metadata.tsv -doDist 1 -minInd 2 -doAMOVA 1 -isSim 1 -out test_s9_d5_1K_Dij_minInd2_doAmova1
+Rscript test_pegas.R test_s9_d5_1K_Dij_minInd2_doAmova1.sfs.csv
+ ```
 
 
 ### Testing minInd filter

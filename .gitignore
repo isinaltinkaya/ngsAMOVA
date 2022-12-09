@@ -31,3 +31,6 @@ amovaput*
 
 wd/
 wd/*
+
+.RData
+.Rhistory
