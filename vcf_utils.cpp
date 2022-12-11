@@ -304,10 +304,7 @@ int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars
 				dp.n_missing_ind++;
 			}
 		}
-		if ( (nInd - dp.n_missing_ind) < args->minInd ){
-fprintf(stderr,"\n\nHERE!!!\n\n");
-			return 1;
-		}
+		ASSERT ( (nInd - dp.n_missing_ind) > args->minInd );
 	}
 
 
@@ -326,12 +323,19 @@ fprintf(stderr,"\n\nHERE!!!\n\n");
 			int gti1=0;
 			int gti2=0;
 
+			//TODO support nonbinary
 			//using binary input genotypes from VCF GT tag
 			//assume ploidy=2
 			for (int i=0; i<2;i++){
-				gti1 += bcf_gt_allele(ptr1[i]);
-				gti2 += bcf_gt_allele(ptr2[i]);
+				int gt1=bcf_gt_allele(ptr1[i]);
+				int gt2=bcf_gt_allele(ptr2[i]);
+				ASSERT( (gt1 >> 1) == 0);
+				ASSERT( (gt2 >> 1) == 0);
+
+				gti1+=gt1;
+				gti2+=gt2;
 			}
+
 			sfs[pair_idx][get_3x3_idx[gti1][gti2]]++;
 
 			//last field is for snSites
