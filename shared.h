@@ -188,8 +188,7 @@ namespace DATA{
  * @field seed			random seed
  *
  * @field isSim			input is vcfgl simulation output
- * 						anc=ref and der=alt[0]
- *
+ * 							anc=ref and der=alt[0]
  *
  * @field minInd		[-1 = not set]
  * 						minimum number of individuals needed
@@ -328,7 +327,7 @@ namespace IO {
 
 		outFilesStruct(argStruct* args){
 			if(args->printMatrix==1){
-				out_dm_fs= new outputStruct(args->out_fp,".dm.csv");
+				out_dm_fs= new outputStruct(args->out_fp,".distance_matrix.csv");
 			}
 			if(args->doTest==1){
 				out_emtest_fs= new outputStruct(args->out_fp,".emtest.csv");
