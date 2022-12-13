@@ -104,7 +104,7 @@ int IO::inspectFILE::count_nColumns(char* line, const char* delims){
 }
 
 
-int IO::readFILE::SFS(FILE* in_sfs_ff, const char* delims, DATA::sampleStruct *SAMPLES){
+int IO::readFILE::SFS(FILE* in_sfs_ff, const char* delims, DATA::samplesStruct *SAMPLES){
 
 
 	char sfs_buf[1024];
@@ -140,7 +140,7 @@ int IO::readFILE::SFS(FILE* in_sfs_ff, const char* delims, DATA::sampleStruct *S
 
 
 
-int IO::readFILE::METADATA(DATA::metadataStruct* MTD, FILE* in_mtd_ff, int whichCol, const char* delims, DATA::sampleStruct *SAMPLES){
+int IO::readFILE::METADATA(DATA::metadataStruct* MTD, FILE* in_mtd_ff, int whichCol, const char* delims, DATA::samplesStruct *SAMPLES){
 
 
 	fprintf(stderr,"\n");
@@ -182,7 +182,7 @@ int IO::readFILE::METADATA(DATA::metadataStruct* MTD, FILE* in_mtd_ff, int which
 
 		//increase the size of Strata
 		if(MTD->nStrata > (int) MTD->_strataArr){
-			fprintf(stderr,"->->->increase the size of Strata S[]!!\n");
+			fprintf(stderr,"->->->increase the size of Strata S[]!! Found %d MTD->nStrata and %d MTD->_strataArr\n",MTD->nStrata,MTD->_strataArr);
 		}
 
 		//if not the first loop

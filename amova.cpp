@@ -2,8 +2,8 @@
 
 
 
-// int doAMOVA(int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::sampleStruct *SAMPLES, FILE *out_amova_ff, int sqDist, double *M_PWD, int **LUT_indPair_idx){
-int doAMOVA(int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::sampleStruct *SAMPLES, FILE *out_amova_ff, int sqDist, double *M_PWD, int **LUT_indPair_idx, const char* analysis_type){
+// int doAMOVA(int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int sqDist, double *M_PWD, int **LUT_indPair_idx){
+int doAMOVA(int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int sqDist, double *M_PWD, int **LUT_indPair_idx, const char* analysis_type){
 
 	double ssd_TOTAL=0.0;
 	double msd_TOTAL=0.0;

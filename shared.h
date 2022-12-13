@@ -61,6 +61,51 @@ using size_t=decltype(sizeof(int));
 
 namespace DATA{
 
+
+	typedef struct contigsStruct{
+		int nContigs=0;
+		char **contigNames;
+		size_t _contigNames=24;
+		int *contigLengths;
+		size_t _contigLengths=24;
+
+		int **contigBlockStarts = NULL;
+
+		//realloc if needed	
+		//expand
+		// void realloc_contigBlockStarts(int **contigBlockStarts, int ci, int nBlocks){
+		// 	contigBlockStarts[ci] = (int *)realloc(contigBlockStarts[ci], nBlocks * sizeof(int));
+		// }
+
+		contigsStruct(){
+			contigNames=new char*[_contigNames];
+			contigLengths=new int[_contigLengths];
+			contigBlockStarts = (int **)malloc(nContigs * sizeof(int *));
+			for (int ci = 0; ci < nContigs; ci++)
+			{
+				contigBlockStarts[ci] = NULL;
+			}
+		}
+		~contigsStruct(){
+			for (size_t i=0;i<_contigNames;i++){
+				free(contigNames[i]);
+				contigNames[i]=NULL;
+			}
+			delete [] contigNames;
+			delete [] contigLengths;
+			for(int i = 0; i < nContigs; i++)
+			{
+				free(contigBlockStarts[i]);
+				contigBlockStarts[i] = NULL;
+			}
+			free(contigBlockStarts);
+			contigBlockStarts = NULL;
+
+		}
+
+
+	} contigsStruct;
+
 	typedef struct pairStruct{
 
 		int i1;
@@ -114,20 +159,20 @@ namespace DATA{
 	}pairStruct;
 
 
-	typedef struct sampleStruct{
+	typedef struct samplesStruct{
 
 		int *sampleArr;
 		size_t _sampleArr=200;
 		//TODO increase if overflow
 
-		sampleStruct(){
+		samplesStruct(){
 			// sampleArr=new int[_sampleArr];
 			sampleArr=(int*) malloc(_sampleArr*sizeof(int));
 			for (size_t i=0;i<_sampleArr;i++){
 				sampleArr[i]=0;
 			}
 		}
-		~sampleStruct(){
+		~samplesStruct(){
 			free(sampleArr);
 			sampleArr=NULL;
 			// for (size_t i=0;i<_sampleArr;i++){
@@ -137,7 +182,7 @@ namespace DATA{
 			// delete [] sampleArr;
 		}
 
-	}sampleStruct;
+	}samplesStruct;
 
 	typedef struct strataStruct{
 
@@ -153,6 +198,7 @@ namespace DATA{
 		}
 		~strataStruct(){
 			free(id);
+			id=NULL;
 		}
 
 	}strataStruct;
@@ -168,9 +214,11 @@ namespace DATA{
 
 		metadataStruct(){
 			strataArr=new strataStruct[_strataArr];
+			fprintf(stderr,"->Creating metadataStruct");
 		};
 		~metadataStruct(){
 			delete [] strataArr;
+			strataArr=NULL;
 		}
 
 	}metadataStruct;
@@ -294,8 +342,8 @@ namespace IO {
 	FILE* openFILE(char* c);
 
 	namespace readFILE{
-		int METADATA(DATA::metadataStruct * MTD, FILE* in_mtd_ff, int whichCol, const char* delims, DATA::sampleStruct *SAMPLES);
-		int SFS(FILE* in_sfs_ff, const char* delims, DATA::sampleStruct *SAMPLES);
+		int METADATA(DATA::metadataStruct * MTD, FILE* in_mtd_ff, int whichCol, const char* delims, DATA::samplesStruct *SAMPLES);
+		int SFS(FILE* in_sfs_ff, const char* delims, DATA::samplesStruct *SAMPLES);
 	};
 
 	namespace inspectFILE{
