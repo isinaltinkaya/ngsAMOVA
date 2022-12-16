@@ -42,7 +42,6 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2){
 // return 1: skip site for all individuals
 int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i, DATA::pairStruct** PAIRS){
 
-	// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
 	VCF::get_data<float> lgl;
 
 	lgl.n = bcf_get_format_float(hdr,bcf,"GL",&lgl.data,&lgl.size_e);
@@ -52,6 +51,7 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 		exit(1);
 	}
 
+	// store 3 values per individual
 	lngl[site_i]=(double*)malloc(pars->nInd*3*sizeof(double));
 
 

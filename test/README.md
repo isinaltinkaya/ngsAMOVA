@@ -141,3 +141,13 @@ $ cat amovaput.sfs.csv |grep "pop2_ind1,pop3_ind2"|cut -f14 -d,|uniq
 
 
 
+
+### 221216
+```
+bcftools view -H test_blocks.vcf |wc -l
+986
+seq 1 51960 51229805 >newpos 
+paste <(bcftools view -H test_blocks.vcf|cut -f1) <(cat newpos) <(bcftools view -H test_blocks.vcf |cut -f3-) > withnewpos
+cat blocks_header withnewpos > test_block_v1.vcf
+./ngsAMOVA -doAMOVA 3 -doTest 0 -in test/test_block_v1.vcf -out test/test_block_v1_testput -isSim 1 -minInd 2 -printMatrix 0 -m test/metadata.tsv -doDist 1 -maxIter 100 -nThreads 0 -tole 1.000000e-10 -bSize 51960
+ ```

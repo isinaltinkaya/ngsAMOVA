@@ -63,7 +63,7 @@ int main(int argc, char **argv)
 		DATETIME = get_time();
 		fprintf(stderr, "\n%s", DATETIME);
 
-		//TODO print based on analysis type, and to args file
+		// TODO print based on analysis type, and to args file
 		fprintf(stderr, "\nngsAMOVA -doAMOVA %d -doTest %d -in %s -out %s -isSim %d -minInd %d -printMatrix %d -m %s -doDist %d -maxIter %d -nThreads %d", args->doAMOVA, args->doTest, args->in_fn, args->out_fp, args->isSim, args->minInd, args->printMatrix, args->in_mtd_fn, args->doDist, args->mEmIter, args->mThreads);
 
 		if (args->doAMOVA == -1 || args->doAMOVA == 3 || args->doAMOVA == 1)
@@ -84,15 +84,16 @@ int main(int argc, char **argv)
 		fprintf(stderr, "\n\t-> Reading file: %s\n", args->in_fn);
 
 		pars->nInd = bcf_hdr_nsamples(hdr);
-		fprintf(stderr, "\nNumber of samples: %i", pars->nInd);
 
 		const int nContigs = hdr->n[BCF_DT_CTG];
+
+		fprintf(stderr, "\nNumber of samples: %i", pars->nInd);
 		fprintf(stderr, "\nNumber of contigs: %d", nContigs);
 
-		DATA::contigsStruct *CONTIGS = new DATA::contigsStruct();
-		CONTIGS->nContigs = nContigs;
+		// TODO do this dynamically based on actually observed first and last pos of contigs
 
-		int **contigBlockStarts = CONTIGS->contigBlockStarts;
+		// create a pointer to a contigs struct and allocate memory
+		DATA::contigsStruct *CONTIGS = (DATA::contigsStruct *)malloc(sizeof(DATA::contigsStruct));
 
 		if (args->blockSize != 0)
 		{
@@ -101,6 +102,9 @@ int main(int argc, char **argv)
 			{
 
 				const int contigSize = hdr->id[BCF_DT_CTG][ci].val->info[0];
+
+				CONTIGS->contigLengths[ci] = contigSize;
+
 				fprintf(stderr, "\nContig %d length:%d\n", ci, contigSize);
 
 				int nBlocks = 0;
@@ -109,9 +113,16 @@ int main(int argc, char **argv)
 				{
 					nBlocks = (contigSize / args->blockSize) + 1;
 				}
+				else
+				{
+					nBlocks = 1;
+					fprintf(stderr, "\nContig %d is smaller than block size, setting block size to contig size (%d)\n", ci, contigSize);
+				}
 
-				//reallocate memory
-				contigBlockStarts[ci] = (int *)realloc(contigBlockStarts[ci], nBlocks * sizeof(int));
+				// allocate memory for contigBlockStarts
+				CONTIGS->contigBlockStarts[ci] = (int *)malloc(nBlocks * sizeof(int));
+				CONTIGS->contigBlockStartPtrs[ci] = (double **)malloc(nBlocks * sizeof(double *));
+				CONTIGS->contigNBlocks[ci] = nBlocks;
 
 				// fprintf(stderr, "\nContig %d length:%d nBlocks: %d\n", ci, contigSize, nBlocks);
 				for (int bi = 0; bi < nBlocks; bi++)
@@ -119,9 +130,8 @@ int main(int argc, char **argv)
 					int blockStart = bi * args->blockSize;
 					// fprintf(stderr, "\nBlock %d starts at %d\n", bi, blockStart);
 
-					contigBlockStarts[ci][bi] = blockStart;
-					fprintf(stderr, "\nContig %d block %d starts at %d\n", ci, bi, contigBlockStarts[ci][bi]);
-
+					CONTIGS->contigBlockStarts[ci][bi] = blockStart;
+					fprintf(stderr, "\nContig %d block %d starts at %d\n", ci, bi, CONTIGS->contigBlockStarts[ci][bi]);
 				}
 			}
 		}
@@ -135,7 +145,7 @@ int main(int argc, char **argv)
 
 			in_mtd_ff = IO::getFILE(args->in_mtd_fn, "r");
 
-			//sep can be \t \whitespace or comma
+			// sep can be \t \whitespace or comma
 			const char *delims = "\t ,\n";
 
 			ASSERT(IO::readFILE::METADATA(MTD, in_mtd_ff, args->whichCol, delims, SAMPLES) == 0);
@@ -170,19 +180,19 @@ int main(int argc, char **argv)
 		{
 			fprintf(stderr, "\n\n[ERROR]\tMinimum number of individuals -minInd is set to %d, but input file contains %d individuals; will exit!\n\n", args->minInd, pars->nInd);
 
-			//TODO nice exit?
-			// free(args->in_fn);
-			// args->in_fn=NULL;
-			// free(args);
-			// paramStruct_destroy(pars);
+			// TODO nice exit?
+			//  free(args->in_fn);
+			//  args->in_fn=NULL;
+			//  free(args);
+			//  paramStruct_destroy(pars);
 
 			exit(1);
 		}
 
-		//TODO
-		//print args nicely to an arg file and use -out
-		//but smart -out. if output prefix is given detect and truncate
-		//so it would play nicely with smk pipelines
+		// TODO
+		// print args nicely to an arg file and use -out
+		// but smart -out. if output prefix is given detect and truncate
+		// so it would play nicely with smk pipelines
 
 		int buf_size = 1024;
 
@@ -196,7 +206,7 @@ int main(int argc, char **argv)
 			lngl = (double **)malloc(buf_size * sizeof(double *));
 		}
 
-		//TODO how to make lookup table better
+		// TODO how to make lookup table better
 		pars->n_ind_cmb = nCk(pars->nInd, 2);
 
 		pars->LUT_indPair_idx = (int **)malloc(pars->nInd * sizeof(int *));
@@ -210,7 +220,7 @@ int main(int argc, char **argv)
 
 		fprintf(stderr, "\nNumber of individual pairs: %d\n", pars->n_ind_cmb);
 
-		//TODO only create if doGeno etc
+		// TODO only create if doGeno etc
 		/*
 		 * SFS_GT3[n_pairs][9+1]
 		 * last element contains total number of sites shared
@@ -221,7 +231,7 @@ int main(int argc, char **argv)
 			SFS_GT3 = (int **)malloc(pars->n_ind_cmb * sizeof(int *));
 			for (int i = 0; i < pars->n_ind_cmb; i++)
 			{
-				//9 categories per individual pair
+				// 9 categories per individual pair
 				SFS_GT3[i] = (int *)malloc(10 * sizeof(int));
 				for (int y = 0; y < 10; y++)
 				{
@@ -230,7 +240,7 @@ int main(int argc, char **argv)
 			}
 		}
 
-		//Pairwise distance matrix
+		// Pairwise distance matrix
 		double *M_PWD_GL = NULL;
 		double *M_PWD_GT = NULL;
 
@@ -275,6 +285,17 @@ int main(int argc, char **argv)
 				break;
 			}
 		}
+		DATA::pairStruct *PAIRS[pars->n_ind_cmb];
+
+		for (int i1 = 0; i1 < pars->nInd - 1; i1++)
+		{
+			for (int i2 = i1 + 1; i2 < pars->nInd; i2++)
+			{
+				int pidx = pars->LUT_indPair_idx[i1][i2];
+
+				PAIRS[pidx] = new DATA::pairStruct(i1, i2, pidx);
+			}
+		}
 
 		/*
 		 * [START] Reading sites
@@ -298,21 +319,13 @@ int main(int argc, char **argv)
 		 *
 		 */
 
-		DATA::pairStruct *PAIRS[pars->n_ind_cmb];
-
-		for (int i1 = 0; i1 < pars->nInd - 1; i1++)
-		{
-			for (int i2 = i1 + 1; i2 < pars->nInd; i2++)
-			{
-				int pidx = pars->LUT_indPair_idx[i1][i2];
-
-				PAIRS[pidx] = new DATA::pairStruct(i1, i2, pidx);
-			}
-		}
+		// size_t last_pos = 0;
+		int last_ci = -1;
+		int last_bi = -1;
+		double *last_ptr = NULL;
 
 		while (bcf_read(in_ff, hdr, bcf) == 0)
 		{
-
 
 			if (bcf->rlen != 1)
 			{
@@ -323,10 +336,6 @@ int main(int argc, char **argv)
 			while ((int)pars->nSites >= buf_size)
 			{
 
-#if 0
-				fprintf(stderr,"\n\nrealloc %d at site %d\n",buf_size,pars->nSites);
-				fprintf(stderr,"new size: %d\n",buf_size);
-#endif
 				buf_size = buf_size * 2;
 
 				if (args->doAMOVA == -1 || args->doAMOVA == 1 || args->doAMOVA == 3)
@@ -344,7 +353,7 @@ int main(int argc, char **argv)
 
 					pars->totSites++;
 
-					//next loop will skip this and use the same site_i
+					// next loop will skip this and use the same site_i
 					free(lngl[pars->nSites]);
 					lngl[pars->nSites] = NULL;
 
@@ -352,7 +361,7 @@ int main(int argc, char **argv)
 				}
 			}
 
-			//if doAMOVA==3 and site is skipped for gle; it will be skipped for gt, too
+			// if doAMOVA==3 and site is skipped for gle; it will be skipped for gt, too
 
 			if (args->doAMOVA == 2 || args->doAMOVA == 3)
 			{
@@ -371,16 +380,42 @@ int main(int argc, char **argv)
 				}
 			}
 
+			int ci = bcf->rid;
+			// fprintf(stderr,"\n\n\t-> Printing at site %d contig %d\n\n",pars->nSites,ci);
+
+			if (args->blockSize != 0)
+			{
+
+				// if first contig
+				if (last_ci == -1)
+				{
+					last_ci = ci;
+					last_bi = 0;
+				}
+
+				// if contig changes, reset block index
+				if (ci != last_ci)
+				{
+					last_ci = ci;
+					last_bi = 0;
+				}
+
+				last_ptr = lngl[pars->nSites];
+
+				// calculate which block first site belongs to using contigLengths and contigNBlocks
+				//  last_bi = (int)floor((double)bcf->pos/(double)args->blockSize);
+				//  fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block last_bi %d\n\n",bcf->pos,ci,last_bi);
+
+				// if current pos is bigger than contigBlockStarts, add last_ptr to contigBlockStartPtrs
+				if (bcf->pos > CONTIGS->contigBlockStarts[ci][last_bi])
+				{
+					// fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block %d CONTIGS->contigBlockStarts[%d][%d] %d\n\n",bcf->pos,ci,last_bi,ci,last_bi,CONTIGS->contigBlockStarts[ci][last_bi]);
+					CONTIGS->contigBlockStartPtrs[ci][last_bi] = last_ptr;
+					last_bi++;
+				}
+			}
 			pars->nSites++;
 			pars->totSites++;
-
-			//print contig id
-
-			// if site is blockStart, add to contigBlockStarts
-
-
-
-			// if (pars->nSites == contigBlockStarts[
 
 #if 0
 			fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",pars->nSites);
@@ -391,6 +426,11 @@ int main(int argc, char **argv)
 		}
 		fprintf(stderr, "\n\t-> Finished reading sites\n");
 		// [END] Reading sites
+
+		// shuffle blocks in contigBlockStarts
+		//
+
+		///
 
 		pthread_t pairThreads[pars->n_ind_cmb];
 		threadStruct *PTHREADS[pars->n_ind_cmb];
@@ -474,7 +514,7 @@ int main(int argc, char **argv)
 					}
 				}
 			}
-			//finished indPair loop
+			// finished indPair loop
 
 			int t = 0;
 			while (nJobs_sent > 0)
@@ -538,7 +578,7 @@ int main(int argc, char **argv)
 						MATH::EST::Kin(pair->SFS));
 			}
 
-			//TODO maybe join this loop
+			// TODO maybe join this loop
 		}
 		if (args->doAMOVA == 2 || args->doAMOVA == 3)
 		{
@@ -684,8 +724,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "\n");
 		fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", pars->totSites - pars->nSites);
 
-		//TODO output is not sorted when threads are used
-		//and ind indexes are written instead of ind ids
+		// TODO output is not sorted when threads are used
+		// and ind indexes are written instead of ind ids
 		fflush(out_sfs_fs->ff);
 
 		bcf_hdr_destroy(hdr);

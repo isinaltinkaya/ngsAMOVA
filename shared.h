@@ -1,7 +1,6 @@
 #ifndef __PARAM_STRUCT__
 #define __PARAM_STRUCT__
 
-
 #include <limits>
 #include <cstddef>
 #include <time.h>
@@ -17,10 +16,8 @@
 
 #include <math.h>
 
-#define MIN(a,b) (((a)<(b))?(a):(b))
-#define MAX(a,b) (((a)>(b))?(a):(b))
-
-
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 /*
  * Macro:[DBL_MAXDIG10]
@@ -29,12 +26,11 @@
  *
  * Calculates the max number of decimal digits that a double-precision
  * floating-point number can have on a 64-bit system using the value of DBL_MANT_DIG
- * The UL suffix ensures that our constant values are unsigned long 
+ * The UL suffix ensures that our constant values are unsigned long
  * to prevent any overflow issues.
  *
  */
-#define DBL_MAXDIG10 (2+ (DBL_MANT_DIG * 30103UL)/100000UL)
-
+#define DBL_MAXDIG10 (2 + (DBL_MANT_DIG * 30103UL) / 100000UL)
 
 /*
  * Macro:[AT]
@@ -49,132 +45,170 @@
  * Macro:[ASSERT]
  * shortcut to evaluate an expression, works the same way as the C-macro assert
  */
-#define ASSERT(expr) if (!(expr)) {fprintf(stderr,"\n\n*******\n[ERROR](%s:%d) %s\n*******\n",__FILE__,__LINE__,#expr);exit(1);}
-
+#define ASSERT(expr)                                                                             \
+	if (!(expr))                                                                                 \
+	{                                                                                            \
+		fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr); \
+		exit(1);                                                                                 \
+	}
 
 extern const int get_3x3_idx[3][3];
 
 const double NEG_INF = -std::numeric_limits<double>::infinity();
 
-using size_t=decltype(sizeof(int));
+using size_t = decltype(sizeof(int));
 
+namespace DATA
+{
 
-namespace DATA{
+	typedef struct contigsStruct
+	{
 
+		// Number of contigs
+		int nContigs;
 
-	typedef struct contigsStruct{
-		int nContigs=0;
+		// array of contig indices
+		int *contigIdx;
+
+		// 2d array of contig names
+		// [Contig][Name]
 		char **contigNames;
-		size_t _contigNames=24;
+
+		// Array of number of blocks per contig
+		int *contigNBlocks;
+
+		// Array of contig lengths
 		int *contigLengths;
-		size_t _contigLengths=24;
 
-		int **contigBlockStarts = NULL;
+		// 2D array of contig block starts
+		// [Contig][BlockStart]
+		// size_t *contigBlockStarts;
+		int **contigBlockStarts;
 
-		//realloc if needed	
-		//expand
-		// void realloc_contigBlockStarts(int **contigBlockStarts, int ci, int nBlocks){
+		// [Contig][Block] int* to block start
+		// 2D array of pointers to actual contig block starts
+		double ***contigBlockStartPtrs;
+
+		// void contig_set_ContigBlockStarts(int ci, int nBlocks){
 		// 	contigBlockStarts[ci] = (int *)realloc(contigBlockStarts[ci], nBlocks * sizeof(int));
 		// }
 
-		contigsStruct(){
-			contigNames=new char*[_contigNames];
-			contigLengths=new int[_contigLengths];
+		contigsStruct(const int n_contigs)
+		{
+
+			nContigs = n_contigs;
+			contigNames = (char **)malloc(nContigs * sizeof(char *));
+			contigLengths = (int *)malloc(nContigs * sizeof(int));
+
+			contigBlockStarts = new int *[nContigs];
+
 			contigBlockStarts = (int **)malloc(nContigs * sizeof(int *));
+			// contigBlockStarts = (size_t **)malloc(nContigs * sizeof(size_t *));
+			// contigBlockStarts = (size_t *)malloc(nContigs * sizeof(size_t));
+			contigBlockStartPtrs = (double ***)malloc(nContigs * sizeof(double **));
+			contigNBlocks = (int *)malloc(nContigs * sizeof(int));
+
 			for (int ci = 0; ci < nContigs; ci++)
 			{
 				contigBlockStarts[ci] = NULL;
 			}
 		}
-		~contigsStruct(){
-			for (size_t i=0;i<_contigNames;i++){
+
+		~contigsStruct()
+		{
+			for (size_t i = 0; i < nContigs; i++)
+			{
 				free(contigNames[i]);
-				contigNames[i]=NULL;
+				contigNames[i] = NULL;
 			}
-			delete [] contigNames;
-			delete [] contigLengths;
-			for(int i = 0; i < nContigs; i++)
+			for (int i = 0; i < nContigs; i++)
 			{
 				free(contigBlockStarts[i]);
 				contigBlockStarts[i] = NULL;
 			}
 			free(contigBlockStarts);
 			contigBlockStarts = NULL;
-
 		}
-
 
 	} contigsStruct;
 
-	typedef struct pairStruct{
+	contigsStruct *contigsStruct_init(const int n_contigs);
+
+	typedef struct pairStruct
+	{
 
 		int i1;
 		int i2;
 		int idx;
 
-		size_t snSites=0;
+		size_t snSites = 0;
 
 		int *sSites;
 		// TODO init better
-		size_t _sSites=100;
-
+		size_t _sSites = 100;
 
 		// int nDim;
 
 		double d;
 		int n_em_iter;
 
-		//TODO should not always create below
-		// double SFS[3][3]={{NEG_INF,NEG_INF,NEG_INF},
-			// {NEG_INF,NEG_INF,NEG_INF},
-			// {NEG_INF,NEG_INF,NEG_INF}};
+		// TODO should not always create below
+		//  double SFS[3][3]={{NEG_INF,NEG_INF,NEG_INF},
+		//  {NEG_INF,NEG_INF,NEG_INF},
+		//  {NEG_INF,NEG_INF,NEG_INF}};
 
 		double *SFS = NULL;
 
-
-		pairStruct(int ind1, int ind2, int pair_idx){
-			i1=ind1;
-			i2=ind2;
-			idx=pair_idx;
-			d=0.0;
-			n_em_iter=0;
-			sSites=(int*) malloc(_sSites*sizeof(int));
-			for (size_t i=0;i<_sSites;i++){
-				sSites[i]=-1;
+		pairStruct(int ind1, int ind2, int pair_idx)
+		{
+			i1 = ind1;
+			i2 = ind2;
+			idx = pair_idx;
+			d = 0.0;
+			n_em_iter = 0;
+			sSites = (int *)malloc(_sSites * sizeof(int));
+			for (size_t i = 0; i < _sSites; i++)
+			{
+				sSites[i] = -1;
 			}
 
-			SFS = (double *) malloc (9*sizeof(double));
-			for (int i = 0; i < 9; i++) {
+			SFS = (double *)malloc(9 * sizeof(double));
+			for (int i = 0; i < 9; i++)
+			{
 				SFS[i] = NEG_INF;
 			}
 		}
-		~pairStruct(){
+		~pairStruct()
+		{
 			free(sSites);
-			sSites=NULL;
+			sSites = NULL;
 
 			free(SFS);
-			SFS=NULL;
+			SFS = NULL;
 		}
 
-	}pairStruct;
+	} pairStruct;
 
-
-	typedef struct samplesStruct{
+	typedef struct samplesStruct
+	{
 
 		int *sampleArr;
-		size_t _sampleArr=200;
-		//TODO increase if overflow
+		size_t _sampleArr = 200;
+		// TODO increase if overflow
 
-		samplesStruct(){
+		samplesStruct()
+		{
 			// sampleArr=new int[_sampleArr];
-			sampleArr=(int*) malloc(_sampleArr*sizeof(int));
-			for (size_t i=0;i<_sampleArr;i++){
-				sampleArr[i]=0;
+			sampleArr = (int *)malloc(_sampleArr * sizeof(int));
+			for (size_t i = 0; i < _sampleArr; i++)
+			{
+				sampleArr[i] = 0;
 			}
 		}
-		~samplesStruct(){
+		~samplesStruct()
+		{
 			free(sampleArr);
-			sampleArr=NULL;
+			sampleArr = NULL;
 			// for (size_t i=0;i<_sampleArr;i++){
 			// free(sampleArr[i]);
 			// sampleArr[i]=NULL;
@@ -182,48 +216,52 @@ namespace DATA{
 			// delete [] sampleArr;
 		}
 
-	}samplesStruct;
+	} samplesStruct;
 
-	typedef struct strataStruct{
+	typedef struct strataStruct
+	{
 
-		int nInds=0;
+		int nInds = 0;
 		char *id;
 
-		//TODO Associate hierarchical levels
+		// TODO Associate hierarchical levels
 		//
-		int assoc=0;
+		int assoc = 0;
 
-		strataStruct(){
-			id=NULL;
+		strataStruct()
+		{
+			id = NULL;
 		}
-		~strataStruct(){
+		~strataStruct()
+		{
 			free(id);
-			id=NULL;
+			id = NULL;
 		}
 
-	}strataStruct;
+	} strataStruct;
 
-	typedef struct metadataStruct{
+	typedef struct metadataStruct
+	{
 
 		strataStruct *strataArr;
-		size_t _strataArr=10;
+		size_t _strataArr = 10;
 
-		int nInds_total=0;
+		int nInds_total = 0;
 
-		int nStrata=0;
+		int nStrata = 0;
 
-		metadataStruct(){
-			strataArr=new strataStruct[_strataArr];
-			fprintf(stderr,"->Creating metadataStruct");
+		metadataStruct()
+		{
+			strataArr = new strataStruct[_strataArr];
+			fprintf(stderr, "->Creating metadataStruct");
 		};
-		~metadataStruct(){
-			delete [] strataArr;
-			strataArr=NULL;
+		~metadataStruct()
+		{
+			delete[] strataArr;
+			strataArr = NULL;
 		}
 
-	}metadataStruct;
-
-
+	} metadataStruct;
 
 };
 /*
@@ -241,7 +279,7 @@ namespace DATA{
  * @field minInd		[-1 = not set]
  * 						minimum number of individuals needed
  * 						for site to be included in analyses
- * 						
+ *
  * 						if minInd not set; set minInd=2
  * 						== no filter, include all sites that exist in pair
  *
@@ -261,7 +299,7 @@ namespace DATA{
  * @field doAMOVA		[0]
  * 						1 use 10 genotype likelihoods (GL)
  * 						2 use genotypes (GT) (NOTE: Only for benchmark purposes)
- * 
+ *
  * @field doDist		[0] use Sij similarity index
  * 						[1] use Dij (1-Sij) dissimilarity index
  * 						[2] use Fij F statistic [DEPRECATED]
@@ -282,14 +320,13 @@ namespace DATA{
  *
  */
 
+typedef struct
+{
 
-typedef struct {
-
-
-	char* in_fn;
-	char* in_sfs_fn;
-	char* in_mtd_fn;
-	char* out_fp;
+	char *in_fn;
+	char *in_sfs_fn;
+	char *in_mtd_fn;
+	char *out_fp;
 
 	int whichCol;
 	int blockSize;
@@ -310,98 +347,96 @@ typedef struct {
 
 	int doTest;
 
-
 	int mThreads;
 	int mEmIter;
 
-
 	int gl2gt;
 
-
-}argStruct;
-
+} argStruct;
 
 argStruct *argStruct_init();
 
 argStruct *argStruct_get(int argc, char **argv);
 
+namespace IO
+{
 
+	char *setFileName(const char *a, const char *b);
 
+	FILE *getFILE(const char *fname, const char *mode);
+	FILE *openFILE(const char *a, const char *b);
+	FILE *openFILE(char *c);
 
-
-
-
-namespace IO {
-
-
-	char *setFileName(const char* a,const char* b);
-
-
-	FILE *getFILE(const char*fname,const char* mode);
-	FILE *openFILE(const char* a,const char* b);
-	FILE* openFILE(char* c);
-
-	namespace readFILE{
-		int METADATA(DATA::metadataStruct * MTD, FILE* in_mtd_ff, int whichCol, const char* delims, DATA::samplesStruct *SAMPLES);
-		int SFS(FILE* in_sfs_ff, const char* delims, DATA::samplesStruct *SAMPLES);
+	namespace readFILE
+	{
+		int METADATA(DATA::metadataStruct *MTD, FILE *in_mtd_ff, int whichCol, const char *delims, DATA::samplesStruct *SAMPLES);
+		int SFS(FILE *in_sfs_ff, const char *delims, DATA::samplesStruct *SAMPLES);
 	};
 
-	namespace inspectFILE{
-		int count_nColumns(char* line, const char* delims);
+	namespace inspectFILE
+	{
+		int count_nColumns(char *line, const char *delims);
 	};
 
+	typedef struct outputStruct
+	{
+		char *fn = NULL;
+		FILE *ff = NULL;
 
-	typedef struct outputStruct{
-		char* fn=NULL;
-		FILE* ff=NULL;
-
-		outputStruct(const char* fp, const char* suffix){
-			fn=setFileName(fp, suffix);
-			ff=openFILE(fn);
+		outputStruct(const char *fp, const char *suffix)
+		{
+			fn = setFileName(fp, suffix);
+			ff = openFILE(fn);
 		}
-		~outputStruct(){
+		~outputStruct()
+		{
 			fclose(ff);
 			free(fn);
-			fn=NULL;
+			fn = NULL;
 		}
 
-	}outputStruct;
+	} outputStruct;
 
-	typedef struct outFilesStruct{
-		outputStruct* out_emtest_fs=NULL;
-		outputStruct* out_sfs_fs=NULL;
-		outputStruct* out_dm_fs=NULL;
-		outputStruct* out_amova_fs=NULL;
+	typedef struct outFilesStruct
+	{
+		outputStruct *out_emtest_fs = NULL;
+		outputStruct *out_sfs_fs = NULL;
+		outputStruct *out_dm_fs = NULL;
+		outputStruct *out_amova_fs = NULL;
 
-		outFilesStruct(argStruct* args){
-			if(args->printMatrix==1){
-				out_dm_fs= new outputStruct(args->out_fp,".distance_matrix.csv");
+		outFilesStruct(argStruct *args)
+		{
+			if (args->printMatrix == 1)
+			{
+				out_dm_fs = new outputStruct(args->out_fp, ".distance_matrix.csv");
 			}
-			if(args->doTest==1){
-				out_emtest_fs= new outputStruct(args->out_fp,".emtest.csv");
+			if (args->doTest == 1)
+			{
+				out_emtest_fs = new outputStruct(args->out_fp, ".emtest.csv");
 			}
 
-			out_amova_fs= new outputStruct(args->out_fp,".amova.csv");
-			out_sfs_fs= new outputStruct(args->out_fp,".sfs.csv");
+			out_amova_fs = new outputStruct(args->out_fp, ".amova.csv");
+			out_sfs_fs = new outputStruct(args->out_fp, ".sfs.csv");
 		}
 
-		~outFilesStruct(){
+		~outFilesStruct()
+		{
 			delete out_emtest_fs;
 			delete out_dm_fs;
 			delete out_sfs_fs;
 			delete out_amova_fs;
 		}
 
-	}outFilesStruct;
+	} outFilesStruct;
 
-	namespace print{
-
+	namespace print
+	{
 
 		/* IO::print::Array
 		 * Prints the elements of an array to a file or stream.
 		 *
 		 * @param arr: the array to print
-		 * @param N: the number of rows, dimension 1 
+		 * @param N: the number of rows, dimension 1
 		 * @param M: the number of columns, dimension 2
 		 * @param out: the file or stream to print to
 		 * @param sep: the character to use as a separator
@@ -418,38 +453,35 @@ namespace IO {
 
 }
 
+typedef struct threadStruct
+{
 
-typedef struct threadStruct{
-
-	DATA::pairStruct* pair;
+	DATA::pairStruct *pair;
 	double **lngls;
 
-
-
-	FILE* out_sfs_ff;
+	FILE *out_sfs_ff;
 
 	// double* M_PWD_GL_PAIR;
 
-	//TODO use them globally?
+	// TODO use them globally?
 	double tole;
 	int mEmIter;
 
-
 	size_t nSites;
 
-	threadStruct(DATA::pairStruct* tPair, double **lngl, size_t nSites_t, IO::outputStruct* out_sfs_fs, double toleArg, int mEmIterArg){
-		pair=tPair;
-		lngls=lngl;
-		nSites=nSites_t;
-		out_sfs_ff=out_sfs_fs->ff;
+	threadStruct(DATA::pairStruct *tPair, double **lngl, size_t nSites_t, IO::outputStruct *out_sfs_fs, double toleArg, int mEmIterArg)
+	{
+		pair = tPair;
+		lngls = lngl;
+		nSites = nSites_t;
+		out_sfs_ff = out_sfs_fs->ff;
 		// M_PWD_GL_PAIR=M_PWD_GL_P;
-		tole=toleArg;
+		tole = toleArg;
 		// doDist=doDistArg;
-		mEmIter=mEmIterArg;
+		mEmIter = mEmIterArg;
 	}
 
-}threadStruct;
-
+} threadStruct;
 
 /*
  * @typedef
@@ -470,8 +502,8 @@ typedef struct threadStruct{
  * @field der					derived allele
  */
 
-
-typedef struct{
+typedef struct
+{
 
 	size_t nSites;
 	size_t totSites;
@@ -483,7 +515,6 @@ typedef struct{
 	int **LUT_indPair_idx;
 	int n_ind_cmb;
 
-
 	char *major;
 	char *minor;
 	char *ref;
@@ -492,14 +523,10 @@ typedef struct{
 
 	char *DATETIME;
 
-
-}paramStruct;
-
-
+} paramStruct;
 
 paramStruct *paramStruct_init(argStruct *args);
 void paramStruct_destroy(paramStruct *p);
-
 
 char *get_time();
 // void *argStruct_destroy(argStruct *arg);
