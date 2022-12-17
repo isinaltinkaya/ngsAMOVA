@@ -529,12 +529,12 @@ argStruct *argStruct_get(int argc, char **argv)
 		return 0;
 	}
 
-	if (args->isSim == 0)
-	{
-		fprintf(stderr, "Must use -isSim 1 for now\n");
-		free(args);
-		return 0;
-	}
+	// if (args->isSim == 0)
+	// {
+	// 	fprintf(stderr, "Must use -isSim 1 for now\n");
+	// 	free(args);
+	// 	return 0;
+	// }
 
 	if (args->out_fp == NULL)
 	{

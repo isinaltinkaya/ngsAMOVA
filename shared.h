@@ -253,7 +253,7 @@ namespace DATA
 		metadataStruct()
 		{
 			strataArr = new strataStruct[_strataArr];
-			fprintf(stderr, "->Creating metadataStruct");
+			fprintf(stderr, "\n->Creating metadataStruct");
 		};
 		~metadataStruct()
 		{

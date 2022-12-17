@@ -1,6 +1,9 @@
 #include "em.h"
 
 
+/// @brief thread handler for EM_2DSFS_GL3
+/// @param p 
+/// @return 
 void* t_EM_2DSFS_GL3(void* p){
 
 	threadStruct* THREAD= (threadStruct*) p;
@@ -9,11 +12,12 @@ void* t_EM_2DSFS_GL3(void* p){
 		fprintf(stderr,"\n[ERROR] Problem with EM\n");
 		exit(1);
 	}
-	return NULL;
-
 }
 
 
+/// @brief EM algorithm for 2DSFS from 3 GL values
+/// @param THREAD 
+/// @return 
 int EM_2DSFS_GL3(threadStruct* THREAD){
 
 
