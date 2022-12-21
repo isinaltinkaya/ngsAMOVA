@@ -3,6 +3,7 @@
 
 
 //TODO less loops by jointly estimating some stats
+// also loop unrolling
 
 
 
@@ -115,7 +116,7 @@ double MATH::VAR(double M[3][3]){
 	double N=9;
 	for(int x=0;x<3;x++){
 		for(int y=0;y<3;y++){
-			i= i + MATH::SQUARE((double) M[x][y] - (double)MATH::MEAN(M));
+			i= i + SQUARE((double) M[x][y] - (double)MATH::MEAN(M));
 		}
 	}
 	return (double) i / (double) (N-1);
@@ -125,7 +126,7 @@ double MATH::VAR(double* M){
 	double i=0.0;
 	double N=9;
 	for(int x=0;x<N;x++){
-		i= i + MATH::SQUARE((double) M[x] - (double)MATH::MEAN(M));
+		i= i + SQUARE((double) M[x] - (double)MATH::MEAN(M));
 	}
 	return (double) i / (double) (N-1);
 }
@@ -135,7 +136,7 @@ double MATH::VAR(int* M){
 	double i=0.0;
 	double N=9;
 	for(int x=0;x<N;x++){
-		i= i + MATH::SQUARE((double) M[x] - (double)MATH::MEAN(M));
+		i= i + SQUARE((double) M[x] - (double)MATH::MEAN(M));
 	}
 	return (double) i / (double) (N-1);
 }
@@ -163,7 +164,6 @@ double MATH::SD(int* M){
  */
 double MATH::EST::Sij(double M[3][3]){
 
-	double x=0.0;
 
 	double A=M[0][0];
 	double I=M[2][2];
@@ -173,14 +173,13 @@ double MATH::EST::Sij(double M[3][3]){
 	double F=M[2][1];
 	double H=M[1][2];
 
-	x=A+I+((B+D+E+F+H)/2);
+	double x=A+I+((B+D+E+F+H)/2);
 
 	return x;
 }
 
 double MATH::EST::Sij(double* M){
 
-	double x=0.0;
 
 	double A = (double) M[0];
 	double I = (double) M[8];
@@ -190,7 +189,7 @@ double MATH::EST::Sij(double* M){
 	double F = (double) M[7];
 	double H = (double) M[5];
 
-	x=A+I+((B+D+E+F+H)/2);
+	double x= A+I+((B+D+E+F+H)/2);
 
 	return x;
 }
@@ -223,6 +222,55 @@ double MATH::EST::Sij(int* M, int S){
 	return x;
 }
 
+// Dij = 1-Sij
+double MATH::EST::Dij(double M[3][3]){
+
+
+	double A=M[0][0];
+	double I=M[2][2];
+	double B=M[1][0];
+	double D=M[0][1];
+	double E=M[1][1];
+	double F=M[2][1];
+	double H=M[1][2];
+
+	double x = 1.0 - (A+I+((B+D+E+F+H)/2));
+
+	return x;
+}
+
+
+double MATH::EST::Dij(double* M){
+	
+	double A = (double) M[0];
+	double I = (double) M[8];
+	double B = (double) M[3];
+	double D = (double) M[1];
+	double E = (double) M[4];
+	double F = (double) M[7];
+	double H = (double) M[5];
+
+	double x = 1.0 - (A+I+((B+D+E+F+H)/2));
+
+	return x;
+}
+
+double MATH::EST::Dij(int *M, int S){
+
+	double x=0.0;
+
+	double A = (double) M[0] / (double) S;
+	double I = (double) M[8] / (double) S;
+	double B = (double) M[3] / (double) S;
+	double D = (double) M[1] / (double) S;
+	double E = (double) M[4] / (double) S;
+	double F = (double) M[7] / (double) S;
+	double H = (double) M[5] / (double) S;
+
+	x = 1.0 - (A+I+((B+D+E+F+H)/2));
+
+	return x;
+}
 
 /*
  * Reference for the estimations:
@@ -438,7 +486,7 @@ double MATH::EST::R0(double M[3][3]){
 
 	x=(C+G)/E;
 	// double xi=MATH::EST::IBS0(M)/E;
-	// fprintf(stderr,"\nr0->\t %f %f\n",x,xi);
+	// fprintf(stderr,"\nr0->\t %f%f\n",x,xi);
 
 	return x;
 }
@@ -466,7 +514,7 @@ double MATH::EST::R0(int* M, int S){
 
 	x=(C+G)/E;
 	// double xi=MATH::EST::IBS0(M)/E;
-	// fprintf(stderr,"\nr0->\t %f %f\n",x,xi);
+	// fprintf(stderr,"\nr0->\t %f%f\n",x,xi);
 
 	return x;
 }
@@ -485,7 +533,7 @@ double MATH::EST::R1(double M[3][3]){
 
 	x=E/(C+G+B+D+F+H);
 	// double xi=E/(MATH::EST::IBS0(M) + MATH::EST::IBS1(M));
-	// fprintf(stderr,"\nr1->\t %f %f\n",x,xi);
+	// fprintf(stderr,"\nr1->\t %f%f\n",x,xi);
 
 	return x;
 }
@@ -524,7 +572,7 @@ double MATH::EST::R1(int* M, int S){
 
 	x=E/(C+G+B+D+F+H);
 	// double xi=E/(MATH::EST::IBS0(M) + MATH::EST::IBS1(M));
-	// fprintf(stderr,"\nr1->\t %f %f\n",x,xi);
+	// fprintf(stderr,"\nr1->\t %f%f\n",x,xi);
 
 	return x;
 }
@@ -546,7 +594,7 @@ double MATH::EST::Kin(double M[3][3]){
 
 	x=(E-((2*C)+(2*G))) /( B+D+F+H+(2*E));
 	// double xi= (E -(2*MATH::EST::IBS0(M)))/(MATH::EST::IBS1(M) + (2*E));
-	// fprintf(stderr,"\nkin->\t %f %f\n",x,xi);
+	// fprintf(stderr,"\nkin->\t %f%f\n",x,xi);
 
 	return x;
 }
@@ -584,7 +632,7 @@ double MATH::EST::Kin(int* M, int S){
 
 	x=(E-((2*C)+(2*G))) /( B+D+F+H+(2*E));
 	// double xi= (E -(2*MATH::EST::IBS0(M)))/(MATH::EST::IBS1(M) + (2*E));
-	// fprintf(stderr,"\nkin->\t %f %f\n",x,xi);
+	// fprintf(stderr,"\nkin->\t %f%f\n",x,xi);
 
 	return x;
 }

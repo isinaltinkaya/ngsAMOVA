@@ -1,7 +1,64 @@
 #include "amova.h"
 
-// int doAMOVA(int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int sqDist, double *M_PWD, int **LUT_indPair_idx){
-int doAMOVA(int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int sqDist, double *M_PWD, int **LUT_indPair_idx, const char *analysis_type)
+
+double get_SSD_total(double *M_PWD, int n_ind_cmb, int nInd)
+{
+
+	double sum = 0.0;
+	double delta_sq = 0.0;
+	double ssd_TOTAL = 0.0;
+
+	for (int px = 0; px < n_ind_cmb; px++)
+	{
+		delta_sq = SQUARE(M_PWD[px]);
+		sum += delta_sq;
+	}
+
+	ssd_TOTAL = sum / (double)nInd;
+	return ssd_TOTAL;
+}
+
+double get_SSD_level(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int sqDist, int **LUT_indPair_idx, const char *analysis_type)
+{
+
+	double sum = 0.0;
+	double d_sq = 0.0;
+	double ssd_WG = 0.0;
+	int px;
+
+	// group pairs by strata
+	for (int sti = 0; sti < MTD->nStrata; sti++)
+	{
+		for (int i1 = 0; i1 < nInd - 1; i1++)
+		{
+			for (int i2 = i1 + 1; i2 < nInd; i2++)
+			{
+
+				// check if pair belongs to strata
+				if ((SAMPLES->sampleArr[i1] & (1 << sti)) && (SAMPLES->sampleArr[i2] & (1 << sti)))
+				{
+
+#if 1
+					fprintf(stderr, "\n-> Pair %i,idx:(%i,%i)) belongs to strata (%s,idx:%i)\n",
+							LUT_indPair_idx[i1][i2],
+							i1,
+							i2,
+							MTD->strataArr[sti].id,
+							sti);
+#endif
+					px = LUT_indPair_idx[i1][i2];
+
+					d_sq = SQUARE(M_PWD[px]);
+					sum += d_sq;
+				}
+			}
+		}
+		ssd_WG += sum / (double)MTD->strataArr[sti].nInds;
+	}
+	return ssd_WG;
+}
+
+int doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int sqDist, int **LUT_indPair_idx, const char *analysis_type)
 {
 
 	double ssd_TOTAL = 0.0;
@@ -14,7 +71,7 @@ int doAMOVA(int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::samplesStr
 	{
 		if (sqDist == 1)
 		{
-			delta_sq = MATH::SQUARE(M_PWD[px]);
+			delta_sq = SQUARE(M_PWD[px]);
 		}
 		else if (sqDist == 0)
 		{
@@ -48,6 +105,7 @@ int doAMOVA(int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::samplesStr
 	double s = 0.0;
 	double d_sq = 0.0;
 	int px = 0;
+	// ssd_WG = get_SSD_level(M_PWD, n_ind_cmb, nInd, MTD, SAMPLES, out_amova_ff, sqDist, LUT_indPair_idx, analysis_type);
 
 	for (int sti = 0; sti < MTD->nStrata; sti++)
 	{
@@ -73,7 +131,7 @@ int doAMOVA(int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::samplesStr
 
 					if (sqDist == 1)
 					{
-						d_sq = MATH::SQUARE(M_PWD[px]);
+						d_sq = SQUARE(M_PWD[px]);
 					}
 					else if (sqDist == 0)
 					{
@@ -104,7 +162,7 @@ int doAMOVA(int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::samplesStr
 
 	for (int sti = 0; sti < MTD->nStrata; sti++)
 	{
-		n_gi += (double)MATH::SQUARE(MTD->strataArr[sti].nInds) / (double)nInd;
+		n_gi += (double)SQUARE(MTD->strataArr[sti].nInds) / (double)nInd;
 	}
 
 	// TODO double and castings are probably not necessary here

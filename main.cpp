@@ -557,6 +557,7 @@ int main(int argc, char **argv)
 					exit(1);
 				}
 
+
 				fprintf(out_sfs_fs->ff, "gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%ld,%e,%e,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
 						hdr->samples[pair->i1],
 						hdr->samples[pair->i2],
@@ -569,7 +570,7 @@ int main(int argc, char **argv)
 						args->tole,
 						MATH::EST::Sij(pair->SFS),
 						MATH::EST::Fij(pair->SFS),
-						MATH::SQUARE(MATH::EST::Fij(pair->SFS)),
+						SQUARE(MATH::EST::Fij(pair->SFS)),
 						MATH::EST::IBS0(pair->SFS),
 						MATH::EST::IBS1(pair->SFS),
 						MATH::EST::IBS2(pair->SFS),
@@ -636,7 +637,7 @@ int main(int argc, char **argv)
 							"gt",
 							MATH::EST::Sij(SFS_GT3[pidx], snSites),
 							MATH::EST::Fij(SFS_GT3[pidx], snSites),
-							MATH::SQUARE(MATH::EST::Fij(SFS_GT3[pidx], snSites)),
+							SQUARE(MATH::EST::Fij(SFS_GT3[pidx], snSites)),
 							MATH::EST::IBS0(SFS_GT3[pidx], snSites),
 							MATH::EST::IBS1(SFS_GT3[pidx], snSites),
 							MATH::EST::IBS2(SFS_GT3[pidx], snSites),
@@ -701,16 +702,16 @@ int main(int argc, char **argv)
 		{
 
 		case 1:
-			ASSERT(doAMOVA(pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GL, pars->LUT_indPair_idx, "gl") == 0);
+			ASSERT(doAMOVA(M_PWD_GL,pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gl") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case 2:
-			ASSERT(doAMOVA(pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GT, pars->LUT_indPair_idx, "gt") == 0);
+			ASSERT(doAMOVA(M_PWD_GT,pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gt") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case 3:
-			ASSERT(doAMOVA(pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GL, pars->LUT_indPair_idx, "gl") == 0);
-			ASSERT(doAMOVA(pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, M_PWD_GT, pars->LUT_indPair_idx, "gt") == 0);
+			ASSERT(doAMOVA(M_PWD_GL,pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gl") == 0);
+			ASSERT(doAMOVA(M_PWD_GT,pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gt") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case -1:

@@ -11,6 +11,11 @@
 
 
 
+
+#define SQUARE(n) ((n)*(n))
+
+
+
 /*
  * Macro:[LOG2LN]
  * convert log_10(x) to log_e(x)
@@ -60,8 +65,6 @@ namespace MATH {
 	double VAR(int* M);
 	double SD(int* M);
 
-	template<typename T>
-	T SQUARE(T n){ 	return n*n; }
 
 	//ESTIMATE?
 	namespace EST{
@@ -102,6 +105,11 @@ namespace MATH {
 		double R0(int* M, int S);
 		double R1(int* M, int S);
 		double Kin(int* M, int S);
+
+
+		double Dij(int *M, int S);
+		double Dij(double *M);
+		double Dij(double M[3][3]);
 	};
 
 }	

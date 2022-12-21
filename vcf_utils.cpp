@@ -155,6 +155,7 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 					}
 				}
 
+				//TODO we are losing precision here when we go from log2ln?
 				lngl[site_i][(3 * indi) + 0] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a1)]);
 				lngl[site_i][(3 * indi) + 1] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a2)]);
 				lngl[site_i][(3 * indi) + 2] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a2, a2)]);
@@ -305,7 +306,6 @@ int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars
 	// TODO disable creating this for isSim==0
 	VCF::get_data<int32_t> dp;
 
-
 	// isSim checkpoint
 	// isSim 1 = if simulated data, check DP tag for missing data
 	// 			why: we want to use same sites with what we used for gl
@@ -365,8 +365,7 @@ int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars
 		for (int i2 = i1 + 1; i2 < nInd; i2++)
 		{
 
-
-			if(args->isSim==1)
+			if (args->isSim == 1)
 			{
 				if (dp.data[i1] == 0 || dp.data[i2] == 0)
 				{
@@ -378,15 +377,13 @@ int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars
 			int32_t *ptr1 = gt.data + i1 * gt.ploidy;
 			int32_t *ptr2 = gt.data + i2 * gt.ploidy;
 
-
-
-			//assuming ploidy=2
+			// assuming ploidy=2
 			if (bcf_gt_is_missing(ptr1[0]) || bcf_gt_is_missing(ptr2[0]) || bcf_gt_is_missing(ptr1[1]) || bcf_gt_is_missing(ptr2[1]))
 			{
 				// fprintf(stderr, "\nmissing for %d %d", i1, i2);
 
-				//TODO check if freeing ptr1 ptr2 here is necessary
-				// skip the pair
+				// TODO check if freeing ptr1 ptr2 here is necessary
+				//  skip the pair
 				continue;
 			}
 			int pair_idx = pars->LUT_indPair_idx[i1][i2];
