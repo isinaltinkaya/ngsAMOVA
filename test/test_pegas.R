@@ -24,18 +24,25 @@ dd.pops<-factor(c(rep("pop1",3),rep("pop2",3),rep("pop3",3)))
 sig2<-setNames(amv$varcomp$sigma2,rownames(amv$varcomp))
 phi<-getPhi(sig2)
 
+#
+# print(
+	  # paste(
+			# amv$tab$df[1],amv$tab$SSD[1],amv$tab$MSD[1],
+			# amv$tab$df[2],amv$tab$SSD[2],amv$tab$MSD[2],
+			# amv$tab$df[3],amv$tab$SSD[3],amv$tab$MSD[3],
+			# amv$varcoef[[1]],
+			# amv$varcomp$sigma2[1],
+			# amv$varcomp$sigma2[2],
+			# phi[1],
+			# sep=",")
+	  # )
 
-print(
-	  paste(
-			amv$tab$df[1],amv$tab$SSD[1],amv$tab$MSD[1],
-			amv$tab$df[2],amv$tab$SSD[2],amv$tab$MSD[2],
-			amv$tab$df[3],amv$tab$SSD[3],amv$tab$MSD[3],
-			amv$varcoef[[1]],
-			amv$varcomp$sigma2[1],
-			amv$varcomp$sigma2[2],
-			phi[1],
-			sep=",")
-	  )
+amvfile<-paste0(strsplit(args[1],".sfs.csv")[[1]],".amova.csv")
+
+outfile<-paste0(args[1],"_testPegas.csv")
+
+cat(paste0("\nPrinting to file: ",outfile))
+cat("\n\n")
 
 write.table(
 	  paste(
@@ -52,5 +59,21 @@ write.table(
 		  col.names=FALSE,
 		  quote=FALSE
 	  )
+
+amv_res<-read.csv(amvfile,header=FALSE)
+# print(rbind(
+# print(rbind(cbind("pegas",
+			# amv$tab$df[1],amv$tab$SSD[1],amv$tab$MSD[1],
+			# amv$tab$df[2],amv$tab$SSD[2],amv$tab$MSD[2],
+			# amv$tab$df[3],amv$tab$SSD[3],amv$tab$MSD[3],
+			# amv$varcoef[[1]],
+			# amv$varcomp$sigma2[1],
+			# amv$varcomp$sigma2[2],
+			# phi[1]),amv_res))
+
+
+outtable=data.frame(rbind(cbind("pegas",amv$tab$df[1],amv$tab$SSD[1],amv$tab$MSD[1],amv$tab$df[2],amv$tab$SSD[2],amv$tab$MSD[2],amv$tab$df[3],amv$tab$SSD[3],amv$tab$MSD[3],amv$varcoef[[1]],amv$varcomp$sigma2[1],amv$varcomp$sigma2[2],phi[1]),amv_res))
+
+write.table(outtable,file=paste0(args[1],"_testPegas.csv"), row.names=FALSE,  col.names=FALSE,  quote=FALSE, sep=',')
 
 
