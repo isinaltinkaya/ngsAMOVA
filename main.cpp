@@ -23,6 +23,56 @@
 
 using size_t = decltype(sizeof(int));
 
+void print_M_PWD(const char *TYPE, IO::outputStruct *out_dm_fs, int n_ind_cmb, double *M_PWD)
+{
+
+	fprintf(out_dm_fs->ff, "%s,", TYPE);
+	for (int px = 0; px < n_ind_cmb; px++)
+	{
+		fprintf(out_dm_fs->ff, "%f", M_PWD[px]);
+		if (px != n_ind_cmb - 1)
+		{
+			fprintf(out_dm_fs->ff, ",");
+		}
+		else
+		{
+			fprintf(out_dm_fs->ff, "\n");
+		}
+	}
+}
+
+void print_SFS_GT(const char *TYPE, IO::outputStruct *out_sfs_fs, paramStruct *pars, int n_ind_cmb, int **SFS_GT3, int snSites)
+{
+
+	for (int i1 = 0; i1 < pars->nInd - 1; i1++)
+	{
+		for (int i2 = i1 + 1; i2 < pars->nInd; i2++)
+		{
+
+			int snSites = 0;
+
+			int pidx = pars->LUT_indPair_idx[i1][i2];
+
+			fprintf(out_sfs_fs->ff, "%s,", TYPE);
+			for (int px = 0; px < n_ind_cmb; px++)
+			{
+				fprintf(out_sfs_fs->ff, "%d,%d,%d,%d,%d,%d,%d,%d,%d",
+						SFS_GT3[px][0], SFS_GT3[px][1], SFS_GT3[px][2],
+						SFS_GT3[px][3], SFS_GT3[px][4], SFS_GT3[px][5],
+						SFS_GT3[px][6], SFS_GT3[px][7], SFS_GT3[px][8]);
+				if (px != n_ind_cmb - 1)
+				{
+					fprintf(out_sfs_fs->ff, ",");
+				}
+				else
+				{
+					fprintf(out_sfs_fs->ff, "\n");
+				}
+			}
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
 
@@ -557,7 +607,6 @@ int main(int argc, char **argv)
 					exit(1);
 				}
 
-
 				fprintf(out_sfs_fs->ff, "gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%ld,%e,%e,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
 						hdr->samples[pair->i1],
 						hdr->samples[pair->i2],
@@ -625,6 +674,22 @@ int main(int argc, char **argv)
 					}
 
 #if 1
+					fprintf(out_sfs_fs->ff, "gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%s,%f,%f",
+							hdr->samples[i1],
+							hdr->samples[i2],
+							SFS_GT3[pidx][0], SFS_GT3[pidx][1], SFS_GT3[pidx][2],
+							SFS_GT3[pidx][3], SFS_GT3[pidx][4], SFS_GT3[pidx][5],
+							SFS_GT3[pidx][6], SFS_GT3[pidx][7], SFS_GT3[pidx][8],
+							"gt",
+							snSites,
+							"gt",
+							"gt",
+							MATH::EST::Sij(SFS_GT3[pidx], snSites),
+							SQUARE(MATH::EST::Sij(SFS_GT3[pidx], snSites)));
+
+#endif
+
+#if 1
 					fprintf(out_sfs_fs->ff, "gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
 							hdr->samples[i1],
 							hdr->samples[i2],
@@ -650,51 +715,16 @@ int main(int argc, char **argv)
 			}
 		}
 
-#if 0
-		//print lookup table
-		for(int i1=0;i1<pars->nInd-1;i1++){
-			for(int i2=i1+1;i2<pars->nInd;i2++){
-				fprintf(stderr,"\n%i %i %i\n",LUT_indPair_idx[i1][i2],i1,i2);
-			}
-		}
-#endif
-
 		if (args->printMatrix == 1)
 		{
-
 			if (args->doAMOVA == -1 || args->doAMOVA == 1 || args->doAMOVA == 3)
 			{
-
-				fprintf(out_dm_fs->ff, "gl,");
-				for (int px = 0; px < pars->n_ind_cmb; px++)
-				{
-					fprintf(out_dm_fs->ff, "%f", M_PWD_GL[px]);
-					if (px != pars->n_ind_cmb - 1)
-					{
-						fprintf(out_dm_fs->ff, ",");
-					}
-					else
-					{
-						fprintf(out_dm_fs->ff, "\n");
-					}
-				}
+				print_M_PWD("gl", out_dm_fs, pars->n_ind_cmb, M_PWD_GL);
 			}
 			else if (args->doAMOVA == 2 || args->doAMOVA == 3)
 			{
 
-				fprintf(out_dm_fs->ff, "gt,");
-				for (int px = 0; px < pars->n_ind_cmb; px++)
-				{
-					fprintf(out_dm_fs->ff, "%f", M_PWD_GT[px]);
-					if (px != pars->n_ind_cmb - 1)
-					{
-						fprintf(out_dm_fs->ff, ",");
-					}
-					else
-					{
-						fprintf(out_dm_fs->ff, "\n");
-					}
-				}
+				print_M_PWD("gt", out_dm_fs, pars->n_ind_cmb, M_PWD_GT);
 			}
 		}
 
@@ -702,16 +732,16 @@ int main(int argc, char **argv)
 		{
 
 		case 1:
-			ASSERT(doAMOVA(M_PWD_GL,pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gl") == 0);
+			ASSERT(doAMOVA(M_PWD_GL, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gl") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case 2:
-			ASSERT(doAMOVA(M_PWD_GT,pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gt") == 0);
+			ASSERT(doAMOVA(M_PWD_GT, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gt") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case 3:
-			ASSERT(doAMOVA(M_PWD_GL,pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gl") == 0);
-			ASSERT(doAMOVA(M_PWD_GT,pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gt") == 0);
+			ASSERT(doAMOVA(M_PWD_GL, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gl") == 0);
+			ASSERT(doAMOVA(M_PWD_GT, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gt") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case -1:

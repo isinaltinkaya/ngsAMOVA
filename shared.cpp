@@ -176,7 +176,7 @@ int IO::readFILE::METADATA(DATA::metadataStruct *MTD, FILE *in_mtd_ff, int which
 		// increase the size of Strata
 		if (MTD->nStrata > (int)MTD->_strataArr)
 		{
-			fprintf(stderr, "->->->increase the size of Strata S[]!! Found %d MTD->nStrata and %d MTD->_strataArr\n", MTD->nStrata, MTD->_strataArr);
+			fprintf(stderr, "->->->increase the size of Strata S[]!! Found %d MTD->nStrata and %d MTD->_strataArr\n", (int)MTD->nStrata, (int) MTD->_strataArr);
 		}
 
 		// if not the first loop

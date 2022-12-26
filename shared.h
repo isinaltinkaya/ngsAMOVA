@@ -14,6 +14,10 @@
 #include <stdint.h>
 #include <sys/stat.h>
 
+
+#include <htslib/vcf.h>
+#include <htslib/vcfutils.h>
+
 #include <math.h>
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -116,7 +120,7 @@ namespace DATA
 
 		~contigsStruct()
 		{
-			for (size_t i = 0; i < nContigs; i++)
+			for (int i = 0; i < nContigs; i++)
 			{
 				free(contigNames[i]);
 				contigNames[i] = NULL;
@@ -186,6 +190,20 @@ namespace DATA
 			free(SFS);
 			SFS = NULL;
 		}
+
+		void print(FILE *fp, bcf_hdr_t *hdr)
+		{
+
+			fprintf(fp, "%d,%d,%d,%s,%s", i1, i2, idx, hdr->samples[i1], hdr->samples[i2]);
+		}
+
+		void print(FILE *fp)
+		{
+
+			fprintf(fp, "%d,%d,%d", i1, i2, idx);
+		}
+
+
 
 	} pairStruct;
 
@@ -522,6 +540,16 @@ typedef struct
 	char *der;
 
 	char *DATETIME;
+
+	void print(){
+		//print lookup table
+		for(int i1=0;i1<nInd-1;i1++){
+			for(int i2=i1+1;i2<nInd;i2++){
+				fprintf(stderr,"\n%i %i %i\n",LUT_indPair_idx[i1][i2],i1,i2);
+			}
+		}
+	}
+
 
 } paramStruct;
 
