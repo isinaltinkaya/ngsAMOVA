@@ -21,57 +21,10 @@
 #include "vcf_utils.h"
 #include "amova.h"
 
+
+
+
 using size_t = decltype(sizeof(int));
-
-void print_M_PWD(const char *TYPE, IO::outputStruct *out_dm_fs, int n_ind_cmb, double *M_PWD)
-{
-
-	fprintf(out_dm_fs->ff, "%s,", TYPE);
-	for (int px = 0; px < n_ind_cmb; px++)
-	{
-		fprintf(out_dm_fs->ff, "%f", M_PWD[px]);
-		if (px != n_ind_cmb - 1)
-		{
-			fprintf(out_dm_fs->ff, ",");
-		}
-		else
-		{
-			fprintf(out_dm_fs->ff, "\n");
-		}
-	}
-}
-
-void print_SFS_GT(const char *TYPE, IO::outputStruct *out_sfs_fs, paramStruct *pars, int n_ind_cmb, int **SFS_GT3, int snSites)
-{
-
-	for (int i1 = 0; i1 < pars->nInd - 1; i1++)
-	{
-		for (int i2 = i1 + 1; i2 < pars->nInd; i2++)
-		{
-
-			int snSites = 0;
-
-			int pidx = pars->LUT_indPair_idx[i1][i2];
-
-			fprintf(out_sfs_fs->ff, "%s,", TYPE);
-			for (int px = 0; px < n_ind_cmb; px++)
-			{
-				fprintf(out_sfs_fs->ff, "%d,%d,%d,%d,%d,%d,%d,%d,%d",
-						SFS_GT3[px][0], SFS_GT3[px][1], SFS_GT3[px][2],
-						SFS_GT3[px][3], SFS_GT3[px][4], SFS_GT3[px][5],
-						SFS_GT3[px][6], SFS_GT3[px][7], SFS_GT3[px][8]);
-				if (px != n_ind_cmb - 1)
-				{
-					fprintf(out_sfs_fs->ff, ",");
-				}
-				else
-				{
-					fprintf(out_sfs_fs->ff, "\n");
-				}
-			}
-		}
-	}
-}
 
 int main(int argc, char **argv)
 {
@@ -123,12 +76,11 @@ int main(int argc, char **argv)
 		fprintf(stderr, "\n");
 
 		vcfFile *in_ff = bcf_open(args->in_fn, "r");
-
 		ASSERT(in_ff);
 
 		bcf_hdr_t *hdr = bcf_hdr_read(in_ff);
-		bcf1_t *bcf = bcf_init();
 
+		bcf1_t *bcf = bcf_init();
 		ASSERT(bcf);
 
 		fprintf(stderr, "\n\t-> Reading file: %s\n", args->in_fn);
@@ -191,7 +143,9 @@ int main(int argc, char **argv)
 
 		if (args->in_mtd_fn != NULL)
 		{
-			//// BEGIN Read metadata
+/*
+[BEGIN] Read metadata
+*/
 
 			in_mtd_ff = IO::getFILE(args->in_mtd_fn, "r");
 
@@ -199,7 +153,10 @@ int main(int argc, char **argv)
 			const char *delims = "\t ,\n";
 
 			ASSERT(IO::readFILE::METADATA(MTD, in_mtd_ff, args->whichCol, delims, SAMPLES) == 0);
-			//// END Read metadata
+
+/*
+[END] Read metadata
+*/
 
 			if (pars->nInd != MTD->nInds_total)
 			{
@@ -229,13 +186,6 @@ int main(int argc, char **argv)
 		if (pars->nInd < args->minInd)
 		{
 			fprintf(stderr, "\n\n[ERROR]\tMinimum number of individuals -minInd is set to %d, but input file contains %d individuals; will exit!\n\n", args->minInd, pars->nInd);
-
-			// TODO nice exit?
-			//  free(args->in_fn);
-			//  args->in_fn=NULL;
-			//  free(args);
-			//  paramStruct_destroy(pars);
-
 			exit(1);
 		}
 
@@ -347,6 +297,9 @@ int main(int argc, char **argv)
 			}
 		}
 
+/*
+[BEGIN] Read sites
+*/
 		/*
 		 * [START] Reading sites
 		 *
@@ -369,7 +322,6 @@ int main(int argc, char **argv)
 		 *
 		 */
 
-		// size_t last_pos = 0;
 		int last_ci = -1;
 		int last_bi = -1;
 		double *last_ptr = NULL;
@@ -431,7 +383,6 @@ int main(int argc, char **argv)
 			}
 
 			int ci = bcf->rid;
-			// fprintf(stderr,"\n\n\t-> Printing at site %d contig %d\n\n",pars->nSites,ci);
 
 			if (args->blockSize != 0)
 			{
@@ -474,13 +425,11 @@ int main(int argc, char **argv)
 			fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu) totSites:%d\n\n",pars->nSites,bcf->pos,bcf->pos+1,pars->totSites);
 #endif
 		}
+/*
+[END] Read sites
+*/
 		fprintf(stderr, "\n\t-> Finished reading sites\n");
-		// [END] Reading sites
-
 		// shuffle blocks in contigBlockStarts
-		//
-
-		///
 
 		pthread_t pairThreads[pars->n_ind_cmb];
 		threadStruct *PTHREADS[pars->n_ind_cmb];
@@ -607,25 +556,8 @@ int main(int argc, char **argv)
 					exit(1);
 				}
 
-				fprintf(out_sfs_fs->ff, "gle,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%ld,%e,%e,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
-						hdr->samples[pair->i1],
-						hdr->samples[pair->i2],
-						pair->snSites * pair->SFS[0], pair->snSites * pair->SFS[1], pair->snSites * pair->SFS[2],
-						pair->snSites * pair->SFS[3], pair->snSites * pair->SFS[4], pair->snSites * pair->SFS[5],
-						pair->snSites * pair->SFS[6], pair->snSites * pair->SFS[7], pair->snSites * pair->SFS[8],
-						pair->n_em_iter,
-						pair->snSites,
-						pair->d,
-						args->tole,
-						MATH::EST::Sij(pair->SFS),
-						MATH::EST::Fij(pair->SFS),
-						SQUARE(MATH::EST::Fij(pair->SFS)),
-						MATH::EST::IBS0(pair->SFS),
-						MATH::EST::IBS1(pair->SFS),
-						MATH::EST::IBS2(pair->SFS),
-						MATH::EST::R0(pair->SFS),
-						MATH::EST::R1(pair->SFS),
-						MATH::EST::Kin(pair->SFS));
+
+				IO::print::Sfs("gle", out_sfs_fs, pair, args, hdr->samples[pair->i1], hdr->samples[pair->i2]);
 			}
 
 			// TODO maybe join this loop
@@ -656,7 +588,6 @@ int main(int argc, char **argv)
 
 					if (args->doDist == 0)
 					{
-						// M_PWD_GT[pidx]=(double) MATH::EST::Sij(SFS_GT3[pidx], snSites);
 						exit(1);
 					}
 					else if (args->doDist == 1)
@@ -666,51 +597,13 @@ int main(int argc, char **argv)
 					else if (args->doDist == 2)
 					{
 						exit(1);
-						// M_PWD_GT[pidx]=MATH::EST::Fij(SFS_GT3[pidx], snSites);
 					}
 					else
 					{
 						exit(1);
 					}
 
-#if 1
-					fprintf(out_sfs_fs->ff, "gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%s,%f,%f",
-							hdr->samples[i1],
-							hdr->samples[i2],
-							SFS_GT3[pidx][0], SFS_GT3[pidx][1], SFS_GT3[pidx][2],
-							SFS_GT3[pidx][3], SFS_GT3[pidx][4], SFS_GT3[pidx][5],
-							SFS_GT3[pidx][6], SFS_GT3[pidx][7], SFS_GT3[pidx][8],
-							"gt",
-							snSites,
-							"gt",
-							"gt",
-							MATH::EST::Sij(SFS_GT3[pidx], snSites),
-							SQUARE(MATH::EST::Sij(SFS_GT3[pidx], snSites)));
-
-#endif
-
-#if 1
-					fprintf(out_sfs_fs->ff, "gt,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%d,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
-							hdr->samples[i1],
-							hdr->samples[i2],
-							SFS_GT3[pidx][0], SFS_GT3[pidx][1], SFS_GT3[pidx][2],
-							SFS_GT3[pidx][3], SFS_GT3[pidx][4], SFS_GT3[pidx][5],
-							SFS_GT3[pidx][6], SFS_GT3[pidx][7], SFS_GT3[pidx][8],
-							"gt",
-							snSites,
-							"gt",
-							"gt",
-							MATH::EST::Sij(SFS_GT3[pidx], snSites),
-							MATH::EST::Fij(SFS_GT3[pidx], snSites),
-							SQUARE(MATH::EST::Fij(SFS_GT3[pidx], snSites)),
-							MATH::EST::IBS0(SFS_GT3[pidx], snSites),
-							MATH::EST::IBS1(SFS_GT3[pidx], snSites),
-							MATH::EST::IBS2(SFS_GT3[pidx], snSites),
-							MATH::EST::R0(SFS_GT3[pidx], snSites),
-							MATH::EST::R1(SFS_GT3[pidx], snSites),
-							MATH::EST::Kin(SFS_GT3[pidx], snSites));
-
-#endif
+					IO::print::Sfs("gt",out_sfs_fs, args, SFS_GT3[pidx], snSites, hdr->samples[i1], hdr->samples[i2]);
 				}
 			}
 		}
@@ -719,12 +612,11 @@ int main(int argc, char **argv)
 		{
 			if (args->doAMOVA == -1 || args->doAMOVA == 1 || args->doAMOVA == 3)
 			{
-				print_M_PWD("gl", out_dm_fs, pars->n_ind_cmb, M_PWD_GL);
+				IO::print::M_PWD("gl", out_dm_fs, pars->n_ind_cmb, M_PWD_GL);
 			}
 			else if (args->doAMOVA == 2 || args->doAMOVA == 3)
 			{
-
-				print_M_PWD("gt", out_dm_fs, pars->n_ind_cmb, M_PWD_GT);
+				IO::print::M_PWD("gt", out_dm_fs, pars->n_ind_cmb, M_PWD_GT);
 			}
 		}
 
@@ -757,6 +649,7 @@ int main(int argc, char **argv)
 
 		// TODO output is not sorted when threads are used
 		// and ind indexes are written instead of ind ids
+		//TODO thread safety
 		fflush(out_sfs_fs->ff);
 
 		bcf_hdr_destroy(hdr);

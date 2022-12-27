@@ -20,6 +20,7 @@
 
 #include <math.h>
 
+
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
@@ -40,7 +41,6 @@
  * Macro:[AT]
  * Injects the file and line info as string
  */
-
 #define STRINGIFY(x) #x
 #define ASSTR(x) STRINGIFY(x)
 #define AT __FILE__ ":" ASSTR(__LINE__)
@@ -61,6 +61,166 @@ extern const int get_3x3_idx[3][3];
 const double NEG_INF = -std::numeric_limits<double>::infinity();
 
 using size_t = decltype(sizeof(int));
+
+/*
+ * @typedef
+ * @abstract argStruct - argument structure
+ *
+ * @field *in_fn		pointer to input file name
+ * @field *in_mtd_fn	pointer to input metadata file name
+ * @field *out_fp		pointer to output file prefix [angsdput]
+ * @field seed			random seed
+ *
+ * @field isSim			input is vcfgl simulation output
+ * 							anc=ref and der=alt[0]
+ * 
+ * @field isTest		[DEV] run for testing purposes
+ *
+ * @field minInd		[-1 = not set]
+ * 						minimum number of individuals needed
+ * 						for site to be included in analyses
+ *
+ * 						if minInd not set; set minInd=2
+ * 						== no filter, include all sites that exist in pair
+ *
+ * 						if minInd==nInd; set minInd=0
+ * 						== site should be nonmissing for all individuals
+ * 						to be included
+ *
+ * @field blockSize		[0 = not set]
+ *						Block size to be used in block bootstrapping
+ *
+ *
+ *
+ * @field whichCol		[-1] defines the index (1-based) of the
+ * 						column in metadata file 'in_mtd_fn'
+ * 						to use to define stratification levels
+ *
+ * @field doAMOVA		[0]
+ * 						1 use 10 genotype likelihoods (GL)
+ * 						2 use genotypes (GT) (NOTE: Only for benchmark purposes)
+ *
+ * @field doDist		[0] use Sij similarity index
+ * 						[1] use Dij (1-Sij) dissimilarity index
+ * 						[2] use Fij F statistic [DEPRECATED]
+ *
+ * @field sqDist		[0] use absolute value of distance measure (|dist_ij|)
+ * 						[1] use squared distance measure (dist_ij^2)
+ *
+ * @field doInd			do ind pairs
+ * @field ind1			ind1 id
+ * @field ind2			ind2 id
+ *
+ *
+ * @field doTest		test for convergence
+ *
+ *
+ * @field mThreads		maximum number of threads defined by user
+ * @field mEmIter		maximum number of iterations allowed for em
+ *
+ */
+typedef struct
+{
+
+	char *in_fn;
+	char *in_sfs_fn;
+	char *in_mtd_fn;
+	char *out_fp;
+
+	int whichCol;
+	int blockSize;
+	int doAMOVA;
+	int printMatrix;
+	int isSim;
+	int isTest;
+	int doDist;
+	int sqDist;
+	int minInd;
+
+	int seed;
+
+	double tole;
+
+	int doInd;
+	int ind1;
+	int ind2;
+
+	int doTest;
+
+	int mThreads;
+	int mEmIter;
+
+	int gl2gt;
+
+} argStruct;
+
+argStruct *argStruct_init();
+argStruct *argStruct_get(int argc, char **argv);
+// void *argStruct_destroy(argStruct *arg);
+
+
+
+
+/*
+ * @typedef
+ * @abstract paramStruct - parameter structure
+ *
+ * @field nSites				number of sites
+ * @field nInd					number of individuals
+ * @field pos					position
+ *
+ * @field LUT_indPair_idx		lookup table for mapping two individuals
+ * 								to their pair index
+ * @field n_ind_cmb				number of unique pairwise individual combinations
+ *
+ * @field major					major allele
+ * @field minor					minor allele
+ * @field ref					reference allele
+ * @field anc					ancestral allele
+ * @field der					derived allele
+ */
+typedef struct
+{
+
+	size_t nSites;
+	size_t totSites;
+
+	int nInd;
+
+	int *pos;
+
+	int **LUT_indPair_idx;
+	int n_ind_cmb;
+
+	char *major;
+	char *minor;
+	char *ref;
+	char *anc;
+	char *der;
+
+	char *DATETIME;
+
+	void print(){
+		//print lookup table
+		for(int i1=0;i1<nInd-1;i1++){
+			for(int i2=i1+1;i2<nInd;i2++){
+				fprintf(stderr,"\n%i %i %i\n",LUT_indPair_idx[i1][i2],i1,i2);
+			}
+		}
+	}
+
+
+} paramStruct;
+
+paramStruct *paramStruct_init(argStruct *args);
+void paramStruct_destroy(paramStruct *p);
+
+
+
+char *get_time();
+
+void usage(FILE *fp);
+
 
 namespace DATA
 {
@@ -282,99 +442,6 @@ namespace DATA
 	} metadataStruct;
 
 };
-/*
- * @typedef
- * @abstract argStruct - argument structure
- *
- * @field *in_fn		pointer to input file name
- * @field *in_mtd_fn	pointer to input metadata file name
- * @field *out_fp		pointer to output file prefix [angsdput]
- * @field seed			random seed
- *
- * @field isSim			input is vcfgl simulation output
- * 							anc=ref and der=alt[0]
- *
- * @field minInd		[-1 = not set]
- * 						minimum number of individuals needed
- * 						for site to be included in analyses
- *
- * 						if minInd not set; set minInd=2
- * 						== no filter, include all sites that exist in pair
- *
- * 						if minInd==nInd; set minInd=0
- * 						== site should be nonmissing for all individuals
- * 						to be included
- *
- * @field blockSize		[0 = not set]
- *						Block size to be used in block bootstrapping
- *
- *
- *
- * @field whichCol		[-1] defines the index (1-based) of the
- * 						column in metadata file 'in_mtd_fn'
- * 						to use to define stratification levels
- *
- * @field doAMOVA		[0]
- * 						1 use 10 genotype likelihoods (GL)
- * 						2 use genotypes (GT) (NOTE: Only for benchmark purposes)
- *
- * @field doDist		[0] use Sij similarity index
- * 						[1] use Dij (1-Sij) dissimilarity index
- * 						[2] use Fij F statistic [DEPRECATED]
- *
- * @field sqDist		[0] use absolute value of distance measure (|dist_ij|)
- * 						[1] use squared distance measure (dist_ij^2)
- *
- * @field doInd			do ind pairs
- * @field ind1			ind1 id
- * @field ind2			ind2 id
- *
- *
- * @field doTest		test for convergence
- *
- *
- * @field mThreads		maximum number of threads defined by user
- * @field mEmIter		maximum number of iterations allowed for em
- *
- */
-
-typedef struct
-{
-
-	char *in_fn;
-	char *in_sfs_fn;
-	char *in_mtd_fn;
-	char *out_fp;
-
-	int whichCol;
-	int blockSize;
-	int doAMOVA;
-	int printMatrix;
-	int isSim;
-	int doDist;
-	int sqDist;
-	int minInd;
-
-	int seed;
-
-	double tole;
-
-	int doInd;
-	int ind1;
-	int ind2;
-
-	int doTest;
-
-	int mThreads;
-	int mEmIter;
-
-	int gl2gt;
-
-} argStruct;
-
-argStruct *argStruct_init();
-
-argStruct *argStruct_get(int argc, char **argv);
 
 namespace IO
 {
@@ -467,8 +534,23 @@ namespace IO
 		// IO::print::Array
 		// :overload: int array
 		void Array(FILE *fp, int *arr, size_t N, size_t M, char sep);
-	}
 
+
+
+		/// @brief print sfs output amovaput.sfs.csv
+		/// @param TYPE type of analysis
+		/// @param out_sfs_fs pointer to output file
+		/// @param pair pair of samples
+		/// @param pars parameters struct
+		/// @param args arguments struct
+		/// @param sample1 name of sample 1
+		/// @param sample2 name of sample 2
+		void Sfs(const char* TYPE, IO::outputStruct *out_sfs_fs, DATA::pairStruct *pair, argStruct *args,const char* sample1, const char* sample2);
+
+		void Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, argStruct *args, int *SFS_GT3, int snSites, const char* sample1, const char* sample2);
+
+		void M_PWD(const char *TYPE, IO::outputStruct *out_dm_fs, int n_ind_cmb, double *M_PWD);
+	}
 }
 
 typedef struct threadStruct
@@ -500,65 +582,6 @@ typedef struct threadStruct
 	}
 
 } threadStruct;
-
-/*
- * @typedef
- * @abstract paramStruct - parameter structure
- *
- * @field nSites				number of sites
- * @field nInd					number of individuals
- * @field pos					position
- *
- * @field LUT_indPair_idx		lookup table for mapping two individuals
- * 								to their pair index
- * @field n_ind_cmb				number of unique pairwise individual combinations
- *
- * @field major					major allele
- * @field minor					minor allele
- * @field ref					reference allele
- * @field anc					ancestral allele
- * @field der					derived allele
- */
-
-typedef struct
-{
-
-	size_t nSites;
-	size_t totSites;
-
-	int nInd;
-
-	int *pos;
-
-	int **LUT_indPair_idx;
-	int n_ind_cmb;
-
-	char *major;
-	char *minor;
-	char *ref;
-	char *anc;
-	char *der;
-
-	char *DATETIME;
-
-	void print(){
-		//print lookup table
-		for(int i1=0;i1<nInd-1;i1++){
-			for(int i2=i1+1;i2<nInd;i2++){
-				fprintf(stderr,"\n%i %i %i\n",LUT_indPair_idx[i1][i2],i1,i2);
-			}
-		}
-	}
-
-
-} paramStruct;
-
-paramStruct *paramStruct_init(argStruct *args);
-void paramStruct_destroy(paramStruct *p);
-
-char *get_time();
-// void *argStruct_destroy(argStruct *arg);
-
-void usage(FILE *fp);
+void print_SFS_GT(const char *TYPE, IO::outputStruct *out_sfs_fs, paramStruct *pars, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
 
 #endif

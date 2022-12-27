@@ -7,6 +7,10 @@
 
 
 
+/// @brief nCk n choose k
+/// @param n n
+/// @param k k
+/// @return n choose k result
 int nCk(int n, int k){
 	int res = 1;
 	if (k > n-k){
@@ -19,6 +23,11 @@ int nCk(int n, int k){
 	return res;
 }
 
+/// @brief  get index of pair
+/// @param nInd number of individuals
+/// @param i1 index of individual 1
+/// @param i2 index of individual 2
+/// @return index of pair
 int nCk_idx(int nInd, int i1, int i2){
 	if(i2>i1){
 		return (nCk(nInd,2) - nCk((nInd-i1),2))+(i2-i1)-1;
@@ -27,6 +36,9 @@ int nCk_idx(int nInd, int i1, int i2){
 	}
 }
 
+/// @brief prepare LUT for pair indices
+/// @param nInd number of individuals
+/// @param LUT_indPair_idx lookup table for pair indices
 void prepare_LUT_indPair_idx(int nInd, int **LUT_indPair_idx){
 	for(int i1=0;i1<nInd-1;i1++){
 		for(int i2=i1+1;i2<nInd;i2++){

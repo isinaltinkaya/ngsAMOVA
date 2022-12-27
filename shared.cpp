@@ -8,6 +8,7 @@
  */
 
 #include "shared.h"
+#include "math_utils.h"
 #include <stdlib.h>
 
 using size_t = decltype(sizeof(int));
@@ -29,6 +30,9 @@ extern const int get_3x3_idx[3][3] = {
 	{3, 4, 5},
 	{6, 7, 8}};
 
+
+/// @brief get current time
+/// @return time as char*
 char *get_time()
 {
 	time_t current_time;
@@ -38,6 +42,10 @@ char *get_time()
 	return (asctime(local_time));
 }
 
+/// @brief get file handle fp
+/// @param fname file name
+/// @param mode file open mode
+/// @return file *fp
 FILE *IO::getFILE(const char *fname, const char *mode)
 {
 	if (strcmp(mode, "r") == 0)
@@ -53,6 +61,10 @@ FILE *IO::getFILE(const char *fname, const char *mode)
 	return fp;
 }
 
+/// @brief set file name from prefix and suffix
+/// @param a prefix
+/// @param b suffix
+/// @return filename ie combination of prefix and suffix
 char *IO::setFileName(const char *a, const char *b)
 {
 	char *c = (char *)malloc(strlen(a) + strlen(b) + 1);
@@ -62,6 +74,9 @@ char *IO::setFileName(const char *a, const char *b)
 	return c;
 }
 
+/// @brief open file for writing
+/// @param c name of file
+/// @return  file *fp
 FILE *IO::openFILE(char *c)
 {
 	fprintf(stderr, "\t-> Opening output file for writing: %s\n", c);
@@ -69,6 +84,11 @@ FILE *IO::openFILE(char *c)
 	return fp;
 }
 
+
+/// @brief open file for writing using given prefix and suffix
+/// @param a prefix
+/// @param b suffix
+/// @return file *fp
 FILE *IO::openFILE(const char *a, const char *b)
 {
 	char *c = (char *)malloc(strlen(a) + strlen(b) + 1);
@@ -80,6 +100,10 @@ FILE *IO::openFILE(const char *a, const char *b)
 	return fp;
 }
 
+/// @brief count_nColumns count number of columns in a line
+/// @param line pointer to line char
+/// @param delims delimiters
+/// @return integer number of columns
 int IO::inspectFILE::count_nColumns(char *line, const char *delims)
 {
 
@@ -100,6 +124,11 @@ int IO::inspectFILE::count_nColumns(char *line, const char *delims)
 	return i;
 }
 
+/// @brief read SFS file
+/// @param in_sfs_ff input sfs file ff
+/// @param delims delimiters
+/// @param SAMPLES samplesStruct samples
+/// @return ???
 int IO::readFILE::SFS(FILE *in_sfs_ff, const char *delims, DATA::samplesStruct *SAMPLES)
 {
 
@@ -132,6 +161,13 @@ int IO::readFILE::SFS(FILE *in_sfs_ff, const char *delims, DATA::samplesStruct *
 	return 0;
 }
 
+/// @brief read metadata file
+/// @param MTD metadataStruct metadata
+/// @param in_mtd_ff input metadata file ff
+/// @param whichCol which column to use
+/// @param delims delimiters
+/// @param SAMPLES samplesStruct samples
+/// @return ???
 int IO::readFILE::METADATA(DATA::metadataStruct *MTD, FILE *in_mtd_ff, int whichCol, const char *delims, DATA::samplesStruct *SAMPLES)
 {
 
@@ -176,7 +212,7 @@ int IO::readFILE::METADATA(DATA::metadataStruct *MTD, FILE *in_mtd_ff, int which
 		// increase the size of Strata
 		if (MTD->nStrata > (int)MTD->_strataArr)
 		{
-			fprintf(stderr, "->->->increase the size of Strata S[]!! Found %d MTD->nStrata and %d MTD->_strataArr\n", (int)MTD->nStrata, (int) MTD->_strataArr);
+			fprintf(stderr, "->->->increase the size of Strata S[]!! Found %d MTD->nStrata and %d MTD->_strataArr\n", (int)MTD->nStrata, (int)MTD->_strataArr);
 		}
 
 		// if not the first loop
@@ -233,18 +269,14 @@ int IO::readFILE::METADATA(DATA::metadataStruct *MTD, FILE *in_mtd_ff, int which
 	return 0;
 }
 
-/* IO::print::Array
- * Prints the elements of an array to a file or stream.
- *
- * @param arr: the array to print
- * @param N: the number of rows, dimension 1
- * @param M: the number of columns, dimension 2
- * @param out: the file or stream to print to
- * @param sep: the character to use as a separator
- *
- * @example
- * IO::print::Array(stdout, myArray, DOUBLE, 3, 3, ',');
- */
+// IO::print::Array
+/// @brief Print elements of an array to a file (or stream)
+/// @param fp file to print to
+/// @param arr the array to print
+/// @param N the number of rows, dimension 1
+/// @param M the number of columns, dimension 2
+/// @param sep the character to use as a separator
+/// @example IO::print::Array(stdout, myArray, DOUBLE, 3, 3, ',');
 void IO::print::Array(FILE *fp, double *arr, size_t N, size_t M, char sep)
 {
 
@@ -301,16 +333,24 @@ void IO::print::Array(FILE *fp, int *arr, size_t N, size_t M, char sep)
 	}
 }
 
+
+
 // Check if file exists
 // @param in_fn	input filename
 // @return		1 if file exists; 0 otherwise
-// credit: angsd/aio.cpp
+
+/// @brief file_exists - check if file exists
+/// @param in_fn input filename
+/// @return 1 if file exists; 0 otherwise
+/// @credit angsd/aio.cpp
 int file_exists(const char *in_fn)
 {
 	struct stat buffer;
 	return (stat(in_fn, &buffer) == 0);
 }
 
+/// @brief usage - print usage
+/// @param fp pointer to the file to print to
 void usage(FILE *fp)
 {
 	// fprintf(stderr,"");
@@ -358,11 +398,27 @@ void usage(FILE *fp)
 			"\t-gl2gt\n"
 			"\n");
 
+	// fprintf(fp, "\n");
+	// fprintf(fp, "Usage: ngsAMOVA [options] -in <vcf file> -out <output file>\n");
+	// fprintf(fp, "\n");
+	// fprintf(fp, "Options:\n");
+	// fprintf(fp, "  -in <vcf file>		: input vcf file\n");
+	// fprintf(fp, "  -out <output file>		: output file\n");
+	// fprintf(fp, "  -doAMOVA <0/1>		: do AMOVA (default: 1)\n");
+	// fprintf(fp, "  -doTest <0/1>		: do EM test (default: 1)\n");
+	// fprintf(fp, "  -printMatrix <0/1>		: print distance matrix (default: 0)\n");
+	// fprintf(fp, "  -printSFS <0/1>		: print SFS (default: 0)\n");
+
+
 	//
 	//
 	// exit(0);
 }
 
+
+
+/// @brief argStruct_init - initialize the argStruct structure
+/// @return pointer to the argStruct structure
 argStruct *argStruct_init()
 {
 
@@ -392,6 +448,7 @@ argStruct *argStruct_init()
 	args->sqDist = 1;
 
 	args->isSim = 0;
+	args->isTest = 0;
 	args->minInd = -1;
 
 	args->printMatrix = 0;
@@ -415,6 +472,11 @@ argStruct *argStruct_init()
 // }
 //
 
+
+/// @brief argStruct_get read command line arguments
+/// @param argc 
+/// @param argv 
+/// @return pointer to argStruct
 argStruct *argStruct_get(int argc, char **argv)
 {
 
@@ -458,6 +520,8 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->tole = atof(val);
 		else if (strcasecmp("-isSim", arv) == 0)
 			args->isSim = atoi(val);
+		else if (strcasecmp("-isTest", arv) == 0)
+			args->isTest = atoi(val);
 		else if (strcasecmp("-printMatrix", arv) == 0)
 			args->printMatrix = atoi(val);
 		else if (strcasecmp("-doDist", arv) == 0)
@@ -529,12 +593,10 @@ argStruct *argStruct_get(int argc, char **argv)
 		return 0;
 	}
 
-	// if (args->isSim == 0)
-	// {
-	// 	fprintf(stderr, "Must use -isSim 1 for now\n");
-	// 	free(args);
-	// 	return 0;
-	// }
+	if (args->isTest == 1)
+	{
+		fprintf(stderr,"Test mode ON\n");
+	}
 
 	if (args->out_fp == NULL)
 	{
@@ -598,6 +660,7 @@ argStruct *argStruct_get(int argc, char **argv)
 	else if (args->doDist == 2)
 	{
 		fprintf(stderr, "\n\t-> -doDist is set to 2, will use Fij as distance measure.\n");
+		exit(1);
 	}
 	else
 	{
@@ -612,6 +675,7 @@ argStruct *argStruct_get(int argc, char **argv)
 	}
 	else
 	{
+		exit(1);
 		fprintf(stderr, "\n\t-> -sqDist is set to 0, will use absolute value of distance measure (|dist_ij|).\n");
 	}
 
@@ -664,6 +728,10 @@ argStruct *argStruct_get(int argc, char **argv)
 	return args;
 }
 
+
+/// @brief paramStruct_init initialize the paramStruct
+/// @param args arguments argStruct
+/// @return pointer to paramStruct
 paramStruct *paramStruct_init(argStruct *args)
 {
 
@@ -695,6 +763,8 @@ paramStruct *paramStruct_init(argStruct *args)
 	return pars;
 }
 
+/// @brief paramStruct_destroy free memory of paramStruct
+/// @param pars pointer to paramStruct
 void paramStruct_destroy(paramStruct *pars)
 {
 
@@ -725,4 +795,80 @@ void paramStruct_destroy(paramStruct *pars)
 	free(pars->LUT_indPair_idx);
 
 	delete pars;
+}
+
+
+
+/// @brief print_M_PWD print matrix of pairwise distances
+/// @param TYPE type of analysis
+/// @param out_dm_fs output file
+/// @param n_ind_cmb number of individual combinations
+/// @param M_PWD matrix of pairwise distances
+void IO::print::M_PWD(const char *TYPE, IO::outputStruct *out_dm_fs, int n_ind_cmb, double *M_PWD)
+{
+
+	fprintf(out_dm_fs->ff, "%s,", TYPE);
+	for (int px = 0; px < n_ind_cmb; px++)
+	{
+		fprintf(out_dm_fs->ff, "%f", M_PWD[px]);
+		if (px != n_ind_cmb - 1)
+		{
+			fprintf(out_dm_fs->ff, ",");
+		}
+		else
+		{
+			fprintf(out_dm_fs->ff, "\n");
+		}
+	}
+}
+
+
+
+/// @param sample1 name of sample 1
+/// @param sample2 name of sample 2
+void IO::print::Sfs(const char* TYPE, IO::outputStruct *out_sfs_fs, DATA::pairStruct *pair, argStruct *args,const char* sample1, const char* sample2)
+{
+		fprintf(out_sfs_fs->ff, "%s,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f",
+				TYPE,
+				sample1,
+				sample2,
+				pair->snSites * pair->SFS[0], pair->snSites * pair->SFS[1], pair->snSites * pair->SFS[2],
+				pair->snSites * pair->SFS[3], pair->snSites * pair->SFS[4], pair->snSites * pair->SFS[5],
+				pair->snSites * pair->SFS[6], pair->snSites * pair->SFS[7], pair->snSites * pair->SFS[8]);
+
+		fprintf(out_sfs_fs->ff, ",%d,%ld,%e,%e", pair->n_em_iter, pair->snSites, pair->d, args->tole);
+
+		if(args->doDist == 1 && args->sqDist == 1){
+				fprintf(out_sfs_fs->ff, ",%f", SQUARE((double) (1.0 - (double) MATH::EST::Sij(pair->SFS) )));
+		}else{
+			exit(1);
+		}
+		fprintf(out_sfs_fs->ff,"\n");
+
+}
+
+
+/// @brief print_SFS_GT print SFS_GT3
+/// @param TYPE type of analysis
+/// @param out_sfs_fs output file
+/// @param args pointer to argStruct
+/// @param SFS_GT3 matrix of 3 GT SFS for pair (int **SFS_GT3[pidx])
+/// @param snSites (shared) number of sites
+void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, argStruct *args, int *SFS_GT3, int snSites, const char* sample1, const char* sample2)
+{
+
+	fprintf(out_sfs_fs->ff, "%s,%s,%s,", TYPE, sample1, sample2);
+	fprintf(out_sfs_fs->ff, "%d,%d,%d,%d,%d,%d,%d,%d,%d",
+			SFS_GT3[0], SFS_GT3[1], SFS_GT3[2],
+			SFS_GT3[3], SFS_GT3[4], SFS_GT3[5],
+			SFS_GT3[6], SFS_GT3[7], SFS_GT3[8]);
+	
+	fprintf(out_sfs_fs->ff, ",%s,%ld,%s,%s", TYPE, snSites, TYPE, TYPE);
+
+	if(args->doDist == 1 && args->sqDist == 1){
+			fprintf(out_sfs_fs->ff, ",%f", SQUARE((double) (1.0 - (double) MATH::EST::Sij(SFS_GT3, snSites) )));
+	}else{
+		exit(1);
+	}
+	fprintf(out_sfs_fs->ff, "\n");
 }
