@@ -660,6 +660,7 @@ int main(int argc, char **argv)
 		// and ind indexes are written instead of ind ids
 		//TODO thread safety
 		fflush(out_sfs_fs->ff);
+		fflush(out_amova_fs->ff);
 
 		bcf_hdr_destroy(hdr);
 		bcf_destroy(bcf);

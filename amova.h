@@ -10,6 +10,14 @@ int doAMOVA(double* M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, D
 namespace AMOVA {
 
     typedef struct amovaResultStruct{
+        // initialize to lowest possible values, 1 level case
+        // int* df = NULL;
+        // double* ssd = NULL;
+        // double* msd = NULL;
+        // double* coef_n = NULL;
+        // double* sigmasq = NULL;
+        // double* phi = NULL;
+
         int* df;
         double* ssd;
         double* msd;
@@ -17,23 +25,23 @@ namespace AMOVA {
         double* sigmasq;
         double* phi;
 
-        int nLevels;
-        size_t _df;
-        size_t _ssd;
-        size_t _msd;
-        size_t _coef_n;
-        size_t _sigmasq;
-        size_t _phi;
+
+        int nLevels=1;
+        // size_t _df;
+        // size_t _ssd;
+        // size_t _msd;
+        // size_t _coef_n;
+        // size_t _sigmasq;
+        // size_t _phi;
+
+        size_t _df = 3;
+        size_t _ssd = 3;
+        size_t _msd = 3;
+        size_t _coef_n = 1;
+        size_t _sigmasq = 2;
+        size_t _phi = 1;
 
         amovaResultStruct(int nLevels_){
-
-            // initialize array sizes to lowest possible values, 1 level case
-            _df = 3;
-            _ssd = 3;
-            _msd = 3;
-            _coef_n = 1;
-            _sigmasq = 2;
-            _phi = 1;
 
             nLevels = nLevels_;
             df = (int*) malloc( _df * sizeof(int));
@@ -42,6 +50,13 @@ namespace AMOVA {
             coef_n = (double*) malloc( _coef_n * sizeof(double));
             sigmasq = (double*) malloc( _sigmasq * sizeof(double));
             phi = (double*) malloc( _phi * sizeof(double));
+
+            for (size_t i=0; i<_df; i++) df[i] = 0;
+            for (size_t i=0; i<_ssd; i++) ssd[i] = 0;
+            for (size_t i=0; i<_msd; i++) msd[i] = 0;
+            for (size_t i=0; i<_coef_n; i++) coef_n[i] = 0;
+            for (size_t i=0; i<_sigmasq; i++) sigmasq[i] = 0;
+            for (size_t i=0; i<_phi; i++) phi[i] = 0;
 
         }
 

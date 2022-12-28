@@ -148,7 +148,7 @@ int AMOVA::doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct 
 	// print results as amova table
 	// amv->print_as_table(stderr);
 
-	// amv->print_as_csv(out_amova_ff, analysis_type);
+	amv->print_as_csv(out_amova_ff, analysis_type);
 
 
 	delete amv;
