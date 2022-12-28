@@ -34,3 +34,5 @@ wd/*
 
 .RData
 .Rhistory
+
+*vgcore*
