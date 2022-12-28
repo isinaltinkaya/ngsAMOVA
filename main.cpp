@@ -444,13 +444,15 @@ int main(int argc, char **argv)
 			}
 		}
 
-		if (args->doAMOVA != -1)
-			fprintf(out_sfs_fs->ff, "Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Sij,Fij,Fij2,IBS0,IBS1,IBS2,R0,R1,Kin\n");
 
 		int nJobs_sent = 0;
 
 		if (args->doAMOVA == -1 || args->doAMOVA == 1 || args->doAMOVA == 3)
 		{
+
+
+			fprintf(out_sfs_fs->ff, "Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Dij,Dij2\n");
+
 
 			for (int i1 = 0; i1 < pars->nInd - 1; i1++)
 			{

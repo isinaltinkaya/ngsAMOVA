@@ -828,6 +828,8 @@ void IO::print::M_PWD(const char *TYPE, IO::outputStruct *out_dm_fs, int n_ind_c
 /// @param sample2 name of sample 2
 void IO::print::Sfs(const char* TYPE, IO::outputStruct *out_sfs_fs, DATA::pairStruct *pair, argStruct *args,const char* sample1, const char* sample2)
 {
+
+
 		fprintf(out_sfs_fs->ff, "%s,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f",
 				TYPE,
 				sample1,
@@ -839,7 +841,7 @@ void IO::print::Sfs(const char* TYPE, IO::outputStruct *out_sfs_fs, DATA::pairSt
 		fprintf(out_sfs_fs->ff, ",%d,%ld,%e,%e", pair->n_em_iter, pair->snSites, pair->d, args->tole);
 
 		if(args->doDist == 1 && args->sqDist == 1){
-				fprintf(out_sfs_fs->ff, ",%f", SQUARE((double) (1.0 - (double) MATH::EST::Sij(pair->SFS) )));
+			fprintf(out_sfs_fs->ff, ",%f,%f", (double) (1.0 - (double) MATH::EST::Sij(pair->SFS) ), SQUARE((double) (1.0 - (double) MATH::EST::Sij(pair->SFS) )));
 		}else{
 			exit(1);
 		}
