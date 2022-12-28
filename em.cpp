@@ -23,7 +23,6 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 
 	double **lngls=THREAD->lngls;
 	DATA::pairStruct* pair=THREAD->pair;
-	FILE* out_sfs_ff=THREAD->out_sfs_ff;
 	double tole=THREAD->tole;
 	int mEmIter=THREAD->mEmIter;
 

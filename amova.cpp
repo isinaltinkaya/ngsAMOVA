@@ -1,6 +1,5 @@
 #include "amova.h"
 
-
 double get_SSD_total(double *M_PWD, int n_ind_cmb, int nInd)
 {
 
@@ -29,16 +28,19 @@ double get_SSD_level(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruc
 	// group pairs by strata
 	for (int sti = 0; sti < MTD->nStrata; sti++)
 	{
+		sum = 0.0;
 		for (int i1 = 0; i1 < nInd - 1; i1++)
 		{
 			for (int i2 = i1 + 1; i2 < nInd; i2++)
 			{
 
+				//TODO do it (get associations) once, store in struct->LUT
+				//TODO add print to struct as func
 				// check if pair belongs to strata
 				if ((SAMPLES->sampleArr[i1] & (1 << sti)) && (SAMPLES->sampleArr[i2] & (1 << sti)))
 				{
 
-#if 1
+#if 0
 					fprintf(stderr, "\n-> Pair %i,idx:(%i,%i)) belongs to strata (%s,idx:%i)\n",
 							LUT_indPair_idx[i1][i2],
 							i1,
@@ -58,35 +60,31 @@ double get_SSD_level(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruc
 	return ssd_WG;
 }
 
-int doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int sqDist, int **LUT_indPair_idx, const char *analysis_type)
+int AMOVA::doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int sqDist, int **LUT_indPair_idx, const char *analysis_type)
 {
+
+	int nLevels = 1;
+	amovaResultStruct *amv = new amovaResultStruct(nLevels);
+	
 
 	double ssd_TOTAL = 0.0;
 	double msd_TOTAL = 0.0;
-	double sum = 0.0;
+	// double sum = 0.0;
 	int df_TOTAL = 0;
-	double delta_sq = 0.0;
+	// double delta_sq = 0.0;
 
-	for (int px = 0; px < n_ind_cmb; px++)
-	{
-		if (sqDist == 1)
-		{
-			delta_sq = SQUARE(M_PWD[px]);
-		}
-		else if (sqDist == 0)
-		{
-			delta_sq = abs(M_PWD[px]);
-		}
-		else
-		{
-			return 1;
-		}
-		sum += delta_sq;
-	}
-	ssd_TOTAL = sum / (double)nInd;
+
+
+	// ssd=[0=AG,1=AIWG,2=TOTAL]
+
+	ssd_TOTAL = get_SSD_total(M_PWD, n_ind_cmb, nInd);
+	amv->ssd[2]=ssd_TOTAL;
 
 	df_TOTAL = nInd - 1;
+	amv->df[2]=df_TOTAL;
+
 	msd_TOTAL = ssd_TOTAL / df_TOTAL;
+	amv->msd[2] = msd_TOTAL;
 
 	double ssd_AG = 0.0;
 	double ssd_WG = 0.0;
@@ -94,6 +92,7 @@ int doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, D
 	int df_AG = 0;
 
 	df_AG = MTD->nStrata - 1;
+	amv->df[0] = df_AG;
 
 	double ssd_AIWG = 0.0;
 	double msd_AIWG = 0.0;
@@ -101,60 +100,25 @@ int doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, D
 	int df_AIWG = 0;
 
 	df_AIWG = nInd - MTD->nStrata;
+	amv->df[1] = df_AIWG;
 
-	double s = 0.0;
-	double d_sq = 0.0;
-	int px = 0;
-	// ssd_WG = get_SSD_level(M_PWD, n_ind_cmb, nInd, MTD, SAMPLES, out_amova_ff, sqDist, LUT_indPair_idx, analysis_type);
+	// double s = 0.0;
+	// double d_sq = 0.0;
+	// int px = 0;
+	ssd_WG = get_SSD_level(M_PWD, n_ind_cmb, nInd, MTD, SAMPLES, out_amova_ff, sqDist, LUT_indPair_idx, analysis_type);
 
-	for (int sti = 0; sti < MTD->nStrata; sti++)
-	{
-		s = 0.0;
-		for (int i1 = 0; i1 < nInd - 1; i1++)
-		{
-			for (int i2 = i1 + 1; i2 < nInd; i2++)
-			{
-
-				if ((SAMPLES->sampleArr[i1] & (1 << sti)) && (SAMPLES->sampleArr[i2] & (1 << sti)))
-				{
-
-#if 0
-					fprintf(stderr, "\n-> Pair %i,idx:(%i,%i)) belongs to strata (%s,idx:%i)\n",
-							LUT_indPair_idx[i1][i2],
-							i1,
-							i2,
-							MTD->strataArr[sti].id,
-							sti);
-#endif
-
-					px = LUT_indPair_idx[i1][i2];
-
-					if (sqDist == 1)
-					{
-						d_sq = SQUARE(M_PWD[px]);
-					}
-					else if (sqDist == 0)
-					{
-						d_sq = abs(M_PWD[px]);
-					}
-					else
-					{
-						return 1;
-					}
-					s += d_sq;
-				}
-			}
-		}
-
-		ssd_WG += s / (double)MTD->strataArr[sti].nInds;
-	}
 
 	// TODO only because we have one strata level. change this
 	ssd_AIWG = ssd_WG;
+	amv->ssd[1] = ssd_AIWG;
 	msd_AIWG = ssd_AIWG / (double)df_AIWG;
+	amv->msd[1] = msd_AIWG;
+
 
 	ssd_AG = ssd_TOTAL - ssd_WG;
+	amv->ssd[0] = ssd_AG;
 	msd_AG = ssd_AG / (double)df_AG;
+	amv->msd[0] = msd_AG;
 
 	// n variance coefficient
 	// n = [ N - \sum_{g \in G} ( N^2_{g}/N) ) ]  /   G - 1
@@ -176,72 +140,22 @@ int doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, D
 
 	phi_a = (double)sigmasq_a / (double)(sigmasq_a + sigmasq_b);
 
-	// TODO maybe increase print precision?
 
-	// fprintf(out_amova_ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
-	fprintf(out_amova_ff, "%s,%i,%f,%f,%i,%f,%f,%i,%f,%f,%f,%f,%f,%f\n", analysis_type, df_AG, ssd_AG, msd_AG, df_AIWG, ssd_AIWG, msd_AIWG, df_TOTAL, ssd_TOTAL, msd_TOTAL, coef_n, sigmasq_a, sigmasq_b, phi_a);
-#if 0
+	amv->phi[0] = phi_a;
+	amv->sigmasq[0] = sigmasq_a;
+	amv->sigmasq[1] = sigmasq_b;
 
-	fprintf(stderr,"\n");
-	fprintf(stderr,"\n");
-	fprintf(stderr,"\n");
-	fprintf(stderr,"==========================================  AMOVA  =========================================="); 
-	fprintf(stderr,"\n");
-	fprintf(stderr,"Source of variation\t\t\td.f.\tSSD\t\tMSD");
-	fprintf(stderr,"\n");
-	fprintf(stderr,"---------------------------------------------------------------------------------------------");
-	fprintf(stderr,"\n");
-	fprintf(stderr,"\n");
-	fprintf(stderr,"Among groups");
-	fprintf(stderr,"\t\t\t\t");
-	fprintf(stderr,"%d",df_AG);
-	fprintf(stderr,"\t");
-	fprintf(stderr,"%f",ssd_AG);
-	fprintf(stderr,"\t");
-	fprintf(stderr,"%f",msd_AG);
-	fprintf(stderr,"\n");
-	fprintf(stderr,"Among individuals within groups");
-	fprintf(stderr,"\t\t");
-	fprintf(stderr,"%d",df_AIWG);
-	fprintf(stderr,"\t");
-	fprintf(stderr,"%f",ssd_AIWG);
-	fprintf(stderr,"\t");
-	fprintf(stderr,"%f",msd_AIWG);
-	fprintf(stderr,"\n");
-	fprintf(stderr,"\n");
-	fprintf(stderr,"\n");
-	fprintf(stderr,"Total");
-	fprintf(stderr,"\t\t\t\t\t");
-	fprintf(stderr,"%d",df_TOTAL);
-	fprintf(stderr,"\t");
-	fprintf(stderr,"%f",ssd_TOTAL);
-	fprintf(stderr,"\t");
-	fprintf(stderr,"%f",msd_TOTAL);
-	fprintf(stderr,"\n");
-	fprintf(stderr,"\n");
-	fprintf(stderr,"\n");
-	fprintf(stderr,"\n");
-	fprintf(stderr,"Variance coefficients:");
-	fprintf(stderr,"\n");
-	fprintf(stderr,"a");
-	fprintf(stderr,"\t");
-	fprintf(stderr,"%f", sigmasq_a);
-	fprintf(stderr,"\n");
-	fprintf(stderr,"\n");
-	fprintf(stderr,"\n");
-	fprintf(stderr,"Phi-statistic:");
-	fprintf(stderr,"\n");
-	fprintf(stderr,"a");
-	fprintf(stderr,"\t");
-	fprintf(stderr,"%f",phi_a);
-	fprintf(stderr,"\n");
-	fprintf(stderr,"\n");
+	// print results as amova table
+	// amv->print_as_table(stderr);
 
-	fprintf(stderr,"============================================================================================="); 
-	fprintf(stderr,"\n");
-	fprintf(stderr,"\n");
-	fprintf(stderr,"\n");
-#endif
+	// amv->print_as_csv(out_amova_ff, analysis_type);
+
+
+	delete amv;
 
 	return 0;
+
+
+
 }
+

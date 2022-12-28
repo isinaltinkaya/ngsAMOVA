@@ -229,7 +229,7 @@ namespace DATA
 	{
 
 		// Number of contigs
-		int nContigs;
+		size_t nContigs;
 
 		// array of contig indices
 		int *contigIdx;
@@ -257,41 +257,53 @@ namespace DATA
 		// 	contigBlockStarts[ci] = (int *)realloc(contigBlockStarts[ci], nBlocks * sizeof(int));
 		// }
 
-		contigsStruct(const int n_contigs)
+		contigsStruct(const int nContigs_)
 		{
 
-			nContigs = n_contigs;
+			nContigs = (size_t) nContigs_;
 			contigNames = (char **)malloc(nContigs * sizeof(char *));
 			contigLengths = (int *)malloc(nContigs * sizeof(int));
 
-			contigBlockStarts = new int *[nContigs];
 
 			contigBlockStarts = (int **)malloc(nContigs * sizeof(int *));
-			// contigBlockStarts = (size_t **)malloc(nContigs * sizeof(size_t *));
-			// contigBlockStarts = (size_t *)malloc(nContigs * sizeof(size_t));
+
 			contigBlockStartPtrs = (double ***)malloc(nContigs * sizeof(double **));
 			contigNBlocks = (int *)malloc(nContigs * sizeof(int));
 
-			for (int ci = 0; ci < nContigs; ci++)
+			for (size_t i = 0; i < nContigs; i++)
 			{
-				contigBlockStarts[ci] = NULL;
+				contigNames[i] = NULL;
+				contigBlockStarts[i] = NULL;
+				contigBlockStartPtrs[i] = NULL;
 			}
 		}
 
 		~contigsStruct()
 		{
-			for (int i = 0; i < nContigs; i++)
+			for (size_t i = 0; i < nContigs; i++)
 			{
+
+				free(contigBlockStartPtrs[i]);
+				contigBlockStartPtrs[i] = NULL;
+
 				free(contigNames[i]);
 				contigNames[i] = NULL;
-			}
-			for (int i = 0; i < nContigs; i++)
-			{
+
 				free(contigBlockStarts[i]);
 				contigBlockStarts[i] = NULL;
 			}
 			free(contigBlockStarts);
 			contigBlockStarts = NULL;
+			free(contigNames);
+			contigNames = NULL;
+			free(contigLengths);
+			contigLengths = NULL;
+			free(contigNBlocks);
+			contigNBlocks = NULL;
+
+			free(contigBlockStartPtrs);
+			contigBlockStartPtrs = NULL;
+
 		}
 
 	} contigsStruct;

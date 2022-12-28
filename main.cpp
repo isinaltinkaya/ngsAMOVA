@@ -47,13 +47,13 @@ int main(int argc, char **argv)
 		IO::outFilesStruct *OUTS = NULL;
 		OUTS = new IO::outFilesStruct(args);
 
-		IO::outputStruct *out_emtest_fs = NULL;
+		// IO::outputStruct *out_emtest_fs = NULL;
 		IO::outputStruct *out_dm_fs = NULL;
 
-		if (args->doTest == 1)
-		{
-			out_emtest_fs = OUTS->out_emtest_fs;
-		}
+		// if (args->doTest == 1)
+		// {
+		// 	out_emtest_fs = OUTS->out_emtest_fs;
+		// }
 		if (args->printMatrix == 1)
 		{
 			out_dm_fs = OUTS->out_dm_fs;
@@ -94,8 +94,12 @@ int main(int argc, char **argv)
 
 		// TODO do this dynamically based on actually observed first and last pos of contigs
 
+
+		DATA::contigsStruct *CONTIGS = new DATA::contigsStruct(nContigs);
+
 		// create a pointer to a contigs struct and allocate memory
-		DATA::contigsStruct *CONTIGS = (DATA::contigsStruct *)malloc(sizeof(DATA::contigsStruct));
+		// DATA::contigsStruct *CONTIGS = (DATA::contigsStruct *)malloc(sizeof(DATA::contigsStruct));
+
 
 		if (args->blockSize != 0)
 		{
@@ -626,16 +630,19 @@ int main(int argc, char **argv)
 		{
 
 		case 1:
-			ASSERT(doAMOVA(M_PWD_GL, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gl") == 0);
+            fprintf(out_amova_fs->ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
+			ASSERT(AMOVA::doAMOVA(M_PWD_GL, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gl") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case 2:
-			ASSERT(doAMOVA(M_PWD_GT, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gt") == 0);
+            fprintf(out_amova_fs->ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
+			ASSERT(AMOVA::doAMOVA(M_PWD_GT, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gt") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case 3:
-			ASSERT(doAMOVA(M_PWD_GL, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gl") == 0);
-			ASSERT(doAMOVA(M_PWD_GT, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gt") == 0);
+            fprintf(out_amova_fs->ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
+			ASSERT(AMOVA::doAMOVA(M_PWD_GL, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gl") == 0);
+			ASSERT(AMOVA::doAMOVA(M_PWD_GT, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gt") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case -1:
@@ -669,6 +676,13 @@ int main(int argc, char **argv)
 			delete PAIRS[i];
 			delete PTHREADS[i];
 		}
+
+
+
+		delete SAMPLES;
+		delete MTD;
+		delete CONTIGS;
+
 
 		if (args->doAMOVA == 1 || args->doAMOVA == 3)
 		{

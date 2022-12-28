@@ -36,7 +36,7 @@ outfile<-paste0(args[1],"_testPegas.csv")
 
 cat(paste0("\nPrinting to file: ",outfile))
 cat("\n\n")
-pegas_res<- data.frame("pegas",amv$tab$df[1],amv$tab$SSD[1],amv$tab$MSD[1],amv$tab$df[2],amv$tab$SSD[2],amv$tab$MSD[2],amv$tab$df[3],amv$tab$SSD[3],amv$tab$MSD[3],amv$varcoef[[1]],amv$varcomp$sigma2[1],amv$varcomp$sigma2[2],phi[1])
+pegas_res<- data.frame("pegas",amv$tab$df[1],amv$tab$SSD[1],amv$tab$MSD[1],amv$tab$df[2],amv$tab$SSD[2],amv$tab$MSD[2],amv$tab$df[3],amv$tab$SSD[3],amv$tab$MSD[3],as.double(amv$varcoef[[1]]),amv$varcomp$sigma2[1],amv$varcomp$sigma2[2],phi[1])
 
 colnames(pegas_res)<- c("Type","df1","SSD1","MSD1","df2","SSD2","MSD2","df3","SSD3","MSD3","varcoef","sigma2_1","sigma2_2","phi")
 
