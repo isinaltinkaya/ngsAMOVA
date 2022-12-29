@@ -79,6 +79,6 @@ clean:
 test:
 	rm -rvf test/testwd;
 	mkdir -pv test/testwd;
-	./ngsAMOVA -in test/test_s9_d1_1K.vcf -m test/metadata.tsv -doDist 1 -doAMOVA 3 -isSim 1 -out test/testwd/test_s9_d1_1K.vcf_testput;
+	./ngsAMOVA -in test/test_s9_d1_1K.vcf -m test/metadata_with_header.tsv -doDist 1 -doAMOVA 3 -isSim 1 -out test/testwd/test_s9_d1_1K.vcf_testput --formula "Individual~Population";
 	bash -c "diff <(cut -d, -f4-12 test/testwd/test_s9_d1_1K.vcf_testput.sfs.csv)  test/test_s9_d1_1K_god.sfs";
 

@@ -11,6 +11,16 @@
 #include "math_utils.h"
 #include <stdlib.h>
 
+#ifndef FREAD_BUF_SIZE
+#define FREAD_BUF_SIZE 4096
+#endif
+
+// maximum number of tokens in amova formula string
+#ifndef MAX_FORMULA_TOKENS
+#define MAX_FORMULA_TOKENS 10
+#endif
+
+
 using size_t = decltype(sizeof(int));
 
 //
@@ -46,7 +56,7 @@ char *get_time()
 /// @param fname file name
 /// @param mode file open mode
 /// @return file *fp
-FILE *IO::getFILE(const char *fname, const char *mode)
+FILE *IO::getFile(const char *fname, const char *mode)
 {
 	if (strcmp(mode, "r") == 0)
 	{
@@ -77,10 +87,10 @@ char *IO::setFileName(const char *a, const char *b)
 /// @brief open file for writing
 /// @param c name of file
 /// @return  file *fp
-FILE *IO::openFILE(char *c)
+FILE *IO::openFile(char *c)
 {
 	fprintf(stderr, "\t-> Opening output file for writing: %s\n", c);
-	FILE *fp = getFILE(c, "w");
+	FILE *fp = getFile(c, "w");
 	return fp;
 }
 
@@ -89,39 +99,157 @@ FILE *IO::openFILE(char *c)
 /// @param a prefix
 /// @param b suffix
 /// @return file *fp
-FILE *IO::openFILE(const char *a, const char *b)
+FILE *IO::openFile(const char *a, const char *b)
 {
 	char *c = (char *)malloc(strlen(a) + strlen(b) + 1);
 	strcpy(c, a);
 	strcat(c, b);
 	fprintf(stderr, "\t-> Opening output file for writing: %s\n", c);
-	FILE *fp = getFILE(c, "w");
+	FILE *fp = getFile(c, "w");
 	free(c);
 	return fp;
+}
+
+
+/// @brief getFirstLine get first line of a file
+/// @param ff pointer to file
+/// @return char* line
+char* IO::readFile::getFirstLine(char* in_fn)
+{
+	FILE* ff = IO::getFile(in_fn, "r");
+
+	size_t buf_size = 1024;
+	char* line = (char*) malloc(buf_size);
+	// char line[buf_size];
+
+	// char* line = (char*) malloc(buf_size);
+	ASSERT(line != NULL);
+	
+	ASSERT(fgets(line,1024,ff)!=NULL);
+	while (fgets(line, 1024, ff) != NULL)
+	{
+		//check if the line was fully read
+		size_t line_len = strlen(line);
+		if (line[line_len - 1] == '\n')
+		{
+			//line was fully read
+			break;
+		}
+		else
+		{
+			fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
+			//line was not fully read
+			buf_size *= 2;
+
+			char *new_line = new char[buf_size];
+			new_line = (char*) realloc(line, buf_size);
+			// char *new_line = (char*) realloc(line, buf_size);
+			ASSERT(new_line != NULL);
+			line=new_line;
+		}
+
+	}
+	// fprintf(stderr, "\t-> First line of file: %s\n", line);
+
+
+	// fprintf(stderr, "\t\n-> First line of file: %s\n---\n", line);
+	fclose(ff);
+	return strdup(line);
+
 }
 
 /// @brief count_nColumns count number of columns in a line
 /// @param line pointer to line char
 /// @param delims delimiters
 /// @return integer number of columns
-int IO::inspectFILE::count_nColumns(char *line, const char *delims)
+int IO::inspectFile::count_nColumns(char *line, const char *delims)
 {
 
-	char *str = NULL;
-	str = strdup(line);
-
-	char *p = NULL;
-	int i = 0;
-	p = strtok(str, delims);
-	while (p != NULL)
+	int count=0;
+	const char *p = line;
+	while (*p)
 	{
-		i++;
-		p = strtok(NULL, delims);
+		if (*p == *delims)
+			count++;
+		p++;
+	}
+	return count+1;
+}
+
+/// @brief count_nRows count number of rows in a file
+/// @param ff 
+/// @return integer n number of rows
+int IO::inspectFile::count_nRows(char* fn, int HAS_HEADER)
+{
+	FILE* ff = IO::getFile(fn, "r");
+	
+    char buf[FREAD_BUF_SIZE];
+    int n = 0;
+    for(;;)
+    {
+        size_t res = fread(buf, 1, FREAD_BUF_SIZE, ff);
+        if (ferror(ff))
+            return -1;
+
+        int i;
+        for(i = 0; i < res; i++)
+            if (buf[i] == '\n') n++;
+
+        if (feof(ff))
+            break;
+    }
+
+	if (HAS_HEADER==1) n--;
+	fclose(ff);
+    return n;
+}
+
+int IO::validateFile::Metadata(char* in_mtd_fn, int nInds, int* keyCols, DATA::formulaStruct* fos, const char* delims, int HAS_HEADER)
+{
+	int nRows = IO::inspectFile::count_nRows(in_mtd_fn, HAS_HEADER);
+	if (nRows == -1)
+	{
+		fprintf(stderr, "\n[ERROR]\tCould not count number of rows in Metadata file; will exit!\n\n");
+		exit(1);
+	}
+	if (nRows == 0)
+	{
+		fprintf(stderr, "\n[ERROR]\tMetadata file is empty; will exit!\n\n");
+		exit(1);
+	}
+	if (nRows == 1)
+	{
+		fprintf(stderr, "\n[ERROR]\tMetadata file contains only one row; will exit!\n\n");
+		exit(1);
+	}
+	if (nRows != nInds)
+	{
+		fprintf(stderr, "\n[ERROR]\tNumber of rows in Metadata file (%d) does not match number of individuals (%d); will exit!\n\n", nRows, nInds);
+		exit(1);
 	}
 
-	free(p);
-	free(str);
-	return i;
+
+
+
+	//compare number of tokens in formulaStruct to number of columns in Metadata file
+
+	char* firstLine = IO::readFile::getFirstLine(in_mtd_fn);
+	int nCols = IO::inspectFile::count_nColumns(firstLine, delims);
+	fprintf(stderr, "\n\t-> Number of columns in input Metadata file: %d\n", nCols);
+
+	if (nCols < fos->nTokens)
+	{
+		fprintf(stderr, "\n[ERROR]\tNumber of columns in Metadata file (%d) is less than number of tokens in formula (%d); will exit!\n\n", nCols, fos->nTokens);
+		exit(1);
+	}
+
+	// keyCols
+
+	// int nCols = IO::inspectFile::count_nColumns(IO::inspectFile::getLine(ff, 1), "\t ");
+
+	return 0;
+
+
 }
 
 /// @brief read SFS file
@@ -129,7 +257,7 @@ int IO::inspectFILE::count_nColumns(char *line, const char *delims)
 /// @param delims delimiters
 /// @param SAMPLES samplesStruct samples
 /// @return ???
-int IO::readFILE::SFS(FILE *in_sfs_ff, const char *delims, DATA::samplesStruct *SAMPLES)
+int IO::readFile::SFS(FILE *in_sfs_ff, const char *delims, DATA::samplesStruct *SAMPLES)
 {
 
 	char sfs_buf[1024];
@@ -161,48 +289,59 @@ int IO::readFILE::SFS(FILE *in_sfs_ff, const char *delims, DATA::samplesStruct *
 	return 0;
 }
 
-/// @brief read metadata file
-/// @param MTD metadataStruct metadata
-/// @param in_mtd_ff input metadata file ff
-/// @param whichCol which column to use
+
+/// @brief read Metadata file
+/// @param MTD metadataStruct Metadata
+/// @param in_mtd_fn input Metadata file filename
+/// @param in_mtd_ff input Metadata file ff
+/// @param keyCols pointer to set of which columns to use as keys
 /// @param delims delimiters
 /// @param SAMPLES samplesStruct samples
+/// @param FORMULA formulaStruct formula
+/// @param HAS_HEADER metadata file has header, yes=1, no=0
 /// @return ???
-int IO::readFILE::METADATA(DATA::metadataStruct *MTD, FILE *in_mtd_ff, int whichCol, const char *delims, DATA::samplesStruct *SAMPLES)
+int IO::readFile::Metadata(DATA::metadataStruct *MTD, char* in_mtd_fn, FILE *in_mtd_ff, int* keyCols, const char *delims, DATA::samplesStruct *SAMPLES, DATA::formulaStruct *FORMULA, int HAS_HEADER)
 {
 
 	fprintf(stderr, "\n");
 	fprintf(stderr, "--------------------------------------------------");
 	fprintf(stderr, "\n");
 
-	// int whichCol=args->whichCol;
-	int nCols = 0;
+	// int nCols = 0;
 	int checkCol = 1;
+
+	// int* keyCols = (int*)malloc(sizeof(int) * FORMULA->nTokens);
+	fprintf(stderr,"\n\nnTokens: %d\n", FORMULA->nTokens);
+	fprintf(stderr, "\n formula tokens: ");
+	for (int i = 0; i < FORMULA->nTokens; i++)
+	{
+		fprintf(stderr, "%s ", FORMULA->formulaTokens[i]);
+	}
+	fprintf(stderr, "\n");
+
+	ASSERT(validateFile::Metadata(in_mtd_fn, SAMPLES->nSamples, keyCols, FORMULA, delims, HAS_HEADER) == 0);
+	// "Metadata file is not valid");
 
 	// TODO map is probably better due to sorting issues. we cannot have all strata sorted
 	char mt_buf[1024];
 
+	//skip the first line
+	if (HAS_HEADER)
+	{
+		fgets(mt_buf, 1024, in_mtd_ff);
+	}
+
+
 	while (fgets(mt_buf, 1024, in_mtd_ff))
 	{
 
-		if (checkCol == 1)
-		{
-			nCols = IO::inspectFILE::count_nColumns(mt_buf, delims);
-			fprintf(stderr, "\n\t-> Number of columns in input metadata file: %d\n", nCols);
-			checkCol = 0;
 
-			if (whichCol != -1 && whichCol > nCols)
-			{
-				fprintf(stderr, "\n[ERROR]\tColumn %d was chosen, but input metadata file only contains %d columns; will exit!\n\n", whichCol, nCols);
-				exit(1);
-			}
-		}
-
-		// TODO strtok_r? do we need thread safety here?
 
 		char *tok = strtok(mt_buf, delims);
 		char *group_id = tok;
 
+//TODO deprecated
+		int whichCol=-1;
 		for (int coli = 0; coli < whichCol - 1; coli++)
 		{
 			tok = strtok(NULL, "\t \n");
@@ -429,7 +568,8 @@ argStruct *argStruct_init()
 	args->in_mtd_fn = NULL;
 	args->out_fp = NULL;
 
-	args->whichCol = -1;
+	args->formula = NULL;
+	args->keyCols = NULL;
 
 	args->blockSize = 0;
 
@@ -504,8 +644,12 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->blockSize = atoi(val);
 		else if (strcasecmp("-bSize", arv) == 0)
 			args->blockSize = atoi(val);
-		else if (strcasecmp("-mCol", arv) == 0)
-			args->whichCol = atoi(val);
+		else if (strcasecmp("-af", arv) == 0){
+			args->formula = strdup(val);
+		}
+		else if (strcasecmp("--formula", arv) == 0){
+			args->formula = strdup(val);
+		}
 		else if (strcasecmp("-seed", arv) == 0)
 			args->seed = atoi(val);
 		else if (strcasecmp("-doAMOVA", arv) == 0)
@@ -617,28 +761,28 @@ argStruct *argStruct_get(int argc, char **argv)
 	{
 		if (args->doAMOVA != -1)
 		{
-			fprintf(stderr, "\n[ERROR]\tMust supply -m <metadata_file>; will exit!\n");
+			fprintf(stderr, "\n[ERROR]\tMust supply -m <Metadata_file>; will exit!\n");
 			free(args);
 			return 0;
 		}
 	}
 	else
 	{
-		if (args->whichCol == 1)
-		{
-			fprintf(stderr, "\n[ERROR](-mCol 1)\tColumn index 1 was chosen. First column should contain individual IDs instead; will exit!\n");
-			free(args);
-			return 0;
-		}
-		else if (args->whichCol > 1)
-		{
-			fprintf(stderr, "\n\t-> -mCol is set to %d, will use column %d in metadata file %s as stratification key.\n", args->whichCol, args->whichCol, args->in_mtd_fn);
-		}
-		else if (args->whichCol == -1)
-		{
-			args->whichCol = 2;
-			fprintf(stderr, "\n\t-> -mCol is not defined, will use column %d in metadata file %s as stratification key.\n", args->whichCol, args->in_mtd_fn);
-		}
+		// if (args->keyCols == 1)
+		// {
+		// 	fprintf(stderr, "\n[ERROR](-mCol 1)\tColumn index 1 was chosen. First column should contain individual IDs instead; will exit!\n");
+		// 	free(args);
+		// 	return 0;
+		// }
+		// else if (args->keyCols > 1)
+		// {
+		// 	fprintf(stderr, "\n\t-> -mCol is set to %d, will use column %d in Metadata file %s as stratification key.\n", args->keyCols, args->keyCols, args->in_mtd_fn);
+		// }
+		// else if (args->keyCols == -1)
+		// {
+		// 	args->keyCols = 2;
+		// 	fprintf(stderr, "\n\t-> -mCol is not defined, will use column %d in Metadata file %s as stratification key.\n", args->keyCols, args->in_mtd_fn);
+		// }
 	}
 
 	// TODO exit(1) or return?
@@ -750,6 +894,7 @@ paramStruct *paramStruct_init(argStruct *args)
 
 	pars->nInd = 0;
 
+
 	pars->DATETIME = NULL;
 
 	pars->pos = NULL;
@@ -794,9 +939,100 @@ void paramStruct_destroy(paramStruct *pars)
 	}
 	free(pars->LUT_indPair_idx);
 
+
 	delete pars;
 }
 
+DATA::formulaStruct *DATA::formulaStruct_init(const char *formula)
+{
+
+	formulaStruct *fos = (formulaStruct *)calloc(1, sizeof(formulaStruct));
+	
+	
+	// char** formulaTokens[MAX_FORMULA_TOKENS];
+	// formula = 'Samples ~ Continents/Regions/Populations'
+
+	fos->formulaTokens = (char**)malloc(MAX_FORMULA_TOKENS * sizeof(char*));
+	fos->nTokens = 0;
+
+	fos->formula = strdup(formula);
+	// pointer to the first character of formula string
+	const char *p = formula;
+
+	int nTilde=0;
+
+	// skip until ~ tilde or end of string
+	while (*p != '\0' && *p != '~')
+	{
+		if (*p == '/') {
+			fprintf(stderr, "\n[ERROR]\tformula %s is not valid: Found '/' before '~'. Will exit!\n", formula);
+			exit(1);
+		}
+		if (*p == '~') {
+			nTilde++;
+		}
+		p++;
+	}
+
+	if(*p == '\0'){
+		fprintf(stderr, "\n[ERROR]\tformula %s is not valid; will exit!\n", formula);
+		exit(1);
+	}
+
+	fos->formulaTokens[fos->nTokens] = strndup(formula, p - formula);
+	fprintf(stderr, "\n\n\n-------\nntokens: %d\n", fos->nTokens);
+	fos->nTokens++;
+	p++;
+	
+	while (*p != '\0')
+	{
+		//start of current token
+		const char* start = p;
+		
+		//skip until '/' is encountered or end of string
+		while(*p != '\0' && *p != '/')
+		{
+			p++;
+		}
+		//end of string
+		if(*p == '\0'){
+			fos->formulaTokens[fos->nTokens]= strndup(start, p - start);
+			fos->nTokens++;
+			break;
+		}
+		if (*p == '~') {
+			nTilde++;
+			ASSERT(nTilde!=1); //should never happen
+			if(nTilde > 1){
+				fprintf(stderr, "\n[ERROR]\tformula %s is not valid: Found more than one '~'. Will exit!\n", formula);
+			}
+		}
+		
+		//or it was a '/'
+		fos->formulaTokens[fos->nTokens]= strndup(start, p - start);
+		fos->nTokens++;
+		p++;
+	}
+	// set the last element to NULL to indicate end of array
+	fos->formulaTokens[fos->nTokens] = NULL;
+
+
+
+
+	// int *keyCols = (int *)malloc(fos->nTokens * sizeof(int));
+
+	
+
+
+	return fos;
+
+}
+
+// void IO::readArgs::printArgs(argStruct *args)
+// {
+
+// 	fprintf(stderr, "\n\t-> -in %s", args->inputfile);
+// }
 
 
 /// @brief print_M_PWD print matrix of pairwise distances

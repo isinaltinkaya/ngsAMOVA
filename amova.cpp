@@ -3,17 +3,14 @@
 double get_SSD_total(double *M_PWD, int n_ind_cmb, int nInd)
 {
 
-	double sum = 0.0;
-	double delta_sq = 0.0;
 	double ssd_TOTAL = 0.0;
 
 	for (int px = 0; px < n_ind_cmb; px++)
 	{
-		delta_sq = SQUARE(M_PWD[px]);
-		sum += delta_sq;
+		ssd_TOTAL += SQUARE(M_PWD[px]);
 	}
 
-	ssd_TOTAL = sum / (double)nInd;
+	ssd_TOTAL /= (double)nInd;
 	return ssd_TOTAL;
 }
 
@@ -28,6 +25,13 @@ double get_SSD_level(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruc
 	// group pairs by strata
 	for (int sti = 0; sti < MTD->nStrata; sti++)
 	{
+		// fprintf(stderr, "\n-> nStrata: %i at hierarchical level ..\n", MTD->nStrata);
+		// fprintf(stderr, "\n-> Strata (%s,idx:%i) has %i individuals\n",
+		// 		MTD->strataArr[sti].id,
+		// 		sti,
+		// 		MTD->strataArr[sti].nInds);
+
+		
 		sum = 0.0;
 		for (int i1 = 0; i1 < nInd - 1; i1++)
 		{

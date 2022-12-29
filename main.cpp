@@ -75,6 +75,18 @@ int main(int argc, char **argv)
 		}
 		fprintf(stderr, "\n");
 
+
+//TODO make this argument
+		int HAS_HEADER = 1;
+
+
+
+
+
+		ASSERT(args->formula);
+		DATA::formulaStruct* FORMULA = DATA::formulaStruct_init(args->formula);
+		// FORMULA->print(stderr);
+
 		vcfFile *in_ff = bcf_open(args->in_fn, "r");
 		ASSERT(in_ff);
 
@@ -86,6 +98,9 @@ int main(int argc, char **argv)
 		fprintf(stderr, "\n\t-> Reading file: %s\n", args->in_fn);
 
 		pars->nInd = bcf_hdr_nsamples(hdr);
+
+		DATA::samplesStruct *SAMPLES = new DATA::samplesStruct();
+		SAMPLES->nSamples = pars->nInd;
 
 		const int nContigs = hdr->n[BCF_DT_CTG];
 
@@ -142,29 +157,28 @@ int main(int argc, char **argv)
 			}
 		}
 
-		DATA::samplesStruct *SAMPLES = new DATA::samplesStruct();
 		DATA::metadataStruct *MTD = new DATA::metadataStruct();
 
 		if (args->in_mtd_fn != NULL)
 		{
 /*
-[BEGIN] Read metadata
+[BEGIN] Read Metadata
 */
 
-			in_mtd_ff = IO::getFILE(args->in_mtd_fn, "r");
+			in_mtd_ff = IO::getFile(args->in_mtd_fn, "r");
 
 			// sep can be \t \whitespace or comma
 			const char *delims = "\t ,\n";
 
-			ASSERT(IO::readFILE::METADATA(MTD, in_mtd_ff, args->whichCol, delims, SAMPLES) == 0);
+			ASSERT(IO::readFile::Metadata(MTD, args->in_mtd_fn, in_mtd_ff, args->keyCols, delims, SAMPLES, FORMULA, HAS_HEADER) == 0);
 
 /*
-[END] Read metadata
+[END] Read Metadata
 */
 
 			if (pars->nInd != MTD->nInds_total)
 			{
-				fprintf(stderr, "\n[ERROR]: Number of samples in input file (%i) is not equal to number of samples in metadata file (%i); will exit!\n\n", pars->nInd, MTD->nInds_total);
+				fprintf(stderr, "\n[ERROR]: Number of samples in input file (%i) is not equal to number of samples in Metadata file (%i); will exit!\n\n", pars->nInd, MTD->nInds_total);
 				exit(1);
 			}
 		}

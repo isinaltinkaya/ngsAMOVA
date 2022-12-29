@@ -28,7 +28,7 @@ ${ANGSD%angsd}/misc/realSFS -m 0 -cores 1 ${P1I1}.saf.idx ${P1I2}.saf.idx > pop1
 ```
 
 ```sh
-./ngsAMOVA -in test/test_s9_d1_1K.vcf -m test/metadata.tsv -doDist 1 -doAMOVA 3 -isSim 1  -out testput -tole 1e-10 -maxIter 100
+./ngsAMOVA -in test/test_s9_d1_1K.vcf -m test/Metadata.tsv -doDist 1 -doAMOVA 3 -isSim 1  -out testput -tole 1e-10 -maxIter 100
 cat testput.sfs.csv |grep "^gle,pop1_ind1,pop1_ind2" | cut -d, -f4-12 > testput
 ```
 
@@ -62,7 +62,7 @@ test_mis2 contains only the 5 sites that has data for both individuals.
 
 ```
 cd test;
-../ngsAMOVA -in test_s9_d5_1K.vcf -m metadata.tsv -doDist 1 -minInd 2 -doAMOVA 1 -isSim 1 -out test_s9_d5_1K_Dij_minInd2_doAmova1
+../ngsAMOVA -in test_s9_d5_1K.vcf -m Metadata.tsv -doDist 1 -minInd 2 -doAMOVA 1 -isSim 1 -out test_s9_d5_1K_Dij_minInd2_doAmova1
 Rscript test_pegas.R test_s9_d5_1K_Dij_minInd2_doAmova1.sfs.csv
  ```
 
@@ -121,7 +121,7 @@ minInd 2  (or param not used)
 
 
 ```sh
-$ ./ngsAMOVA -in test/test_s9_d1_1K.vcf -m test/metadata.tsv -doDist 2 -doAMOVA 3 -isSim 1  -minInd  2
+$ ./ngsAMOVA -in test/test_s9_d1_1K.vcf -m test/Metadata.tsv -doDist 2 -doAMOVA 3 -isSim 1  -minInd  2
 $ for l in `bcftools query -f '[%DP]\n'  -s pop1_ind1,pop1_ind2 test/test_s9_d1_1K.vcf`;do echo $l|grep -o 0|wc -l;done | awk '$0==0'|wc -l
 387
 $ cat amovaput.sfs.csv |grep "pop1_ind1,pop1_ind2"|cut -f14 -d,|uniq
@@ -149,5 +149,5 @@ bcftools view -H test_blocks.vcf |wc -l
 seq 1 51960 51229805 >newpos 
 paste <(bcftools view -H test_blocks.vcf|cut -f1) <(cat newpos) <(bcftools view -H test_blocks.vcf |cut -f3-) > withnewpos
 cat blocks_header withnewpos > test_block_v1.vcf
-./ngsAMOVA -doAMOVA 3 -doTest 0 -in test/test_block_v1.vcf -out test/test_block_v1_testput -isSim 1 -minInd 2 -printMatrix 0 -m test/metadata.tsv -doDist 1 -maxIter 100 -nThreads 0 -tole 1.000000e-10 -bSize 51960
+./ngsAMOVA -doAMOVA 3 -doTest 0 -in test/test_block_v1.vcf -out test/test_block_v1_testput -isSim 1 -minInd 2 -printMatrix 0 -m test/Metadata.tsv -doDist 1 -maxIter 100 -nThreads 0 -tole 1.000000e-10 -bSize 51960
  ```
