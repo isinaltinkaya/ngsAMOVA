@@ -24,6 +24,7 @@
 
 
 
+
 using size_t = decltype(sizeof(int));
 
 int main(int argc, char **argv)
@@ -40,7 +41,7 @@ int main(int argc, char **argv)
 	if (args != 0)
 	{
 
-		FILE *in_mtd_ff = NULL;
+		FILE *in_mtd_fp = NULL;
 
 		paramStruct *pars = paramStruct_init(args);
 
@@ -67,7 +68,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "\n%s", DATETIME);
 
 		// TODO print based on analysis type, and to args file
-		fprintf(stderr, "\nngsAMOVA -doAMOVA %d -doTest %d -in %s -out %s -isSim %d -minInd %d -printMatrix %d -m %s -doDist %d -maxIter %d -nThreads %d", args->doAMOVA, args->doTest, args->in_fn, args->out_fp, args->isSim, args->minInd, args->printMatrix, args->in_mtd_fn, args->doDist, args->mEmIter, args->mThreads);
+		fprintf(stderr, "\nngsAMOVA -doAMOVA %d -doTest %d -in %s -out %s -isSim %d -minInd %d -printMatrix %d -m %s -doDist %d -maxIter %d -nThreads %d", args->doAMOVA, args->doTest, args->in_fn, args->out_fn, args->isSim, args->minInd, args->printMatrix, args->in_mtd_fn, args->doDist, args->mEmIter, args->mThreads);
 
 		if (args->doAMOVA == -1 || args->doAMOVA == 3 || args->doAMOVA == 1)
 		{
@@ -76,21 +77,22 @@ int main(int argc, char **argv)
 		fprintf(stderr, "\n");
 
 
-//TODO make this argument
-		int HAS_HEADER = 1;
 
 
 
+		DATA::formulaStruct *FORMULA = NULL;
 
+		if(args->formula!=NULL){
+			fprintf(stderr, "\nFormula: %s", args->formula);
+			FORMULA=DATA::formulaStruct_get(args->formula);
+			
 
-		ASSERT(args->formula);
-		DATA::formulaStruct* FORMULA = DATA::formulaStruct_init(args->formula);
-		// FORMULA->print(stderr);
+		}
 
-		vcfFile *in_ff = bcf_open(args->in_fn, "r");
-		ASSERT(in_ff);
+		vcfFile *in_fp = bcf_open(args->in_fn, "r");
+		ASSERT(in_fp);
 
-		bcf_hdr_t *hdr = bcf_hdr_read(in_ff);
+		bcf_hdr_t *hdr = bcf_hdr_read(in_fp);
 
 		bcf1_t *bcf = bcf_init();
 		ASSERT(bcf);
@@ -99,8 +101,21 @@ int main(int argc, char **argv)
 
 		pars->nInd = bcf_hdr_nsamples(hdr);
 
-		DATA::samplesStruct *SAMPLES = new DATA::samplesStruct();
+//TODO
+		DATA::samplesStruct *SAMPLES = new DATA::samplesStruct(pars->nInd);
 		SAMPLES->nSamples = pars->nInd;
+
+
+		// copy elements in hdr->samples char* to SAMPLES->bcfSamples
+		// copy elements and not pointers
+		for (int i = 0; i < pars->nInd; i++)
+		{
+			SAMPLES->bcfSamples[i] = strdup(hdr->samples[i]);
+		}
+
+
+
+		// SAMPLES->bcfSamples = hdr->samples;
 
 		const int nContigs = hdr->n[BCF_DT_CTG];
 
@@ -157,31 +172,39 @@ int main(int argc, char **argv)
 			}
 		}
 
-		DATA::metadataStruct *MTD = new DATA::metadataStruct();
 
-		if (args->in_mtd_fn != NULL)
-		{
+		// DATA::metadataStruct *MTD = NULL;
+
+		// if (args->in_mtd_fn != NULL)
+		// {
 /*
 [BEGIN] Read Metadata
 */
 
-			in_mtd_ff = IO::getFile(args->in_mtd_fn, "r");
+			in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
 
 			// sep can be \t \whitespace or comma
 			const char *delims = "\t ,\n";
 
-			ASSERT(IO::readFile::Metadata(MTD, args->in_mtd_fn, in_mtd_ff, args->keyCols, delims, SAMPLES, FORMULA, HAS_HEADER) == 0);
+
+			DATA::metadataStruct *MTD = DATA::metadataStruct_get(in_mtd_fp, args->keyCols, delims, SAMPLES, FORMULA, args->hasColNames);
+			// MTD = metadataStruct_get(in_mtd_fp, args->keyCols, delims, SAMPLES, FORMULA, args->hasColNames);
+			//TODO
+			// const char *delims = "\t ,";
+
+			// ASSERT(IO::readFile::Metadata(MTD, in_mtd_fp, args->keyCols, delims, SAMPLES, FORMULA, args->hasColNames) == 0);
+			
 
 /*
 [END] Read Metadata
 */
 
-			if (pars->nInd != MTD->nInds_total)
-			{
-				fprintf(stderr, "\n[ERROR]: Number of samples in input file (%i) is not equal to number of samples in Metadata file (%i); will exit!\n\n", pars->nInd, MTD->nInds_total);
-				exit(1);
-			}
-		}
+			// if (pars->nInd != mtd_sidx)
+			// {
+			// 	fprintf(stderr, "\n[ERROR]: Number of samples in input file (%i) is not equal to number of samples in Metadata file (%i); will exit!\n\n", pars->nInd, mtd_sidx);
+			// 	exit(1);
+			// }
+		// }
 
 		if (args->minInd == pars->nInd)
 		{
@@ -344,7 +367,7 @@ int main(int argc, char **argv)
 		int last_bi = -1;
 		double *last_ptr = NULL;
 
-		while (bcf_read(in_ff, hdr, bcf) == 0)
+		while (bcf_read(in_fp, hdr, bcf) == 0)
 		{
 
 			if (bcf->rlen != 1)
@@ -680,7 +703,7 @@ int main(int argc, char **argv)
 		bcf_destroy(bcf);
 
 		int BCF_CLOSE;
-		if ((BCF_CLOSE = bcf_close(in_ff)))
+		if ((BCF_CLOSE = bcf_close(in_fp)))
 		{
 			fprintf(stderr, "bcf_close(%s): non-zero status %d\n", args->in_fn, BCF_CLOSE);
 			exit(BCF_CLOSE);
@@ -697,6 +720,7 @@ int main(int argc, char **argv)
 		delete SAMPLES;
 		delete MTD;
 		delete CONTIGS;
+		delete FORMULA;
 
 
 		if (args->doAMOVA == 1 || args->doAMOVA == 3)
@@ -745,8 +769,8 @@ int main(int argc, char **argv)
 		free(args->in_fn);
 		args->in_fn = NULL;
 
-		free(args->out_fp);
-		args->out_fp = NULL;
+		free(args->out_fn);
+		args->out_fn = NULL;
 
 		free(args->in_mtd_fn);
 		args->in_mtd_fn = NULL;
@@ -755,9 +779,9 @@ int main(int argc, char **argv)
 
 		paramStruct_destroy(pars);
 
-		if (in_mtd_ff != NULL)
+		if (in_mtd_fp != NULL)
 		{
-			fclose(in_mtd_ff);
+			fclose(in_mtd_fp);
 		}
 
 		delete OUTS;

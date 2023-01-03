@@ -83,6 +83,30 @@ sudo apt-get install libz-dev liblzma-dev libbz2-dev libcurl4-openssl-dev g++ ma
 
 _For more examples, please refer to the [Documentation](https://example.com)_
 
+
+
+
+### Input files
+
+#### Metadata file
+
+If `-f/--formula` is not defined, ngsAMOVA will assume input metadata file is ordered and all of its hierarchical levels will be used.
+```
+./ngsAMOVA --formula "Individuals ~ Regions/Populations"
+```
+
+
+```
+Individuals,Regions,Populations
+ind1,reg1,pop1
+ind2,reg1,pop2
+ind3,reg2,pop3
+ind4,reg2,pop3
+ind5,reg2,pop4
+```
+
+
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
@@ -96,3 +120,4 @@ _For more examples, please refer to the [Documentation](https://example.com)_
 ## How to cite
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+

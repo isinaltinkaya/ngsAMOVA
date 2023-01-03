@@ -58,6 +58,20 @@
 		exit(1);                                                                                 \
 	}
 
+/*
+ * Macro:[FREE]
+ * shortcut to free memory and set pointer to NULL
+ * and catch double free
+ */
+#define FREE(expr)                                                                                             \
+	if (expr)                                                                                                  \
+	{                                                                                                          \
+		free(expr);                                                                                            \
+		expr = NULL;                                                                                           \
+	}                                                                                                          \
+		// fprintf(stderr, "\n\n*******\n[FREEING NULL MEMORY](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr); 
+
+
 extern const int get_3x3_idx[3][3];
 
 const double NEG_INF = -std::numeric_limits<double>::infinity();
@@ -70,7 +84,7 @@ using size_t = decltype(sizeof(int));
  *
  * @field *in_fn		pointer to input file name
  * @field *in_mtd_fn	pointer to input Metadata file name
- * @field *out_fp		pointer to output file prefix [angsdput]
+ * @field *out_fn		pointer to output file prefix [angsdput]
  * @field seed			random seed
  *
  * @field isSim			input is vcfgl simulation output
@@ -161,10 +175,11 @@ typedef struct
 	char *in_fn;
 	char *in_sfs_fn;
 	char *in_mtd_fn;
-	char *out_fp;
+	char *out_fn;
 
 	char *formula;
 	int *keyCols;
+	int hasColNames;
 
 	int blockSize;
 	int doAMOVA;
@@ -261,7 +276,8 @@ namespace DATA
 	typedef struct formulaStruct
 	{
 		int nTokens;
-		const char* formula=NULL;
+		int nTokensFound = 0;
+		const char *formula = NULL;
 		char **formulaTokens;
 		size_t *formulaTokenIdx;
 
@@ -276,9 +292,8 @@ namespace DATA
 			}
 		}
 
-
 	} formulaStruct;
-	formulaStruct *formulaStruct_init(const char *formula);
+	formulaStruct *formulaStruct_get(const char *formula);
 
 	typedef struct contigsStruct
 	{
@@ -337,30 +352,22 @@ namespace DATA
 			for (size_t i = 0; i < nContigs; i++)
 			{
 
-				free(contigBlockStartPtrs[i]);
-				contigBlockStartPtrs[i] = NULL;
+				FREE(contigBlockStartPtrs[i]);
 
-				free(contigNames[i]);
-				contigNames[i] = NULL;
+				FREE(contigNames[i]);
 
-				free(contigBlockStarts[i]);
-				contigBlockStarts[i] = NULL;
+				FREE(contigBlockStarts[i]);
 			}
-			free(contigBlockStarts);
-			contigBlockStarts = NULL;
-			free(contigNames);
-			contigNames = NULL;
-			free(contigLengths);
-			contigLengths = NULL;
-			free(contigNBlocks);
-			contigNBlocks = NULL;
+			FREE(contigBlockStarts);
+			FREE(contigNames);
+			FREE(contigLengths);
+			FREE(contigNBlocks);
 
-			free(contigBlockStartPtrs);
+			FREE(contigBlockStartPtrs);
 			contigBlockStartPtrs = NULL;
 		}
 
 	} contigsStruct;
-
 	contigsStruct *contigsStruct_init(const int n_contigs);
 
 	typedef struct pairStruct
@@ -409,11 +416,9 @@ namespace DATA
 		}
 		~pairStruct()
 		{
-			free(sSites);
-			sSites = NULL;
+			FREE(sSites);
 
-			free(SFS);
-			SFS = NULL;
+			FREE(SFS);
 		}
 
 		void print(FILE *fp, bcf_hdr_t *hdr)
@@ -430,56 +435,49 @@ namespace DATA
 
 	} pairStruct;
 
-
-	// typedef struct samplesStruct
-	// {
-
-	// 	int *sampleArr;
-	// 	int nSamples;
-
-	// 	samplesStruct(const int nSamples_)
-	// 	{
-	// 		nSamples = nSamples_;
-	// 		sampleArr = (int *)malloc(nSamples * sizeof(int));
-	// 		for (int i = 0; i < nSamples; i++)
-	// 		{
-	// 			sampleArr[i] = 0;
-	// 		}
-	// 	}
-	// 	~samplesStruct()
-	// 	{
-	// 		free(sampleArr);
-	// 		sampleArr = NULL;
-	// 	}
-
-	// } samplesStruct;
-//TODO old,new above
-typedef struct samplesStruct
+	typedef struct samplesStruct
 	{
 
-		int *sampleArr;
-		size_t _sampleArr = 200;
-		int nSamples=0;
-		// TODO increase if overflow
+		int *sampleArr = NULL;
+		char **bcfSamples = NULL;
+		char **sampleNames = NULL;
+		int *sampleOrder = NULL;
 
-		samplesStruct()
+		int nSamples = 0;
+
+		samplesStruct(int nSamples_)
 		{
-			// sampleArr=new int[_sampleArr];
-			sampleArr = (int *)malloc(_sampleArr * sizeof(int));
-			for (size_t i = 0; i < _sampleArr; i++)
+			nSamples = nSamples_;
+			sampleArr = (int *)malloc(nSamples * sizeof(int));
+			bcfSamples = (char **)malloc(nSamples * sizeof(char *));
+			sampleNames = (char **)malloc(nSamples * sizeof(char *));
+			sampleOrder = (int *)malloc(nSamples * sizeof(int));
+
+			for (int i = 0; i < nSamples; i++)
 			{
 				sampleArr[i] = 0;
+				bcfSamples[i] = NULL;
+				sampleNames[i] = NULL;
+				sampleOrder[i] = 0;
 			}
 		}
+
 		~samplesStruct()
 		{
-			free(sampleArr);
-			sampleArr = NULL;
-			// for (size_t i=0;i<_sampleArr;i++){
-			// free(sampleArr[i]);
-			// sampleArr[i]=NULL;
-			// }
-			// delete [] sampleArr;
+			FREE(sampleArr);
+			FREE(sampleOrder);
+
+			for (int i = 0; i < nSamples; i++)
+			{
+				FREE(bcfSamples[i]);
+
+				FREE(sampleNames[i]);
+			}
+			// TODO
+			free(bcfSamples);
+			free(sampleNames);
+			bcfSamples = NULL;
+			sampleNames = NULL;
 		}
 
 	} samplesStruct;
@@ -536,7 +534,7 @@ typedef struct samplesStruct
 
 	// } strataStruct;
 
-//TODO old, new above
+	// TODO old, new above
 	typedef struct strataStruct
 	{
 
@@ -545,7 +543,7 @@ typedef struct samplesStruct
 
 		// TODO Associate hierarchical levels
 		//
-		int assoc = 0;
+		// int assoc = 0;
 
 		strataStruct()
 		{
@@ -559,62 +557,83 @@ typedef struct samplesStruct
 
 	} strataStruct;
 
+	// Metadata
+	// |
+	// -- nLevels
+	// -- strataArr 1 strataArr
 
-	// // Metadata
-	// // |
-	// // -- nLevels
-	// // -- strataArr 1 strataArr
-	// typedef struct metadataStruct
-	// {
-
-	// 	size_t nLevels = 1;
-
-	// 	samplesStruct *samples;
-
-	// 	strataStruct *strataArr;
-	// 	size_t _strataArr = 10;
-
-	// 	int nInds_total = 0;
-
-	// 	int nStrata = 0;
-
-	// 	metadataStruct()
-	// 	{
-
-	// 		strataArr = new strataStruct[_strataArr];
-	// 		fprintf(stderr, "\n->Creating metadataStruct");
-	// 	};
-	// 	~metadataStruct()
-	// 	{
-	// 		delete[] strataArr;
-	// 		strataArr = NULL;
-	// 	}
-
-	// } metadataStruct;
-//TODO old, new above
+	// strataArr[ind][hLevel][nStrataInLevel]
+	// strataArr[ind][hLevel_i]=*strataStruct_i;
 	typedef struct metadataStruct
+	{
+
+		size_t nLevels = 1;
+
+		// samplesStruct *samples;
+
+		// char **sampleNames = NULL;
+
+		// map hdr->samples to sample names in metadata
+		// eg. hdr->samples[0] = MTD->sampleNames[1]
+		// 		hdr->samples[1] = MTD->sampleNames[0]
+		// 		then access individual 1 using MTD->sampleNames[MTD->sampleOrder[1]]
+		//
+		// sampleOrder[X] = Y
+		// 		X = index in hdr->samples
+		// 		Y = index in MTD, the order found in the metadata file
+		// int *sampleOrder = NULL;
+
+		int nStrata=0;
+		strataStruct *strataArr;
+
+		int nInds_total = 0;
+
+		int* nStrataAtLevel= NULL;
+		int nSamples = 0;
+
+		metadataStruct(int nLevels_)
 		{
+			
+			fprintf(stderr, "\n-> Creating metadataStruct");
+			nLevels = nLevels_;
 
-			strataStruct *strataArr;
-			size_t _strataArr = 10;
+			strataArr = new strataStruct[nLevels];
+			nStrataAtLevel = new int[nLevels];
+			
+		};
+		~metadataStruct()
+		{
+			delete[] strataArr;
 
-			int nInds_total = 0;
+		}
 
-			int nStrata = 0;
+	} metadataStruct;
+	metadataStruct *metadataStruct_get(FILE *in_mtd_fp,
+						   int *keyCols, const char *delims, DATA::samplesStruct *SAMPLES,
+						   DATA::formulaStruct *FORMULA, int HAS_COLNAMES);
+	// //TODO old, new above
+	// 	typedef struct metadataStruct
+	// 		{
 
-			metadataStruct()
-			{
-				strataArr = new strataStruct[_strataArr];
-				fprintf(stderr, "\n->Creating metadataStruct");
-			};
-			~metadataStruct()
-			{
-				delete[] strataArr;
-				strataArr = NULL;
-			}
+	// 			strataStruct *strataArr;
+	// 			size_t _strataArr = 10;
 
-		} metadataStruct;
+	// 			int nInds_total = 0;
 
+	// 			int nStrata = 0;
+
+	// 			metadataStruct()
+	// 			{
+	// 				strataArr = new strataStruct[_strataArr];
+	// 				fprintf(stderr, "\n->Creating metadataStruct");
+	// 			};
+	// 			~metadataStruct()
+	// 			{
+	// 				delete[] strataArr;
+	// 				strataArr = NULL;
+	// 			}
+
+	// 		} metadataStruct;
 
 };
 
@@ -629,23 +648,23 @@ namespace IO
 
 	namespace readFile
 	{
-		int Metadata(DATA::metadataStruct *MTD, char* in_mtd_fn, FILE *in_mtd_ff, int *keyCols, const char *delims, DATA::samplesStruct *SAMPLES, DATA::formulaStruct *FORMULA, int HAS_HEADER);
-		int SFS(FILE *in_sfs_ff, const char *delims, DATA::samplesStruct *SAMPLES);
+		// int Metadata(DATA::metadataStruct *MTD, FILE *in_mtd_fp, int *keyCols, const char *delims, DATA::samplesStruct *SAMPLES, DATA::formulaStruct *FORMULA, int HAS_COLNAMES);
+		int SFS(FILE *in_sfs_fp, const char *delims, DATA::samplesStruct *SAMPLES);
 
-		char *getFirstLine(char* fn);
+		char *getFirstLine(char *fn);
+		char *getFirstLine(FILE *fp);
 	};
 
 	namespace inspectFile
 	{
 		int count_nColumns(char *line, const char *delims);
-		int count_nRows(char *fn, int HAS_HEADER);
+		int count_nRows(char *fn, int HAS_COLNAMES);
+		int count_nRows(FILE *fp, int HAS_COLNAMES);
 	};
 
 	namespace validateFile
 	{
-		int check_nRows(FILE *ff);
-
-		int Metadata(char* in_mtd_fn, int nInds, int *keyCols, DATA::formulaStruct *fos, const char *delims, int HAS_HEADER);
+		int Metadata(FILE *in_mtd_fp, int nInds, int *keyCols, DATA::formulaStruct *FORMULA, const char *delims, int HAS_COLNAMES);
 
 	};
 
@@ -679,15 +698,15 @@ namespace IO
 		{
 			if (args->printMatrix == 1)
 			{
-				out_dm_fs = new outputStruct(args->out_fp, ".distance_matrix.csv");
+				out_dm_fs = new outputStruct(args->out_fn, ".distance_matrix.csv");
 			}
 			if (args->doTest == 1)
 			{
-				out_emtest_fs = new outputStruct(args->out_fp, ".emtest.csv");
+				out_emtest_fs = new outputStruct(args->out_fn, ".emtest.csv");
 			}
 
-			out_amova_fs = new outputStruct(args->out_fp, ".amova.csv");
-			out_sfs_fs = new outputStruct(args->out_fp, ".sfs.csv");
+			out_amova_fs = new outputStruct(args->out_fn, ".amova.csv");
+			out_sfs_fs = new outputStruct(args->out_fn, ".sfs.csv");
 		}
 
 		~outFilesStruct()
@@ -743,7 +762,7 @@ typedef struct threadStruct
 	DATA::pairStruct *pair;
 	double **lngls;
 
-	FILE *out_sfs_ff;
+	FILE *out_sfs_fp;
 
 	// double* M_PWD_GL_PAIR;
 
@@ -758,7 +777,7 @@ typedef struct threadStruct
 		pair = tPair;
 		lngls = lngl;
 		nSites = nSites_t;
-		out_sfs_ff = out_sfs_fs->ff;
+		out_sfs_fp = out_sfs_fs->ff;
 		// M_PWD_GL_PAIR=M_PWD_GL_P;
 		tole = toleArg;
 		// doDist=doDistArg;

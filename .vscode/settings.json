@@ -1,0 +1,13 @@
+{
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "/workspaces/ngsAMOVA",
+            "binaryPath": "/workspaces/ngsAMOVA/ngsAMOVA",
+            "binaryArgs": []
+        }
+    ],
+    "files.associations": {
+        "*.rmd": "markdown",
+        "limits": "cpp"
+    }
+}

@@ -23,9 +23,9 @@ double get_SSD_level(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruc
 	int px;
 
 	// group pairs by strata
-	for (int sti = 0; sti < MTD->nStrata; sti++)
+	for (int sti = 0; sti < MTD->nLevels; sti++)
 	{
-		// fprintf(stderr, "\n-> nStrata: %i at hierarchical level ..\n", MTD->nStrata);
+		// fprintf(stderr, "\n-> nStrata: %i at hierarchical level ..\n", MTD->nLevels);
 		// fprintf(stderr, "\n-> Strata (%s,idx:%i) has %i individuals\n",
 		// 		MTD->strataArr[sti].id,
 		// 		sti,
@@ -70,7 +70,6 @@ int AMOVA::doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct 
 	int nLevels = 1;
 	amovaResultStruct *amv = new amovaResultStruct(nLevels);
 	
-
 	double ssd_TOTAL = 0.0;
 	double msd_TOTAL = 0.0;
 	// double sum = 0.0;
@@ -95,7 +94,11 @@ int AMOVA::doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct 
 	double msd_AG = 0.0;
 	int df_AG = 0;
 
-	df_AG = MTD->nStrata - 1;
+
+
+	// df_AG = MTD->nLevels - 1;
+	df_AG = MTD->nStrataAtLevel[0]-1;
+	
 	amv->df[0] = df_AG;
 
 	double ssd_AIWG = 0.0;
@@ -103,7 +106,8 @@ int AMOVA::doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct 
 
 	int df_AIWG = 0;
 
-	df_AIWG = nInd - MTD->nStrata;
+	// df_AIWG = nInd - MTD->nLevels;
+	df_AG = nInd - MTD->nStrataAtLevel[0];
 	amv->df[1] = df_AIWG;
 
 	// double s = 0.0;
@@ -128,13 +132,13 @@ int AMOVA::doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct 
 	// n = [ N - \sum_{g \in G} ( N^2_{g}/N) ) ]  /   G - 1
 	double n_gi = 0.0;
 
-	for (int sti = 0; sti < MTD->nStrata; sti++)
+	for (int sti = 0; sti < MTD->nLevels; sti++)
 	{
 		n_gi += (double)SQUARE(MTD->strataArr[sti].nInds) / (double)nInd;
 	}
 
 	// TODO double and castings are probably not necessary here
-	double coef_n = (double)((double)nInd - (double)n_gi) / (double)(MTD->nStrata - 1);
+	double coef_n = (double)((double)nInd - (double)n_gi) / (double)(MTD->nLevels - 1);
 
 	double sigmasq_a = 0.0;
 	double sigmasq_b = 0.0;
