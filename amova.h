@@ -3,7 +3,7 @@
 
 // int doAMOVA(int nInd, int n_ind_cmb, DATA::metadataStruct *MTD, DATA::sampleStruct* SAMPLES, FILE *out_amova_ff, int sqDist, double *M_PWD, int **LUT_indPair_idx);
 
-int doAMOVA(double* M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int sqDist, int **LUT_indPair_idx, const char *type);
+// int doAMOVA(double* M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int sqDist, int **LUT_indPair_idx, const char *type);
 
 
 
@@ -143,7 +143,14 @@ namespace AMOVA {
     
     }amovaResultStruct;
 
-    int doAMOVA(double* M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int sqDist, int **LUT_indPair_idx, const char *type);
+    int doAMOVA(double* M_PWD, 
+        int n_ind_cmb, 
+        int nInd, 
+        DATA::metadataStruct *MTD, 
+        DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int sqDist, int **LUT_indPair_idx, const char *type);
+
+    /// @brief doAMOVA without samplesStruct; use distance matrix input
+    // int doAMOVA(double* M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, FILE *out_amova_ff, int sqDist, int **LUT_indPair_idx, const char *type);
 
 
 }

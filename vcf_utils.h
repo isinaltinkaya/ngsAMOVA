@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
+extern const int get_3x3_idx[3][3];
 
 extern const int bcf_allele_charToInt[256];
 

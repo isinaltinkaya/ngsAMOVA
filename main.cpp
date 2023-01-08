@@ -41,6 +41,8 @@ int main(int argc, char **argv)
 	if (args != 0)
 	{
 
+		const char *delims = "\t ,\n";
+
 		FILE *in_mtd_fp = NULL;
 
 		paramStruct *pars = paramStruct_init(args);
@@ -62,23 +64,23 @@ int main(int argc, char **argv)
 
 		IO::outputStruct *out_sfs_fs = OUTS->out_sfs_fs;
 		IO::outputStruct *out_amova_fs = OUTS->out_amova_fs;
+		//TODO do not create file if not needed
+		
 
 		char *DATETIME = pars->DATETIME;
 		DATETIME = get_time();
 		fprintf(stderr, "\n%s", DATETIME);
 
-		// TODO print based on analysis type, and to args file
+		// TODO print based on analysis type, and to args file, collect all from args automatically
 		fprintf(stderr, "\nngsAMOVA -doAMOVA %d -doTest %d -in %s -out %s -isSim %d -minInd %d -printMatrix %d -m %s -doDist %d -maxIter %d -nThreads %d", args->doAMOVA, args->doTest, args->in_fn, args->out_fn, args->isSim, args->minInd, args->printMatrix, args->in_mtd_fn, args->doDist, args->mEmIter, args->mThreads);
+
+
 
 		if (args->doAMOVA == -1 || args->doAMOVA == 3 || args->doAMOVA == 1)
 		{
 			fprintf(stderr, " -tole %e ", args->tole);
 		}
 		fprintf(stderr, "\n");
-
-
-
-
 
 		DATA::formulaStruct *FORMULA = NULL;
 
@@ -105,7 +107,30 @@ int main(int argc, char **argv)
 		DATA::samplesStruct *SAMPLES = new DATA::samplesStruct(pars->nInd);
 		SAMPLES->nSamples = pars->nInd;
 
+		// if(args->in_sfs_fn != NULL){
+			// FILE *in_sfs_fp = IO::getFile(args->in_sfs_fn, "r");
+			// IO::readFile::SFS(in_sfs_fp, delims, SAMPLES);
+		// }
+		if(args->in_dm_fn != NULL){
+			FILE *in_dm_fp = IO::getFile(args->in_dm_fn, "r");
+			double *M_PWD_DM = NULL;
+			M_PWD_DM=IO::readFile::distance_matrix(in_dm_fp, pars);
 
+			for (int i = 0; i < pars->n_ind_cmb; i++)
+			{
+				fprintf(stderr, "\nM_PWD_DM[%d]: %f", i, M_PWD_DM[i]);
+			}
+
+			in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
+			DATA::metadataStruct *MTD = DATA::metadataStruct_get(in_mtd_fp, SAMPLES, FORMULA, args->hasColNames, pars);
+			ASSERT(AMOVA::doAMOVA(M_PWD_DM, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "dm_input") == 0);
+			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
+
+			exit(0);
+
+		}else{
+
+		}
 		// copy elements in hdr->samples char* to SAMPLES->bcfSamples
 		// copy elements and not pointers
 		for (int i = 0; i < pars->nInd; i++)
@@ -171,41 +196,18 @@ int main(int argc, char **argv)
 				}
 			}
 		}
-
-
-		// DATA::metadataStruct *MTD = NULL;
-
-		// if (args->in_mtd_fn != NULL)
-		// {
 /*
 [BEGIN] Read Metadata
 */
 
 			in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
 
-			// sep can be \t \whitespace or comma
-			const char *delims = "\t ,\n";
-
-
-			DATA::metadataStruct *MTD = DATA::metadataStruct_get(in_mtd_fp, args->keyCols, delims, SAMPLES, FORMULA, args->hasColNames);
-			// MTD = metadataStruct_get(in_mtd_fp, args->keyCols, delims, SAMPLES, FORMULA, args->hasColNames);
-			//TODO
-			// const char *delims = "\t ,";
-
-			// ASSERT(IO::readFile::Metadata(MTD, in_mtd_fp, args->keyCols, delims, SAMPLES, FORMULA, args->hasColNames) == 0);
+			DATA::metadataStruct *MTD = DATA::metadataStruct_get(in_mtd_fp, SAMPLES, FORMULA, args->hasColNames, pars);
 			
 
 /*
 [END] Read Metadata
 */
-
-			// if (pars->nInd != mtd_sidx)
-			// {
-			// 	fprintf(stderr, "\n[ERROR]: Number of samples in input file (%i) is not equal to number of samples in Metadata file (%i); will exit!\n\n", pars->nInd, mtd_sidx);
-			// 	exit(1);
-			// }
-		// }
-
 		if (args->minInd == pars->nInd)
 		{
 			fprintf(stderr, "\n\t-> -minInd %d is equal to the number of individuals found in file: %d. Setting -minInd to 0 (all).\n", args->minInd, pars->nInd);
@@ -488,9 +490,9 @@ int main(int argc, char **argv)
 
 		int nJobs_sent = 0;
 
+		//TODO move all to functions instead
 		if (args->doAMOVA == -1 || args->doAMOVA == 1 || args->doAMOVA == 3)
 		{
-
 
 			fprintf(out_sfs_fs->ff, "Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Dij,Dij2\n");
 
@@ -603,7 +605,6 @@ int main(int argc, char **argv)
 				IO::print::Sfs("gle", out_sfs_fs, pair, args, hdr->samples[pair->i1], hdr->samples[pair->i2]);
 			}
 
-			// TODO maybe join this loop
 		}
 		if (args->doAMOVA == 2 || args->doAMOVA == 3)
 		{
@@ -663,20 +664,23 @@ int main(int argc, char **argv)
 			}
 		}
 
+
 		switch (args->doAMOVA)
 		{
 
 		case 1:
-            fprintf(out_amova_fs->ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
+        	fprintf(out_amova_fs->ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
 			ASSERT(AMOVA::doAMOVA(M_PWD_GL, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gl") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case 2:
+        	fprintf(out_amova_fs->ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
             fprintf(out_amova_fs->ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
 			ASSERT(AMOVA::doAMOVA(M_PWD_GT, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gt") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case 3:
+        	fprintf(out_amova_fs->ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
             fprintf(out_amova_fs->ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
 			ASSERT(AMOVA::doAMOVA(M_PWD_GL, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gl") == 0);
 			ASSERT(AMOVA::doAMOVA(M_PWD_GT, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gt") == 0);

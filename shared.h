@@ -19,6 +19,7 @@
 
 #include <math.h>
 
+// maximum number of tokens in amova formula string
 #ifndef MAX_FORMULA_TOKENS
 #define MAX_FORMULA_TOKENS 10
 #endif
@@ -63,16 +64,30 @@
  * shortcut to free memory and set pointer to NULL
  * and catch double free
  */
-#define FREE(expr)                                                                                             \
-	if (expr)                                                                                                  \
-	{                                                                                                          \
-		free(expr);                                                                                            \
-		expr = NULL;                                                                                           \
-	}                                                                                                          \
-		// fprintf(stderr, "\n\n*******\n[FREEING NULL MEMORY](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr); 
+#define FREE(expr)   \
+	if (expr)        \
+	{                \
+		free(expr);  \
+		expr = NULL; \
+	}                \
+	// fprintf(stderr, "\n\n*******\n[FREEING NULL MEMORY](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr);
+
+#ifndef FREAD_BUF_SIZE
+#define FREAD_BUF_SIZE 4096
+#endif
+
+#ifndef FGETS_BUF_SIZE
+#define FGETS_BUF_SIZE 1024
+#endif
+
+#define DELIMS "\t ,\n"
+
+#define METADATA_DELIMS "\t ,\n"
 
 
-extern const int get_3x3_idx[3][3];
+// input file type
+enum{IN_VCF, IN_DM, IN_SFS};
+
 
 const double NEG_INF = -std::numeric_limits<double>::infinity();
 
@@ -172,8 +187,11 @@ using size_t = decltype(sizeof(int));
 typedef struct
 {
 
+
+
 	char *in_fn;
 	char *in_sfs_fn;
+	char *in_dm_fn;
 	char *in_mtd_fn;
 	char *out_fn;
 
@@ -183,6 +201,8 @@ typedef struct
 
 	int blockSize;
 	int doAMOVA;
+	int doEM;
+
 	int printMatrix;
 	int isSim;
 	int isTest;
@@ -193,11 +213,6 @@ typedef struct
 	int seed;
 
 	double tole;
-
-	int doInd;
-	int ind1;
-	int ind2;
-
 	int doTest;
 
 	int mThreads;
@@ -248,6 +263,10 @@ typedef struct
 	char *anc;
 	char *der;
 
+
+	// input file type from enum
+	int in_ft;
+
 	char *DATETIME;
 
 	void print()
@@ -261,6 +280,7 @@ typedef struct
 			}
 		}
 	}
+
 
 } paramStruct;
 
@@ -479,161 +499,140 @@ namespace DATA
 			bcfSamples = NULL;
 			sampleNames = NULL;
 		}
-
 	} samplesStruct;
 
-	// strata: defines the population factor of the data
-	//
-	// 		has 1 entry per individual
-	// 		corresponding to which strata it belongs to
-	//		at the specific hierarchical level
-	//
-	// 		eg. if there are 2 stratas (hLevel=2), and 3 individuals
-	// 		ind,Region,Population
-	// 		1,1,1
-	// 		2,1,2
-	// 		3,2,3
-	//
-	//		hierStruct[hLevels] = {Region,Population}
-	//							= {strataStruct*, strataStruct*}
-
-	//		at hLevel=0, hierStruct[0]
-	//			hierStruct[0]->strataStruct->id="Region"
-	//			hierStruct[0]->strataStruct->nStrata=2  //num unique values
-	//			hierStruct[0]->strataStruct->strataArr = {1,1,2}
-	//
-	//		at hLevel=1, hierStruct[1]
-	//			hierStruct[1]->strataStruct->id="Population"
-	//			hierStruct[1]->strataStruct->nStrata=3  //num unique values
-	//			hierStruct[1]->strataStruct->strataArr = {1,2,3}
-	//
-	//
-	// strata is defined based on the definition in adegenet
-	// https://github.com/thibautjombart/adegenet/blob/master/tutorials/tutorial-strata.pdf
-	// typedef struct strataStruct
-	// {
-
-	// 	// number of unique values at this hierarchical level
-	// 	size_t nStrata;
-
-	// 	char *id;
-	// 	size_t _id = 100; // TODO increase if overflow
-
-	// 	strataStruct(size_t nStrata_, char *id_)
-	// 	{
-	// 		nStrata = nStrata_;
-
-	// 		id = (char *)malloc(_id * sizeof(char));
-	// 		strcpy(id, id_);
-	// 	}
-	// 	~strataStruct()
-	// 	{
-	// 		free(id);
-	// 		id = NULL;
-	// 	}
-
-	// } strataStruct;
-
-	// TODO old, new above
-	typedef struct strataStruct
+	/// @brief hierStruct store the hierarchical structure of the metadata
+	typedef struct hierStruct
 	{
 
-		int nInds = 0;
-		char *id;
 
-		// TODO Associate hierarchical levels
-		//
-		// int assoc = 0;
+		// number of unique stratas at this level
+		int nStrata = 0;
 
-		strataStruct()
+		// strata names
+		char **strataNames = NULL;
+		size_t _strataNames = 1024;
+
+		char* strataArr = NULL;
+
+		int* nIndPerStrata = NULL;
+		size_t _nIndPerStrata = 1024;
+
+		hierStruct(char* str)
 		{
-			id = NULL;
+			strataNames = new char*[_strataNames]; //TODO
+			strataNames[0] = new char[strlen(str)+1];
+			strcpy(strataNames[0], str);
+			nStrata=1;
+			nIndPerStrata = new int[_nIndPerStrata]; //TODO
+			for (size_t i = 0; i < _nIndPerStrata; i++)
+			{
+				nIndPerStrata[i] = 0;
+			}
 		}
-		~strataStruct()
+
+
+		~hierStruct()
 		{
-			free(id);
-			id = NULL;
+			delete[] strataNames;
+			delete[] nIndPerStrata;
+			
 		}
 
-	} strataStruct;
+	} hierStruct;
 
-	// Metadata
-	// |
-	// -- nLevels
-	// -- strataArr 1 strataArr
-
-	// strataArr[ind][hLevel][nStrataInLevel]
-	// strataArr[ind][hLevel_i]=*strataStruct_i;
 	typedef struct metadataStruct
 	{
 
-		size_t nLevels = 1;
+		// number of hierarchical levels
+		// e.g. Individual, Region, Population, Subpopulation
+		// 		has 3 levels: {Individual, Region, Population}
+		int nLevels = 0;
 
-		// samplesStruct *samples;
+		// associate individual with the lowest level strata (key strata)
+		int* ind2stratakey= NULL;
+		size_t _ind2stratakey = 1024;
 
-		// char **sampleNames = NULL;
+		int** stratakey2stratas= NULL;
+		size_t _stratakey2stratas = 1024;
 
-		// map hdr->samples to sample names in metadata
-		// eg. hdr->samples[0] = MTD->sampleNames[1]
-		// 		hdr->samples[1] = MTD->sampleNames[0]
-		// 		then access individual 1 using MTD->sampleNames[MTD->sampleOrder[1]]
-		//
-		// sampleOrder[X] = Y
-		// 		X = index in hdr->samples
-		// 		Y = index in MTD, the order found in the metadata file
-		// int *sampleOrder = NULL;
+		// hierStruct[hierarchyLevel] is a hierStruct instance
+		hierStruct **hierArr = NULL;
 
-		int nStrata=0;
-		strataStruct *strataArr;
-
-		int nInds_total = 0;
-
-		int* nStrataAtLevel= NULL;
-		int nSamples = 0;
-
-		metadataStruct(int nLevels_)
-		{
-			
-			fprintf(stderr, "\n-> Creating metadataStruct");
+		metadataStruct(int nLevels_){
 			nLevels = nLevels_;
+			hierArr = new hierStruct*[nLevels];
+			stratakey2stratas = new int*[_stratakey2stratas];//TODO
 
-			strataArr = new strataStruct[nLevels];
-			nStrataAtLevel = new int[nLevels];
-			
+			for(int i=0; i<nLevels; i++){
+				hierArr[i] = NULL;
+			}
+			ind2stratakey = new int[_ind2stratakey];//TODO
 		};
-		~metadataStruct()
-		{
-			delete[] strataArr;
+		~metadataStruct(){
+			delete[] hierArr;
+			delete[] ind2stratakey;
+			delete[] stratakey2stratas;
 
+		};
+
+		// check if two individuals are in the same strata at a given level
+		int cmp_assoc_at_lvl(int lvl_i, int i1, int i2){
+			if(nLevels == 1){
+				if(ind2stratakey[i1] == ind2stratakey[i2]){
+					return 1;
+				}else{
+					return 0;
+				}
+			}else{
+				if(stratakey2stratas[ind2stratakey[i1]][lvl_i] == stratakey2stratas[ind2stratakey[i2]][lvl_i]){
+					return 1;
+				}else{
+					return 0;
+				}
+
+			}
+		};
+
+
+		void print(FILE* fp){
+			fprintf(fp, "\nnLevels: %d\n", nLevels);
+			for (int i = 0; i < nLevels; i++)
+			{
+				fprintf(fp, "Level %d: %d strata\n", i, hierArr[i]->nStrata);
+				for (int j = 0; j < hierArr[i]->nStrata; j++)
+				{
+					fprintf(fp, "\t%s: %d individuals\n", hierArr[i]->strataNames[j], hierArr[i]->nIndPerStrata[j]);
+				}
+			}
 		}
 
+
 	} metadataStruct;
-	metadataStruct *metadataStruct_get(FILE *in_mtd_fp,
-						   int *keyCols, const char *delims, DATA::samplesStruct *SAMPLES,
-						   DATA::formulaStruct *FORMULA, int HAS_COLNAMES);
-	// //TODO old, new above
-	// 	typedef struct metadataStruct
-	// 		{
 
-	// 			strataStruct *strataArr;
-	// 			size_t _strataArr = 10;
 
-	// 			int nInds_total = 0;
+	metadataStruct *metadataStruct_get(FILE *in_mtd_fp, samplesStruct *SAMPLES, formulaStruct *FORMULA, int has_colnames,paramStruct *pars);
 
-	// 			int nStrata = 0;
+	typedef struct distanceMatrixStruct
+	{
+		double *DM;
+		samplesStruct *samples;
 
-	// 			metadataStruct()
-	// 			{
-	// 				strataArr = new strataStruct[_strataArr];
-	// 				fprintf(stderr, "\n->Creating metadataStruct");
-	// 			};
-	// 			~metadataStruct()
-	// 			{
-	// 				delete[] strataArr;
-	// 				strataArr = NULL;
-	// 			}
+		int nInds = 0;
+		int n_ind_cmb = 0;
 
-	// 		} metadataStruct;
+		distanceMatrixStruct(int n_ind_cmb_)
+		{
+			n_ind_cmb = n_ind_cmb_;
+			DM = (double *)malloc(n_ind_cmb * sizeof(double));
+		};
+		~distanceMatrixStruct()
+		{
+			free(DM);
+			DM = NULL;
+		}
+
+	} distanceMatrixStruct;
 
 };
 
@@ -650,6 +649,8 @@ namespace IO
 	{
 		// int Metadata(DATA::metadataStruct *MTD, FILE *in_mtd_fp, int *keyCols, const char *delims, DATA::samplesStruct *SAMPLES, DATA::formulaStruct *FORMULA, int HAS_COLNAMES);
 		int SFS(FILE *in_sfs_fp, const char *delims, DATA::samplesStruct *SAMPLES);
+
+		double *distance_matrix(FILE *in_dm_fp, paramStruct *pars);
 
 		char *getFirstLine(char *fn);
 		char *getFirstLine(FILE *fp);

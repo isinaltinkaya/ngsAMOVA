@@ -11,20 +11,8 @@
 #include "math_utils.h"
 #include <stdlib.h>
 
-#ifndef FREAD_BUF_SIZE
-#define FREAD_BUF_SIZE 4096
-#endif
 
-#ifndef FGETS_BUF_SIZE
-#define FGETS_BUF_SIZE 1024
-#endif
 
-// maximum number of tokens in amova formula string
-#ifndef MAX_FORMULA_TOKENS
-#define MAX_FORMULA_TOKENS 10
-#endif
-
-using size_t = decltype(sizeof(int));
 
 //
 // 0 1 2
@@ -42,6 +30,9 @@ extern const int get_3x3_idx[3][3] = {
 	{0, 1, 2},
 	{3, 4, 5},
 	{6, 7, 8}};
+
+//TODO check this
+using size_t = decltype(sizeof(int));
 
 /// @brief get current time
 /// @return time as char*
@@ -270,7 +261,7 @@ int IO::inspectFile::count_nRows(FILE *fp, int HAS_COLNAMES)
 	return n;
 }
 
-/// @brief IO::validateFile::Metadata validate metadata file
+/// @brief IO::validateFile::Metadata validate metadata file (input=BCF)
 /// @param in_mtd_fp pointer to metadata file
 /// @param nInds number of individuals
 /// @param keyCols key columns
@@ -278,7 +269,6 @@ int IO::inspectFile::count_nRows(FILE *fp, int HAS_COLNAMES)
 /// @param delims delimiters
 /// @param HAS_COLNAMES 1 if file has header
 /// @return number of columns if successful, exits with error otherwise
-
 int IO::validateFile::Metadata(FILE *in_mtd_fp, int nInds, int *keyCols,
 							   DATA::formulaStruct *FORMULA, const char *delims, int HAS_COLNAMES)
 {
@@ -287,22 +277,22 @@ int IO::validateFile::Metadata(FILE *in_mtd_fp, int nInds, int *keyCols,
 	int nRows = IO::inspectFile::count_nRows(in_mtd_fp, HAS_COLNAMES);
 	if (nRows == -1)
 	{
-		fprintf(stderr, "\n[ERROR]\tCould not count number of rows in Metadata file; will exit!\n\n");
+		fprintf(stderr, "\n[ERROR]\tCould not count number of rows in Metadata file.\n\n");
 		exit(1);
 	}
 	if (nRows == 0)
 	{
-		fprintf(stderr, "\n[ERROR]\tMetadata file is empty; will exit!\n\n");
+		fprintf(stderr, "\n[ERROR]\tMetadata file is empty.\n\n");
 		exit(1);
 	}
 	if (nRows == 1)
 	{
-		fprintf(stderr, "\n[ERROR]\tMetadata file contains only one row; will exit!\n\n");
+		fprintf(stderr, "\n[ERROR]\tMetadata file contains only one row.\n\n");
 		exit(1);
 	}
 	if (nRows != nInds)
 	{
-		fprintf(stderr, "\n[ERROR]\tNumber of rows in Metadata file (%d) does not match number of individuals (%d); will exit!\n\n", nRows, nInds);
+		fprintf(stderr, "\n[ERROR]\tNumber of rows in Metadata file (%d) does not match number of individuals (%d).\n\n", nRows, nInds);
 		exit(1);
 	}
 
@@ -316,7 +306,7 @@ int IO::validateFile::Metadata(FILE *in_mtd_fp, int nInds, int *keyCols,
 	{
 		if (nCols < FORMULA->nTokens)
 		{
-			fprintf(stderr, "\n[ERROR]\tNumber of columns in Metadata file (%d) is less than number of tokens in formula (%d); will exit!\n\n", nCols, FORMULA->nTokens);
+			fprintf(stderr, "\n[ERROR]\tNumber of columns in Metadata file (%d) is less than number of tokens in formula (%d).\n\n", nCols, FORMULA->nTokens);
 			exit(1);
 		}
 	}
@@ -362,248 +352,290 @@ int IO::readFile::SFS(FILE *in_sfs_fp, const char *delims, DATA::samplesStruct *
 	return 0;
 }
 
-/// @brief metadataStruct_get get metadataStruct
-/// @param in_mtd_fp pointer to input Metadata file
-/// @param keyCols pointer to set of which columns to use as keys
-/// @param delims delimiters
-/// @param SAMPLES samplesStruct samples
-/// @param FORMULA formulaStruct formula
-/// @param HAS_COLNAMES metadata file has header, yes=1, no=0
-/// @return ???
-DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp,
-						   int *keyCols, const char *delims, DATA::samplesStruct *SAMPLES,
-						   DATA::formulaStruct *FORMULA, int HAS_COLNAMES)
+/// @brief read distance matrix file
+/// @param in_dm_fp input distance matrix file
+/// @param pars paramStruct parameters
+/// @return distance matrix double*
+double *IO::readFile::distance_matrix(FILE *in_dm_fp, paramStruct *pars)
 {
 
-	// fprintf(stderr, "\n");
-	// fprintf(stderr, "--------------------------------------------------");
-	// fprintf(stderr, "\n");
+	char dm_buf[FGETS_BUF_SIZE];
 
-	// int nCols = 0;
-	// int checkCol = 1;
+	int dm_vals_size = 1125;
+	double *dm_vals = new double[dm_vals_size];
 
-	int nCols = IO::validateFile::Metadata(in_mtd_fp, SAMPLES->nSamples, keyCols, FORMULA, delims, HAS_COLNAMES);
-	metadataStruct *MTD = new metadataStruct(nCols);
+	// first value is type string
+	int n_vals = -1;
 
-	
+	while (fgets(dm_buf, FGETS_BUF_SIZE, in_dm_fp))
+	{
+		char *tok = strtok(dm_buf, ",");
+		while (tok != NULL)
+		{
+			if (n_vals > dm_vals_size)
+			{
+				dm_vals_size = dm_vals_size * 2;
+				dm_vals = (double *)realloc(dm_vals, (dm_vals_size) * sizeof(double));
+			}
 
-	// TODO map is probably better due to sorting issues. we cannot have all strata sorted
+			dm_vals[n_vals] = atof(tok);
+			n_vals++;
+			tok = strtok(NULL, ", \n");
+		}
+	}
+	fprintf(stderr, "\nnvals = %d\n", n_vals);
+	pars->n_ind_cmb = n_vals;
+	double *M_PWD_DM = (double *)malloc((n_vals) * sizeof(double));
+	for (int i = 0; i < n_vals; i++)
+	{
+		M_PWD_DM[i] = dm_vals[i];
+	}
+	return M_PWD_DM;
+}
+
+// if formula is not defined, hierarchical levels must defined in this order:
+// individual, highest_level, ..., lowest_level
+// e.g.
+// individual, region, population, subpopulation
+// which translates to the formula:
+// individual ~ region / population / subpopulation
+
+DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStruct *SAMPLES,
+											   DATA::formulaStruct *FORMULA, int has_colnames,
+											   paramStruct *pars)
+{
+
+
 
 	char mtd_buf[FGETS_BUF_SIZE];
 
+
+	int nLevels=0;
+
+
+	// go to beginning of file
 	ASSERT(fseek(in_mtd_fp, 0, SEEK_SET) == 0);
 
-	int mtd_sidx=0;
-	int nlvl=0;
-	// find the position of formulatokens in the first line of Metadata file
-	// and store them in keyCols
-	if (FORMULA != NULL)
+	if(FORMULA == NULL)
 	{
 
-		char *colnames = IO::readFile::getFirstLine(in_mtd_fp);
+		// if no formula is provided, then we assume that columns are ordered based on hierarchical structure
+		fprintf(stderr, "\n[INFO]\t-> No formula is provided, will assume that columns are ordered based on hierarchical structure and will use all columns.\n");
 
-		char *tok = strtok(colnames, delims);
 
-		// for (int i=0; i<nCols-1; i++){
-		// 	for (int t = 0; t < FORMULA->nTokens && FORMULA->formulaTokens[t] != NULL; t++)
-		// 		if (strcmp(tok, FORMULA->formulaTokens[t]) == 0){
-		// 			keyCols[t] = i;
-		// 		}
-		// 	}
-		// 	tok = strtok(NULL, delims);
-
-		size_t nCols = 0;
-		while (tok != NULL)
+		if (has_colnames == 1)
 		{
-			for (int i = 0; i < FORMULA->nTokens && FORMULA->formulaTokens[i] != NULL; i++)
-			{
-				if (strcmp(tok, FORMULA->formulaTokens[i]) == 0)
-				{
-					FORMULA->formulaTokenIdx[i] = nCols;
-					FORMULA->nTokensFound++;
-				}
-			}
-			nCols++;
-			tok = strtok(NULL, delims);
-		}
+			// skip first line
+			ASSERT(fgets(mtd_buf, FGETS_BUF_SIZE, in_mtd_fp) != NULL);
 
-		if (FORMULA->nTokensFound != FORMULA->nTokens)
-		{
-			fprintf(stderr, "\n[ERROR]\tNumber of tokens found in Metadata file (%d) does not match number of tokens in formula (%d); will exit!\n\n", FORMULA->nTokensFound, FORMULA->nTokens);
+			// first column contains the keyword corresponding to the individual id
+			char *hdrtok = strtok(mtd_buf, METADATA_DELIMS);
+			
+			// exclude Individual column
+			nLevels = -1;
+
+			do{
+				fprintf(stderr, "\n[INFO]\t-> Found hierarchical level: %s\n", hdrtok);
+				nLevels++;
+				hdrtok = strtok(NULL, METADATA_DELIMS);
+			}while(hdrtok!=NULL);
+
+			fprintf(stderr, "\n[INFO]\t-> Number of levels in metadata file: %d\n", nLevels);
+
+
+		}else{
+			fprintf(stderr, "\n[ERROR]\t If no formula is provided, the metadata file must have a header line with the column names.\n");
 			exit(1);
 		}
 
-		ASSERT(fseek(in_mtd_fp, 0, SEEK_SET) == 0);
-		while (fgets(mtd_buf, FGETS_BUF_SIZE, in_mtd_fp))
-		{
+		metadataStruct *MTD = new metadataStruct(nLevels);
 
-			char *tok = strtok(mtd_buf, delims);
-			char *group_id = tok;
 
-			// increase the size of Strata
+		// sample index in metadata file
+		int sidx = 0;
 
-			// if not the first loop
-			if (MTD->strataArr[nlvl].id != NULL)
-			{
-
-				// group id changed
-				if (strcmp(MTD->strataArr[nlvl].id, group_id) != 0)
-				{
-					nlvl++;
-					MTD->strataArr[nlvl].id = strdup(group_id);
-				}
-
-				SAMPLES->sampleArr[mtd_sidx] += (int)pow(2, (int)nlvl);
-
-				MTD->strataArr[nlvl].nInds++;
-				mtd_sidx++;
+		// collect the strata_i indexes for each hierarchical level until the lowest level
+		//
+		// e.g. continent1, region2, pop4
+		// 		hier[0],    hier[1], hier[2]
+		//
+		// continent1 index in hier[0] is 0  ( {continent1, continent2} )
+		// region2 index in hier[1] is 1 ( {region1, region2, region3} )
+		// stratakeyAssocIdx[0] = 0 (continent1)
+		// stratakeyAssocIdx[1] = 1 (region2)
+		int* stratakeyAssocIdx= NULL;
+		
+		if(MTD->nLevels > 1){
+			stratakeyAssocIdx= new int[nLevels-1];
+			for (int i=0; i<nLevels-1; i++){
+				stratakeyAssocIdx[i] = -1;
 			}
-			else
-			{
-				// if first loop
-
-				// set bit
-				// nth bit is associated with strata_n
-				SAMPLES->sampleArr[mtd_sidx] += (int)pow(2, (int)nlvl);
-
-				MTD->strataArr[nlvl].id = strdup(group_id);
-				MTD->strataArr[nlvl].nInds++;
-				mtd_sidx++;
-			}
-
-			// TODO then plug in all pairs associated with ind if ind==indid in header in loop
-		}
-		// add the last one since increase is at the beginning of change
-		nlvl++;
-	}
-	else
-	{
-		// if no formula is provided, then we assume that columns are ordered based on hierarchical structure
-		fprintf(stderr, "\n-> No formula is provided, will assume that columns are ordered based on hierarchical structure and will use all columns.\n");
-
-		// skip the first line
-		if (HAS_COLNAMES == 1)
-		{
-			fgets(mtd_buf, FGETS_BUF_SIZE, in_mtd_fp);
 		}
 
-		while (fgets(mtd_buf, FGETS_BUF_SIZE, in_mtd_fp))
+
+		// loop through the remaining lines; one line per individual
+		while(fgets(mtd_buf, FGETS_BUF_SIZE, in_mtd_fp))
 		{
 
-			// Individual,Region,Population
-			// Individual,HierLvl1,HierLvl2...
-			//  1 is the highest hierarchical level
 
-			// assume first column is the individual id
-			char *tok = strtok(mtd_buf, delims);
-			// fprintf(stderr, "\n\n======\ntok=%s", tok);
+	
 
-			int foundSample=0;
-			for (int sidx=0; sidx<SAMPLES->nSamples; sidx++){
-				if (strcmp(tok, SAMPLES->bcfSamples[sidx])==0){
-					fprintf(stderr, "\n\n======\nFOUND SAMPLES->bcfSamples[%d]=%s", sidx, SAMPLES->bcfSamples[sidx]);
-					SAMPLES->sampleOrder[sidx]=mtd_sidx;
-					foundSample++;
-				}
-			}
-			if(foundSample==0){
-				fprintf(stderr, "\n\n======\n[ERROR] Sample %s not found in the metadata file. Will exit!\n\n", tok);
-				exit(1);
-			}
-			if(foundSample>1){
-				fprintf(stderr, "\n\n======\n[ERROR] Sample %s found more than once in the metadata file. Will exit!\n\n", tok);
-				exit(1);
-			}
+			// first column = individual id
+			char *tok = strtok(mtd_buf, METADATA_DELIMS);
 
-			// nCols-1 since we already read the first column
-			MTD->nLevels=nCols-1;
-			for (int nlvl= 0; nlvl<  MTD->nLevels - 1; nlvl++)
-			{
-				tok = strtok(NULL, delims);
-
-				// fprintf(stderr, "\n\n======\ntok=%s", tok);
-				char *group_id = tok;
+			// if input file type is vcf, find the index of the individual in the bcf header
+			if (pars->in_ft == IN_VCF){
 
 
-				// if not the first loop
-				if (MTD->strataArr[nlvl].id != NULL)
-				{
+				// index of the sample in vcf file
+				int vcf_sidx=0;
+				for (vcf_sidx=0; vcf_sidx<SAMPLES->nSamples+1; vcf_sidx++){
 
-					// group id changed
-					if (strcmp(MTD->strataArr[nlvl].id, group_id) != 0)
-					{
-						MTD->strataArr[nlvl].id = strdup(group_id);
+					if (vcf_sidx == SAMPLES->nSamples){
+						fprintf(stderr, "\n\n======\n[ERROR] Sample %s not found in the metadata file. \n\n", tok);
+						exit(1);
+					}else if(strcmp(tok, SAMPLES->bcfSamples[vcf_sidx])==0){
+						break;
 					}
-
-					SAMPLES->sampleArr[mtd_sidx] += (int)pow(2, (int)nlvl);
-
-					MTD->strataArr[nlvl].nInds++;
 				}
-				else
+
+
+				// loop through the hierarchical levels in the line
+				for (int lvl_i= 0; lvl_i < MTD->nLevels; lvl_i++)
 				{
-					// if first loop
-					MTD->strataArr[nlvl].id = strdup(group_id);
 
-					// set bit
-					// nth bit is associated with strata_n
-					SAMPLES->sampleArr[mtd_sidx] += (int)pow(2, (int)nlvl);
+					// contains the index of the strata (e.g. pop4) in the associated level's strataNames array
+					// does not include the lowest hierarchical level nLevels-1
+					int lvl_strata_i=0;
 
-					MTD->strataArr[nlvl].id = strdup(group_id);
-					MTD->strataArr[nlvl].nInds++;
+					// first column after individual is the highest hierarchical level
+					tok = strtok(NULL, METADATA_DELIMS);
+
+
+
+					if(MTD->hierArr[lvl_i] == NULL)
+					{
+						// we are in the first line, initialize the hierStruct for this level
+						MTD->hierArr[lvl_i] = new hierStruct(tok);
+
+						if(MTD->nLevels > 1){
+							stratakeyAssocIdx[lvl_i] = lvl_strata_i;
+						}
+						MTD->hierArr[lvl_i]->nIndPerStrata[lvl_strata_i]++;
+					}
+					else if(MTD->nLevels == 1){
+						// only one level in the metadata file
+						
+						int stratakey_i=0;
+						// check if the strata is already in the strataNames
+						for(stratakey_i=0; stratakey_i<MTD->hierArr[lvl_i]->nStrata; stratakey_i++)
+						{
+							if(strcmp(tok, MTD->hierArr[lvl_i]->strataNames[stratakey_i])==0)
+							{
+								MTD->hierArr[lvl_i]->nIndPerStrata[stratakey_i]++;
+								lvl_strata_i = stratakey_i;
+								break;
+							}else if(stratakey_i == MTD->hierArr[lvl_i]->nStrata-1)
+							{
+								// at the end but still not found
+								// so add the strata to the strataNames
+								MTD->hierArr[lvl_i]->nStrata++;
+								stratakey_i++;
+								MTD->hierArr[lvl_i]->strataNames = (char**) realloc(MTD->hierArr[lvl_i]->strataNames, MTD->hierArr[lvl_i]->nStrata*sizeof(char*));
+								MTD->hierArr[lvl_i]->strataNames[stratakey_i] = (char*) malloc((strlen(tok)+1)*sizeof(char));
+								strcpy(MTD->hierArr[lvl_i]->strataNames[stratakey_i], tok);
+								MTD->hierArr[lvl_i]->nIndPerStrata = (int*) realloc(MTD->hierArr[lvl_i]->nIndPerStrata, MTD->hierArr[lvl_i]->nStrata*sizeof(int));
+								MTD->hierArr[lvl_i]->nIndPerStrata[stratakey_i]++;
+								lvl_strata_i = stratakey_i;
+								break;
+
+							}
+						}
+						MTD->ind2stratakey[vcf_sidx] = stratakey_i;
+						
+					}
+					else if(lvl_i == MTD->nLevels-1)
+					// at the lowest level
+					{
+						int stratakey_i = 0;
+
+						// check if the lowest level is already in the strataNames
+						for (stratakey_i=0; stratakey_i < MTD->hierArr[lvl_i]->nStrata; stratakey_i++)
+						{
+
+							if(strcmp(tok, MTD->hierArr[lvl_i]->strataNames[stratakey_i])==0)
+							{
+							// found the strata
+								MTD->hierArr[lvl_i]->nIndPerStrata[stratakey_i]++;
+
+								for(int i=0; i<MTD->nLevels-1; i++)
+								{
+									//check if consistent with previous association 
+									if(MTD->stratakey2stratas[stratakey_i][i] != stratakeyAssocIdx[i]){
+										fprintf(stderr, "\n\n======\n[ERROR] Strata association is inconsistent for strata %s at level %d. \n\n", tok, lvl_i);
+										exit(1);
+									}
+								}
+								// strata key association is consistent
+
+								break;
+
+							}else if(stratakey_i==MTD->hierArr[lvl_i]->nStrata-1){
+
+								stratakey_i++;
+								MTD->hierArr[lvl_i]->nStrata++;
+
+								// at the end but not found; add strata name to strataNames
+								MTD->hierArr[lvl_i]->strataNames = (char **)realloc(MTD->hierArr[lvl_i]->strataNames, (MTD->hierArr[lvl_i]->nStrata) * sizeof(char *));
+								MTD->hierArr[lvl_i]->strataNames[MTD->hierArr[lvl_i]->nStrata] = (char *)malloc((strlen(tok)+1) * sizeof(char));
+								strcpy(MTD->hierArr[lvl_i]->strataNames[MTD->hierArr[lvl_i]->nStrata], tok);
+								MTD->hierArr[lvl_i]->nIndPerStrata[stratakey_i]++;
+
+
+								// dump the previous levels associated with stratakey
+								for(int i=0; i<MTD->nLevels-1; i++)
+								{
+									MTD->stratakey2stratas[stratakey_i][i] = stratakeyAssocIdx[i];
+								}
+
+								break;
+							}
+						}
+
+						// associate ind with lowest level strata
+						MTD->ind2stratakey[vcf_sidx] = stratakey_i;
+					}
+					else
+					{
+						for( lvl_strata_i =0; MTD->hierArr[lvl_i]->nStrata; lvl_strata_i++)
+						{
+							if(strcmp(tok, MTD->hierArr[lvl_i]->strataNames[lvl_strata_i])==0)
+							{
+								// found the strata
+								break;
+							}else if(lvl_strata_i==MTD->hierArr[lvl_i]->nStrata-1){
+								// at the end but not found; add strata name to strataNames
+								lvl_strata_i++;
+								MTD->hierArr[lvl_i]->strataNames = (char **)realloc(MTD->hierArr[lvl_i]->strataNames, (lvl_strata_i) * sizeof(char *));
+								MTD->hierArr[lvl_i]->strataNames[lvl_strata_i] = (char *)malloc((strlen(tok)+1) * sizeof(char));
+								strcpy(MTD->hierArr[lvl_i]->strataNames[lvl_strata_i], tok);
+								MTD->hierArr[lvl_i]->nStrata++;
+								break;
+							}
+						}
+						stratakeyAssocIdx[lvl_i] = lvl_strata_i;
+					}
 				}
 			}
-
-			// fprintf(stderr, "\n\n======\nmtd_buf=%s", mtd_buf);
-			// fprintf(stderr, "\n");
-
-			// fprintf(stderr,"\n\nHERE\n\n");
-			// fprintf(stderr, "\n\n======\ngroup_id=%s", group_id);
-			// fprintf(stderr, "\n");
-			// tok = strtok(NULL, delims);
-			// fprintf(stderr, "\n\n======\ntok=%s", tok);
-			// fprintf(stderr, "\n");
-
-			// // TODO deprecated
-			// int whichCol = -1;
-			// for (int coli = 0; coli < whichCol - 1; coli++)
-			// {
-			// 	tok = strtok(NULL, delims);
-			// 	group_id = tok;
-			// }
-
-			// increase the size of Strata
-			// if (nlvl > (int)MTD->_strataArr)
-			// {
-			// 	fprintf(stderr, "->->->increase the size of Strata S[]!! Found %d nlvl and %d MTD->_strataArr\n", (int)nlvl, (int)MTD->_strataArr);
-			// }
-
-
-			// TODO then plug in all pairs associated with ind if ind==indid in header in loop
-			mtd_sidx++;
-
 		}
-		// add the last one since increase is at the beginning of change
-		nlvl++;
+		// delete [] stratakeyAssocIdx;
+		return(MTD);
 
-#if 0
-	for (int sti=0; sti<nlvl; sti++){
-		fprintf(stderr,"\n-> Strata %s contains %d individuals.",MTD->strataArr[sti].id,MTD->strataArr[sti].nInds);
-		fprintf(stderr,"\n-> Individual indexes are:\t");
-		for(int ii=0; ii<mtd_sidx;ii++){
-			if( (SAMPLES->sampleArr[ii] & (1 << sti))){
-				fprintf(stderr,"%i",ii);
-			}
-		}
-		fprintf(stderr,"\n");
+	}else{
+		fprintf(stderr, "[ERROR] NOT IMPLEMENTED YET");
 	}
 
-	fprintf(stderr,"\n");
-	fprintf(stderr,"--------------------------------------------------");
-	fprintf(stderr,"\n");
-#endif
-	}
 
-	return MTD;
 }
 
 // IO::print::Array
@@ -720,9 +752,6 @@ void usage(FILE *fp)
 			"\t-mCol\n"
 			"\t-seed\n"
 			"\t-doAMOVA\n"
-			"\t-doInd\n"
-			"\t-ind1\n"
-			"\t-ind2\n"
 			"\t-printMatrix\n"
 			"\t-doDist\n"
 			"\t-sqDist (default: 1)\n"
@@ -758,6 +787,7 @@ argStruct *argStruct_init()
 
 	args->in_fn = NULL;
 	args->in_sfs_fn = NULL;
+	args->in_dm_fn = NULL;
 	args->in_mtd_fn = NULL;
 	args->out_fn = NULL;
 
@@ -769,6 +799,7 @@ argStruct *argStruct_init()
 
 	args->seed = -1;
 	args->doAMOVA = 0;
+	args->doEM = 0;
 
 	args->mThreads = 0;
 
@@ -787,9 +818,6 @@ argStruct *argStruct_init()
 
 	args->printMatrix = 0;
 
-	args->doInd = 0;
-	args->ind1 = -1;
-	args->ind2 = -1;
 
 	args->gl2gt = -1;
 
@@ -825,8 +853,10 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->in_fn = strdup(val);
 		else if (strcasecmp("-i", arv) == 0)
 			args->in_fn = strdup(val);
-		else if (strcasecmp("-s", arv) == 0)
+		else if (strcasecmp("-in_sfs", arv) == 0)
 			args->in_sfs_fn = strdup(val);
+		else if (strcasecmp("-in_dm", arv) == 0)
+			args->in_dm_fn = strdup(val);
 		else if (strcasecmp("-m", arv) == 0)
 			args->in_mtd_fn = strdup(val);
 		else if (strcasecmp("-out", arv) == 0)
@@ -851,12 +881,8 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->seed = atoi(val);
 		else if (strcasecmp("-doAMOVA", arv) == 0)
 			args->doAMOVA = atoi(val);
-		else if (strcasecmp("-doInd", arv) == 0)
-			args->doInd = atoi(val);
-		else if (strcasecmp("-ind1", arv) == 0)
-			args->ind1 = atoi(val);
-		else if (strcasecmp("-ind2", arv) == 0)
-			args->ind2 = atoi(val);
+		else if (strcasecmp("-doEM", arv) == 0)
+			args->doEM = atoi(val);
 		else if (strcasecmp("-tole", arv) == 0)
 			args->tole = atof(val);
 		else if (strcasecmp("-isSim", arv) == 0)
@@ -922,14 +948,7 @@ argStruct *argStruct_get(int argc, char **argv)
 	}
 	else if (args->minInd == 1)
 	{
-		fprintf(stderr, "\n[ERROR]\tMinimum value allowed for minInd is 2; will exit!\n");
-		free(args);
-		return 0;
-	}
-
-	if (args->in_fn == NULL)
-	{
-		fprintf(stderr, "\n[ERROR]\tMust supply -in <input_file>; will exit!\n");
+		fprintf(stderr, "\n[ERROR]\tMinimum value allowed for minInd is 2.\n");
 		free(args);
 		return 0;
 	}
@@ -947,7 +966,7 @@ argStruct *argStruct_get(int argc, char **argv)
 
 	if (args->doAMOVA != 3 && args->doTest == 1)
 	{
-		fprintf(stderr, "\n[ERROR]\t-doTest 1 requires -doAMOVA 3; will exit!\n");
+		fprintf(stderr, "\n[ERROR]\t-doTest 1 requires -doAMOVA 3.\n");
 		free(args);
 		return 0;
 	}
@@ -958,7 +977,7 @@ argStruct *argStruct_get(int argc, char **argv)
 	{
 		if (args->doAMOVA != -1)
 		{
-			fprintf(stderr, "\n[ERROR]\tMust supply -m <Metadata_file>; will exit!\n");
+			fprintf(stderr, "\n[ERROR]\tMust supply -m <Metadata_file>.\n");
 			free(args);
 			return 0;
 		}
@@ -974,7 +993,7 @@ argStruct *argStruct_get(int argc, char **argv)
 			fprintf(stderr, "\nFormula is defined as %s; will use the formula to define hierarchical structure in Metadata file %s.\n", args->formula, args->in_mtd_fn);
 			if (args->hasColNames == 0)
 			{
-				fprintf(stderr, "\n[ERROR]\tFormula is defined but -hasColnames is set to 0. Metadata file must have column names if formula is defined; will exit!\n");
+				fprintf(stderr, "\n[ERROR]\tFormula is defined but -hasColnames is set to 0. Metadata file must have column names if formula is defined.\n");
 			}
 		}
 	}
@@ -983,7 +1002,7 @@ argStruct *argStruct_get(int argc, char **argv)
 	// maybe dont call these error
 	if (args->doDist == -1)
 	{
-		fprintf(stderr, "\n[ERROR]\tMust supply -doDist <distance_method>; will exit!\n");
+		fprintf(stderr, "\n[ERROR]\tMust supply -doDist <distance_method>.\n");
 		free(args);
 		return 0;
 	}
@@ -1002,7 +1021,7 @@ argStruct *argStruct_get(int argc, char **argv)
 	}
 	else
 	{
-		fprintf(stderr, "\n[ERROR]\t-doDist %d is not available; will exit!\n", args->doDist);
+		fprintf(stderr, "\n[ERROR]\t-doDist %d is not available.\n", args->doDist);
 		free(args);
 		return 0;
 	}
@@ -1017,30 +1036,48 @@ argStruct *argStruct_get(int argc, char **argv)
 		fprintf(stderr, "\n\t-> -sqDist is set to 0, will use absolute value of distance measure (|dist_ij|).\n");
 	}
 
-	if (args->doAMOVA == 1)
+	if (args->doEM == 0)
 	{
+		fprintf(stderr, "\n\t-> -doEM is set to 0, will not perform EM optimization.\n");
 
-		if (args->doInd == 1)
+		if (args->in_sfs_fn == NULL)
 		{
-			if (args->ind1 == -1)
+			if (args->in_dm_fn == NULL)
 			{
-				fprintf(stderr, "[ERROR]\tMust supply -ind1 while using -doInd 1 \n");
+				fprintf(stderr, "\n[ERROR]\tMust supply -sfs <SFS_file> or -dm <distance_matrix_file>.\n");
 				free(args);
 				return 0;
 			}
-			if (args->ind2 == -1)
+			else
 			{
-				fprintf(stderr, "[ERROR]\tMust supply -ind2 while using -doInd 1 \n");
-				free(args);
-				return 0;
-			}
-			if (args->ind1 == args->ind2)
-			{
-				fprintf(stderr, "[ERROR]\tInd ids must be different while using -doInd 1 \n");
-				free(args);
-				return 0;
+				fprintf(stderr, "\n\t-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
 			}
 		}
+		else
+		{
+			fprintf(stderr, "\n\t-> -in_sfs %s is set, will use SFS file as data.\n", args->in_sfs_fn);
+		}
+	}
+	else if (args->doEM == 1)
+	{
+		fprintf(stderr, "\n\t-> -doEM is set to 1, will use EM algorithm to estimate parameters.\n");
+
+		if (args->in_fn == NULL)
+		{
+			fprintf(stderr, "\n[ERROR]\tMust supply -in <input_file>.\n");
+			free(args);
+			return 0;
+		}
+	}
+	else
+	{
+		fprintf(stderr, "\n[ERROR]\tMust supply -doEM <EM_method>.\n");
+		free(args);
+		return 0;
+	}
+
+	if (args->doAMOVA == 1)
+	{
 
 		fprintf(stderr, "\n\t-> -doAMOVA 1; will use 10 genotype likelihoods from GL tag.\n");
 	}
@@ -1052,13 +1089,13 @@ argStruct *argStruct_get(int argc, char **argv)
 	{
 		fprintf(stderr, "\n\t-> -doAMOVA 2; will do both 1 and 2.\n");
 	}
-	else if (args->doAMOVA == -1)
+	else if (args->doAMOVA == 0)
 	{
-		fprintf(stderr, "\n\t-> -doAMOVA -1; will not run AMOVA\n");
+		fprintf(stderr, "\n\t-> -doAMOVA 0; will not run AMOVA\n");
 	}
 	else
 	{
-		fprintf(stderr, "\n[ERROR]\tMust supply a value for -doAMOVA; will exit!\n");
+		fprintf(stderr, "\n[ERROR]\tMust supply a value for -doAMOVA.\n");
 		free(args);
 		return 0;
 	}
@@ -1073,6 +1110,12 @@ paramStruct *paramStruct_init(argStruct *args)
 {
 
 	paramStruct *pars = new paramStruct;
+
+
+
+	if(args->in_fn != NULL){
+		pars->in_ft=IN_VCF;
+	}
 
 	// number of sites non skipped for all individuals
 	// nSites may not be !=totSites if minInd is set
@@ -1160,7 +1203,7 @@ DATA::formulaStruct *DATA::formulaStruct_get(const char *formula)
 	{
 		if (*p == '/')
 		{
-			fprintf(stderr, "\n[ERROR]\tformula %s is not valid: Found '/' before '~'. Will exit!\n", formula);
+			fprintf(stderr, "\n[ERROR]\tformula %s is not valid: Found '/' before '~'. \n", formula);
 			exit(1);
 		}
 		if (*p == '~')
@@ -1172,7 +1215,7 @@ DATA::formulaStruct *DATA::formulaStruct_get(const char *formula)
 
 	if (*p == '\0')
 	{
-		fprintf(stderr, "\n[ERROR]\tformula %s is not valid; will exit!\n", formula);
+		fprintf(stderr, "\n[ERROR]\tformula %s is not valid.\n", formula);
 		exit(1);
 	}
 
@@ -1204,7 +1247,7 @@ DATA::formulaStruct *DATA::formulaStruct_get(const char *formula)
 			ASSERT(nTilde != 1); // should never happen
 			if (nTilde > 1)
 			{
-				fprintf(stderr, "\n[ERROR]\tformula %s is not valid: Found more than one '~'. Will exit!\n", formula);
+				fprintf(stderr, "\n[ERROR]\tformula %s is not valid: Found more than one '~'. \n", formula);
 			}
 		}
 		// or it was a '/'

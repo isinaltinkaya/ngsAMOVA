@@ -22,28 +22,19 @@ double get_SSD_level(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruc
 	double ssd_WG = 0.0;
 	int px;
 
-	// group pairs by strata
-	for (int sti = 0; sti < MTD->nLevels; sti++)
+	int lvl_i = 0;
+	for (int sti=0; sti < MTD->hierArr[lvl_i]->nStrata; sti++)
 	{
-		// fprintf(stderr, "\n-> nStrata: %i at hierarchical level ..\n", MTD->nLevels);
-		// fprintf(stderr, "\n-> Strata (%s,idx:%i) has %i individuals\n",
-		// 		MTD->strataArr[sti].id,
-		// 		sti,
-		// 		MTD->strataArr[sti].nInds);
+		fprintf(stderr, "\n-> Strata (%s,idx:%i) has %i individuals\n", MTD->hierArr[lvl_i]->strataNames[sti], sti, MTD->hierArr[lvl_i]->nIndPerStrata[sti]);
+		fprintf(stderr, "\n\n\n --- sti = %i ---\n\n\n", sti);
+		MTD->print(stderr);
 
-		
 		sum = 0.0;
 		for (int i1 = 0; i1 < nInd - 1; i1++)
 		{
 			for (int i2 = i1 + 1; i2 < nInd; i2++)
 			{
-
-				//TODO do it (get associations) once, store in struct->LUT
-				//TODO add print to struct as func
-				// check if pair belongs to strata
-				if ((SAMPLES->sampleArr[i1] & (1 << sti)) && (SAMPLES->sampleArr[i2] & (1 << sti)))
-				{
-
+				if(MTD->cmp_assoc_at_lvl(lvl_i, i1, i2) == 0){
 #if 0
 					fprintf(stderr, "\n-> Pair %i,idx:(%i,%i)) belongs to strata (%s,idx:%i)\n",
 							LUT_indPair_idx[i1][i2],
@@ -59,7 +50,7 @@ double get_SSD_level(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruc
 				}
 			}
 		}
-		ssd_WG += sum / (double)MTD->strataArr[sti].nInds;
+		ssd_WG += sum / (double)MTD->hierArr[lvl_i]->nIndPerStrata[sti];
 	}
 	return ssd_WG;
 }
@@ -69,22 +60,20 @@ int AMOVA::doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct 
 
 	int nLevels = 1;
 	amovaResultStruct *amv = new amovaResultStruct(nLevels);
-	
+
 	double ssd_TOTAL = 0.0;
 	double msd_TOTAL = 0.0;
 	// double sum = 0.0;
 	int df_TOTAL = 0;
 	// double delta_sq = 0.0;
 
-
-
 	// ssd=[0=AG,1=AIWG,2=TOTAL]
 
 	ssd_TOTAL = get_SSD_total(M_PWD, n_ind_cmb, nInd);
-	amv->ssd[2]=ssd_TOTAL;
+	amv->ssd[2] = ssd_TOTAL;
 
 	df_TOTAL = nInd - 1;
-	amv->df[2]=df_TOTAL;
+	amv->df[2] = df_TOTAL;
 
 	msd_TOTAL = ssd_TOTAL / df_TOTAL;
 	amv->msd[2] = msd_TOTAL;
@@ -94,11 +83,9 @@ int AMOVA::doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct 
 	double msd_AG = 0.0;
 	int df_AG = 0;
 
-
-
 	// df_AG = MTD->nLevels - 1;
-	df_AG = MTD->nStrataAtLevel[0]-1;
-	
+	df_AG = MTD->hierArr[0]->nStrata - 1;
+
 	amv->df[0] = df_AG;
 
 	double ssd_AIWG = 0.0;
@@ -107,21 +94,22 @@ int AMOVA::doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct 
 	int df_AIWG = 0;
 
 	// df_AIWG = nInd - MTD->nLevels;
-	df_AG = nInd - MTD->nStrataAtLevel[0];
+	df_AG = nInd - MTD->hierArr[0]->nStrata;
 	amv->df[1] = df_AIWG;
 
+
+
+	
 	// double s = 0.0;
 	// double d_sq = 0.0;
 	// int px = 0;
 	ssd_WG = get_SSD_level(M_PWD, n_ind_cmb, nInd, MTD, SAMPLES, out_amova_ff, sqDist, LUT_indPair_idx, analysis_type);
-
 
 	// TODO only because we have one strata level. change this
 	ssd_AIWG = ssd_WG;
 	amv->ssd[1] = ssd_AIWG;
 	msd_AIWG = ssd_AIWG / (double)df_AIWG;
 	amv->msd[1] = msd_AIWG;
-
 
 	ssd_AG = ssd_TOTAL - ssd_WG;
 	amv->ssd[0] = ssd_AG;
@@ -132,9 +120,12 @@ int AMOVA::doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct 
 	// n = [ N - \sum_{g \in G} ( N^2_{g}/N) ) ]  /   G - 1
 	double n_gi = 0.0;
 
-	for (int sti = 0; sti < MTD->nLevels; sti++)
+	for (int lvl_i = 0; lvl_i < MTD->nLevels; lvl_i++)
 	{
-		n_gi += (double)SQUARE(MTD->strataArr[sti].nInds) / (double)nInd;
+		for (int sti = 0; sti < MTD->hierArr[lvl_i]->nStrata; sti++)
+		{
+			n_gi += (double)SQUARE(MTD->hierArr[lvl_i]->nIndPerStrata[sti]) / (double)nInd;
+		}
 	}
 
 	// TODO double and castings are probably not necessary here
@@ -148,7 +139,6 @@ int AMOVA::doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct 
 
 	phi_a = (double)sigmasq_a / (double)(sigmasq_a + sigmasq_b);
 
-
 	amv->phi[0] = phi_a;
 	amv->sigmasq[0] = sigmasq_a;
 	amv->sigmasq[1] = sigmasq_b;
@@ -158,12 +148,7 @@ int AMOVA::doAMOVA(double *M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct 
 
 	amv->print_as_csv(out_amova_ff, analysis_type);
 
-
 	delete amv;
 
 	return 0;
-
-
-
 }
-
