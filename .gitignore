@@ -36,3 +36,6 @@ wd/*
 .Rhistory
 
 *vgcore*
+.vscode/settings.json
+.vscode/
+test/testwd/
