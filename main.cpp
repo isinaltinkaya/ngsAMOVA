@@ -107,23 +107,19 @@ int main(int argc, char **argv)
 		DATA::samplesStruct *SAMPLES = new DATA::samplesStruct(pars->nInd);
 		SAMPLES->nSamples = pars->nInd;
 
-		// if(args->in_sfs_fn != NULL){
-			// FILE *in_sfs_fp = IO::getFile(args->in_sfs_fn, "r");
-			// IO::readFile::SFS(in_sfs_fp, delims, SAMPLES);
-		// }
+		if(args->in_sfs_fn != NULL){
+			FILE *in_sfs_fp = IO::getFile(args->in_sfs_fn, "r");
+			IO::readFile::SFS(in_sfs_fp, delims, SAMPLES);
+		}
 		if(args->in_dm_fn != NULL){
 			FILE *in_dm_fp = IO::getFile(args->in_dm_fn, "r");
-			double *M_PWD_DM = NULL;
-			M_PWD_DM=IO::readFile::distance_matrix(in_dm_fp, pars);
+			
+			DATA::distanceMatrixStruct* dMS=DATA::distanceMatrixStruct_read(in_dm_fp, pars, args);
 
-			for (int i = 0; i < pars->n_ind_cmb; i++)
-			{
-				fprintf(stderr, "\nM_PWD_DM[%d]: %f", i, M_PWD_DM[i]);
-			}
 
 			in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
 			DATA::metadataStruct *MTD = DATA::metadataStruct_get(in_mtd_fp, SAMPLES, FORMULA, args->hasColNames, pars);
-			ASSERT(AMOVA::doAMOVA(M_PWD_DM, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "dm_input") == 0);
+			ASSERT(AMOVA::doAMOVA(dMS, MTD, SAMPLES, out_amova_fs->fp, pars->LUT_indPair_idx, "dm_input") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 
 			exit(0);
@@ -283,9 +279,8 @@ int main(int argc, char **argv)
 			}
 		}
 
-		// Pairwise distance matrix
-		double *M_PWD_GL = NULL;
-		double *M_PWD_GT = NULL;
+		DATA::distanceMatrixStruct* dMS_GL =  NULL;
+		DATA::distanceMatrixStruct* dMS_GT =  NULL;
 
 		// TODO use a lookup table instead
 		if (args->doDist != -1)
@@ -293,38 +288,19 @@ int main(int argc, char **argv)
 
 			switch (args->doAMOVA)
 			{
-			case -1:
-				M_PWD_GL = (double *)malloc(pars->n_ind_cmb * sizeof(double));
-				for (int i = 0; i < pars->n_ind_cmb; i++)
-				{
-					M_PWD_GL[i] = 0.0;
-				}
-				break;
 			case 1:
-				M_PWD_GL = (double *)malloc(pars->n_ind_cmb * sizeof(double));
-				for (int i = 0; i < pars->n_ind_cmb; i++)
-				{
-					M_PWD_GL[i] = 0.0;
-				}
+				dMS_GL = new DATA::distanceMatrixStruct(pars->nInd, pars->n_ind_cmb);
+				dMS_GL->isSquared=args->do_square_distance;
 				break;
 			case 2:
-				M_PWD_GT = (double *)malloc(pars->n_ind_cmb * sizeof(double));
-				for (int i = 0; i < pars->n_ind_cmb; i++)
-				{
-					M_PWD_GT[i] = 0.0;
-				}
+				dMS_GT = new DATA::distanceMatrixStruct(pars->nInd, pars->n_ind_cmb);
+				dMS_GT->isSquared=args->do_square_distance;
 				break;
 			case 3:
-				M_PWD_GL = (double *)malloc(pars->n_ind_cmb * sizeof(double));
-				for (int i = 0; i < pars->n_ind_cmb; i++)
-				{
-					M_PWD_GL[i] = 0.0;
-				}
-				M_PWD_GT = (double *)malloc(pars->n_ind_cmb * sizeof(double));
-				for (int i = 0; i < pars->n_ind_cmb; i++)
-				{
-					M_PWD_GT[i] = 0.0;
-				}
+				dMS_GL = new DATA::distanceMatrixStruct(pars->nInd, pars->n_ind_cmb);
+				dMS_GL->isSquared=args->do_square_distance;
+				dMS_GT = new DATA::distanceMatrixStruct(pars->nInd, pars->n_ind_cmb);
+				dMS_GT->isSquared=args->do_square_distance;
 				break;
 			}
 		}
@@ -494,7 +470,7 @@ int main(int argc, char **argv)
 		if (args->doAMOVA == -1 || args->doAMOVA == 1 || args->doAMOVA == 3)
 		{
 
-			fprintf(out_sfs_fs->ff, "Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Dij,Dij2\n");
+			fprintf(out_sfs_fs->fp, "Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Dij,Dij2\n");
 
 
 			for (int i1 = 0; i1 < pars->nInd - 1; i1++)
@@ -584,17 +560,19 @@ int main(int argc, char **argv)
 
 				if (args->doDist == 0)
 				{
-					// M_PWD_GL[pidx]=MATH::EST::Sij(pair->SFS);
 					exit(1);
 				}
 				else if (args->doDist == 1)
 				{
-					M_PWD_GL[pidx] = (double)(1 - MATH::EST::Sij(pair->SFS));
+					if(args->do_square_distance==1){
+						dMS_GL->M[pidx] = (double) SQUARE((1 - MATH::EST::Sij(pair->SFS)));
+					}else{
+						dMS_GL->M[pidx] = (double)(1 - MATH::EST::Sij(pair->SFS));
+					}
 				}
 				else if (args->doDist == 2)
 				{
 					exit(1);
-					// M_PWD_GL[pidx]=MATH::EST::Fij(pair->SFS);
 				}
 				else
 				{
@@ -636,7 +614,11 @@ int main(int argc, char **argv)
 					}
 					else if (args->doDist == 1)
 					{
-						M_PWD_GT[pidx] = (double)(1 - MATH::EST::Sij(SFS_GT3[pidx], snSites));
+						if(args->do_square_distance==1){
+							dMS_GT->M[pidx] = (double) SQUARE((1 - MATH::EST::Sij(SFS_GT3[pidx], snSites)));
+						}else{
+							dMS_GT->M[pidx] = (double)(1 - MATH::EST::Sij(SFS_GT3[pidx], snSites));
+						}
 					}
 					else if (args->doDist == 2)
 					{
@@ -656,11 +638,11 @@ int main(int argc, char **argv)
 		{
 			if (args->doAMOVA == -1 || args->doAMOVA == 1 || args->doAMOVA == 3)
 			{
-				IO::print::M_PWD("gl", out_dm_fs, pars->n_ind_cmb, M_PWD_GL);
+				dMS_GL->print(out_dm_fs->fp, "gl");
 			}
 			else if (args->doAMOVA == 2 || args->doAMOVA == 3)
 			{
-				IO::print::M_PWD("gt", out_dm_fs, pars->n_ind_cmb, M_PWD_GT);
+				dMS_GT->print(out_dm_fs->fp, "gt");
 			}
 		}
 
@@ -669,21 +651,21 @@ int main(int argc, char **argv)
 		{
 
 		case 1:
-        	fprintf(out_amova_fs->ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
-			ASSERT(AMOVA::doAMOVA(M_PWD_GL, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gl") == 0);
+        	fprintf(out_amova_fs->fp,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
+			ASSERT(AMOVA::doAMOVA(dMS_GL, MTD, SAMPLES, out_amova_fs->fp, pars->LUT_indPair_idx, "gl") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case 2:
-        	fprintf(out_amova_fs->ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
-            fprintf(out_amova_fs->ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
-			ASSERT(AMOVA::doAMOVA(M_PWD_GT, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gt") == 0);
+        	fprintf(out_amova_fs->fp,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
+            fprintf(out_amova_fs->fp,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
+			ASSERT(AMOVA::doAMOVA(dMS_GT, MTD, SAMPLES, out_amova_fs->fp, pars->LUT_indPair_idx, "gt") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case 3:
-        	fprintf(out_amova_fs->ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
-            fprintf(out_amova_fs->ff,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
-			ASSERT(AMOVA::doAMOVA(M_PWD_GL, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gl") == 0);
-			ASSERT(AMOVA::doAMOVA(M_PWD_GT, pars->n_ind_cmb, pars->nInd, MTD, SAMPLES, out_amova_fs->ff, args->sqDist, pars->LUT_indPair_idx, "gt") == 0);
+        	fprintf(out_amova_fs->fp,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
+            fprintf(out_amova_fs->fp,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
+			ASSERT(AMOVA::doAMOVA(dMS_GL, MTD, SAMPLES, out_amova_fs->fp, pars->LUT_indPair_idx, "gl") == 0);
+			ASSERT(AMOVA::doAMOVA(dMS_GT, MTD, SAMPLES, out_amova_fs->fp, pars->LUT_indPair_idx, "gt") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case -1:
@@ -700,8 +682,8 @@ int main(int argc, char **argv)
 		// TODO output is not sorted when threads are used
 		// and ind indexes are written instead of ind ids
 		//TODO thread safety
-		fflush(out_sfs_fs->ff);
-		fflush(out_amova_fs->ff);
+		fflush(out_sfs_fs->fp);
+		fflush(out_amova_fs->fp);
 
 		bcf_hdr_destroy(hdr);
 		bcf_destroy(bcf);
@@ -725,6 +707,8 @@ int main(int argc, char **argv)
 		delete MTD;
 		delete CONTIGS;
 		delete FORMULA;
+		delete dMS_GL;
+		delete dMS_GT;
 
 
 		if (args->doAMOVA == 1 || args->doAMOVA == 3)
@@ -748,26 +732,6 @@ int main(int argc, char **argv)
 				SFS_GT3[i] = NULL;
 			}
 			free(SFS_GT3);
-		}
-
-		if (args->doDist != -1)
-		{
-			switch (args->doAMOVA)
-			{
-			case -1:
-				free(M_PWD_GL);
-				break;
-			case 1:
-				free(M_PWD_GL);
-				break;
-			case 2:
-				free(M_PWD_GT);
-				break;
-			case 3:
-				free(M_PWD_GL);
-				free(M_PWD_GT);
-				break;
-			}
 		}
 
 		free(args->in_fn);

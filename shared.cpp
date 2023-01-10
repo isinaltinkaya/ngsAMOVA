@@ -356,15 +356,17 @@ int IO::readFile::SFS(FILE *in_sfs_fp, const char *delims, DATA::samplesStruct *
 /// @param in_dm_fp input distance matrix file
 /// @param pars paramStruct parameters
 /// @return distance matrix double*
-double *IO::readFile::distance_matrix(FILE *in_dm_fp, paramStruct *pars)
+// double *IO::readFile::distance_matrix(FILE *in_dm_fp, paramStruct *pars, argStruct *args)
+DATA::distanceMatrixStruct *DATA::distanceMatrixStruct_read(FILE *in_dm_fp, paramStruct *pars, argStruct *args)
 {
 
 	char dm_buf[FGETS_BUF_SIZE];
 
-	int dm_vals_size = 1125;
+	int dm_vals_size = 1225;
 	double *dm_vals = new double[dm_vals_size];
 
-	// first value is type string
+	// first value is type string indicating analysis type 
+	//TODO exclude this from distance matrix
 	int n_vals = -1;
 
 	while (fgets(dm_buf, FGETS_BUF_SIZE, in_dm_fp))
@@ -383,14 +385,24 @@ double *IO::readFile::distance_matrix(FILE *in_dm_fp, paramStruct *pars)
 			tok = strtok(NULL, ", \n");
 		}
 	}
-	fprintf(stderr, "\nnvals = %d\n", n_vals);
 	pars->n_ind_cmb = n_vals;
-	double *M_PWD_DM = (double *)malloc((n_vals) * sizeof(double));
-	for (int i = 0; i < n_vals; i++)
-	{
-		M_PWD_DM[i] = dm_vals[i];
+
+	distanceMatrixStruct* dMS = new distanceMatrixStruct(pars->nInd, pars->n_ind_cmb);
+	dMS->isSquared=args->do_square_distance;
+
+	if(args->do_square_distance == 1){
+		for (int i = 0; i < n_vals; i++)
+		{
+			dMS->M[i] = SQUARE(dm_vals[i]);
+		}
+	}else{
+		for (int i = 0; i < n_vals; i++)
+		{
+			dMS->M[i] = dm_vals[i];
+		}
 	}
-	return M_PWD_DM;
+
+	return dMS;
 }
 
 // if formula is not defined, hierarchical levels must defined in this order:
@@ -785,6 +797,8 @@ argStruct *argStruct_init()
 
 	argStruct *args = (argStruct *)calloc(1, sizeof(argStruct));
 
+	args->verbose=1;
+
 	args->in_fn = NULL;
 	args->in_sfs_fn = NULL;
 	args->in_dm_fn = NULL;
@@ -810,7 +824,7 @@ argStruct *argStruct_init()
 	args->doTest = 0;
 
 	args->doDist = -1;
-	args->sqDist = 1;
+	args->do_square_distance = 1;
 
 	args->isSim = 0;
 	args->isTest = 0;
@@ -894,7 +908,7 @@ argStruct *argStruct_get(int argc, char **argv)
 		else if (strcasecmp("-doDist", arv) == 0)
 			args->doDist = atoi(val);
 		else if (strcasecmp("-sqDist", arv) == 0)
-			args->sqDist = atoi(val);
+			args->do_square_distance = atoi(val);
 		else if (strcasecmp("-minInd", arv) == 0)
 			args->minInd = atoi(val);
 		else if (strcasecmp("-doTest", arv) == 0)
@@ -1026,14 +1040,14 @@ argStruct *argStruct_get(int argc, char **argv)
 		return 0;
 	}
 
-	if (args->sqDist == 1)
+	if (args->do_square_distance == 1)
 	{
-		fprintf(stderr, "\n\t-> -sqDist is set to 1, will use squared distance measure (dist_ij^2).\n");
+		fprintf(stderr, "\n\t-> -do_square_distance is set to 1, will use squared distance measure (dist_ij^2).\n");
 	}
 	else
 	{
 		exit(1);
-		fprintf(stderr, "\n\t-> -sqDist is set to 0, will use absolute value of distance measure (|dist_ij|).\n");
+		fprintf(stderr, "\n\t-> -do_square_distance is set to 0, will use absolute value of distance measure (|dist_ij|).\n");
 	}
 
 	if (args->doEM == 0)
@@ -1268,35 +1282,12 @@ DATA::formulaStruct *DATA::formulaStruct_get(const char *formula)
 // 	fprintf(stderr, "\n\t-> -in %s", args->inputfile);
 // }
 
-/// @brief print_M_PWD print matrix of pairwise distances
-/// @param TYPE type of analysis
-/// @param out_dm_fs output file
-/// @param n_ind_cmb number of individual combinations
-/// @param M_PWD matrix of pairwise distances
-void IO::print::M_PWD(const char *TYPE, IO::outputStruct *out_dm_fs, int n_ind_cmb, double *M_PWD)
-{
-
-	fprintf(out_dm_fs->ff, "%s,", TYPE);
-	for (int px = 0; px < n_ind_cmb; px++)
-	{
-		fprintf(out_dm_fs->ff, "%f", M_PWD[px]);
-		if (px != n_ind_cmb - 1)
-		{
-			fprintf(out_dm_fs->ff, ",");
-		}
-		else
-		{
-			fprintf(out_dm_fs->ff, "\n");
-		}
-	}
-}
-
 /// @param sample1 name of sample 1
 /// @param sample2 name of sample 2
 void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, DATA::pairStruct *pair, argStruct *args, const char *sample1, const char *sample2)
 {
 
-	fprintf(out_sfs_fs->ff, "%s,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f",
+	fprintf(out_sfs_fs->fp, "%s,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f",
 			TYPE,
 			sample1,
 			sample2,
@@ -1304,17 +1295,17 @@ void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, DATA::pairSt
 			pair->snSites * pair->SFS[3], pair->snSites * pair->SFS[4], pair->snSites * pair->SFS[5],
 			pair->snSites * pair->SFS[6], pair->snSites * pair->SFS[7], pair->snSites * pair->SFS[8]);
 
-	fprintf(out_sfs_fs->ff, ",%d,%ld,%e,%e", pair->n_em_iter, pair->snSites, pair->d, args->tole);
+	fprintf(out_sfs_fs->fp, ",%d,%ld,%e,%e", pair->n_em_iter, pair->snSites, pair->d, args->tole);
 
-	if (args->doDist == 1 && args->sqDist == 1)
+	if (args->doDist == 1 && args->do_square_distance == 1)
 	{
-		fprintf(out_sfs_fs->ff, ",%f,%f", (double)(1.0 - (double)MATH::EST::Sij(pair->SFS)), SQUARE((double)(1.0 - (double)MATH::EST::Sij(pair->SFS))));
+		fprintf(out_sfs_fs->fp, ",%f,%f", (double)(1.0 - (double)MATH::EST::Sij(pair->SFS)), SQUARE((double)(1.0 - (double)MATH::EST::Sij(pair->SFS))));
 	}
 	else
 	{
 		exit(1);
 	}
-	fprintf(out_sfs_fs->ff, "\n");
+	fprintf(out_sfs_fs->fp, "\n");
 }
 
 /// @brief print_SFS_GT print SFS_GT3
@@ -1326,21 +1317,21 @@ void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, DATA::pairSt
 void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, argStruct *args, int *SFS_GT3, int snSites, const char *sample1, const char *sample2)
 {
 
-	fprintf(out_sfs_fs->ff, "%s,%s,%s,", TYPE, sample1, sample2);
-	fprintf(out_sfs_fs->ff, "%d,%d,%d,%d,%d,%d,%d,%d,%d",
+	fprintf(out_sfs_fs->fp, "%s,%s,%s,", TYPE, sample1, sample2);
+	fprintf(out_sfs_fs->fp, "%d,%d,%d,%d,%d,%d,%d,%d,%d",
 			SFS_GT3[0], SFS_GT3[1], SFS_GT3[2],
 			SFS_GT3[3], SFS_GT3[4], SFS_GT3[5],
 			SFS_GT3[6], SFS_GT3[7], SFS_GT3[8]);
 
-	fprintf(out_sfs_fs->ff, ",%s,%ld,%s,%s", TYPE, snSites, TYPE, TYPE);
+	fprintf(out_sfs_fs->fp, ",%s,%ld,%s,%s", TYPE, snSites, TYPE, TYPE);
 
-	if (args->doDist == 1 && args->sqDist == 1)
+	if (args->doDist == 1 && args->do_square_distance == 1)
 	{
-		fprintf(out_sfs_fs->ff, ",%f", SQUARE((double)(1.0 - (double)MATH::EST::Sij(SFS_GT3, snSites))));
+		fprintf(out_sfs_fs->fp, ",%f", SQUARE((double)(1.0 - (double)MATH::EST::Sij(SFS_GT3, snSites))));
 	}
 	else
 	{
 		exit(1);
 	}
-	fprintf(out_sfs_fs->ff, "\n");
+	fprintf(out_sfs_fs->fp, "\n");
 }

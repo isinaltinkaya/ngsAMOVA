@@ -188,6 +188,7 @@ typedef struct
 {
 
 
+	int verbose;
 
 	char *in_fn;
 	char *in_sfs_fn;
@@ -207,7 +208,7 @@ typedef struct
 	int isSim;
 	int isTest;
 	int doDist;
-	int sqDist;
+	int do_square_distance;
 	int minInd;
 
 	int seed;
@@ -293,6 +294,7 @@ void usage(FILE *fp);
 
 namespace DATA
 {
+
 	typedef struct formulaStruct
 	{
 		int nTokens;
@@ -613,26 +615,62 @@ namespace DATA
 
 	metadataStruct *metadataStruct_get(FILE *in_mtd_fp, samplesStruct *SAMPLES, formulaStruct *FORMULA, int has_colnames,paramStruct *pars);
 
+	
+	/**
+	 * @brief distanceMatrixStruct stores the distance matrix
+	 * 
+	 * @param nInd 		number of individuals
+	 * @param nIndCmb	number of individual combinations
+	 * @param isSquared 1 if the distance matrix is squared, 0 otherwise
+	 * 
+	 */
 	typedef struct distanceMatrixStruct
 	{
-		double *DM;
-		samplesStruct *samples;
+		double *M=NULL;
 
-		int nInds = 0;
-		int n_ind_cmb = 0;
+		// samplesStruct *samples;
 
-		distanceMatrixStruct(int n_ind_cmb_)
+		int nInd = 0;
+		int nIndCmb = 0;
+		int isSquared= -1;
+
+		distanceMatrixStruct(int nInd_, int nIndCmb_)
 		{
-			n_ind_cmb = n_ind_cmb_;
-			DM = (double *)malloc(n_ind_cmb * sizeof(double));
+			nIndCmb = nIndCmb_;
+			nInd = nInd_;
+			M = new double[nIndCmb];
+			for (int i = 0; i < nIndCmb; i++)
+			{
+				M[i] = 0;
+			}
+
 		};
 		~distanceMatrixStruct()
 		{
-			free(DM);
-			DM = NULL;
+			delete[] M;
+		}
+
+
+		void print(FILE *fp, const char* TYPE)
+		{
+			fprintf(fp, "%s,", TYPE);
+			for (int px = 0; px < nIndCmb; px++)
+			{
+				fprintf(fp, "%f", M[px]);
+				if (px != nIndCmb - 1)
+				{
+					fprintf(fp, ",");
+				}
+				else
+				{
+					fprintf(fp, "\n");
+				}
+			}
 		}
 
 	} distanceMatrixStruct;
+	// read distance matrix from distance matrix file
+	distanceMatrixStruct *distanceMatrixStruct_read(FILE *in_dm_fp, paramStruct *pars, argStruct *args);
 
 };
 
@@ -650,7 +688,6 @@ namespace IO
 		// int Metadata(DATA::metadataStruct *MTD, FILE *in_mtd_fp, int *keyCols, const char *delims, DATA::samplesStruct *SAMPLES, DATA::formulaStruct *FORMULA, int HAS_COLNAMES);
 		int SFS(FILE *in_sfs_fp, const char *delims, DATA::samplesStruct *SAMPLES);
 
-		double *distance_matrix(FILE *in_dm_fp, paramStruct *pars);
 
 		char *getFirstLine(char *fn);
 		char *getFirstLine(FILE *fp);
@@ -672,16 +709,16 @@ namespace IO
 	typedef struct outputStruct
 	{
 		char *fn = NULL;
-		FILE *ff = NULL;
+		FILE *fp = NULL;
 
-		outputStruct(const char *fp, const char *suffix)
+		outputStruct(const char *fn_, const char *suffix)
 		{
-			fn = setFileName(fp, suffix);
-			ff = openFile(fn);
+			fn = setFileName(fn_, suffix);
+			fp = openFile(fn);
 		}
 		~outputStruct()
 		{
-			fclose(ff);
+			fclose(fp);
 			free(fn);
 			fn = NULL;
 		}
@@ -778,7 +815,7 @@ typedef struct threadStruct
 		pair = tPair;
 		lngls = lngl;
 		nSites = nSites_t;
-		out_sfs_fp = out_sfs_fs->ff;
+		out_sfs_fp = out_sfs_fs->fp;
 		// M_PWD_GL_PAIR=M_PWD_GL_P;
 		tole = toleArg;
 		// doDist=doDistArg;

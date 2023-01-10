@@ -1,47 +1,39 @@
 #include "shared.h"
 #include "math_utils.h"
 
-// int doAMOVA(int nInd, int n_ind_cmb, DATA::metadataStruct *MTD, DATA::sampleStruct* SAMPLES, FILE *out_amova_ff, int sqDist, double *M_PWD, int **LUT_indPair_idx);
-
-// int doAMOVA(double* M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int sqDist, int **LUT_indPair_idx, const char *type);
 
 
 
 namespace AMOVA {
 
     typedef struct amovaResultStruct{
-        // initialize to lowest possible values, 1 level case
-        // int* df = NULL;
-        // double* ssd = NULL;
-        // double* msd = NULL;
-        // double* coef_n = NULL;
-        // double* sigmasq = NULL;
-        // double* phi = NULL;
 
-        int* df;
-        double* ssd;
-        double* msd;
-        double* coef_n;
-        double* sigmasq;
-        double* phi;
+        // initialize to lowest possible values, 1 level case
+        int* df = NULL;
+        double* ssd = NULL;
+        double* msd = NULL;
+        double* coef_n = NULL;
+        double* sigmasq = NULL;
+        double* phi = NULL;
+
 
 
         int nLevels=1;
-        // size_t _df;
-        // size_t _ssd;
-        // size_t _msd;
-        // size_t _coef_n;
-        // size_t _sigmasq;
-        // size_t _phi;
-
-        size_t _df = 3;
-        size_t _ssd = 3;
-        size_t _msd = 3;
-        size_t _coef_n = 1;
-        size_t _sigmasq = 2;
-        size_t _phi = 1;
+        size_t _df;
+        size_t _ssd;
+        size_t _msd;
+        size_t _coef_n;
+        size_t _sigmasq;
+        size_t _phi;
 
         amovaResultStruct(int nLevels_){
+
+            _df = 3;
+            _ssd = 3;
+            _msd = 3;
+            _coef_n = 1;
+            _sigmasq = 2;
+            _phi = 1;
 
             nLevels = nLevels_;
             df = (int*) malloc( _df * sizeof(int));
@@ -143,14 +135,10 @@ namespace AMOVA {
     
     }amovaResultStruct;
 
-    int doAMOVA(double* M_PWD, 
-        int n_ind_cmb, 
-        int nInd, 
+    int doAMOVA(DATA::distanceMatrixStruct *dMS,
         DATA::metadataStruct *MTD, 
-        DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int sqDist, int **LUT_indPair_idx, const char *type);
+        DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int **LUT_indPair_idx, const char *type);
 
-    /// @brief doAMOVA without samplesStruct; use distance matrix input
-    // int doAMOVA(double* M_PWD, int n_ind_cmb, int nInd, DATA::metadataStruct *MTD, FILE *out_amova_ff, int sqDist, int **LUT_indPair_idx, const char *type);
 
 
 }
