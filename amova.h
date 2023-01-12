@@ -12,53 +12,79 @@ namespace AMOVA {
         int* df = NULL;
         double* ssd = NULL;
         double* msd = NULL;
-        double* coef_n = NULL;
-        double* sigmasq = NULL;
+
+        double* ncoef = NULL;
+
+        double* sigmasq = NULL; //variance component
         double* phi = NULL;
 
+        int nAmovaLevels = 0;
 
 
-        int nLevels=1;
-        size_t _df;
         size_t _ssd;
-        size_t _msd;
-        size_t _coef_n;
-        size_t _sigmasq;
+        size_t _ncoef;
         size_t _phi;
 
-        amovaResultStruct(int nLevels_){
+        amovaResultStruct(DATA::metadataStruct* mS){
 
-            _df = 3;
-            _ssd = 3;
-            _msd = 3;
-            _coef_n = 1;
-            _sigmasq = 2;
-            _phi = 1;
+            // set number of amova levels
+            nAmovaLevels = mS->nLevels + 1;
 
-            nLevels = nLevels_;
-            df = (int*) malloc( _df * sizeof(int));
-            ssd = (double*) malloc( _ssd * sizeof(double));
-            msd = (double*) malloc( _msd * sizeof(double));
-            coef_n = (double*) malloc( _coef_n * sizeof(double));
-            sigmasq = (double*) malloc( _sigmasq * sizeof(double));
-            phi = (double*) malloc( _phi * sizeof(double));
+            // number of SSD values
+            // = number of amova levels + 1 (total)
+            _ssd = nAmovaLevels + 1;
+            ssd = new double[_ssd];
+            df = new int[_ssd];
+            msd = new double[_ssd];
+            for (size_t i=0; i<_ssd; i++){
+                ssd[i] = 0;
+                df[i] = 0;
+                msd[i] = 0;
+            }
 
-            for (size_t i=0; i<_df; i++) df[i] = 0;
-            for (size_t i=0; i<_ssd; i++) ssd[i] = 0;
-            for (size_t i=0; i<_msd; i++) msd[i] = 0;
-            for (size_t i=0; i<_coef_n; i++) coef_n[i] = 0;
-            for (size_t i=0; i<_sigmasq; i++) sigmasq[i] = 0;
-            for (size_t i=0; i<_phi; i++) phi[i] = 0;
+
+
+            _ncoef = nCk(nAmovaLevels,2);
+            ncoef = new double[_ncoef];
+            phi = new double[_ncoef];
+            for (size_t i=0; i<_ncoef; i++){
+                ncoef[i] = 0;
+                phi[i] = 0;
+            }
+
+            sigmasq = new double[nAmovaLevels];
+            for (size_t i=0; i<nAmovaLevels; i++){
+                sigmasq[i] = 0;
+            }
 
         }
 
         ~amovaResultStruct(){
-            free(df);
-            free(ssd);
-            free(msd);
-            free(coef_n);
-            free(sigmasq);
-            free(phi);
+            delete[] ssd;
+            delete[] df;
+            delete[] msd;
+            delete[] ncoef;
+            delete[] phi;
+            delete[] sigmasq;
+
+        }
+
+        void print_variables(FILE *fp){
+            fprintf(stderr, "\n_ssd = %zu\n", _ssd);
+            fprintf(stderr, "_ncoef = %zu\n", _ncoef);
+            fprintf(stderr, "nAmovaLevels = %d\n", nAmovaLevels);
+            for (size_t i=0; i<nAmovaLevels; i++){
+                fprintf(fp, "sigmasq[%zu] = %f\n", i, sigmasq[i]);
+            }
+            for (size_t i=0; i<_ssd; i++){
+                fprintf(fp, "ssd[%zu] = %f\n", i, ssd[i]);
+                fprintf(fp, "df[%zu] = %d\n", i, df[i]);
+                fprintf(fp, "msd[%zu] = %f\n", i, msd[i]);
+            }
+            for (size_t i=0; i<_ncoef; i++){
+                fprintf(fp, "ncoef[%zu] = %f\n", i, ncoef[i]);
+                fprintf(fp, "phi[%zu] = %f\n", i, phi[i]);
+            }
         }
 
         void print_as_table(FILE *fp){
@@ -102,11 +128,23 @@ namespace AMOVA {
             fprintf(fp,"\n");
             fprintf(fp,"\n");
             fprintf(fp,"\n");
+            fprintf(fp,"Variance components:");
+            fprintf(fp,"\n");
+            fprintf(fp,"sigma^2");
+            fprintf(fp,"\t");
+            fprintf(fp,"%f", sigmasq[0]);
+            fprintf(fp,"\t");
+            fprintf(fp,"%f", sigmasq[1]);
+            fprintf(fp,"\n");
+            //TODO add sigmasqb
+            //todo add this nCk style sigma_which_which
+            fprintf(fp,"\n");
             fprintf(fp,"Variance coefficients:");
+            fprintf(fp,"\n");
             fprintf(fp,"\n");
             fprintf(fp,"a");
             fprintf(fp,"\t");
-            fprintf(fp,"%f", sigmasq[0]);
+            fprintf(fp,"%f",ncoef[0]);
             fprintf(fp,"\n");
             fprintf(fp,"\n");
             fprintf(fp,"\n");
@@ -129,7 +167,7 @@ namespace AMOVA {
                 df[0], ssd[0], msd[0],
                 df[1], ssd[1], msd[1],
                 df[2], ssd[2], msd[2],
-                coef_n[0], sigmasq[0], sigmasq[1], phi[0]);
+                ncoef[0], sigmasq[0], sigmasq[1], phi[0]);
         }
 
     

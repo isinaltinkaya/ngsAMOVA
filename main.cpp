@@ -82,11 +82,11 @@ int main(int argc, char **argv)
 		}
 		fprintf(stderr, "\n");
 
-		DATA::formulaStruct *FORMULA = NULL;
+		DATA::formulaStruct *formulaSt = NULL;
 
 		if(args->formula!=NULL){
 			fprintf(stderr, "\nFormula: %s", args->formula);
-			FORMULA=DATA::formulaStruct_get(args->formula);
+			formulaSt=DATA::formulaStruct_get(args->formula);
 			
 
 		}
@@ -104,12 +104,12 @@ int main(int argc, char **argv)
 		pars->nInd = bcf_hdr_nsamples(hdr);
 
 //TODO
-		DATA::samplesStruct *SAMPLES = new DATA::samplesStruct(pars->nInd);
-		SAMPLES->nSamples = pars->nInd;
+		DATA::samplesStruct *samplesSt = new DATA::samplesStruct(pars->nInd);
+		samplesSt->nSamples = pars->nInd;
 
 		if(args->in_sfs_fn != NULL){
 			FILE *in_sfs_fp = IO::getFile(args->in_sfs_fn, "r");
-			IO::readFile::SFS(in_sfs_fp, delims, SAMPLES);
+			IO::readFile::SFS(in_sfs_fp, delims, samplesSt);
 		}
 		if(args->in_dm_fn != NULL){
 			FILE *in_dm_fp = IO::getFile(args->in_dm_fn, "r");
@@ -118,8 +118,8 @@ int main(int argc, char **argv)
 
 
 			in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
-			DATA::metadataStruct *MTD = DATA::metadataStruct_get(in_mtd_fp, SAMPLES, FORMULA, args->hasColNames, pars);
-			ASSERT(AMOVA::doAMOVA(dMS, MTD, SAMPLES, out_amova_fs->fp, pars->LUT_indPair_idx, "dm_input") == 0);
+			DATA::metadataStruct *metadataSt = DATA::metadataStruct_get(in_mtd_fp, samplesSt, formulaSt, args->hasColNames, pars);
+			ASSERT(AMOVA::doAMOVA(dMS, metadataSt, samplesSt, out_amova_fs->fp, pars->LUT_indPair_idx, "dm_input") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 
 			exit(0);
@@ -127,16 +127,16 @@ int main(int argc, char **argv)
 		}else{
 
 		}
-		// copy elements in hdr->samples char* to SAMPLES->bcfSamples
+		// copy elements in hdr->samples char* to samplesSt->sampleNames
 		// copy elements and not pointers
 		for (int i = 0; i < pars->nInd; i++)
 		{
-			SAMPLES->bcfSamples[i] = strdup(hdr->samples[i]);
+			samplesSt->sampleNames[i] = strdup(hdr->samples[i]);
 		}
 
 
 
-		// SAMPLES->bcfSamples = hdr->samples;
+		// samplesSt->sampleNames = hdr->samples;
 
 		const int nContigs = hdr->n[BCF_DT_CTG];
 
@@ -146,10 +146,10 @@ int main(int argc, char **argv)
 		// TODO do this dynamically based on actually observed first and last pos of contigs
 
 
-		DATA::contigsStruct *CONTIGS = new DATA::contigsStruct(nContigs);
+		DATA::contigsStruct *contigsSt = new DATA::contigsStruct(nContigs);
 
 		// create a pointer to a contigs struct and allocate memory
-		// DATA::contigsStruct *CONTIGS = (DATA::contigsStruct *)malloc(sizeof(DATA::contigsStruct));
+		// DATA::contigsStruct *contigsSt = (DATA::contigsStruct *)malloc(sizeof(DATA::contigsStruct));
 
 
 		if (args->blockSize != 0)
@@ -160,7 +160,7 @@ int main(int argc, char **argv)
 
 				const int contigSize = hdr->id[BCF_DT_CTG][ci].val->info[0];
 
-				CONTIGS->contigLengths[ci] = contigSize;
+				contigsSt->contigLengths[ci] = contigSize;
 
 				fprintf(stderr, "\nContig %d length:%d\n", ci, contigSize);
 
@@ -177,9 +177,9 @@ int main(int argc, char **argv)
 				}
 
 				// allocate memory for contigBlockStarts
-				CONTIGS->contigBlockStarts[ci] = (int *)malloc(nBlocks * sizeof(int));
-				CONTIGS->contigBlockStartPtrs[ci] = (double **)malloc(nBlocks * sizeof(double *));
-				CONTIGS->contigNBlocks[ci] = nBlocks;
+				contigsSt->contigBlockStarts[ci] = (int *)malloc(nBlocks * sizeof(int));
+				contigsSt->contigBlockStartPtrs[ci] = (double **)malloc(nBlocks * sizeof(double *));
+				contigsSt->contigNBlocks[ci] = nBlocks;
 
 				// fprintf(stderr, "\nContig %d length:%d nBlocks: %d\n", ci, contigSize, nBlocks);
 				for (int bi = 0; bi < nBlocks; bi++)
@@ -187,8 +187,8 @@ int main(int argc, char **argv)
 					int blockStart = bi * args->blockSize;
 					// fprintf(stderr, "\nBlock %d starts at %d\n", bi, blockStart);
 
-					CONTIGS->contigBlockStarts[ci][bi] = blockStart;
-					fprintf(stderr, "\nContig %d block %d starts at %d\n", ci, bi, CONTIGS->contigBlockStarts[ci][bi]);
+					contigsSt->contigBlockStarts[ci][bi] = blockStart;
+					fprintf(stderr, "\nContig %d block %d starts at %d\n", ci, bi, contigsSt->contigBlockStarts[ci][bi]);
 				}
 			}
 		}
@@ -198,7 +198,7 @@ int main(int argc, char **argv)
 
 			in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
 
-			DATA::metadataStruct *MTD = DATA::metadataStruct_get(in_mtd_fp, SAMPLES, FORMULA, args->hasColNames, pars);
+			DATA::metadataStruct *metadataSt = DATA::metadataStruct_get(in_mtd_fp, samplesSt, formulaSt, args->hasColNames, pars);
 			
 
 /*
@@ -427,10 +427,10 @@ int main(int argc, char **argv)
 				//  fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block last_bi %d\n\n",bcf->pos,ci,last_bi);
 
 				// if current pos is bigger than contigBlockStarts, add last_ptr to contigBlockStartPtrs
-				if (bcf->pos > CONTIGS->contigBlockStarts[ci][last_bi])
+				if (bcf->pos > contigsSt->contigBlockStarts[ci][last_bi])
 				{
-					// fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block %d CONTIGS->contigBlockStarts[%d][%d] %d\n\n",bcf->pos,ci,last_bi,ci,last_bi,CONTIGS->contigBlockStarts[ci][last_bi]);
-					CONTIGS->contigBlockStartPtrs[ci][last_bi] = last_ptr;
+					// fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block %d contigsSt->contigBlockStarts[%d][%d] %d\n\n",bcf->pos,ci,last_bi,ci,last_bi,contigsSt->contigBlockStarts[ci][last_bi]);
+					contigsSt->contigBlockStartPtrs[ci][last_bi] = last_ptr;
 					last_bi++;
 				}
 			}
@@ -652,20 +652,20 @@ int main(int argc, char **argv)
 
 		case 1:
         	fprintf(out_amova_fs->fp,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
-			ASSERT(AMOVA::doAMOVA(dMS_GL, MTD, SAMPLES, out_amova_fs->fp, pars->LUT_indPair_idx, "gl") == 0);
+			ASSERT(AMOVA::doAMOVA(dMS_GL, metadataSt, samplesSt, out_amova_fs->fp, pars->LUT_indPair_idx, "gl") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case 2:
         	fprintf(out_amova_fs->fp,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
             fprintf(out_amova_fs->fp,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
-			ASSERT(AMOVA::doAMOVA(dMS_GT, MTD, SAMPLES, out_amova_fs->fp, pars->LUT_indPair_idx, "gt") == 0);
+			ASSERT(AMOVA::doAMOVA(dMS_GT, metadataSt, samplesSt, out_amova_fs->fp, pars->LUT_indPair_idx, "gt") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case 3:
         	fprintf(out_amova_fs->fp,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
             fprintf(out_amova_fs->fp,"df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
-			ASSERT(AMOVA::doAMOVA(dMS_GL, MTD, SAMPLES, out_amova_fs->fp, pars->LUT_indPair_idx, "gl") == 0);
-			ASSERT(AMOVA::doAMOVA(dMS_GT, MTD, SAMPLES, out_amova_fs->fp, pars->LUT_indPair_idx, "gt") == 0);
+			ASSERT(AMOVA::doAMOVA(dMS_GL, metadataSt, samplesSt, out_amova_fs->fp, pars->LUT_indPair_idx, "gl") == 0);
+			ASSERT(AMOVA::doAMOVA(dMS_GT, metadataSt, samplesSt, out_amova_fs->fp, pars->LUT_indPair_idx, "gt") == 0);
 			fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 			break;
 		case -1:
@@ -703,10 +703,10 @@ int main(int argc, char **argv)
 
 
 
-		delete SAMPLES;
-		delete MTD;
-		delete CONTIGS;
-		delete FORMULA;
+		delete samplesSt;
+		delete metadataSt;
+		delete contigsSt;
+		delete formulaSt;
 		delete dMS_GL;
 		delete dMS_GT;
 

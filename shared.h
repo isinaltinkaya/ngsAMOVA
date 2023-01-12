@@ -85,6 +85,8 @@
 #define METADATA_DELIMS "\t ,\n"
 
 
+#define MAX_N_AMOVA_LEVELS 5
+
 // input file type
 enum{IN_VCF, IN_DM, IN_SFS};
 
@@ -461,8 +463,7 @@ namespace DATA
 	{
 
 		int *sampleArr = NULL;
-		char **bcfSamples = NULL;
-		char **sampleNames = NULL;
+		char **sampleNames = NULL; // sample names in bcf sample order
 		int *sampleOrder = NULL;
 
 		int nSamples = 0;
@@ -470,15 +471,14 @@ namespace DATA
 		samplesStruct(int nSamples_)
 		{
 			nSamples = nSamples_;
-			sampleArr = (int *)malloc(nSamples * sizeof(int));
-			bcfSamples = (char **)malloc(nSamples * sizeof(char *));
-			sampleNames = (char **)malloc(nSamples * sizeof(char *));
-			sampleOrder = (int *)malloc(nSamples * sizeof(int));
+
+			sampleNames = new char *[nSamples];
+			sampleArr = new int[nSamples];
+			sampleOrder = new int[nSamples];
 
 			for (int i = 0; i < nSamples; i++)
 			{
 				sampleArr[i] = 0;
-				bcfSamples[i] = NULL;
 				sampleNames[i] = NULL;
 				sampleOrder[i] = 0;
 			}
@@ -486,20 +486,15 @@ namespace DATA
 
 		~samplesStruct()
 		{
-			FREE(sampleArr);
-			FREE(sampleOrder);
-
+			delete[] sampleArr;
+			delete[] sampleOrder;
 			for (int i = 0; i < nSamples; i++)
 			{
-				FREE(bcfSamples[i]);
-
-				FREE(sampleNames[i]);
+				delete[] sampleNames[i];
 			}
-			// TODO
-			free(bcfSamples);
-			free(sampleNames);
-			bcfSamples = NULL;
-			sampleNames = NULL;
+			delete[] sampleNames;
+
+
 		}
 	} samplesStruct;
 
@@ -551,6 +546,8 @@ namespace DATA
 		// 		has 3 levels: {Individual, Region, Population}
 		int nLevels = 0;
 
+		char** levelNames = NULL;
+
 		// associate individual with the lowest level strata (key strata)
 		int* ind2stratakey= NULL;
 		size_t _ind2stratakey = 1024;
@@ -561,22 +558,41 @@ namespace DATA
 		// hierStruct[hierarchyLevel] is a hierStruct instance
 		hierStruct **hierArr = NULL;
 
-		metadataStruct(int nLevels_){
+
+		metadataStruct(int nLevels_, char** levelNames_){
 			nLevels = nLevels_;
 			hierArr = new hierStruct*[nLevels];
 			stratakey2stratas = new int*[_stratakey2stratas];//TODO
+
+			levelNames = new char*[nLevels+1];
+			for(int i=0; i<nLevels+1; i++){
+				levelNames[i] = NULL;
+			}
 
 			for(int i=0; i<nLevels; i++){
 				hierArr[i] = NULL;
 			}
 			ind2stratakey = new int[_ind2stratakey];//TODO
+
+			for(int i=0; i<nLevels+1;i++){
+				levelNames[i] = new char[strlen(levelNames_[i])+1];
+				strcpy(levelNames[i], levelNames_[i]);
+			}
 		};
 		~metadataStruct(){
 			delete[] hierArr;
 			delete[] ind2stratakey;
 			delete[] stratakey2stratas;
-
+			delete[] levelNames;
 		};
+
+		int pair_in_strata(int strata_i, int i1, int i2){
+			if(ind2stratakey[i1] == strata_i && ind2stratakey[i2] == strata_i){
+				return 1;
+			}else{
+				return 0;
+			}
+		}
 
 		// check if two individuals are in the same strata at a given level
 		int cmp_assoc_at_lvl(int lvl_i, int i1, int i2){
@@ -595,6 +611,8 @@ namespace DATA
 
 			}
 		};
+
+
 
 
 		void print(FILE* fp){
@@ -685,7 +703,6 @@ namespace IO
 
 	namespace readFile
 	{
-		// int Metadata(DATA::metadataStruct *MTD, FILE *in_mtd_fp, int *keyCols, const char *delims, DATA::samplesStruct *SAMPLES, DATA::formulaStruct *FORMULA, int HAS_COLNAMES);
 		int SFS(FILE *in_sfs_fp, const char *delims, DATA::samplesStruct *SAMPLES);
 
 

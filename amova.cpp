@@ -7,152 +7,151 @@ double get_SSD_total(DATA::distanceMatrixStruct *dMS)
 
 	for (int px = 0; px < dMS->nIndCmb; px++)
 	{
-		ssd_TOTAL += SQUARE(dMS->M[px]);
+		// the distance is already stored in squared form
+		ssd_TOTAL += dMS->M[px];
 	}
 
-	ssd_TOTAL /= (double)dMS->nInd;
+	ssd_TOTAL = ssd_TOTAL / (double)dMS->nInd;
 	return ssd_TOTAL;
 }
 
-double get_SSD_level(int lvl_i, DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *MTD, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int **LUT_indPair_idx, const char *analysis_type)
+double get_ssd(int amova_lvl_i, DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int **LUT_indPair_idx, const char *analysis_type)
 {
+	int lvl_i = amova_lvl_i-1;
 
+	double n = 0.0;
 	double sum = 0.0;
-	double d_sq = 0.0;
-	double ssd_WG = 0.0;
+	double ssd = 0.0;
 	int px;
 
-	for (int sti=0; sti < MTD->hierArr[lvl_i]->nStrata; sti++)
-	{
-		// fprintf(stderr, "\n-> Strata (%s,idx:%i) has %i individuals\n", MTD->hierArr[lvl_i]->strataNames[sti], sti, MTD->hierArr[lvl_i]->nIndPerStrata[sti]);
-		// fprintf(stderr, "\n\n\n --- sti = %i ---\n\n\n", sti);
-		// MTD->print(stderr);
+	if(lvl_i >= mS->nLevels){
+		fprintf(stderr, "[ERROR] lvl_i (%i) > mS->nLevels (%i)\n", lvl_i, mS->nLevels);
+		exit(1);
+	}
 
+	for (int sti=0; sti < mS->hierArr[lvl_i]->nStrata; sti++)
+	{
+#if 0
+		// fprintf(stderr, "\n\n\n --- sti = %i ---\n\n\n", sti);
+		fprintf(stderr, "\n-> Strata (%s,idx:%i) has %i individuals\n", mS->hierArr[lvl_i]->strataNames[sti], sti, mS->hierArr[lvl_i]->nIndPerStrata[sti]);
+#endif
+
+		n = (double)mS->hierArr[lvl_i]->nIndPerStrata[sti];
 		sum = 0.0;
 		for (int i1 = 0; i1 < dMS->nInd - 1; i1++)
 		{
 			for (int i2 = i1 + 1; i2 < dMS->nInd; i2++)
 			{
-				if(MTD->cmp_assoc_at_lvl(lvl_i, i1, i2) == 0){
-#if 0
-					fprintf(stderr, "\n-> Pair %i,idx:(%i,%i)) belongs to strata (%s,idx:%i)\n",
-							LUT_indPair_idx[i1][i2],
-							i1,
-							i2,
-							MTD->strataArr[sti].id,
-							sti);
-#endif
+				if(mS->pair_in_strata(sti, i1, i2) == 1){
+					
 					px = LUT_indPair_idx[i1][i2];
 
-					d_sq = SQUARE(dMS->M[px]);
-					sum += d_sq;
+					// the distance is already stored in squared form
+					sum += dMS->M[px];
 				}
 			}
 		}
-		ssd_WG += sum / (double)MTD->hierArr[lvl_i]->nIndPerStrata[sti];
+		n = (double)mS->hierArr[lvl_i]->nIndPerStrata[sti];
+		ssd += sum / n;
 	}
-	return ssd_WG;
+	return ssd;
 }
 
-int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *MTD, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int **LUT_indPair_idx, const char *analysis_type)
+
+int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int **LUT_indPair_idx, const char *analysis_type)
 {
 
 
+// give mS directly
+// ars_get func 
+// also get names of levels to auto use in the table
 
-	int nLevels = 1;
-	amovaResultStruct *amv = new amovaResultStruct(nLevels);
-
-	double ssd_TOTAL = 0.0;
-	double msd_TOTAL = 0.0;
-	// double sum = 0.0;
-	int df_TOTAL = 0;
-	// double delta_sq = 0.0;
+	amovaResultStruct *aRS = new amovaResultStruct(mS);
 
 	// ssd=[0=AG,1=AIWG,2=TOTAL]
 
-	ssd_TOTAL = get_SSD_total(dMS);
-	amv->ssd[2] = ssd_TOTAL;
 
-	df_TOTAL = dMS->nInd - 1;
-	amv->df[2] = df_TOTAL;
+	fprintf(stderr, "\n\nssd_TOTAL = %f\n\n", aRS->ssd[aRS->nAmovaLevels]);
 
-	msd_TOTAL = ssd_TOTAL / df_TOTAL;
-	amv->msd[2] = msd_TOTAL;
-
-	double ssd_AG = 0.0;
-	double ssd_WG = 0.0;
-	double msd_AG = 0.0;
-	int df_AG = 0;
-
-	// df_AG = MTD->nLevels - 1;
-	df_AG = MTD->hierArr[0]->nStrata - 1;
-
-	amv->df[0] = df_AG;
-
-	double ssd_AIWG = 0.0;
-	double msd_AIWG = 0.0;
-
-	int df_AIWG = 0;
-
-	// df_AIWG = nInd - MTD->nLevels;
-	df_AG = dMS->nInd - MTD->hierArr[0]->nStrata;
-	amv->df[1] = df_AIWG;
-
-	amv->print_as_table(stderr);
+	fprintf(stderr,"\n\nAmong %s within %s\n\n", mS->levelNames[0], mS->levelNames[1]);
 
 
-	
-	// double s = 0.0;
-	// double d_sq = 0.0;
-	// int px = 0;
-	int lvl_i=0;
-	ssd_WG = get_SSD_level(lvl_i, dMS, MTD, SAMPLES, out_amova_ff, LUT_indPair_idx, analysis_type);
-	fprintf(stderr, "\n\n\nssd_WG = %f\n\n\n", ssd_WG);
 
-	// TODO only because we have one strata level. change this
-	ssd_AIWG = ssd_WG;
-	amv->ssd[1] = ssd_AIWG;
-	msd_AIWG = ssd_AIWG / (double)df_AIWG;
-	amv->msd[1] = msd_AIWG;
-
-	ssd_AG = ssd_TOTAL - ssd_WG;
-	amv->ssd[0] = ssd_AG;
-	msd_AG = ssd_AG / (double)df_AG;
-	amv->msd[0] = msd_AG;
-
-	// n variance coefficient
-	// n = [ N - \sum_{g \in G} ( N^2_{g}/N) ) ]  /   G - 1
-	double n_gi = 0.0;
-
-	for (int lvl_i = 0; lvl_i < MTD->nLevels; lvl_i++)
-	{
-		for (int sti = 0; sti < MTD->hierArr[lvl_i]->nStrata; sti++)
-		{
-			n_gi += (double)SQUARE(MTD->hierArr[lvl_i]->nIndPerStrata[sti]) / (double)dMS->nInd;
+	// calculate the degrees of freedom for each level
+	aRS->df[0] = mS->hierArr[mS->nLevels-1]->nStrata - 1;
+	for (size_t i=1; i < aRS->_ssd-1; i++){
+		for (int j = 0; j < mS->hierArr[i-1]->nStrata; j++){
+			aRS->df[i] += mS->hierArr[i-1]->nIndPerStrata[j]-1;
 		}
 	}
+	// last element in df array is total df
+	aRS->df[aRS->_ssd-1] = dMS->nInd - 1;
 
-	// TODO double and castings are probably not necessary here
-	double coef_n = (double)((double)dMS->nInd - (double)n_gi) / (double)(MTD->nLevels - 1);
 
-	double sigmasq_a = 0.0;
-	double sigmasq_b = 0.0;
-	double phi_a = 0.0;
-	sigmasq_a = (double)(msd_AG - msd_AIWG) / (double)coef_n;
-	sigmasq_b = msd_AIWG;
 
-	phi_a = (double)sigmasq_a / (double)(sigmasq_a + sigmasq_b);
+	// ssd_TOTAL 
+	aRS->ssd[aRS->nAmovaLevels] = get_SSD_total(dMS);
 
-	amv->phi[0] = phi_a;
-	amv->sigmasq[0] = sigmasq_a;
-	amv->sigmasq[1] = sigmasq_b;
+	int lvl_i = aRS->nAmovaLevels-1;
+	while(lvl_i > 0){
+		fprintf(stderr,"\n\n\nlvl_i %i\n\n\n",lvl_i);
+		aRS->ssd[lvl_i] = get_ssd(1, dMS, mS, SAMPLES, out_amova_ff, LUT_indPair_idx, analysis_type);
+		lvl_i--;
+	}
 
-	// print results as amova table
-	// amv->print_as_table(stderr);
+	aRS->ssd[0] = aRS->ssd[aRS->nAmovaLevels] - aRS->ssd[aRS->nAmovaLevels-1];
 
-	amv->print_as_csv(out_amova_ff, analysis_type);
 
-	delete amv;
+	// get msd from ssd and df
+	for(size_t i=0; i < aRS->_ssd; i++){
+		aRS->msd[i] = aRS->ssd[i] / aRS->df[i];
+	}
 
+
+
+	// variance coefficients
+
+
+
+
+
+	if(mS->nLevels == 1){
+		double n_gi = 0.0;
+
+		// n = [ N - \sum_{g \in G} ( N^2_{g}/N) ) ]  /   G - 1
+		for (int sti=0; sti < mS->hierArr[0]->nStrata; sti++)
+		{
+			n_gi += SQUARE(mS->hierArr[0]->nIndPerStrata[sti]) / (double) dMS->nInd;
+		}
+		aRS->ncoef[0] = (double)((double)dMS->nInd - (double)n_gi) / (double)(mS->hierArr[0]->nStrata - 1);
+
+		aRS->sigmasq[0] = (aRS->msd[0]-aRS->msd[1]) / aRS->ncoef[0];
+		aRS->sigmasq[1] = aRS->msd[1];
+
+
+		aRS->phi[0] = aRS->sigmasq[0] / (aRS->sigmasq[0] + aRS->sigmasq[1]);
+	}else if(mS->nLevels == 2){
+		// eq.9a-c in Excoffier1992
+		// ncoef = {n, n', n''}
+		
+		
+		// estimate the method of moments: n, n', and n''
+
+
+	}else{
+		// use approximation
+
+	}
+
+
+	// variance components
+	// for (size_t i=0; i < aRS->nAmovaLevels-1; i++){
+	// }
+
+
+	aRS->print_as_table(stderr);
+	aRS->print_as_csv(out_amova_ff, analysis_type);
+
+	delete aRS;
 	return 0;
 }

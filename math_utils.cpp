@@ -7,20 +7,28 @@
 
 
 
-/// @brief nCk n choose k
-/// @param n n
-/// @param k k
-/// @return n choose k result
-int nCk(int n, int k){
-	int res = 1;
-	if (k > n-k){
-		k = n-k;
-	}
-	// [ n * (n-1) * ... * (n-k+1) ] / [ k * (k-1) * ... * 1 ]
-	for (int i = 0; i < k; ++i) {
-		res = res * (n-i) / (i+1) ;
-	}
-	return res;
+// /// @brief nCk n choose k
+// /// @param n n
+// /// @param k k
+// /// @return n choose k result
+// int nCk(int n, int k){
+// 	int res = 1;
+// 	if (k > n-k){
+// 		k = n-k;
+// 	}
+// 	// [ n * (n-1) * ... * (n-k+1) ] / [ k * (k-1) * ... * 1 ]
+// 	for (int i = 0; i < k; ++i) {
+// 		res = res * (n-i) / (i+1) ;
+// 	}
+// 	return res;
+// }
+
+
+int nCk(int n, int k) {
+    if (k == 0) {
+        return 1;
+    }
+    return (n * nCk(n - 1, k - 1)) / k;
 }
 
 /// @brief  get index of pair

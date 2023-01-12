@@ -435,8 +435,12 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 		fprintf(stderr, "\n[INFO]\t-> No formula is provided, will assume that columns are ordered based on hierarchical structure and will use all columns.\n");
 
 
+		char** levelNames = NULL;
+
 		if (has_colnames == 1)
 		{
+			levelNames = new char*[MAX_N_AMOVA_LEVELS];
+
 			// skip first line
 			ASSERT(fgets(mtd_buf, FGETS_BUF_SIZE, in_mtd_fp) != NULL);
 
@@ -446,11 +450,17 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 			// exclude Individual column
 			nLevels = -1;
 
+
 			do{
 				fprintf(stderr, "\n[INFO]\t-> Found hierarchical level: %s\n", hdrtok);
 				nLevels++;
+				levelNames[nLevels] = hdrtok;
 				hdrtok = strtok(NULL, METADATA_DELIMS);
 			}while(hdrtok!=NULL);
+			if(nLevels > MAX_N_AMOVA_LEVELS){
+				fprintf(stderr, "\n[ERROR]\t-> Number of levels in metadata file (%d) exceeds the maximum number of levels allowed (%d).\n", nLevels, MAX_N_AMOVA_LEVELS);
+				exit(1);
+			}
 
 			fprintf(stderr, "\n[INFO]\t-> Number of levels in metadata file: %d\n", nLevels);
 
@@ -460,7 +470,11 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 			exit(1);
 		}
 
-		metadataStruct *MTD = new metadataStruct(nLevels);
+		for(int i=0; i<nLevels+1;i++){
+			fprintf(stderr, "\n\n[INFO]\t-> levelNames[%d] = %s\n", i, levelNames[i]);
+		}
+
+		metadataStruct *mS = new metadataStruct(nLevels, levelNames);
 
 
 		// sample index in metadata file
@@ -477,7 +491,7 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 		// stratakeyAssocIdx[1] = 1 (region2)
 		int* stratakeyAssocIdx= NULL;
 		
-		if(MTD->nLevels > 1){
+		if(mS->nLevels > 1){
 			stratakeyAssocIdx= new int[nLevels-1];
 			for (int i=0; i<nLevels-1; i++){
 				stratakeyAssocIdx[i] = -1;
@@ -506,14 +520,14 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 					if (vcf_sidx == SAMPLES->nSamples){
 						fprintf(stderr, "\n\n======\n[ERROR] Sample %s not found in the metadata file. \n\n", tok);
 						exit(1);
-					}else if(strcmp(tok, SAMPLES->bcfSamples[vcf_sidx])==0){
+					}else if(strcmp(tok, SAMPLES->sampleNames[vcf_sidx])==0){
 						break;
 					}
 				}
 
 
 				// loop through the hierarchical levels in the line
-				for (int lvl_i= 0; lvl_i < MTD->nLevels; lvl_i++)
+				for (int lvl_i= 0; lvl_i < mS->nLevels; lvl_i++)
 				{
 
 					// contains the index of the strata (e.g. pop4) in the associated level's strataNames array
@@ -525,65 +539,65 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 
 
 
-					if(MTD->hierArr[lvl_i] == NULL)
+					if(mS->hierArr[lvl_i] == NULL)
 					{
 						// we are in the first line, initialize the hierStruct for this level
-						MTD->hierArr[lvl_i] = new hierStruct(tok);
+						mS->hierArr[lvl_i] = new hierStruct(tok);
 
-						if(MTD->nLevels > 1){
+						if(mS->nLevels > 1){
 							stratakeyAssocIdx[lvl_i] = lvl_strata_i;
 						}
-						MTD->hierArr[lvl_i]->nIndPerStrata[lvl_strata_i]++;
+						mS->hierArr[lvl_i]->nIndPerStrata[lvl_strata_i]++;
 					}
-					else if(MTD->nLevels == 1){
+					else if(mS->nLevels == 1){
 						// only one level in the metadata file
 						
 						int stratakey_i=0;
 						// check if the strata is already in the strataNames
-						for(stratakey_i=0; stratakey_i<MTD->hierArr[lvl_i]->nStrata; stratakey_i++)
+						for(stratakey_i=0; stratakey_i<mS->hierArr[lvl_i]->nStrata; stratakey_i++)
 						{
-							if(strcmp(tok, MTD->hierArr[lvl_i]->strataNames[stratakey_i])==0)
+							if(strcmp(tok, mS->hierArr[lvl_i]->strataNames[stratakey_i])==0)
 							{
-								MTD->hierArr[lvl_i]->nIndPerStrata[stratakey_i]++;
+								mS->hierArr[lvl_i]->nIndPerStrata[stratakey_i]++;
 								lvl_strata_i = stratakey_i;
 								break;
-							}else if(stratakey_i == MTD->hierArr[lvl_i]->nStrata-1)
+							}else if(stratakey_i == mS->hierArr[lvl_i]->nStrata-1)
 							{
 								// at the end but still not found
 								// so add the strata to the strataNames
-								MTD->hierArr[lvl_i]->nStrata++;
+								mS->hierArr[lvl_i]->nStrata++;
 								stratakey_i++;
-								MTD->hierArr[lvl_i]->strataNames = (char**) realloc(MTD->hierArr[lvl_i]->strataNames, MTD->hierArr[lvl_i]->nStrata*sizeof(char*));
-								MTD->hierArr[lvl_i]->strataNames[stratakey_i] = (char*) malloc((strlen(tok)+1)*sizeof(char));
-								strcpy(MTD->hierArr[lvl_i]->strataNames[stratakey_i], tok);
-								MTD->hierArr[lvl_i]->nIndPerStrata = (int*) realloc(MTD->hierArr[lvl_i]->nIndPerStrata, MTD->hierArr[lvl_i]->nStrata*sizeof(int));
-								MTD->hierArr[lvl_i]->nIndPerStrata[stratakey_i]++;
+								mS->hierArr[lvl_i]->strataNames = (char**) realloc(mS->hierArr[lvl_i]->strataNames, mS->hierArr[lvl_i]->nStrata*sizeof(char*));
+								mS->hierArr[lvl_i]->strataNames[stratakey_i] = (char*) malloc((strlen(tok)+1)*sizeof(char));
+								strcpy(mS->hierArr[lvl_i]->strataNames[stratakey_i], tok);
+								mS->hierArr[lvl_i]->nIndPerStrata = (int*) realloc(mS->hierArr[lvl_i]->nIndPerStrata, mS->hierArr[lvl_i]->nStrata*sizeof(int));
+								mS->hierArr[lvl_i]->nIndPerStrata[stratakey_i]++;
 								lvl_strata_i = stratakey_i;
 								break;
 
 							}
 						}
-						MTD->ind2stratakey[vcf_sidx] = stratakey_i;
+						mS->ind2stratakey[vcf_sidx] = stratakey_i;
 						
 					}
-					else if(lvl_i == MTD->nLevels-1)
+					else if(lvl_i == mS->nLevels-1)
 					// at the lowest level
 					{
 						int stratakey_i = 0;
 
 						// check if the lowest level is already in the strataNames
-						for (stratakey_i=0; stratakey_i < MTD->hierArr[lvl_i]->nStrata; stratakey_i++)
+						for (stratakey_i=0; stratakey_i < mS->hierArr[lvl_i]->nStrata; stratakey_i++)
 						{
 
-							if(strcmp(tok, MTD->hierArr[lvl_i]->strataNames[stratakey_i])==0)
+							if(strcmp(tok, mS->hierArr[lvl_i]->strataNames[stratakey_i])==0)
 							{
 							// found the strata
-								MTD->hierArr[lvl_i]->nIndPerStrata[stratakey_i]++;
+								mS->hierArr[lvl_i]->nIndPerStrata[stratakey_i]++;
 
-								for(int i=0; i<MTD->nLevels-1; i++)
+								for(int i=0; i<mS->nLevels-1; i++)
 								{
 									//check if consistent with previous association 
-									if(MTD->stratakey2stratas[stratakey_i][i] != stratakeyAssocIdx[i]){
+									if(mS->stratakey2stratas[stratakey_i][i] != stratakeyAssocIdx[i]){
 										fprintf(stderr, "\n\n======\n[ERROR] Strata association is inconsistent for strata %s at level %d. \n\n", tok, lvl_i);
 										exit(1);
 									}
@@ -592,22 +606,22 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 
 								break;
 
-							}else if(stratakey_i==MTD->hierArr[lvl_i]->nStrata-1){
+							}else if(stratakey_i==mS->hierArr[lvl_i]->nStrata-1){
 
 								stratakey_i++;
-								MTD->hierArr[lvl_i]->nStrata++;
+								mS->hierArr[lvl_i]->nStrata++;
 
 								// at the end but not found; add strata name to strataNames
-								MTD->hierArr[lvl_i]->strataNames = (char **)realloc(MTD->hierArr[lvl_i]->strataNames, (MTD->hierArr[lvl_i]->nStrata) * sizeof(char *));
-								MTD->hierArr[lvl_i]->strataNames[MTD->hierArr[lvl_i]->nStrata] = (char *)malloc((strlen(tok)+1) * sizeof(char));
-								strcpy(MTD->hierArr[lvl_i]->strataNames[MTD->hierArr[lvl_i]->nStrata], tok);
-								MTD->hierArr[lvl_i]->nIndPerStrata[stratakey_i]++;
+								mS->hierArr[lvl_i]->strataNames = (char **)realloc(mS->hierArr[lvl_i]->strataNames, (mS->hierArr[lvl_i]->nStrata) * sizeof(char *));
+								mS->hierArr[lvl_i]->strataNames[mS->hierArr[lvl_i]->nStrata] = (char *)malloc((strlen(tok)+1) * sizeof(char));
+								strcpy(mS->hierArr[lvl_i]->strataNames[mS->hierArr[lvl_i]->nStrata], tok);
+								mS->hierArr[lvl_i]->nIndPerStrata[stratakey_i]++;
 
 
 								// dump the previous levels associated with stratakey
-								for(int i=0; i<MTD->nLevels-1; i++)
+								for(int i=0; i<mS->nLevels-1; i++)
 								{
-									MTD->stratakey2stratas[stratakey_i][i] = stratakeyAssocIdx[i];
+									mS->stratakey2stratas[stratakey_i][i] = stratakeyAssocIdx[i];
 								}
 
 								break;
@@ -615,23 +629,23 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 						}
 
 						// associate ind with lowest level strata
-						MTD->ind2stratakey[vcf_sidx] = stratakey_i;
+						mS->ind2stratakey[vcf_sidx] = stratakey_i;
 					}
 					else
 					{
-						for( lvl_strata_i =0; MTD->hierArr[lvl_i]->nStrata; lvl_strata_i++)
+						for( lvl_strata_i =0; mS->hierArr[lvl_i]->nStrata; lvl_strata_i++)
 						{
-							if(strcmp(tok, MTD->hierArr[lvl_i]->strataNames[lvl_strata_i])==0)
+							if(strcmp(tok, mS->hierArr[lvl_i]->strataNames[lvl_strata_i])==0)
 							{
 								// found the strata
 								break;
-							}else if(lvl_strata_i==MTD->hierArr[lvl_i]->nStrata-1){
+							}else if(lvl_strata_i==mS->hierArr[lvl_i]->nStrata-1){
 								// at the end but not found; add strata name to strataNames
 								lvl_strata_i++;
-								MTD->hierArr[lvl_i]->strataNames = (char **)realloc(MTD->hierArr[lvl_i]->strataNames, (lvl_strata_i) * sizeof(char *));
-								MTD->hierArr[lvl_i]->strataNames[lvl_strata_i] = (char *)malloc((strlen(tok)+1) * sizeof(char));
-								strcpy(MTD->hierArr[lvl_i]->strataNames[lvl_strata_i], tok);
-								MTD->hierArr[lvl_i]->nStrata++;
+								mS->hierArr[lvl_i]->strataNames = (char **)realloc(mS->hierArr[lvl_i]->strataNames, (lvl_strata_i) * sizeof(char *));
+								mS->hierArr[lvl_i]->strataNames[lvl_strata_i] = (char *)malloc((strlen(tok)+1) * sizeof(char));
+								strcpy(mS->hierArr[lvl_i]->strataNames[lvl_strata_i], tok);
+								mS->hierArr[lvl_i]->nStrata++;
 								break;
 							}
 						}
@@ -641,7 +655,7 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 			}
 		}
 		// delete [] stratakeyAssocIdx;
-		return(MTD);
+		return(mS);
 
 	}else{
 		fprintf(stderr, "[ERROR] NOT IMPLEMENTED YET");
