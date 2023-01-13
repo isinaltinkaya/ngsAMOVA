@@ -508,7 +508,6 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 			// first column = individual id
 			char *tok = strtok(mtd_buf, METADATA_DELIMS);
 
-fprintf(stderr,"\n\n->->->->->%s\n\n",tok);
 			// if input file type is vcf, find the index of the individual in the bcf header
 			if (pars->in_ft == IN_VCF){
 
@@ -521,7 +520,7 @@ fprintf(stderr,"\n\n->->->->->%s\n\n",tok);
 						fprintf(stderr, "\n\n======\n[ERROR] Sample %s not found in the metadata file. \n\n", tok);
 						exit(1);
 					}else if(strcmp(tok, SAMPLES->sampleNames[vcf_sidx])==0){
-						fprintf(stderr, "\n\n======\n[INFO] Found sample (vcf_index=%d,id=%s) in the metadata file. \n\n", vcf_sidx, tok);
+						// fprintf(stderr, "\n\n======\n[INFO] Found sample (vcf_index=%d,id=%s) in the metadata file. \n\n", vcf_sidx, tok);
 						break;
 					}
 				}
@@ -691,9 +690,6 @@ fprintf(stderr,"\n\n->->->->->%s\n\n",tok);
 			}
 		}
 
-		for(int i=0; i< mS->nIndMetadata+1; i++){
-			fprintf(stderr, "\n\n\n\n\t\t\t---->ind2stratakey[%d]=%d",i,mS->ind2stratakey[i]);
-		}
 		mS->print(stderr);
 		mS->print_stratakey2stratas(stderr);
 		// delete [] stratakeyAssocIdx;

@@ -73,7 +73,7 @@ int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DA
 
 	fprintf(stderr, "\n\nssd_TOTAL = %f\n\n", aRS->ssd[aRS->nAmovaLevels]);
 
-	fprintf(stderr,"\n\nAmong %s within %s\n\n", mS->levelNames[0], mS->levelNames[1]);
+	// fprintf(stderr,"\n\nAmong %s within %s\n\n", mS->levelNames[0], mS->levelNames[1]);
 
 
 
@@ -94,7 +94,7 @@ int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DA
 
 	int lvl_i = aRS->nAmovaLevels-1;
 	while(lvl_i > 0){
-		fprintf(stderr,"\n\n\nlvl_i %i\n\n\n",lvl_i);
+		// fprintf(stderr,"\n\n\nlvl_i %i\n\n\n",lvl_i);
 		aRS->ssd[lvl_i] = get_ssd(1, dMS, mS, SAMPLES, out_amova_ff, LUT_indPair_idx, analysis_type);
 		lvl_i--;
 	}
@@ -137,6 +137,37 @@ int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DA
 		
 		// estimate the method of moments: n, n', and n''
 
+		// // n = [ N - \sum_{g \in G} ( N^2_{g}/N) ) ]  /   G - 1
+		// double n_gi = 0.0;
+		// for (int sti=0; sti < mS->hierArr[0]->nStrata; sti++)
+		// {
+		// 	n_gi += SQUARE(mS->hierArr[0]->nIndPerStrata[sti]) / (double) dMS->nInd;
+		// }
+		// aRS->ncoef[0] = (double)((double)dMS->nInd - (double)n_gi) / (double)(mS->hierArr[0]->nStrata - 1);
+
+		// double n_moment1 = 0.0;
+		// double n_moment2 = 0.0;
+		// double n_moment3 = 0.0;
+		// for (int sti=0; sti < mS->hierArr[1]->nStrata; sti++)
+		// {
+		// 	n_moment1 += mS->hierArr[1]->nIndPerStrata[sti];
+		// 	n_moment2 += SQUARE(mS->hierArr[1]->nIndPerStrata[sti]);
+		// }
+		// aRS->ncoef[1] = (double)((double)n_moment1 - (double)n_moment2 / (double)n_moment1) / (double)(mS->hierArr[1]->nStrata - 1);
+
+		// n'' = [ N - \sum_{g \in G} ( N^2_{g}/N) ) ]  /   G - 1
+
+
+		// // n'' = [ N - \sum_{g \in G} ( N^2_{g}/N) ) ]  /   G - 1
+		// double n_gi3 = 0.0;
+		// for (int sti=0; sti < mS->hierArr[2]->nStrata; sti++)
+		// {
+		// 	n_gi3 += SQUARE(mS->hierArr[2]->nIndPerStrata[sti]) / (double) dMS->nInd;
+		// }
+		// aRS->ncoef[2] = (double)((double)dMS->nInd - (double)n_gi3) / (double)(mS->hierArr[2]->nStrata - 1);
+
+
+
 
 	}else{
 		// use approximation
@@ -149,7 +180,7 @@ int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DA
 	// }
 
 
-	aRS->print_as_table(stderr);
+	aRS->print_as_table(stderr,mS);
 	aRS->print_as_csv(out_amova_ff, analysis_type);
 
 	delete aRS;

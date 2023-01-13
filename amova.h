@@ -87,82 +87,93 @@ namespace AMOVA {
             }
         }
 
-        void print_as_table(FILE *fp){
+        void print_as_table(FILE *fp, DATA::metadataStruct* mS){
+            fprintf(fp,"\n");
+            fprintf(fp,"\n");
+            fprintf(fp,"\n");
+            fprintf(fp,"==========================================  AMOVA  =========================================="); 
+            fprintf(fp,"\n");
+            fprintf(fp,"Source of variation\t\t\t\t\td.f.\tSSD\t\tMSD");
+            fprintf(fp,"\n");
+            fprintf(fp,"---------------------------------------------------------------------------------------------");
+            fprintf(fp,"\n");
+            fprintf(fp,"\n");
+            int x=1;
+            fprintf(fp,"\n");
+            fprintf(fp, "Among %-15s", mS->levelNames[x]);
+            fprintf(fp,"\t\t\t\t");
+            fprintf(fp,"\t");
+            fprintf(fp,"%d",df[x-1]);
+            fprintf(fp,"\t");
+            fprintf(fp,"%f",ssd[x-1]);
+            fprintf(fp,"\t");
+            fprintf(fp,"%f",msd[x-1]);
+            fprintf(fp,"\n");
 
-            if(nAmovaLevels == 2){
+            while(x<mS->nLevels+1){
+                if(x==mS->nLevels){
+                    fprintf(fp,"\n");
+                    fprintf(fp, "Among %s within %-25s\t%d\t%f\t%f", mS->levelNames[0], mS->levelNames[mS->nLevels], df[x], ssd[x], msd[x]);
+                    // fprintf(fp,"\t\t\t");
+                    fprintf(fp,"\n");
+                }else{
+                    fprintf(fp,"\n");
+                    fprintf(fp, "Among %s within %-25s\t%d\t%f\t%f", mS->levelNames[x+1], mS->levelNames[x], df[x], ssd[x], msd[x]);
+                    fprintf(fp,"\n");
+                }
+                x++;
 
-                fprintf(fp,"\n");
-                fprintf(fp,"\n");
-                fprintf(fp,"\n");
-                fprintf(fp,"==========================================  AMOVA  =========================================="); 
-                fprintf(fp,"\n");
-                fprintf(fp,"Source of variation\t\t\td.f.\tSSD\t\tMSD");
-                fprintf(fp,"\n");
-                fprintf(fp,"---------------------------------------------------------------------------------------------");
-                fprintf(fp,"\n");
-                fprintf(fp,"\n");
-                fprintf(fp,"Among groups");
-                fprintf(fp,"\t\t\t\t");
-                fprintf(fp,"%d",df[0]);
-                fprintf(fp,"\t");
-                fprintf(fp,"%f",ssd[0]);
-                fprintf(fp,"\t");
-                fprintf(fp,"%f",msd[0]);
-                fprintf(fp,"\n");
-                fprintf(fp,"Among individuals within groups");
-                fprintf(fp,"\t\t");
-                fprintf(fp,"%d",df[1]);
-                fprintf(fp,"\t");
-                fprintf(fp,"%f",ssd[1]);
-                fprintf(fp,"\t");
-                fprintf(fp,"%f",msd[1]);
-                fprintf(fp,"\n");
-                fprintf(fp,"\n");
-                fprintf(fp,"\n");
-                fprintf(fp,"Total");
-                fprintf(fp,"\t\t\t\t\t");
-                fprintf(fp,"%d",df[2]);
-                fprintf(fp,"\t");
-                fprintf(fp,"%f",ssd[2]);
-                fprintf(fp,"\t");
-                fprintf(fp,"%f",msd[2]);
-                fprintf(fp,"\n");
-                fprintf(fp,"\n");
-                fprintf(fp,"\n");
-                fprintf(fp,"\n");
-                fprintf(fp,"Variance components:");
-                fprintf(fp,"\n");
+            }
+
+            fprintf(fp,"\n");
+            fprintf(fp,"Total\t\t\t\t\t\t\t%d\t%f\t%f", df[nAmovaLevels], ssd[nAmovaLevels], msd[nAmovaLevels]);
+            fprintf(fp,"\n\n\n");
+            fprintf(fp,"Variance components:");
+            fprintf(fp,"\n\n");
+            int i=nAmovaLevels;
+            while(i>0){
                 fprintf(fp,"sigma^2");
                 fprintf(fp,"\t");
-                fprintf(fp,"%f", sigmasq[0]);
+                fprintf(fp,"%s", mS->levelNames[i-1]);
                 fprintf(fp,"\t");
-                fprintf(fp,"%f", sigmasq[1]);
+                fprintf(fp,"%f", sigmasq[nAmovaLevels-i]);
                 fprintf(fp,"\n");
-                //TODO add sigmasqb
-                //todo add this nCk style sigma_which_which
-                fprintf(fp,"\n");
-                fprintf(fp,"Variance coefficients:");
-                fprintf(fp,"\n");
-                fprintf(fp,"\n");
-                fprintf(fp,"a");
-                fprintf(fp,"\t");
-                fprintf(fp,"%f",ncoef[0]);
-                fprintf(fp,"\n");
-                fprintf(fp,"\n");
-                fprintf(fp,"\n");
-                fprintf(fp,"Phi-statistic:");
-                fprintf(fp,"\n");
-                fprintf(fp,"a");
-                fprintf(fp,"\t");
-                fprintf(fp,"%f",phi[0]);
-                fprintf(fp,"\n");
-                fprintf(fp,"\n");
-                fprintf(fp,"============================================================================================="); 
-                fprintf(fp,"\n");
-                fprintf(fp,"\n");
-                fprintf(fp,"\n");
-                
+                i--;
             }
+
+
+
+            //TODO add sigmasqb
+            //todo add this nCk style sigma_which_which
+            fprintf(fp,"\n");
+            fprintf(fp,"Variance coefficients:");
+            for(int i=0; i<_ncoef; i++){
+                fprintf(fp,"\n");
+                // fprintf(fp,"a");
+                fprintf(fp,"\t");
+                fprintf(fp,"%f",ncoef[i]);
+            }
+            fprintf(fp,"\n");
+            fprintf(fp,"\n");
+            // fprintf(fp,"a");
+            // fprintf(fp,"\t");
+            // fprintf(fp,"%f",ncoef[0]);
+            fprintf(fp,"\n");
+            fprintf(fp,"\n");
+            fprintf(fp,"\n");
+            fprintf(fp,"Phi-statistic:");
+            //TODO x in y
+            fprintf(fp,"\n");
+            fprintf(fp,"a");
+            fprintf(fp,"\t");
+            fprintf(fp,"%f",phi[0]);
+            fprintf(fp,"\n");
+            fprintf(fp,"\n");
+            fprintf(fp,"============================================================================================="); 
+            fprintf(fp,"\n");
+            fprintf(fp,"\n");
+            fprintf(fp,"\n");
+
         }
 
         void print_as_csv(FILE *fp, const char *analysis_type){
