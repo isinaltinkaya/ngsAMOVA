@@ -520,7 +520,6 @@ namespace DATA
 			strataNames = new char*[_strataNames]; //TODO
 			strataNames[0] = new char[strlen(str)+1];
 			strcpy(strataNames[0], str);
-			nStrata=1;
 			nIndPerStrata = new int[_nIndPerStrata]; //TODO
 			for (size_t i = 0; i < _nIndPerStrata; i++)
 			{
@@ -555,6 +554,8 @@ namespace DATA
 		int** stratakey2stratas= NULL;
 		size_t _stratakey2stratas = 1024;
 
+		int nIndMetadata=0;
+
 		// hierStruct[hierarchyLevel] is a hierStruct instance
 		hierStruct **hierArr = NULL;
 
@@ -563,6 +564,14 @@ namespace DATA
 			nLevels = nLevels_;
 			hierArr = new hierStruct*[nLevels];
 			stratakey2stratas = new int*[_stratakey2stratas];//TODO
+
+
+			for(size_t i=0; i<_stratakey2stratas; i++){
+				stratakey2stratas[i] = new int[nLevels];
+				for(size_t j=0; j<nLevels; j++){
+					stratakey2stratas[i][j] = -1;
+				}
+			}
 
 			levelNames = new char*[nLevels+1];
 			for(int i=0; i<nLevels+1; i++){
@@ -619,12 +628,44 @@ namespace DATA
 			fprintf(fp, "\nnLevels: %d\n", nLevels);
 			for (int i = 0; i < nLevels; i++)
 			{
-				fprintf(fp, "Level %d: %d strata\n", i, hierArr[i]->nStrata);
+				// fprintf(fp, "Level %d: contains %d unique group identifiers\n", i, hierArr[i]->nStrata);
+				fprintf(fp, "Level (index:%d,id:%s) contains %d unique group identifiers: {", i, levelNames[i], hierArr[i]->nStrata);
+				for(int j=0; j<hierArr[i]->nStrata;j++){
+					fprintf(fp, "%s",hierArr[i]->strataNames[j]);
+					if(j<hierArr[i]->nStrata-1){
+						fprintf(fp, ",");
+					}else{
+						fprintf(fp, "}\n");
+					}
+				}
 				for (int j = 0; j < hierArr[i]->nStrata; j++)
 				{
-					fprintf(fp, "\t%s: %d individuals\n", hierArr[i]->strataNames[j], hierArr[i]->nIndPerStrata[j]);
+					fprintf(fp, "\tGroup (index:%d,id:%s) has %d members\n", j,hierArr[i]->strataNames[j], hierArr[i]->nIndPerStrata[j]);
+					for(int k=0; k<hierArr[i]->nIndPerStrata[j]; k++){
+						fprintf(fp, "\t\tMember %d belongs to %s\n", k,hierArr[i]->strataNames[j]);
+					}
 				}
 			}
+		}
+
+		void print_ind2stratakey(FILE* fp){
+			fprintf(fp, "\n\n------------------\n");
+			for(int i=0; i<nIndMetadata; i++){
+				fprintf(fp, "%d\t", ind2stratakey[i]);
+			}
+			fprintf(fp, "\n------------------\n\n");
+		}
+		
+		void print_stratakey2stratas(FILE* fp){
+			fprintf(fp, "\n\n------------------\n");
+			for(int i=0; i < hierArr[nLevels-1]->nStrata; i++){
+				fprintf(fp, "stratakey=%d\t", i);
+				for(int j=0; j<nLevels; j++){
+					fprintf(fp, "[level %d: bitset value=%d]\t", j, stratakey2stratas[i][j]);
+				}
+				fprintf(fp, "\n");
+			}
+			fprintf(fp, "\n------------------\n\n");
 		}
 
 
