@@ -15,7 +15,7 @@ double get_SSD_total(DATA::distanceMatrixStruct *dMS)
 	return ssd_TOTAL;
 }
 
-double get_ssd(int amova_lvl_i, DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int **LUT_indPair_idx, const char *analysis_type)
+double get_SSD_at_level(int amova_lvl_i, DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DATA::samplesStruct *sS, FILE *out_amova_ff, int **LUT_indPair_idx, const char *analysis_type)
 {
 	int lvl_i = amova_lvl_i-1;
 
@@ -31,18 +31,13 @@ double get_ssd(int amova_lvl_i, DATA::distanceMatrixStruct *dMS, DATA::metadataS
 
 	for (int sti=0; sti < mS->hierArr[lvl_i]->nStrata; sti++)
 	{
-#if 0
-		// fprintf(stderr, "\n\n\n --- sti = %i ---\n\n\n", sti);
-		fprintf(stderr, "\n-> Strata (%s,idx:%i) has %i individuals\n", mS->hierArr[lvl_i]->strataNames[sti], sti, mS->hierArr[lvl_i]->nIndPerStrata[sti]);
-#endif
 
-		n = (double)mS->hierArr[lvl_i]->nIndPerStrata[sti];
 		sum = 0.0;
 		for (int i1 = 0; i1 < dMS->nInd - 1; i1++)
 		{
 			for (int i2 = i1 + 1; i2 < dMS->nInd; i2++)
 			{
-				if(mS->pair_in_strata(sti, i1, i2) == 1){
+				if(mS->pair_in_strata(sti, i1, i2, sS, lvl_i) == 1){
 					
 					px = LUT_indPair_idx[i1][i2];
 
@@ -58,7 +53,7 @@ double get_ssd(int amova_lvl_i, DATA::distanceMatrixStruct *dMS, DATA::metadataS
 }
 
 
-int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int **LUT_indPair_idx, const char *analysis_type)
+int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DATA::samplesStruct *sS, FILE *out_amova_ff, int **LUT_indPair_idx, const char *analysis_type)
 {
 
 
@@ -71,7 +66,7 @@ int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DA
 	// ssd=[0=AG,1=AIWG,2=TOTAL]
 
 
-	fprintf(stderr, "\n\nssd_TOTAL = %f\n\n", aRS->ssd[aRS->nAmovaLevels]);
+	// fprintf(stderr, "\n\nssd_TOTAL = %f\n\n", aRS->ssd[aRS->nAmovaLevels]);
 
 	// fprintf(stderr,"\n\nAmong %s within %s\n\n", mS->levelNames[0], mS->levelNames[1]);
 
@@ -95,7 +90,7 @@ int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DA
 	int lvl_i = aRS->nAmovaLevels-1;
 	while(lvl_i > 0){
 		// fprintf(stderr,"\n\n\nlvl_i %i\n\n\n",lvl_i);
-		aRS->ssd[lvl_i] = get_ssd(1, dMS, mS, SAMPLES, out_amova_ff, LUT_indPair_idx, analysis_type);
+		aRS->ssd[lvl_i] = get_SSD_at_level(1, dMS, mS, sS, out_amova_ff, LUT_indPair_idx, analysis_type);
 		lvl_i--;
 	}
 

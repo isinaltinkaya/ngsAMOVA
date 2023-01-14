@@ -1,5 +1,5 @@
-#ifndef __PARAM_STRUCT__
-#define __PARAM_STRUCT__
+#ifndef __SHARED__
+#define __SHARED__
 
 #include <limits>
 #include <cstddef>
@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/stat.h>
+#include <float.h>
 
 #include <htslib/vcf.h>
 #include <htslib/vcfutils.h>
@@ -72,6 +73,18 @@
 	}                \
 	// fprintf(stderr, "\n\n*******\n[FREEING NULL MEMORY](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr);
 
+
+/*
+ * Macro:[FCLOSE]
+ * shortcut to check if file is open and close it
+ */
+#define FCLOSE(expr) \
+	if (expr)        \
+	{                \
+		fclose(expr);\
+		expr = NULL; \
+	}                \
+
 #ifndef FREAD_BUF_SIZE
 #define FREAD_BUF_SIZE 4096
 #endif
@@ -99,7 +112,7 @@ using size_t = decltype(sizeof(int));
  * @typedef
  * @abstract argStruct - argument structure
  *
- * @field *in_fn		pointer to input file name
+ * @field *in_vcf_fn		pointer to input file name
  * @field *in_mtd_fn	pointer to input Metadata file name
  * @field *out_fn		pointer to output file prefix [angsdput]
  * @field seed			random seed
@@ -192,11 +205,13 @@ typedef struct
 
 	int verbose;
 
-	char *in_fn;
+	char *in_vcf_fn;
 	char *in_sfs_fn;
 	char *in_dm_fn;
 	char *in_mtd_fn;
 	char *out_fn;
+
+	char *command;
 
 	char *formula;
 	int *keyCols;
@@ -227,7 +242,9 @@ typedef struct
 
 argStruct *argStruct_init();
 argStruct *argStruct_get(int argc, char **argv);
-// void *argStruct_destroy(argStruct *arg);
+void argStruct_destroy(argStruct *arg);
+void argStruct_print(argStruct *arg);
+
 
 /*
  * @typedef
@@ -255,16 +272,16 @@ typedef struct
 
 	int nInd;
 
-	int *pos;
+	// int *pos;
 
 	int **LUT_indPair_idx;
 	int n_ind_cmb;
 
-	char *major;
-	char *minor;
-	char *ref;
-	char *anc;
-	char *der;
+	// char *major;
+	// char *minor;
+	// char *ref;
+	// char *anc;
+	// char *der;
 
 
 	// input file type from enum
@@ -403,9 +420,9 @@ namespace DATA
 
 		size_t snSites = 0;
 
-		int *sSites;
-		// TODO init better
-		size_t _sSites = 100;
+		// contains index of the shared sites of the pair
+		int *sharedSites=NULL;
+		size_t _sharedSites = 1024;
 
 		// int nDim;
 
@@ -426,10 +443,10 @@ namespace DATA
 			idx = pair_idx;
 			d = 0.0;
 			n_em_iter = 0;
-			sSites = (int *)malloc(_sSites * sizeof(int));
-			for (size_t i = 0; i < _sSites; i++)
+			sharedSites = (int *)malloc(_sharedSites * sizeof(int));
+			for (size_t i = 0; i < _sharedSites; i++)
 			{
-				sSites[i] = -1;
+				sharedSites[i] = -1;
 			}
 
 			SFS = (double *)malloc(9 * sizeof(double));
@@ -440,9 +457,13 @@ namespace DATA
 		}
 		~pairStruct()
 		{
-			FREE(sSites);
+			free(sharedSites);
+			sharedSites=NULL;
+			// FREE(sharedSites);
 
-			FREE(SFS);
+			free(SFS);
+			SFS=NULL;
+			// FREE(SFS);
 		}
 
 		void print(FILE *fp, bcf_hdr_t *hdr)
@@ -457,14 +478,29 @@ namespace DATA
 			fprintf(fp, "%d,%d,%d", i1, i2, idx);
 		}
 
+		void sharedSites_add(size_t site_i){
+			sharedSites[snSites] = site_i;
+			snSites++;
+			if(snSites == _sharedSites){
+				sharedSites_expand();
+			}
+		}
+		
+		void sharedSites_expand(){
+			_sharedSites *= 2;
+			sharedSites = (int *)realloc(sharedSites, _sharedSites * sizeof(int));
+			for (size_t i = snSites; i < _sharedSites; i++)
+			{
+				sharedSites[i] = -1;
+			}
+		}
+
 	} pairStruct;
 
 	typedef struct samplesStruct
 	{
 
-		int *sampleArr = NULL;
 		char **sampleNames = NULL; // sample names in bcf sample order
-		int *sampleOrder = NULL;
 
 		int nSamples = 0;
 
@@ -472,30 +508,36 @@ namespace DATA
 		{
 			nSamples = nSamples_;
 
-			sampleNames = new char *[nSamples];
-			sampleArr = new int[nSamples];
-			sampleOrder = new int[nSamples];
+			sampleNames = (char **)malloc(nSamples* sizeof(char *));
 
-			for (int i = 0; i < nSamples; i++)
+			for (size_t i = 0; i < (size_t) nSamples; i++)
 			{
-				sampleArr[i] = 0;
 				sampleNames[i] = NULL;
-				sampleOrder[i] = 0;
 			}
 		}
 
 		~samplesStruct()
 		{
-			delete[] sampleArr;
-			delete[] sampleOrder;
+
 			for (int i = 0; i < nSamples; i++)
 			{
-				delete[] sampleNames[i];
+				free(sampleNames[i]);
+				sampleNames[i] = NULL;
 			}
-			delete[] sampleNames;
+			free(sampleNames);
+			sampleNames = NULL;
 
 
 		}
+
+		void addSampleName(int i, char *str)
+		{
+			size_t size = strlen(str) + 1;
+			sampleNames[i] = (char*) malloc(size);
+			strncpy(sampleNames[i], str, size);
+		}
+
+
 	} samplesStruct;
 
 	/// @brief hierStruct store the hierarchical structure of the metadata
@@ -508,7 +550,7 @@ namespace DATA
 
 		// strata names
 		char **strataNames = NULL;
-		size_t _strataNames = 1024;
+		size_t _strataNames = 1;
 
 		char* strataArr = NULL;
 
@@ -517,9 +559,13 @@ namespace DATA
 
 		hierStruct(char* str)
 		{
-			strataNames = new char*[_strataNames]; //TODO
-			strataNames[0] = new char[strlen(str)+1];
-			strcpy(strataNames[0], str);
+			nStrata = 1;
+			size_t size = strlen(str) + 1;
+			strataNames = (char **)malloc(_strataNames * sizeof(char *));
+			strataNames[0] = (char*) malloc(size);
+			strncpy(strataNames[0], str, size);
+
+
 			nIndPerStrata = new int[_nIndPerStrata]; //TODO
 			for (size_t i = 0; i < _nIndPerStrata; i++)
 			{
@@ -530,9 +576,29 @@ namespace DATA
 
 		~hierStruct()
 		{
-			delete[] strataNames;
+			for(size_t i=0; i<_strataNames; i++)
+			{
+				free(strataNames[i]);
+				strataNames[i] = NULL;
+			}
+			free(strataNames);
+			strataNames = NULL;
+
 			delete[] nIndPerStrata;
 			
+		}
+		void addStrata(char* str){
+
+			_strataNames = nStrata + 1;
+
+			strataNames = (char**) realloc(strataNames, _strataNames * sizeof(char*)); 
+			ASSERT(strataNames != NULL);
+
+			strataNames[nStrata] = (char*) malloc(strlen(str)+1);
+			ASSERT(strataNames[nStrata] != NULL);
+
+			strncpy(strataNames[nStrata], str, strlen(str)+1);
+			nStrata++;
 		}
 
 	} hierStruct;
@@ -546,6 +612,7 @@ namespace DATA
 		int nLevels = 0;
 
 		char** levelNames = NULL;
+		size_t _levelNames = 0;
 
 		// associate individual with the lowest level strata (key strata)
 		int* ind2stratakey= NULL;
@@ -562,45 +629,60 @@ namespace DATA
 
 		metadataStruct(int nLevels_, char** levelNames_){
 			nLevels = nLevels_;
-			hierArr = new hierStruct*[nLevels];
+			_levelNames = nLevels+1;
 			stratakey2stratas = new int*[_stratakey2stratas];//TODO
-
 
 			for(size_t i=0; i<_stratakey2stratas; i++){
 				stratakey2stratas[i] = new int[nLevels];
-				for(size_t j=0; j<nLevels; j++){
+				for(size_t j=0; j<(size_t) nLevels; j++){
 					stratakey2stratas[i][j] = -1;
 				}
 			}
 
-			levelNames = new char*[nLevels+1];
-			for(int i=0; i<nLevels+1; i++){
-				levelNames[i] = NULL;
-			}
-
+			hierArr =  new hierStruct*[nLevels];
 			for(int i=0; i<nLevels; i++){
 				hierArr[i] = NULL;
 			}
+
 			ind2stratakey = new int[_ind2stratakey];//TODO
 
-			for(int i=0; i<nLevels+1;i++){
+			levelNames = new char*[_levelNames];
+			for(size_t i=0; i<_levelNames; i++){
 				levelNames[i] = new char[strlen(levelNames_[i])+1];
-				strcpy(levelNames[i], levelNames_[i]);
+				strncpy(levelNames[i], levelNames_[i], strlen(levelNames_[i])+1);
 			}
 		};
 		~metadataStruct(){
+			for(int i=0; i<nLevels; i++){
+				delete hierArr[i];
+				delete[] levelNames[i];
+			}
+			delete[] levelNames[nLevels]; //levelNames if of size nLevels+1
+			delete[] levelNames;
 			delete[] hierArr;
 			delete[] ind2stratakey;
+			for(size_t i=0; i < _stratakey2stratas; i++){
+				delete[] stratakey2stratas[i];
+			}
 			delete[] stratakey2stratas;
-			delete[] levelNames;
 		};
 
-		int pair_in_strata(int strata_i, int i1, int i2){
-			if(ind2stratakey[i1] == strata_i && ind2stratakey[i2] == strata_i){
-				return 1;
-			}else{
-				return 0;
+		void addHierStruct(size_t lvl_i, char* tok){
+			hierArr[lvl_i] = new hierStruct(tok);
+		}
+
+		int pair_in_strata(int strata_i, int i1, int i2, samplesStruct* sS, int lvl_i){
+			if(nLevels==1){
+				if(ind2stratakey[i1] == strata_i && ind2stratakey[i2] == strata_i){
+					// fprintf(stderr, "[INFO](pair_in_strata): Individuals (%d:%s, %d:%s) are in the same strata (%d:%s)\n", i1, sS->sampleNames[i1], i2, sS->sampleNames[i2], strata_i, hierArr[lvl_i]->strataNames[strata_i]);
+					return 1;
+				}else{
+					// fprintf(stderr, "[INFO](pair_in_strata): Individuals (%d:%s, %d:%s) are NOT in the same strata (%d:%s)\n", i1, sS->sampleNames[i1], i2, sS->sampleNames[i2], strata_i, hierArr[lvl_i]->strataNames[strata_i]);
+					return 0;
+				}
 			}
+			return -1;
+
 		}
 
 		// check if two individuals are in the same strata at a given level
@@ -657,15 +739,17 @@ namespace DATA
 		}
 		
 		void print_stratakey2stratas(FILE* fp){
-			fprintf(fp, "\n\n------------------\n");
-			for(int i=0; i < hierArr[nLevels-1]->nStrata; i++){
-				fprintf(fp, "stratakey=%d\t", i);
-				for(int j=0; j<nLevels; j++){
-					fprintf(fp, "[level %d: bitset value=%d]\t", j, stratakey2stratas[i][j]);
+			if(nLevels>1){
+				fprintf(fp, "\n\n------------------\n");
+				for(int i=0; i < hierArr[nLevels-1]->nStrata; i++){
+					fprintf(fp, "stratakey=%d\t", i);
+					for(int j=0; j<nLevels; j++){
+						fprintf(fp, "[level %d: bitset value=%d]\t", j, stratakey2stratas[i][j]);
+					}
+					fprintf(fp, "\n");
 				}
-				fprintf(fp, "\n");
+				fprintf(fp, "\n------------------\n\n");
 			}
-			fprintf(fp, "\n------------------\n\n");
 		}
 
 
@@ -693,7 +777,7 @@ namespace DATA
 		int nIndCmb = 0;
 		int isSquared= -1;
 
-		distanceMatrixStruct(int nInd_, int nIndCmb_)
+		distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquared_)
 		{
 			nIndCmb = nIndCmb_;
 			nInd = nInd_;
@@ -702,6 +786,7 @@ namespace DATA
 			{
 				M[i] = 0;
 			}
+			isSquared = isSquared_;
 
 		};
 		~distanceMatrixStruct()
@@ -715,7 +800,7 @@ namespace DATA
 			fprintf(fp, "%s,", TYPE);
 			for (int px = 0; px < nIndCmb; px++)
 			{
-				fprintf(fp, "%f", M[px]);
+				fprintf(fp, "%.*f", (int) DBL_MAXDIG10, M[px]);
 				if (px != nIndCmb - 1)
 				{
 					fprintf(fp, ",");
@@ -801,8 +886,13 @@ namespace IO
 				out_emtest_fs = new outputStruct(args->out_fn, ".emtest.csv");
 			}
 
-			out_amova_fs = new outputStruct(args->out_fn, ".amova.csv");
-			out_sfs_fs = new outputStruct(args->out_fn, ".sfs.csv");
+			if(args->doEM == 1){
+				out_sfs_fs = new outputStruct(args->out_fn, ".sfs.csv");
+			}
+			if(args->doAMOVA > 0){
+				out_amova_fs = new outputStruct(args->out_fn, ".amova.csv");
+			}
+
 		}
 
 		~outFilesStruct()

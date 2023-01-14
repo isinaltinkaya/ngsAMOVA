@@ -124,24 +124,16 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 				// if not first individual, check previous individuals pairing with current ind
 				if (indi != 0)
 				{
+					int pidx=-1;
 					for (int indi2 = indi - 1; indi2 > -1; indi2--)
 					{
-						if (cmbArr[pars->LUT_indPair_idx[indi2][indi]] == 1)
+						// both inds has data
+						pidx = pars->LUT_indPair_idx[indi2][indi];
+
+						if (cmbArr[pidx])
 						{
-							// both inds has data
-
-							int pidx = pars->LUT_indPair_idx[indi2][indi];
-
-							// append site to sSites shared sites list
-							PAIRS[pidx]->sSites[PAIRS[pidx]->snSites] = site_i;
-
-							PAIRS[pidx]->snSites++;
-
-							if (PAIRS[pidx]->snSites == PAIRS[pidx]->_sSites)
-							{
-								PAIRS[pidx]->_sSites = 2 * PAIRS[pidx]->_sSites;
-								PAIRS[pidx]->sSites = (int *)realloc(PAIRS[pidx]->sSites, PAIRS[pidx]->_sSites * sizeof(int));
-							}
+							// append site to sharedSites shared sites list
+							PAIRS[pidx]->sharedSites_add(site_i);
 						}
 					}
 				}

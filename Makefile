@@ -80,6 +80,5 @@ test:
 	rm -rvf test/testwd;
 	mkdir -pv test/testwd;
 	./ngsAMOVA -doEM 1 -doAMOVA 3 -doTest 0 -in test/test_s9_d1_1K.vcf -isSim 1 -minInd 2 -printMatrix 0  -doDist 1 -maxIter 100 -nThreads 0 -tole 1e-10  --hascolnames 1 -m test/metadata_with_header.tsv -out test/testwd/test_s9_d1_1K
-	bash -c "diff <(cut -d, -f4-12 test/testwd/test_s9_d1_1K.sfs.csv)  test/ref/test_s9_d1_1K.sfs.csv";
+	bash -c "diff <(cut -d, -f4-12 test/testwd/test_s9_d1_1K.sfs.csv)  test/reference/test_s9_d1_1K.sfs.csv";
 
-# ./ngsAMOVA -in test/test_s9_d1_1K.vcf -m test/metadata_with_header.tsv -doDist 1 -doAMOVA 3 -doEM 1 -isSim 1 -out test/testwd/test_s9_d1_1K.vcf_testput --formula "Individual~Population";

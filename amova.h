@@ -53,7 +53,7 @@ namespace AMOVA {
             }
 
             sigmasq = new double[nAmovaLevels];
-            for (size_t i=0; i<nAmovaLevels; i++){
+            for (size_t i=0; i<(size_t) nAmovaLevels; i++){
                 sigmasq[i] = 0;
             }
 
@@ -73,7 +73,7 @@ namespace AMOVA {
             fprintf(stderr, "\n_ssd = %zu\n", _ssd);
             fprintf(stderr, "_ncoef = %zu\n", _ncoef);
             fprintf(stderr, "nAmovaLevels = %d\n", nAmovaLevels);
-            for (size_t i=0; i<nAmovaLevels; i++){
+            for (size_t i=0; i<(size_t)nAmovaLevels; i++){
                 fprintf(fp, "sigmasq[%zu] = %f\n", i, sigmasq[i]);
             }
             for (size_t i=0; i<_ssd; i++){
@@ -100,15 +100,7 @@ namespace AMOVA {
             fprintf(fp,"\n");
             int x=1;
             fprintf(fp,"\n");
-            fprintf(fp, "Among %-15s", mS->levelNames[x]);
-            fprintf(fp,"\t\t\t\t");
-            fprintf(fp,"\t");
-            fprintf(fp,"%d",df[x-1]);
-            fprintf(fp,"\t");
-            fprintf(fp,"%f",ssd[x-1]);
-            fprintf(fp,"\t");
-            fprintf(fp,"%f",msd[x-1]);
-            fprintf(fp,"\n");
+            fprintf(fp, "Among %-15s\t\t\t\t\t%d\t%f\t%f", mS->levelNames[x], df[x-1], ssd[x-1], msd[x-1]);
 
             while(x<mS->nLevels+1){
                 if(x==mS->nLevels){
@@ -134,7 +126,7 @@ namespace AMOVA {
             while(i>0){
                 fprintf(fp,"sigma^2");
                 fprintf(fp,"\t");
-                fprintf(fp,"%s", mS->levelNames[i-1]);
+                fprintf(fp,"%20s", mS->levelNames[i-1]);
                 fprintf(fp,"\t");
                 fprintf(fp,"%f", sigmasq[nAmovaLevels-i]);
                 fprintf(fp,"\n");
@@ -147,7 +139,7 @@ namespace AMOVA {
             //todo add this nCk style sigma_which_which
             fprintf(fp,"\n");
             fprintf(fp,"Variance coefficients:");
-            for(int i=0; i<_ncoef; i++){
+            for(int i=0; i<(int)_ncoef; i++){
                 fprintf(fp,"\n");
                 // fprintf(fp,"a");
                 fprintf(fp,"\t");
@@ -158,9 +150,6 @@ namespace AMOVA {
             // fprintf(fp,"a");
             // fprintf(fp,"\t");
             // fprintf(fp,"%f",ncoef[0]);
-            fprintf(fp,"\n");
-            fprintf(fp,"\n");
-            fprintf(fp,"\n");
             fprintf(fp,"Phi-statistic:");
             //TODO x in y
             fprintf(fp,"\n");

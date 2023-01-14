@@ -12,6 +12,7 @@ void* t_EM_2DSFS_GL3(void* p){
 		fprintf(stderr,"\n[ERROR] Problem with EM\n");
 		exit(1);
 	}
+	return 0;
 }
 
 
@@ -57,13 +58,13 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 
 			for(int i=0;i<3;i++){
 				for(int j=0;j<3;j++){
-			ESFS[i][j]=0.0;
+					ESFS[i][j]=0.0;
 				}
 			}
 		//loop through shared sites for pair
 		for(size_t sn=0; sn<pair->snSites; sn++){
 
-			size_t s=pair->sSites[sn];
+			size_t s=pair->sharedSites[sn];
 			sum=0.0;
 
 			// SFS * ind1 * ind2
@@ -74,14 +75,7 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 					sum += TMP[i][j];
 				}
 			}
-			// for(int g=0; g<9; g++){
-				// TMP[g]
-					//
-				// pair->SFS[g]
-//
-				// pair->i1
-			// }
-//
+
 			for(int i=0;i<3;i++){
 				for(int j=0;j<3;j++){
 					ESFS[i][j] += TMP[i][j]/sum;
