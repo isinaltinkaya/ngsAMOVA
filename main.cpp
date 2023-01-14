@@ -93,56 +93,59 @@ int main(int argc, char **argv)
 			// TODO do this dynamically based on actually observed first and last pos of contigs
 			DATA::contigsStruct *contigsSt = new DATA::contigsStruct(nContigs);
 
-			if (args->blockSize != 0)
-			{
-
-				for (int ci = 0; ci < nContigs; ci++)
-				{
-
-					const int contigSize = hdr->id[BCF_DT_CTG][ci].val->info[0];
-
-					contigsSt->contigLengths[ci] = contigSize;
-
-					fprintf(stderr, "\nContig %d length:%d\n", ci, contigSize);
-
-					int nBlocks = 0;
-
-					if (args->blockSize < contigSize)
-					{
-						nBlocks = (contigSize / args->blockSize) + 1;
-					}
-					else
-					{
-						nBlocks = 1;
-						fprintf(stderr, "\nContig %d is smaller than block size, setting block size to contig size (%d)\n", ci, contigSize);
-					}
-
-					// allocate memory for contigBlockStarts
-					contigsSt->contigBlockStarts[ci] = (int *)malloc(nBlocks * sizeof(int));
-					contigsSt->contigBlockStartPtrs[ci] = (double **)malloc(nBlocks * sizeof(double *));
-					contigsSt->contigNBlocks[ci] = nBlocks;
-
-					// fprintf(stderr, "\nContig %d length:%d nBlocks: %d\n", ci, contigSize, nBlocks);
-					for (int bi = 0; bi < nBlocks; bi++)
-					{
-						int blockStart = bi * args->blockSize;
-						// fprintf(stderr, "\nBlock %d starts at %d\n", bi, blockStart);
-
-						contigsSt->contigBlockStarts[ci][bi] = blockStart;
-						fprintf(stderr, "\nContig %d block %d starts at %d\n", ci, bi, contigsSt->contigBlockStarts[ci][bi]);
-					}
-				}
-			}
+			// if (args->blockSize != 0)
+			// {
+//
+				// for (int ci = 0; ci < nContigs; ci++)
+				// {
+//
+					// const int contigSize = hdr->id[BCF_DT_CTG][ci].val->info[0];
+//
+					// contigsSt->contigLengths[ci] = contigSize;
+//
+					// fprintf(stderr, "\nContig %d length:%d\n", ci, contigSize);
+//
+					// int nBlocks = 0;
+//
+					// if (args->blockSize < contigSize)
+					// {
+						// nBlocks = (contigSize / args->blockSize) + 1;
+					// }
+					// else
+					// {
+						// nBlocks = 1;
+						// fprintf(stderr, "\nContig %d is smaller than block size, setting block size to contig size (%d)\n", ci, contigSize);
+					// }
+//
+					// // allocate memory for contigBlockStarts
+					// contigsSt->contigBlockStarts[ci] = (int *)malloc(nBlocks * sizeof(int));
+					// contigsSt->contigBlockStartPtrs[ci] = (double **)malloc(nBlocks * sizeof(double *));
+					// contigsSt->contigNBlocks[ci] = nBlocks;
+//
+					// // fprintf(stderr, "\nContig %d length:%d nBlocks: %d\n", ci, contigSize, nBlocks);
+					// for (int bi = 0; bi < nBlocks; bi++)
+					// {
+						// int blockStart = bi * args->blockSize;
+						// // fprintf(stderr, "\nBlock %d starts at %d\n", bi, blockStart);
+//
+						// contigsSt->contigBlockStarts[ci][bi] = blockStart;
+						// fprintf(stderr, "\nContig %d block %d starts at %d\n", ci, bi, contigsSt->contigBlockStarts[ci][bi]);
+					// }
+				// }
+			// }
 
 			/*
 			[BEGIN] Read Metadata
 			*/
+				DATA::metadataStruct *metadataSt =NULL;
 
-			FILE *in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
+			if(args->in_mtd_fn){
+				FILE *in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
 
-			DATA::metadataStruct *metadataSt = DATA::metadataStruct_get(in_mtd_fp, samplesSt, formulaSt, args->hasColNames, pars);
+				metadataSt = DATA::metadataStruct_get(in_mtd_fp, samplesSt, formulaSt, args->hasColNames, pars);
 
-			FCLOSE(in_mtd_fp);
+				FCLOSE(in_mtd_fp);
+			}
 			/*
 			[END] Read Metadata
 			*/
@@ -305,9 +308,9 @@ int main(int argc, char **argv)
 			 *
 			 */
 
-			int last_ci = -1;
-			int last_bi = -1;
-			double *last_ptr = NULL;
+			// int last_ci = -1;
+			// int last_bi = -1;
+			// double *last_ptr = NULL;
 
 			while (bcf_read(in_fp, hdr, bcf) == 0)
 			{
@@ -365,39 +368,39 @@ int main(int argc, char **argv)
 					}
 				}
 
-				int ci = bcf->rid;
+				// int ci = bcf->rid;
 
-				if (args->blockSize != 0)
-				{
-
-					// if first contig
-					if (last_ci == -1)
-					{
-						last_ci = ci;
-						last_bi = 0;
-					}
-
-					// if contig changes, reset block index
-					if (ci != last_ci)
-					{
-						last_ci = ci;
-						last_bi = 0;
-					}
-
-					last_ptr = lngl[pars->nSites];
-
-					// calculate which block first site belongs to using contigLengths and contigNBlocks
-					//  last_bi = (int)floor((double)bcf->pos/(double)args->blockSize);
-					//  fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block last_bi %d\n\n",bcf->pos,ci,last_bi);
-
-					// if current pos is bigger than contigBlockStarts, add last_ptr to contigBlockStartPtrs
-					if (bcf->pos > contigsSt->contigBlockStarts[ci][last_bi])
-					{
-						// fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block %d contigsSt->contigBlockStarts[%d][%d] %d\n\n",bcf->pos,ci,last_bi,ci,last_bi,contigsSt->contigBlockStarts[ci][last_bi]);
-						contigsSt->contigBlockStartPtrs[ci][last_bi] = last_ptr;
-						last_bi++;
-					}
-				}
+				// if (args->blockSize != 0)
+				// {
+//
+					// // if first contig
+					// if (last_ci == -1)
+					// {
+						// last_ci = ci;
+						// last_bi = 0;
+					// }
+//
+					// // if contig changes, reset block index
+					// if (ci != last_ci)
+					// {
+						// last_ci = ci;
+						// last_bi = 0;
+					// }
+//
+					// last_ptr = lngl[pars->nSites];
+//
+					// // calculate which block first site belongs to using contigLengths and contigNBlocks
+					// //  last_bi = (int)floor((double)bcf->pos/(double)args->blockSize);
+					// //  fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block last_bi %d\n\n",bcf->pos,ci,last_bi);
+//
+					// // if current pos is bigger than contigBlockStarts, add last_ptr to contigBlockStartPtrs
+					// if (bcf->pos > contigsSt->contigBlockStarts[ci][last_bi])
+					// {
+						// // fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block %d contigsSt->contigBlockStarts[%d][%d] %d\n\n",bcf->pos,ci,last_bi,ci,last_bi,contigsSt->contigBlockStarts[ci][last_bi]);
+						// contigsSt->contigBlockStartPtrs[ci][last_bi] = last_ptr;
+						// last_bi++;
+					// }
+				// }
 				pars->nSites++;
 				pars->totSites++;
 
@@ -633,6 +636,9 @@ int main(int argc, char **argv)
 				ASSERT(AMOVA::doAMOVA(dMS_GT, metadataSt, samplesSt, outSt->out_amova_fs->fp, pars->LUT_indPair_idx, "gt") == 0);
 				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 				break;
+			case 0:
+				fprintf(stderr, "\n\t-> Skipped running AMOVA\n");
+				break;
 			case -1:
 				fprintf(stderr, "\n\t-> Skipped running AMOVA\n");
 				break;
@@ -674,7 +680,9 @@ int main(int argc, char **argv)
 			}
 
 			delete samplesSt;
+			if(metadataSt){
 			delete metadataSt;
+			}
 			delete contigsSt;
 			delete formulaSt;
 			delete dMS_GL;
@@ -768,6 +776,7 @@ int main(int argc, char **argv)
 			break;
 		}
 
+		return 0;
 		}
 		argStruct_destroy(args);
 		paramStruct_destroy(pars);

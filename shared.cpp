@@ -1043,7 +1043,7 @@ argStruct *argStruct_get(int argc, char **argv)
 
 	if (args->in_mtd_fn == NULL)
 	{
-		if (args->doAMOVA != -1)
+		if (args->doAMOVA != 0)
 		{
 			fprintf(stderr, "\n[ERROR]\tMust supply -m <Metadata_file>.\n");
 			exit(1);
