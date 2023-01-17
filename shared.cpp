@@ -417,7 +417,7 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 											   paramStruct *pars)
 {
 
-	char* mtd_buf = new char[FGETS_BUF_SIZE];
+	char *mtd_buf = new char[FGETS_BUF_SIZE];
 
 	size_t nLevels = 0;
 
@@ -469,39 +469,30 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 			exit(1);
 		}
 
-		for (size_t i = 0; i < nLevels + 1; i++)
-		{
-			fprintf(stderr, "\n\n[INFO]\t-> levelNames[%ld] = %s\n", i, levelNames[i]);
-		}
 
 		metadataStruct *mS = new metadataStruct(nLevels, levelNames);
 
+		// collect the strata_i indexes for each hierarchical level until the lowest level
+		size_t key = 0;
 
 		// sample index in metadata file
-
-		// collect the strata_i indexes for each hierarchical level until the lowest level
-		//
-		// e.g. continent1, region2, pop4
-		// 		hier[0],    hier[1], hier[2]
-		//
-		// continent1 index in hier[0] is 0  ( {continent1, continent2} )
-		// region2 index in hier[1] is 1 ( {region1, region2, region3} )
-		// stratakeyAssocIdx[0] = 0 (continent1)
-		// stratakeyAssocIdx[1] = 1 (region2)
-		int *stratakeyAssocIdx = NULL;
-
-		if (mS->nLevels > 1)
-		{
-			stratakeyAssocIdx = new int[nLevels];
-			for (size_t i = 0; i < nLevels; i++)
-			{
-				stratakeyAssocIdx[i] = -1;
-			}
-		}
 
 		// loop through the remaining lines; one line per individual
 		while (fgets(mtd_buf, FGETS_BUF_SIZE, in_mtd_fp))
 		{
+
+			mS->nIndMetadata++;
+
+			// strata key
+			// e.g. 4 levels: continent, region, population, subpopulation
+			// key init 1e ((4-1)*2) -> 1e6 -> 1000000
+			// key 1000310 represents one subpopulation
+			//     1------
+			//     -00 (belongs to the continent with index 0, i.e. continent1)
+			//	   ---03 (belongs to the region with index 3, i.e. region4)
+			//     -----10 (belongs to the population with index 10, i.e. population11)
+			// key = (size_t) 1 * (size_t) pow(10, MAXDIG_PER_HLEVEL * nLevels);
+			key = mS->initKey();
 
 			// first column = individual id
 			char *tok = strtok(mtd_buf, METADATA_DELIMS);
@@ -523,6 +514,7 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 					else if (strcmp(tok, SAMPLES->sampleNames[vcf_sidx]) == 0)
 					{
 						// fprintf(stderr, "\n\n======\n[INFO] Found sample (vcf_index=%d,id=%s) in the metadata file. \n\n", vcf_sidx, tok);
+						// break when found, so that vcf_sidx is now the index of the sample in the vcf file
 						break;
 					}
 				}
@@ -531,180 +523,83 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 				for (int lvl_i = 0; lvl_i < mS->nLevels; lvl_i++)
 				{
 
-					// contains the index of the strata (e.g. pop4) in the associated level's strataNames array
-					// does not include the lowest hierarchical level nLevels-1
-					int lvl_strata_i = 0;
+					//index of the strata in the current hierarchical level
+					int lvl_strata_i=0;
 
 					// first column after individual is the highest hierarchical level
 					tok = strtok(NULL, METADATA_DELIMS);
 
+
+					// if we are reading the first line
 					if (mS->hierArr[lvl_i] == NULL)
 					{
 						// we are in the first line, initialize the hierStruct for this level
+
+						//TODO
 						// mS->addHierStruct(lvl_i, tok);
 						mS->hierArr[lvl_i] = new hierStruct(tok);
-
-						if (mS->nLevels > 1)
-						{
-							stratakeyAssocIdx[lvl_i] = 0;
-						}
-
 						mS->hierArr[lvl_i]->nIndPerStrata[0]++;
 
+
+						// EOL end of the first line
 						if (lvl_i == mS->nLevels - 1)
 						{
 							// EOL
-							// lowest level (excluding individual) in the first line, no need to check for strata names
-
-							mS->ind2stratakey[vcf_sidx] = 0;
-
-							// first data we read for the level, thus index 0
-							// stratakey2stratas[stratakey_i][lvl_i] = (int)pow(2,strata_index_at_level);
-							if (mS->nLevels > 1)
-							{
-								for (int i = 0; i < mS->nLevels; i++)
-								{
-									// (int)pow(2,0);
-									// mS->stratakey2stratas[0][i] = 1;
-									mS->stratakey2stratas[0][i] = pow(2, stratakeyAssocIdx[i]);
-								}
-							}
-
+							// lowest level (excluding individual) in the first line
+							// no check because this is the first line of data we read
+							ASSERT(lvl_strata_i == 0);
+							key = mS->setKeyDigitAtLevel(key, lvl_i,lvl_strata_i);
+							mS->ind2stratakey[vcf_sidx] = key;
 							continue;
 						}
+
 					}
 
-					else if (mS->nLevels == 1)
-					{
-						// only one level in the metadata file
-
-						int stratakey_i = 0;
-						// check if the strata is already in the strataNames
-						for (stratakey_i = 0; stratakey_i < mS->hierArr[lvl_i]->nStrata; stratakey_i++)
-						{
-							if (strcmp(tok, mS->hierArr[lvl_i]->strataNames[stratakey_i]) == 0)
-							{
-								mS->hierArr[lvl_i]->nIndPerStrata[stratakey_i]++;
-								lvl_strata_i = stratakey_i;
-								break;
-							}
-							else if (stratakey_i == mS->hierArr[lvl_i]->nStrata - 1)
-							{
-								// at the end but still not found
-								// so add the strata to the strataNames
-								stratakey_i++;
-								mS->hierArr[lvl_i]->addStrata(tok);
-								mS->hierArr[lvl_i]->nIndPerStrata[stratakey_i]++;
-								lvl_strata_i = stratakey_i;
-								break;
-							}
-						}
-						mS->ind2stratakey[vcf_sidx] = stratakey_i;
-					}
-
+					// EOL we are at the lowest level column
+					// associate the individual with the stratakey
 					else if (lvl_i == mS->nLevels - 1)
-					// at the lowest level; end of the individual's line
 					{
-						int stratakey_i = 0;
 
-						// check if the lowest level is already in the strataNames
-						for (stratakey_i = 0; stratakey_i < mS->hierArr[lvl_i]->nStrata; stratakey_i++)
-						{
+						int strata_idx_i = mS->hierArr[lvl_i]->getStrataIndex(tok);
 
-							if (strcmp(tok, mS->hierArr[lvl_i]->strataNames[stratakey_i]) == 0)
-							// if stratakey already exists in strataNames
-							{
-								// found the key strata
+						key = mS->setKeyDigitAtLevel(key, lvl_i, strata_idx_i);
 
-								stratakeyAssocIdx[lvl_i] = stratakey_i;
-								mS->hierArr[lvl_i]->nIndPerStrata[stratakey_i]++;
-								// associate ind with lowest level strata
-								mS->ind2stratakey[vcf_sidx] = stratakey_i;
+						mS->ind2stratakey[vcf_sidx] = key;
 
-								if (mS->nLevels > 1)
-								{
-									for (int i = 0; i < mS->nLevels; i++)
-									{
-										mS->stratakey2stratas[stratakey_i][i] = pow(2, stratakeyAssocIdx[i]);
-									}
-								}
 
-								break;
-							}
-							else if (stratakey_i == mS->hierArr[lvl_i]->nStrata - 1)
-							{
-								// at the end but still not found; add strata name to strataNames
+						// at the lowest level; end of the individual's line
 
-								stratakey_i++;
-
-								stratakeyAssocIdx[lvl_i] = stratakey_i;
-								mS->hierArr[lvl_i]->addStrata(tok);
-								mS->hierArr[lvl_i]->nIndPerStrata[stratakey_i]++;
-
-								// dump the previous levels associated with stratakey
-								// for(int i=0; i<mS->nLevels-1; i++)
-								// {
-								// 	mS->stratakey2stratas[stratakey_i][i] = stratakeyAssocIdx[i];
-								// }
-
-								// associate ind with lowest level strata
-								mS->ind2stratakey[vcf_sidx] = stratakey_i;
-
-								if (mS->nLevels > 1)
-								{
-									for (int i = 0; i < mS->nLevels; i++)
-									{
-										mS->stratakey2stratas[stratakey_i][i] = pow(2, stratakeyAssocIdx[i]);
-									}
-								}
-
-								break;
-							}
-						}
 					}
 					else
 					{
+						// at a regular column, nothing special about it
+						// (not the first line; not the first column; not the last column)
+						//
 						// e.g. ind1,x1,y1,z1
-						// 		ind2 x1,y2,z3  we are at 'x1', already allocated in previous individual
-						// 			(does not need to be the same as ind1's x)
-						for (lvl_strata_i = 0; mS->hierArr[lvl_i]->nStrata; lvl_strata_i++)
-						{
-							if (strcmp(tok, mS->hierArr[lvl_i]->strataNames[lvl_strata_i]) == 0)
-							{
-								mS->hierArr[lvl_i]->nIndPerStrata[lvl_strata_i]++;
-								// found the strata
-								break;
-							}
-							else if (lvl_strata_i == mS->hierArr[lvl_i]->nStrata - 1)
-							{
-								// at the end but still not found; add strata name to strataNames
-								lvl_strata_i++;
-								mS->hierArr[lvl_i]->addStrata(tok);
-								mS->hierArr[lvl_i]->nIndPerStrata[lvl_strata_i]++;
+						// 		ind2,[x1],y2,z3  
+						//   		we are at 'x1' of ind2, already allocated in previous individual
 
-								break;
-							}
-						}
-						stratakeyAssocIdx[lvl_i] = lvl_strata_i;
+						int strata_idx_i = mS->hierArr[lvl_i]->getStrataIndex(tok);
+						key = mS->setKeyDigitAtLevel(key, lvl_i, strata_idx_i);
 					}
 				}
-				mS->nIndMetadata = vcf_sidx;
 			}
-
 		}
 
-
-		// mS->print(stderr);
+		mS->print(stderr);
 		// mS->print_stratakey2stratas(stderr);
-		// mS->print_ind2stratakey(stderr);
+		// mS->getSumUniqStrataAtEachLevel(0);
 
-		delete[] stratakeyAssocIdx;
-		for (size_t i=0; i<(size_t)mS->nLevels+1; i++)
+		for (size_t i = 0; i < (size_t)mS->nLevels + 1; i++)
 		{
 			delete[] levelNames[i];
 		}
 		delete[] levelNames;
 		delete[] mtd_buf;
+
+
+
+		// mS->print_ind2stratakey(stderr);
 
 		return (mS);
 	}
@@ -905,7 +800,6 @@ argStruct *argStruct_init()
 	return args;
 }
 
-
 /// @brief argStruct_get read command line arguments
 /// @param argc
 /// @param argv
@@ -996,7 +890,7 @@ argStruct *argStruct_get(int argc, char **argv)
 		}
 		++argv;
 	}
-	//TODO add 'requires' arg dependency checker
+	// TODO add 'requires' arg dependency checker
 
 	if (args->isSim > 1 || args->isSim < 0)
 	{
@@ -1040,7 +934,6 @@ argStruct *argStruct_get(int argc, char **argv)
 		exit(1);
 	}
 
-
 	if (args->in_mtd_fn == NULL)
 	{
 		if (args->doAMOVA != 0)
@@ -1065,20 +958,20 @@ argStruct *argStruct_get(int argc, char **argv)
 		}
 	}
 
+	switch (args->doDist)
+	{
 
-	switch (args->doDist){
-		
-		case 1:
-		{
-			fprintf(stderr, "\n\t-> -doDist is set to 1, will use Dij (1-Sij) dissimilarity index as distance measure.\n");
-			break;
-		}
-		default:
-		{
-			fprintf(stderr, "\n[ERROR]\t-doDist %d is not available.\n", args->doDist);
-			exit(1);
-			break;
-		}
+	case 1:
+	{
+		fprintf(stderr, "\n\t-> -doDist is set to 1, will use Dij (1-Sij) dissimilarity index as distance measure.\n");
+		break;
+	}
+	default:
+	{
+		fprintf(stderr, "\n[ERROR]\t-doDist %d is not available.\n", args->doDist);
+		exit(1);
+		break;
+	}
 	}
 
 	if (args->do_square_distance == 1)
@@ -1090,7 +983,6 @@ argStruct *argStruct_get(int argc, char **argv)
 		exit(1);
 		fprintf(stderr, "\n\t-> -do_square_distance is set to 0, will use absolute value of distance measure (|dist_ij|).\n");
 	}
-
 
 	if (args->in_vcf_fn == NULL && args->in_dm_fn == NULL)
 	{
@@ -1104,90 +996,97 @@ argStruct *argStruct_get(int argc, char **argv)
 		exit(1);
 	}
 
-	switch (args->doAMOVA){
+	switch (args->doAMOVA)
+	{
 
-		case 0:
+	case 0:
+	{
+		fprintf(stderr, "\n\t-> -doAMOVA is set to 0, will not perform AMOVA.\n");
+
+		if (args->doEM == 0)
 		{
-			fprintf(stderr, "\n\t-> -doAMOVA is set to 0, will not perform AMOVA.\n");
-
-
-			if(args->doEM == 0)
+			fprintf(stderr, "\n\t-> Nothing to do.\n");
+			exit(1);
+		}
+		else if (args->doEM == 1)
+		{
+			if (args->in_dm_fn != NULL)
 			{
-				fprintf(stderr, "\n\t-> Nothing to do.\n");
+				fprintf(stderr, "\n[ERROR] Cannot use -in_dm %s with -doEM 1.\n", args->in_dm_fn);
 				exit(1);
 			}
-			else if(args->doEM == 1)
+			if (args->in_vcf_fn == NULL)
 			{
-				if(args->in_dm_fn != NULL)
-				{
-					fprintf(stderr, "\n[ERROR] Cannot use -in_dm %s with -doEM 1.\n", args->in_dm_fn);
-					exit(1);
-				}
-				if(args->in_vcf_fn == NULL)
-				{
-					fprintf(stderr, "\n[ERROR] Must supply -in <input_file> for -doEM 1.\n");
-					exit(1);
-				}
-
-				fprintf(stderr, "\n\t-> -doEM is set to 1, will use EM algorithm to estimate parameters.\n");
-			}
-
-			break;
-		}
-		case 1:
-		{
-
-			if(args->doEM == 0)
-			{
-				fprintf(stderr, "\n[ERROR]\t-doAMOVA %i requires -doEM 1.\n", args->doAMOVA);
-				exit(1);
-			}
-			
-			if(args->in_dm_fn != NULL)
-			{
-				fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
-			}else{
-
-				fprintf(stderr, "\n\t-> -doAMOVA 1; will use 10 genotype likelihoods from GL tag.\n");
-			}
-			break;
-		}
-		case 2:
-		{
-			if(args->in_dm_fn != NULL)
-			{
-				fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
-				args->doAMOVA = 1; // 1: use dm input or gle tag in vcf
-			}else{
-
-				fprintf(stderr, "\n\t-> -doAMOVA 2; will use genotypes from GT tag.\n");
-			}
-			break;
-		}
-		case 3:
-		{
-		
-			if(args->doEM == 0)
-			{
-				fprintf(stderr, "\n[ERROR]\t-doAMOVA %i requires -doEM 1.\n", args->doAMOVA);
+				fprintf(stderr, "\n[ERROR] Must supply -in <input_file> for -doEM 1.\n");
 				exit(1);
 			}
 
-			if(args->in_dm_fn != NULL)
-			{
-				fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
-				args->doAMOVA = 1; // 1: use dm input or gle tag in vcf
-			}else{
-				fprintf(stderr, "\n\t-> -doAMOVA 3; will do both 1 and 2.\n");
-			}
-			break;
+			fprintf(stderr, "\n\t-> -doEM is set to 1, will use EM algorithm to estimate parameters.\n");
 		}
+
+		break;
+	}
+	case 1:
+	{
+
+		if (args->doEM == 0)
+		{
+			fprintf(stderr, "\n[ERROR]\t-doAMOVA %i requires -doEM 1.\n", args->doAMOVA);
+			exit(1);
+		}
+
+		if (args->in_dm_fn != NULL)
+		{
+			fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
+		}
+		else
+		{
+
+			fprintf(stderr, "\n\t-> -doAMOVA 1; will use 10 genotype likelihoods from GL tag.\n");
+		}
+		break;
+	}
+	case 2:
+	{
+		if (args->in_dm_fn != NULL)
+		{
+			fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
+			args->doAMOVA = 1; // 1: use dm input or gle tag in vcf
+		}
+		else
+		{
+
+			fprintf(stderr, "\n\t-> -doAMOVA 2; will use genotypes from GT tag.\n");
+		}
+		break;
+	}
+	case 3:
+	{
+
+		if (args->doEM == 0)
+		{
+			fprintf(stderr, "\n[ERROR]\t-doAMOVA %i requires -doEM 1.\n", args->doAMOVA);
+			exit(1);
+		}
+
+		if (args->in_dm_fn != NULL)
+		{
+			fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
+			args->doAMOVA = 1; // 1: use dm input or gle tag in vcf
+		}
+		else
+		{
+			fprintf(stderr, "\n\t-> -doAMOVA 3; will do both 1 and 2.\n");
+		}
+		break;
+	}
 	}
 
 	return args;
 }
 
-void argStruct_destroy(argStruct *args){
+void argStruct_destroy(argStruct *args)
+{
 	FREE(args->in_vcf_fn);
 	FREE(args->in_sfs_fn);
 	FREE(args->in_dm_fn);
@@ -1213,7 +1112,8 @@ paramStruct *paramStruct_init(argStruct *args)
 	if (args->in_vcf_fn != NULL)
 	{
 		pars->in_ft = IN_VCF;
-	}else if (args->in_dm_fn != NULL)
+	}
+	else if (args->in_dm_fn != NULL)
 	{
 		pars->in_ft = IN_DM;
 	}

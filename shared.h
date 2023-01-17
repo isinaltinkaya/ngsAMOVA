@@ -29,6 +29,18 @@
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 /*
+ * Macro:[MAXDIG_PER_HLEVEL]
+ * Defines the maximum number of digits that can be used to
+ * represent a single strata in a hierarchical level
+ * e.g. MAX_DIGIT_PER_HLEVEL = 2
+ *      strata0 = 00 (min)
+ * 		...
+ *      strata99 = 99 (max)
+ *      nStrata = 100
+ */
+#define MAXDIG_PER_HLEVEL 2
+
+/*
  * Macro:[DBL_MAXDIG10]
  * Defines the maximum number of decimal digits that can be represented by a
  * double-precision floating-point number on a 64-bit system
@@ -73,17 +85,16 @@
 	}                \
 	// fprintf(stderr, "\n\n*******\n[FREEING NULL MEMORY](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr);
 
-
 /*
  * Macro:[FCLOSE]
  * shortcut to check if file is open and close it
  */
-#define FCLOSE(expr) \
-	if (expr)        \
-	{                \
-		fclose(expr);\
-		expr = NULL; \
-	}                \
+#define FCLOSE(expr)  \
+	if (expr)         \
+	{                 \
+		fclose(expr); \
+		expr = NULL;  \
+	}
 
 #ifndef FREAD_BUF_SIZE
 #define FREAD_BUF_SIZE 4096
@@ -97,12 +108,15 @@
 
 #define METADATA_DELIMS "\t ,\n"
 
-
 #define MAX_N_AMOVA_LEVELS 5
 
 // input file type
-enum{IN_VCF, IN_DM, IN_SFS};
-
+enum
+{
+	IN_VCF,
+	IN_DM,
+	IN_SFS
+};
 
 const double NEG_INF = -std::numeric_limits<double>::infinity();
 
@@ -202,7 +216,6 @@ using size_t = decltype(sizeof(int));
 typedef struct
 {
 
-
 	int verbose;
 
 	char *in_vcf_fn;
@@ -245,7 +258,6 @@ argStruct *argStruct_get(int argc, char **argv);
 void argStruct_destroy(argStruct *arg);
 void argStruct_print(argStruct *arg);
 
-
 /*
  * @typedef
  * @abstract paramStruct - parameter structure
@@ -283,7 +295,6 @@ typedef struct
 	// char *anc;
 	// char *der;
 
-
 	// input file type from enum
 	int in_ft;
 
@@ -301,7 +312,6 @@ typedef struct
 		}
 	}
 
-
 } paramStruct;
 
 paramStruct *paramStruct_init(argStruct *args);
@@ -311,6 +321,14 @@ char *get_time();
 
 void usage(FILE *fp);
 
+/**
+ * @namespace DATA
+ * @abstract data structures
+ *
+ * @typedef formulaStruct - structure for storing AMOVA formula
+ * @typedef contigStruct - structure for storing contig information
+ *
+ */
 namespace DATA
 {
 
@@ -421,7 +439,7 @@ namespace DATA
 		size_t snSites = 0;
 
 		// contains index of the shared sites of the pair
-		int *sharedSites=NULL;
+		int *sharedSites = NULL;
 		size_t _sharedSites = 1024;
 
 		// int nDim;
@@ -458,11 +476,11 @@ namespace DATA
 		~pairStruct()
 		{
 			free(sharedSites);
-			sharedSites=NULL;
+			sharedSites = NULL;
 			// FREE(sharedSites);
 
 			free(SFS);
-			SFS=NULL;
+			SFS = NULL;
 			// FREE(SFS);
 		}
 
@@ -478,15 +496,18 @@ namespace DATA
 			fprintf(fp, "%d,%d,%d", i1, i2, idx);
 		}
 
-		void sharedSites_add(size_t site_i){
+		void sharedSites_add(size_t site_i)
+		{
 			sharedSites[snSites] = site_i;
 			snSites++;
-			if(snSites == _sharedSites){
+			if (snSites == _sharedSites)
+			{
 				sharedSites_expand();
 			}
 		}
-		
-		void sharedSites_expand(){
+
+		void sharedSites_expand()
+		{
 			_sharedSites *= 2;
 			sharedSites = (int *)realloc(sharedSites, _sharedSites * sizeof(int));
 			for (size_t i = snSites; i < _sharedSites; i++)
@@ -508,9 +529,9 @@ namespace DATA
 		{
 			nSamples = nSamples_;
 
-			sampleNames = (char **)malloc(nSamples* sizeof(char *));
+			sampleNames = (char **)malloc(nSamples * sizeof(char *));
 
-			for (size_t i = 0; i < (size_t) nSamples; i++)
+			for (size_t i = 0; i < (size_t)nSamples; i++)
 			{
 				sampleNames[i] = NULL;
 			}
@@ -526,17 +547,14 @@ namespace DATA
 			}
 			free(sampleNames);
 			sampleNames = NULL;
-
-
 		}
 
 		void addSampleName(int i, char *str)
 		{
 			size_t size = strlen(str) + 1;
-			sampleNames[i] = (char*) malloc(size);
+			sampleNames[i] = (char *)malloc(size);
 			strncpy(sampleNames[i], str, size);
 		}
-
 
 	} samplesStruct;
 
@@ -544,39 +562,73 @@ namespace DATA
 	typedef struct hierStruct
 	{
 
-
 		// number of unique stratas at this level
+		// e.g. Population = {POP1, POP2, POP3}
+		// 		nStrata = 3
 		int nStrata = 0;
+
+		// nMemberStrata
+		//
+		// for each strata at this level;
+		// 		number of unique member stratas from lowel levels
+		//
+		// Metadata:
+		// Individual, Region, Population, Subpopulation
+		// ind1, reg1, pop1, subpop1
+		// ind2, reg1, pop1, subpop1
+		// ind3, reg1, pop1, subpop2
+		// ind4, reg1, pop2, subpop3
+		// ind5, reg1, pop2, subpop3
+		// ind6, reg2, pop3, subpop4
+		// ind7, reg2, pop3, subpop4
+		//
+		// hierStruct[0] = Region
+		// hierStruct[0]->nMemberStrata = {memberPopulation, memberSubpopulation}
+		// hierStruct[0]->nMemberStrata[0] = memberPopulation = {2,1}
+		//    2 member stratas {pop1,pop2} for reg1
+		//    1 member strata {pop3} for reg2
+		//
+		// hierStruct[0]->nMemberStrata[1] = memberSubpopulation = {3,1}
+		//   3 member stratas {subpop1,subpop2,subpop3} for reg1
+		//   1 member strata {subpop4} for reg2
+		//
+		// nMemberStrata[Number of hlevels lower than this hlevel]
+		int **nMemberStrata = NULL;
 
 		// strata names
 		char **strataNames = NULL;
 		size_t _strataNames = 1;
 
-		char* strataArr = NULL;
+		char *strataArr = NULL;
 
-		int* nIndPerStrata = NULL;
+		int *nIndPerStrata = NULL;
 		size_t _nIndPerStrata = 1024;
 
-		hierStruct(char* str)
+		// hierStruct(char* str, int totNumLevels)
+		hierStruct(char *str)
 		{
 			nStrata = 1;
 			size_t size = strlen(str) + 1;
 			strataNames = (char **)malloc(_strataNames * sizeof(char *));
-			strataNames[0] = (char*) malloc(size);
+			strataNames[0] = (char *)malloc(size);
 			strncpy(strataNames[0], str, size);
 
-
-			nIndPerStrata = new int[_nIndPerStrata]; //TODO
+			nIndPerStrata = new int[_nIndPerStrata]; // TODO
 			for (size_t i = 0; i < _nIndPerStrata; i++)
 			{
 				nIndPerStrata[i] = 0;
 			}
-		}
 
+			// nMemberStrata = new int*[totNumLevels];
+			// for (size_t i = 0; i < totNumLevels; i++)
+			// {
+			// 	nMemberStrata[i] = NULL;
+			// }
+		}
 
 		~hierStruct()
 		{
-			for(size_t i=0; i<_strataNames; i++)
+			for (size_t i = 0; i < _strataNames; i++)
 			{
 				free(strataNames[i]);
 				strataNames[i] = NULL;
@@ -585,20 +637,42 @@ namespace DATA
 			strataNames = NULL;
 
 			delete[] nIndPerStrata;
-			
 		}
-		void addStrata(char* str){
+
+		void addStrata(char *str)
+		{
 
 			_strataNames = nStrata + 1;
 
-			strataNames = (char**) realloc(strataNames, _strataNames * sizeof(char*)); 
+			strataNames = (char **)realloc(strataNames, _strataNames * sizeof(char *));
 			ASSERT(strataNames != NULL);
 
-			strataNames[nStrata] = (char*) malloc(strlen(str)+1);
+			strataNames[nStrata] = (char *)malloc(strlen(str) + 1);
 			ASSERT(strataNames[nStrata] != NULL);
 
-			strncpy(strataNames[nStrata], str, strlen(str)+1);
+			strncpy(strataNames[nStrata], str, strlen(str) + 1);
+			nIndPerStrata[nStrata] = 1;
+
 			nStrata++;
+		}
+
+		int getStrataIndex(char *str)
+		{
+			int idx = 0;
+			// check the current records
+			while (idx < nStrata)
+			{
+				if (strcmp(str, strataNames[idx]) == 0)
+				{
+					nIndPerStrata[idx]++;
+					return idx;
+				}
+				idx++;
+			}
+
+			// if not found
+			addStrata(str);
+			return idx;
 		}
 
 	} hierStruct;
@@ -611,171 +685,275 @@ namespace DATA
 		// 		has 3 levels: {Individual, Region, Population}
 		int nLevels = 0;
 
-		char** levelNames = NULL;
+		char **levelNames = NULL;
 		size_t _levelNames = 0;
 
 		// associate individual with the lowest level strata (key strata)
-		int* ind2stratakey= NULL;
-		size_t _ind2stratakey = 1024;
+		size_t *ind2stratakey = NULL;
+		size_t _ind2stratakey = 1024; // TODO
 
-		int** stratakey2stratas= NULL;
-		size_t _stratakey2stratas = 1024;
+		int nIndMetadata = 0;
 
-		int nIndMetadata=0;
+		// size_t *strataKeys = NULL;
 
 		// hierStruct[hierarchyLevel] is a hierStruct instance
+		// exclude the lowest level (Individual)
+		// Individual ~ Region / Population
+		// hierArr = {Region, Population}
 		hierStruct **hierArr = NULL;
 
-
-		metadataStruct(int nLevels_, char** levelNames_){
+		metadataStruct(int nLevels_, char **levelNames_)
+		{
 			nLevels = nLevels_;
-			_levelNames = nLevels+1;
-			stratakey2stratas = new int*[_stratakey2stratas];//TODO
+			_levelNames = nLevels + 1;
 
-			for(size_t i=0; i<_stratakey2stratas; i++){
-				stratakey2stratas[i] = new int[nLevels];
-				for(size_t j=0; j<(size_t) nLevels; j++){
-					stratakey2stratas[i][j] = -1;
-				}
-			}
-
-			hierArr =  new hierStruct*[nLevels];
-			for(int i=0; i<nLevels; i++){
+			hierArr = new hierStruct *[nLevels];
+			for (int i = 0; i < nLevels; i++)
+			{
 				hierArr[i] = NULL;
 			}
 
-			ind2stratakey = new int[_ind2stratakey];//TODO
-
-			levelNames = new char*[_levelNames];
-			for(size_t i=0; i<_levelNames; i++){
-				levelNames[i] = new char[strlen(levelNames_[i])+1];
-				strncpy(levelNames[i], levelNames_[i], strlen(levelNames_[i])+1);
+			levelNames = new char *[_levelNames];
+			for (size_t i = 0; i < _levelNames; i++)
+			{
+				levelNames[i] = new char[strlen(levelNames_[i]) + 1];
+				strncpy(levelNames[i], levelNames_[i], strlen(levelNames_[i]) + 1);
 			}
+
+			ind2stratakey = new size_t[_ind2stratakey]; // TODO nInd
+
+			// maximum number of strata keys allowed
+			// MAXDIG_PER_HLEVEL = 2 (default) -> size_t[99]
+			// strataKeys = new size_t[pow(10,MAXDIG_PER_HLEVEL)-1];
 		};
-		~metadataStruct(){
-			for(int i=0; i<nLevels; i++){
+
+		~metadataStruct()
+		{
+			for (int i = 0; i < nLevels; i++)
+			{
 				delete hierArr[i];
 				delete[] levelNames[i];
 			}
-			delete[] levelNames[nLevels]; //levelNames if of size nLevels+1
+			delete[] levelNames[nLevels]; // levelNames if of size nLevels+1
 			delete[] levelNames;
 			delete[] hierArr;
 			delete[] ind2stratakey;
-			for(size_t i=0; i < _stratakey2stratas; i++){
-				delete[] stratakey2stratas[i];
-			}
-			delete[] stratakey2stratas;
 		};
 
-		void addHierStruct(size_t lvl_i, char* tok){
+		void addHierStruct(size_t lvl_i, char *tok)
+		{
 			hierArr[lvl_i] = new hierStruct(tok);
 		}
 
-		int pair_in_strata(int strata_i, int i1, int i2, samplesStruct* sS, int lvl_i){
-			if(nLevels==1){
-				if(ind2stratakey[i1] == strata_i && ind2stratakey[i2] == strata_i){
-					// fprintf(stderr, "[INFO](pair_in_strata): Individuals (%d:%s, %d:%s) are in the same strata (%d:%s)\n", i1, sS->sampleNames[i1], i2, sS->sampleNames[i2], strata_i, hierArr[lvl_i]->strataNames[strata_i]);
-					return 1;
-				}else{
-					// fprintf(stderr, "[INFO](pair_in_strata): Individuals (%d:%s, %d:%s) are NOT in the same strata (%d:%s)\n", i1, sS->sampleNames[i1], i2, sS->sampleNames[i2], strata_i, hierArr[lvl_i]->strataNames[strata_i]);
-					return 0;
-				}
+		// check if two individuals are in the same strata at a given level
+		int pairInSameStrataAtLevel(int lvl, int i1, int i2)
+		{
+			if (getDigits(ind2stratakey[i1], lvl) == getDigits(ind2stratakey[i2], lvl))
+			{
+				return 1;
 			}
-			return -1;
-
+			else
+			{
+				return 0;
+			}
 		}
 
-		// check if two individuals are in the same strata at a given level
-		int cmp_assoc_at_lvl(int lvl_i, int i1, int i2){
-			if(nLevels == 1){
-				if(ind2stratakey[i1] == ind2stratakey[i2]){
-					return 1;
-				}else{
-					return 0;
-				}
-			}else{
-				if(stratakey2stratas[ind2stratakey[i1]][lvl_i] == stratakey2stratas[ind2stratakey[i2]][lvl_i]){
-					return 1;
-				}else{
-					return 0;
-				}
-
+		void printLevelNames(){
+			for (int i = 0; i < nLevels + 1; i++)
+			{
+				fprintf(stderr, "\n\n[INFO]\t-> levelNames[%d] = %s\n", i, levelNames[i]);
 			}
-		};
+		}
 
+		int calculateKeyAtLevel(int lvl, int strata_idx){
+			return (int)(pow(10, MAXDIG_PER_HLEVEL * (lvl+1)) + strata_idx);
+		}
 
+		int pairInStrataAtLevel(int i1, int i2, int lvl, int strata_idx)
+		{
+			int key = calculateKeyAtLevel(lvl, strata_idx);
+			int lvl_key = getDigits(key, lvl);
+			
+			int lvl_i1=getDigits(ind2stratakey[i1], lvl);
+			int lvl_i2=getDigits(ind2stratakey[i2], lvl);
 
+			if ((lvl_key == lvl_i1) && (lvl_key == lvl_i2))
+			{
+				return 1;
+			}
+			else
+			{
+				return 0;
+			}
+		}
 
-		void print(FILE* fp){
+		void print(FILE *fp)
+		{
 			fprintf(fp, "\nnLevels: %d\n", nLevels);
 			for (int i = 0; i < nLevels; i++)
 			{
 				// fprintf(fp, "Level %d: contains %d unique group identifiers\n", i, hierArr[i]->nStrata);
 				fprintf(fp, "Level (index:%d,id:%s) contains %d unique group identifiers: {", i, levelNames[i], hierArr[i]->nStrata);
-				for(int j=0; j<hierArr[i]->nStrata;j++){
-					fprintf(fp, "%s",hierArr[i]->strataNames[j]);
-					if(j<hierArr[i]->nStrata-1){
+				for (int j = 0; j < hierArr[i]->nStrata; j++)
+				{
+					fprintf(fp, "%s", hierArr[i]->strataNames[j]);
+					if (j < hierArr[i]->nStrata - 1)
+					{
 						fprintf(fp, ",");
-					}else{
+					}
+					else
+					{
 						fprintf(fp, "}\n");
 					}
 				}
 				for (int j = 0; j < hierArr[i]->nStrata; j++)
 				{
-					fprintf(fp, "\tGroup (index:%d,id:%s) has %d members\n", j,hierArr[i]->strataNames[j], hierArr[i]->nIndPerStrata[j]);
-					for(int k=0; k<hierArr[i]->nIndPerStrata[j]; k++){
-						fprintf(fp, "\t\tMember %d belongs to %s\n", k,hierArr[i]->strataNames[j]);
+					fprintf(fp, "\tGroup (index:%d,id:%s) has %d members\n", j, hierArr[i]->strataNames[j], hierArr[i]->nIndPerStrata[j]);
+					for (int k = 0; k < hierArr[i]->nIndPerStrata[j]; k++)
+					{
+						fprintf(fp, "\t\tMember %d belongs to %s\n", k, hierArr[i]->strataNames[j]);
 					}
 				}
 			}
 		}
 
-		void print_ind2stratakey(FILE* fp){
+		void print_ind2stratakey(FILE *fp)
+		{
 			fprintf(fp, "\n\n------------------\n");
-			for(int i=0; i<nIndMetadata; i++){
-				fprintf(fp, "%d\t", ind2stratakey[i]);
+			fprintf(stderr, "\n\n nIndMetadata: %d\n", nIndMetadata);
+			for (int i = 0; i < nIndMetadata; i++)
+			{
+				fprintf(fp, "ind=%d:stratakey=%ld\n", i, ind2stratakey[i]);
 			}
 			fprintf(fp, "\n------------------\n\n");
-		}
-		
-		void print_stratakey2stratas(FILE* fp){
-			if(nLevels>1){
-				fprintf(fp, "\n\n------------------\n");
-				for(int i=0; i < hierArr[nLevels-1]->nStrata; i++){
-					fprintf(fp, "stratakey=%d\t", i);
-					for(int j=0; j<nLevels; j++){
-						fprintf(fp, "[level %d: bitset value=%d]\t", j, stratakey2stratas[i][j]);
-					}
-					fprintf(fp, "\n");
-				}
-				fprintf(fp, "\n------------------\n\n");
+		};
+
+		/// @brief get the number at a given digit of a number
+		/// @param number	number to extract digit from
+		/// @param digit	digit to extract (right to left, 0-based)
+		// digits [digit_2][digit_1][digit_0]
+		//   	  100 -> digit_2 = 1, digit_1 = 0, digit_0 = 0
+		int getDigit(int number, int digit)
+		{
+			if (number < (int)pow(10, digit))
+			{
+				return 0;
+			}
+			else
+			{
+				return (number / (int)pow(10.0, digit)) % 10;
 			}
 		}
 
+		/// @brief getDigits - extract n_digits consecutive digits from number starting at idx (right to left)
+		/// @param number	number to extract digits from
+		/// @param idx		index of the first digit to extract
+		/// @param n_digits	number of consecutive digits to extract (starting at idx, right to left)
+		/// @return
+		int getDigits(int number, int idx, int n_digits)
+		{
+			int res = 0;
+			for(int i = n_digits-1; i >= 0; i--){
+				int digit = (number / (int)pow(10, idx+ i)) % 10;
+				res = res * 10 + digit;
+			}
+			return res;
+		}
+
+
+		/// @brief getDigits - overload default value for n_digits
+		/// @param number	number to extract digits from
+		/// @param idx		index of the first digit to extract
+		/// @return
+		int getDigits(int number, int idx)
+		{
+			int res = 0;
+			for(int i = MAXDIG_PER_HLEVEL-1; i >= 0; i--){
+				int digit = (number / (int)pow(10, idx+ i)) % 10;
+				res = res * 10 + digit;
+			}
+			return res;
+		}
+
+		size_t initKey()
+		{
+			size_t key = (size_t)(1 * pow(10, MAXDIG_PER_HLEVEL * (nLevels)));
+			return key;
+		}
+
+		size_t setKeyDigitAtLevel(size_t key, int lvl_i, int lvl_strata_i)
+		{
+			// fprintf(stderr, "\n\n------key_before: %ld with lvl_strata_i: %d\n\n", key, lvl_strata_i);
+
+			if (MAXDIG_PER_HLEVEL != 2)
+			{
+				fprintf(stderr, "\n[ERROR] MAXDIG_PER_HLEVEL currently only supports 2\n");
+				exit(1);
+			}
+
+			int dig_0_idx = lvl_i * MAXDIG_PER_HLEVEL;
+
+			size_t ret = (size_t) (pow(10, dig_0_idx) * getDigits(lvl_strata_i, lvl_i * MAXDIG_PER_HLEVEL, MAXDIG_PER_HLEVEL));
+			ret=ret+key;
+
+
+			return ret;
+		}
+
+
+		int sumUniqStrataAtEachLevel(int lvl){
+			if(nLevels>1 && lvl < nLevels-1){
+
+				int lvl_i = lvl+1;
+				int subkey=0;
+				int key=0;
+				int sum=0;
+				for(int i=0; i < hierArr[lvl_i]->nStrata; i++){
+					
+                	int new_key = calculateKeyAtLevel(lvl_i, i);
+                	int new_subkey = calculateKeyAtLevel(lvl_i+1, i);
+
+					if(new_key == key){
+						if(new_subkey != subkey){
+							sum++;
+						}
+					}else{
+						sum++;
+					}
+					key=new_key;
+					subkey=new_subkey;
+
+				}
+				return sum;
+			}else if(lvl == nLevels-1){
+				return hierArr[0]->nStrata;
+			}else if(nLevels == 1){
+				ASSERT(0==1);
+			}
+			ASSERT(0==1);
+		}
 
 	} metadataStruct;
 
+	metadataStruct *metadataStruct_get(FILE *in_mtd_fp, samplesStruct *SAMPLES, formulaStruct *FORMULA, int has_colnames, paramStruct *pars);
 
-	metadataStruct *metadataStruct_get(FILE *in_mtd_fp, samplesStruct *SAMPLES, formulaStruct *FORMULA, int has_colnames,paramStruct *pars);
-
-	
 	/**
 	 * @brief distanceMatrixStruct stores the distance matrix
-	 * 
+	 *
 	 * @param nInd 		number of individuals
 	 * @param nIndCmb	number of individual combinations
 	 * @param isSquared 1 if the distance matrix is squared, 0 otherwise
-	 * 
+	 *
 	 */
 	typedef struct distanceMatrixStruct
 	{
-		double *M=NULL;
+		double *M = NULL;
 
 		// samplesStruct *samples;
 
 		int nInd = 0;
 		int nIndCmb = 0;
-		int isSquared= -1;
+		int isSquared = -1;
 
 		distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquared_)
 		{
@@ -787,20 +965,18 @@ namespace DATA
 				M[i] = 0;
 			}
 			isSquared = isSquared_;
-
 		};
 		~distanceMatrixStruct()
 		{
 			delete[] M;
 		}
 
-
-		void print(FILE *fp, const char* TYPE)
+		void print(FILE *fp, const char *TYPE)
 		{
 			fprintf(fp, "%s,", TYPE);
 			for (int px = 0; px < nIndCmb; px++)
 			{
-				fprintf(fp, "%.*f", (int) DBL_MAXDIG10, M[px]);
+				fprintf(fp, "%.*f", (int)DBL_MAXDIG10, M[px]);
 				if (px != nIndCmb - 1)
 				{
 					fprintf(fp, ",");
@@ -830,7 +1006,6 @@ namespace IO
 	namespace readFile
 	{
 		int SFS(FILE *in_sfs_fp, const char *delims, DATA::samplesStruct *SAMPLES);
-
 
 		char *getFirstLine(char *fn);
 		char *getFirstLine(FILE *fp);
@@ -886,13 +1061,14 @@ namespace IO
 				out_emtest_fs = new outputStruct(args->out_fn, ".emtest.csv");
 			}
 
-			if(args->doEM == 1){
+			if (args->doEM == 1)
+			{
 				out_sfs_fs = new outputStruct(args->out_fn, ".sfs.csv");
 			}
-			if(args->doAMOVA > 0){
+			if (args->doAMOVA > 0)
+			{
 				out_amova_fs = new outputStruct(args->out_fn, ".amova.csv");
 			}
-
 		}
 
 		~outFilesStruct()

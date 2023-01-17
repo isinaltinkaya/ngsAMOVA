@@ -11,6 +11,7 @@ namespace AMOVA {
         // initialize to lowest possible values, 1 level case
         int* df = NULL;
         double* ssd = NULL;
+        double* ss = NULL;
         double* msd = NULL;
 
         double* ncoef = NULL;
@@ -27,6 +28,11 @@ namespace AMOVA {
 
         amovaResultStruct(DATA::metadataStruct* mS){
 
+            // storing levels in order of highest to lowest level + total
+            // {level1, level2, level3, ..., total}
+            // where level1 is the highest level 
+            // (e.g. region in Individual ~ Region/Population/Subpopulation)
+
             // set number of amova levels
             nAmovaLevels = mS->nLevels + 1;
 
@@ -34,10 +40,12 @@ namespace AMOVA {
             // = number of amova levels + 1 (total)
             _ssd = nAmovaLevels + 1;
             ssd = new double[_ssd];
+            ss = new double[_ssd];
             df = new int[_ssd];
             msd = new double[_ssd];
             for (size_t i=0; i<_ssd; i++){
                 ssd[i] = 0;
+                ss[i] = 0;
                 df[i] = 0;
                 msd[i] = 0;
             }
@@ -61,6 +69,7 @@ namespace AMOVA {
 
         ~amovaResultStruct(){
             delete[] ssd;
+            delete[] ss;
             delete[] df;
             delete[] msd;
             delete[] ncoef;

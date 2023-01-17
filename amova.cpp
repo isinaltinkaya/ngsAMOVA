@@ -1,6 +1,6 @@
 #include "amova.h"
 
-double get_SSD_total(DATA::distanceMatrixStruct *dMS)
+double calculate_SumOfSquares_Total(DATA::distanceMatrixStruct *dMS)
 {
 
 	double ssd_TOTAL = 0.0;
@@ -15,86 +15,113 @@ double get_SSD_total(DATA::distanceMatrixStruct *dMS)
 	return ssd_TOTAL;
 }
 
-double get_SSD_at_level(int amova_lvl_i, DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DATA::samplesStruct *sS, FILE *out_amova_ff, int **LUT_indPair_idx, const char *analysis_type)
+double calculate_SumOfSquares(int lvl_a, DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DATA::samplesStruct *sS, FILE *out_amova_ff, int **LUT_indPair_idx, const char *analysis_type)
 {
-	int lvl_i = amova_lvl_i-1;
 
-	double n = 0.0;
-	double sum = 0.0;
-	double ssd = 0.0;
-	int px;
+	int ss_lvl = lvl_a - 1;
 
-	if(lvl_i >= mS->nLevels){
-		fprintf(stderr, "[ERROR] lvl_i (%i) > mS->nLevels (%i)\n", lvl_i, mS->nLevels);
-		exit(1);
-	}
+	// if at the highest level, then calculate the total sum of squares
+	if(ss_lvl == mS->nLevels){
+		return calculate_SumOfSquares_Total(dMS);
+	}else{
 
-	for (int sti=0; sti < mS->hierArr[lvl_i]->nStrata; sti++)
-	{
+		double sum = 0.0;
+		double ssd = 0.0;
 
-		sum = 0.0;
-		for (int i1 = 0; i1 < dMS->nInd - 1; i1++)
+		// loop over different stratas at this hierarchical level
+		// e.g. if hierarchical level is region, then loop over all regions {region1, region2, region3 ...}
+		for (int sti=0; sti < mS->hierArr[ss_lvl]->nStrata; sti++)
 		{
-			for (int i2 = i1 + 1; i2 < dMS->nInd; i2++)
-			{
-				if(mS->pair_in_strata(sti, i1, i2, sS, lvl_i) == 1){
-					
-					px = LUT_indPair_idx[i1][i2];
 
-					// the distance is already stored in squared form
-					sum += dMS->M[px];
+			// sum of squared distances within this strata
+			sum = 0.0;
+			for (int i1 = 0; i1 < dMS->nInd - 1; i1++)
+			{
+				for (int i2 = i1 + 1; i2 < dMS->nInd; i2++)
+				{
+					// include only pairs that are in the same strata at this hierarchical level
+					if(mS->pairInStrataAtLevel(i1, i2, ss_lvl, sti) == 1){
+						
+						// the distance is already stored in squared form, so no need to square it again
+						sum += dMS->M[LUT_indPair_idx[i1][i2]];
+					}
 				}
 			}
+			fprintf(stderr,"\n\n\t->nIndPerStrata[%i] = %i", sti, mS->hierArr[ss_lvl]->nIndPerStrata[sti]);
+			ssd += sum / (double)mS->hierArr[ss_lvl]->nIndPerStrata[sti];
 		}
-		n = (double)mS->hierArr[lvl_i]->nIndPerStrata[sti];
-		ssd += sum / n;
+		return ssd;
+
 	}
-	return ssd;
+
 }
 
 
 int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DATA::samplesStruct *sS, FILE *out_amova_ff, int **LUT_indPair_idx, const char *analysis_type)
 {
 
-
-// give mS directly
-// ars_get func 
-// also get names of levels to auto use in the table
-
 	amovaResultStruct *aRS = new amovaResultStruct(mS);
 
-	// ssd=[0=AG,1=AIWG,2=TOTAL]
 
 
-	// fprintf(stderr, "\n\nssd_TOTAL = %f\n\n", aRS->ssd[aRS->nAmovaLevels]);
-
-	// fprintf(stderr,"\n\nAmong %s within %s\n\n", mS->levelNames[0], mS->levelNames[1]);
-
-
-
+	// ----------------------------------------------- //
+	// DEGREES OF FREEDOM 
+	// ----------------------------------------------- //
 	// calculate the degrees of freedom for each level
-	aRS->df[0] = mS->hierArr[mS->nLevels-1]->nStrata - 1;
-	for (size_t i=1; i < aRS->_ssd-1; i++){
-		for (int j = 0; j < mS->hierArr[i-1]->nStrata; j++){
-			aRS->df[i] += mS->hierArr[i-1]->nIndPerStrata[j]-1;
-		}
+	
+	if(mS->nLevels == 1){
+		// highest level df is nStrata - 1
+		// e.g. Individual ~ Region / Population / Subpopulation
+		// if there are 3 regions, then df = 3 - 1 = 2
+		aRS->df[0] = mS->hierArr[0]->nStrata - 1;
+
+		
+		// df for lowest amova level
+		// e.g. Individual ~ Region / Population / Subpopulation
+		// nInd - sum(for each Population, nStrata (num_Subpopulation) in Population)
+
+		aRS->df[mS->nLevels] = dMS->nInd - mS->hierArr[0]->nStrata;
+
+		// last element in df array is total df
+		aRS->df[aRS->_ssd-1] = dMS->nInd - 1;
+
+	}else if(mS->nLevels==2){
+		fprintf(stderr, "\ndf[0] = %i, df[1] = %i, df[2] = %i, df[3] = %i", aRS->df[0], aRS->df[1], aRS->df[2], aRS->df[3]);
+		// last element: total df
+		aRS->df[aRS->_ssd-1] = dMS->nInd - 1;
+
+		aRS->df[0] = mS->sumUniqStrataAtEachLevel(1) - 1;
+
+		aRS->df[1] = mS->sumUniqStrataAtEachLevel(0) - mS->sumUniqStrataAtEachLevel(1);
+		
+		aRS->df[mS->nLevels] = dMS->nInd - mS->sumUniqStrataAtEachLevel(0);
+
+	}else{
+		ASSERT(0==1);
 	}
-	// last element in df array is total df
-	aRS->df[aRS->_ssd-1] = dMS->nInd - 1;
+
+	
 
 
-
-	// ssd_TOTAL 
-	aRS->ssd[aRS->nAmovaLevels] = get_SSD_total(dMS);
-
-	int lvl_i = aRS->nAmovaLevels-1;
-	while(lvl_i > 0){
-		// fprintf(stderr,"\n\n\nlvl_i %i\n\n\n",lvl_i);
-		aRS->ssd[lvl_i] = get_SSD_at_level(1, dMS, mS, sS, out_amova_ff, LUT_indPair_idx, analysis_type);
-		lvl_i--;
+	int lvl_a = aRS->nAmovaLevels;
+	while(lvl_a > 0){
+		// within level sum of squares
+		aRS->ss[lvl_a] = calculate_SumOfSquares(lvl_a, dMS, mS, sS, out_amova_ff, LUT_indPair_idx, analysis_type);
+		lvl_a--;
 	}
 
-	aRS->ssd[0] = aRS->ssd[aRS->nAmovaLevels] - aRS->ssd[aRS->nAmovaLevels-1];
+	if( mS->nLevels == 1){
+		aRS->ssd[0] = aRS->ss[2] - aRS->ss[1];
+		aRS->ssd[1] = aRS->ss[1];
+		aRS->ssd[2] = aRS->ss[2];
+	}else{
+		
+		aRS->ssd[0] = aRS->ss[aRS->_ssd-1] - aRS->ss[1];
+		// aRS->ssd[1] = aRS->ss[1] - aRS->ss[0];
+		// aRS->ssd[2] = aRS->ss[2] - aRS->ss[1];
+		aRS->ssd[aRS->nAmovaLevels] = aRS->ss[aRS->nAmovaLevels];
+	}
+
 
 
 	// get msd from ssd and df
@@ -105,8 +132,6 @@ int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DA
 
 
 	// variance coefficients
-
-
 
 
 
@@ -169,14 +194,8 @@ int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DA
 
 	}
 
-
-	// variance components
-	// for (size_t i=0; i < aRS->nAmovaLevels-1; i++){
-	// }
-
-
 	aRS->print_as_table(stderr,mS);
-	aRS->print_as_csv(out_amova_ff, analysis_type);
+	// aRS->print_as_csv(out_amova_ff, analysis_type);
 
 	delete aRS;
 	return 0;
