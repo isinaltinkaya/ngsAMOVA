@@ -599,7 +599,7 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 
 
 
-		// mS->print_ind2stratakey(stderr);
+		mS->print_ind2stratakey(stderr);
 
 		return (mS);
 	}

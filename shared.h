@@ -110,6 +110,8 @@
 
 #define MAX_N_AMOVA_LEVELS 5
 
+const int pow10[10] = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000};
+
 // input file type
 enum
 {
@@ -567,34 +569,6 @@ namespace DATA
 		// 		nStrata = 3
 		int nStrata = 0;
 
-		// nMemberStrata
-		//
-		// for each strata at this level;
-		// 		number of unique member stratas from lowel levels
-		//
-		// Metadata:
-		// Individual, Region, Population, Subpopulation
-		// ind1, reg1, pop1, subpop1
-		// ind2, reg1, pop1, subpop1
-		// ind3, reg1, pop1, subpop2
-		// ind4, reg1, pop2, subpop3
-		// ind5, reg1, pop2, subpop3
-		// ind6, reg2, pop3, subpop4
-		// ind7, reg2, pop3, subpop4
-		//
-		// hierStruct[0] = Region
-		// hierStruct[0]->nMemberStrata = {memberPopulation, memberSubpopulation}
-		// hierStruct[0]->nMemberStrata[0] = memberPopulation = {2,1}
-		//    2 member stratas {pop1,pop2} for reg1
-		//    1 member strata {pop3} for reg2
-		//
-		// hierStruct[0]->nMemberStrata[1] = memberSubpopulation = {3,1}
-		//   3 member stratas {subpop1,subpop2,subpop3} for reg1
-		//   1 member strata {subpop4} for reg2
-		//
-		// nMemberStrata[Number of hlevels lower than this hlevel]
-		int **nMemberStrata = NULL;
-
 		// strata names
 		char **strataNames = NULL;
 		size_t _strataNames = 1;
@@ -758,24 +732,32 @@ namespace DATA
 			}
 		}
 
-		void printLevelNames(){
+		void printLevelNames()
+		{
 			for (int i = 0; i < nLevels + 1; i++)
 			{
 				fprintf(stderr, "\n\n[INFO]\t-> levelNames[%d] = %s\n", i, levelNames[i]);
 			}
 		}
 
-		int calculateKeyAtLevel(int lvl, int strata_idx){
-			return (int)(pow(10, MAXDIG_PER_HLEVEL * (lvl+1)) + strata_idx);
+		/// @brief calculateKeyAtLevel - calculate the strata key value at a given strata index in a given level
+		/// @param lvl			- hierarchical level
+		/// @param strata_idx 	- strata index
+		/// @return integer value of the strata key
+		/// @example lvl=1, strata_idx=2 -> 1[02]00
+		int calculateKeyAtLevel(int lvl, int strata_idx)
+		{
+			return (int)(pow(10, MAXDIG_PER_HLEVEL * (lvl +1)) + strata_idx);
+			// pow10[]
 		}
 
 		int pairInStrataAtLevel(int i1, int i2, int lvl, int strata_idx)
 		{
 			int key = calculateKeyAtLevel(lvl, strata_idx);
 			int lvl_key = getDigits(key, lvl);
-			
-			int lvl_i1=getDigits(ind2stratakey[i1], lvl);
-			int lvl_i2=getDigits(ind2stratakey[i2], lvl);
+
+			int lvl_i1 = getDigits(ind2stratakey[i1], lvl);
+			int lvl_i2 = getDigits(ind2stratakey[i2], lvl);
 
 			if ((lvl_key == lvl_i1) && (lvl_key == lvl_i2))
 			{
@@ -833,6 +815,7 @@ namespace DATA
 		/// @param digit	digit to extract (right to left, 0-based)
 		// digits [digit_2][digit_1][digit_0]
 		//   	  100 -> digit_2 = 1, digit_1 = 0, digit_0 = 0
+		/// @return extracted digit
 		int getDigit(int number, int digit)
 		{
 			if (number < (int)pow(10, digit))
@@ -849,17 +832,21 @@ namespace DATA
 		/// @param number	number to extract digits from
 		/// @param idx		index of the first digit to extract
 		/// @param n_digits	number of consecutive digits to extract (starting at idx, right to left)
-		/// @return
+		/// @return extracted digits
+		/// @example number=99123456, idx=1, n_digits=2 -> [99][12][34][56] -> 34
 		int getDigits(int number, int idx, int n_digits)
 		{
-			int res = 0;
-			for(int i = n_digits-1; i >= 0; i--){
-				int digit = (number / (int)pow(10, idx+ i)) % 10;
-				res = res * 10 + digit;
+
+
+			int res = number % pow10[(n_digits* idx)+n_digits];
+
+			if(idx>0)
+			{
+				res = res / pow10[(n_digits* (idx-1))+n_digits];
 			}
+
 			return res;
 		}
-
 
 		/// @brief getDigits - overload default value for n_digits
 		/// @param number	number to extract digits from
@@ -867,10 +854,12 @@ namespace DATA
 		/// @return
 		int getDigits(int number, int idx)
 		{
-			int res = 0;
-			for(int i = MAXDIG_PER_HLEVEL-1; i >= 0; i--){
-				int digit = (number / (int)pow(10, idx+ i)) % 10;
-				res = res * 10 + digit;
+
+			int res = number % pow10[(MAXDIG_PER_HLEVEL* idx)+2];
+
+			if(idx>0)
+			{
+				res = res / pow10[(MAXDIG_PER_HLEVEL* (idx-1))+2];
 			}
 			return res;
 		}
@@ -883,7 +872,6 @@ namespace DATA
 
 		size_t setKeyDigitAtLevel(size_t key, int lvl_i, int lvl_strata_i)
 		{
-			// fprintf(stderr, "\n\n------key_before: %ld with lvl_strata_i: %d\n\n", key, lvl_strata_i);
 
 			if (MAXDIG_PER_HLEVEL != 2)
 			{
@@ -891,46 +879,161 @@ namespace DATA
 				exit(1);
 			}
 
-			int dig_0_idx = lvl_i * MAXDIG_PER_HLEVEL;
+			int dig_lvl= nLevels - lvl_i -1;
 
-			size_t ret = (size_t) (pow(10, dig_0_idx) * getDigits(lvl_strata_i, lvl_i * MAXDIG_PER_HLEVEL, MAXDIG_PER_HLEVEL));
-			ret=ret+key;
-
+			size_t ret = pow10[dig_lvl * MAXDIG_PER_HLEVEL] * lvl_strata_i;
+			ret = ret + key;
 
 			return ret;
 		}
 
+		// 123456789 lvl=2 MAXDIG_PER_HLEVEL=2
+		// get lvl 2 and lower hier levels
+		// == 456789
+		size_t extractSubkey(size_t key, int lvl)
+		{
 
-		int sumUniqStrataAtEachLevel(int lvl){
-			if(nLevels>1 && lvl < nLevels-1){
+			size_t ret = key % pow10[(MAXDIG_PER_HLEVEL * (lvl) + 2)];
+			// if(ret == 0){
+				// if 910023 % 10000 = 0, return 0 + 10000
+				ret = ret + pow10[(MAXDIG_PER_HLEVEL * (lvl) + 2)];
+			// }
+			return ret;
+		}
 
-				int lvl_i = lvl+1;
-				int subkey=0;
-				int key=0;
-				int sum=0;
-				for(int i=0; i < hierArr[lvl_i]->nStrata; i++){
-					
-                	int new_key = calculateKeyAtLevel(lvl_i, i);
-                	int new_subkey = calculateKeyAtLevel(lvl_i+1, i);
+		// TODO
+		/// @brief keyIsFromSameStrataGivenStrataLevel - check if key is from the same strata at level
+		/// @param key
+		/// @param strata_i
+		/// @param lvl
+		/// @return  1 if key is from the same strata at level, 0 otherwise
+		/// @example 12345 lvl=1 strata_i=23
+		///                calculateKeyAtLevel(strata_i=23,lvl=1) = 2300
+		/// 			   extractSubkey(key=12345,lvl=1) = 2345
+		/// 			   2299 < 2345 < 2400
+		///
+		int keyIsFromSameStrataGivenStrataLevel(size_t key, int strata_i, int lvl)
+		{
+			int k_i = extractSubkey(key, lvl);
+			int ref_k = calculateKeyAtLevel(lvl, strata_i);
+			// assume MAXDIG_PER_HLEVEL = 2
+			if (ref_k - 1 < k_i && k_i < ref_k + 100)
+			{
+				return 1;
+			}
+			else
+			{
+				return 0;
+			}
+		}
 
-					if(new_key == key){
-						if(new_subkey != subkey){
-							sum++;
+		int keyIsFromSameStrataAsKey(size_t key, size_t ref_key, int lvl)
+		{
+			int k_i = extractSubkey(key, lvl);
+			int ref_k = extractSubkey(ref_key, lvl);
+			// assume MAXDIG_PER_HLEVEL = 2
+			if (ref_k - 1 < k_i && k_i < ref_k + 100)
+			{
+				return 1;
+			}
+			else
+			{
+				return 0;
+			}
+		}
+
+		int nMemberStrataAtStrataAtLevel(int strata_i, int lvl)
+		{
+			//digits count from right side
+			// hlvl0     hlvl1     hlvl2
+			// digitlvl2 digitlvl1 digitlvl0
+			int diglvl= nLevels-1-lvl;
+			
+			ASSERT(diglvl>0);
+			size_t key_i = 0;
+
+			int found = 0;
+			int sum = 0;
+			int tmp[pow10[MAXDIG_PER_HLEVEL]];
+
+			// loop through existing keys (one key per individual)
+			for (int i = 0; i < nIndMetadata; i++)
+			{
+				key_i = ind2stratakey[i];
+
+				if(getDigits(key_i,diglvl) == strata_i){
+					int new_subkey = extractSubkey(key_i, diglvl - 1);
+
+					found = 0;
+					for (int j = 0; j < sum; j++)
+					{
+						if (tmp[j] == new_subkey)
+						{
+							found = 1;
+							break;
 						}
-					}else{
+					}
+					if (found == 1)
+					{
+						continue;
+					}
+					else
+					{
+						tmp[sum] = new_subkey;
 						sum++;
 					}
-					key=new_key;
-					subkey=new_subkey;
+				}
+			}
+			return sum;
+		}
 
+
+		//
+		// for each strata at this level;
+		// 		number of unique member stratas from lowel levels
+		//
+		// Metadata:
+		// Individual, Region, Population, Subpopulation
+		// ind1, reg1, pop1, subpop1
+		// ind2, reg1, pop1, subpop1
+		// ind3, reg1, pop1, subpop2
+		// ind4, reg1, pop2, subpop3
+		// ind5, reg1, pop2, subpop3
+		// ind6, reg2, pop3, subpop4
+		// ind7, reg2, pop3, subpop4
+		//
+		// hierStruct[0] = Region
+		// hierStruct[0]->nMemberStrata = {memberPopulation, memberSubpopulation}
+		// hierStruct[0]->nMemberStrata[0] = memberPopulation = {2,1}
+		//    2 member stratas {pop1,pop2} for reg1
+		//    1 member strata {pop3} for reg2
+		//
+		// hierStruct[0]->nMemberStrata[1] = memberSubpopulation = {3,1}
+		//   3 member stratas {subpop1,subpop2,subpop3} for reg1
+		//   1 member strata {subpop4} for reg2
+		//
+		// nMemberStrata[Number of hlevels lower than this hlevel]
+		int sumUniqStrataAtEachLevel(int lvl)
+		{
+			if (lvl == nLevels - 1)
+			{
+				return hierArr[0]->nStrata;
+			}else if (nLevels == 1)
+			{
+				ASSERT(0 == 1);
+			}else if (nLevels > 1 && lvl < nLevels - 1)
+			{
+
+				int lvl_i = lvl + 1;
+				int sum = 0;
+				for (int i = 0; i < hierArr[lvl_i]->nStrata; i++)
+				{
+
+					sum += nMemberStrataAtStrataAtLevel(i, lvl_i-1);
 				}
 				return sum;
-			}else if(lvl == nLevels-1){
-				return hierArr[0]->nStrata;
-			}else if(nLevels == 1){
-				ASSERT(0==1);
 			}
-			ASSERT(0==1);
+			ASSERT(0 == 1);
 		}
 
 	} metadataStruct;
@@ -991,7 +1094,6 @@ namespace DATA
 	} distanceMatrixStruct;
 	// read distance matrix from distance matrix file
 	distanceMatrixStruct *distanceMatrixStruct_read(FILE *in_dm_fp, paramStruct *pars, argStruct *args);
-
 };
 
 namespace IO
