@@ -753,13 +753,8 @@ namespace DATA
 
 		int pairInStrataAtLevel(int i1, int i2, int lvl, int strata_idx)
 		{
-			int key = calculateKeyAtLevel(lvl, strata_idx);
-			int lvl_key = getDigits(key, lvl);
-
-			int lvl_i1 = getDigits(ind2stratakey[i1], lvl);
-			int lvl_i2 = getDigits(ind2stratakey[i2], lvl);
-
-			if ((lvl_key == lvl_i1) && (lvl_key == lvl_i2))
+			int digit_idx = nLevels - lvl -1;
+			if( (strata_idx==getDigits(ind2stratakey[i1], digit_idx)) && (strata_idx==getDigits(ind2stratakey[i2], digit_idx)) )
 			{
 				return 1;
 			}
@@ -809,6 +804,28 @@ namespace DATA
 			}
 			fprintf(fp, "\n------------------\n\n");
 		};
+
+		void print_pair2assoc(FILE *fp){
+
+			for(int lvl=0; lvl < nLevels; lvl++){
+				for (int sti=0; sti < hierArr[lvl]->nStrata; sti++)
+				{
+
+					for (int i1 = 0; i1 < nIndMetadata - 1; i1++)
+					{
+						for (int i2 = i1 + 1; i2 < nIndMetadata; i2++)
+						{
+							// include only pairs that are in the same strata at this hierarchical level
+							if(pairInStrataAtLevel(i1, i2, lvl, sti) == 1){
+							fprintf(stderr, "\n->Pair %i %i ", i1, i2);
+								fprintf(stderr, "in strata %i at level %d", sti,lvl);
+							}
+						}
+					}
+				}
+			}
+
+		}
 
 		/// @brief get the number at a given digit of a number
 		/// @param number	number to extract digit from

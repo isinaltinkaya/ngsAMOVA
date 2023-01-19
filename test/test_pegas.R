@@ -49,3 +49,8 @@ outtable=rbind(pegas_res,amv_res)
 write.table(outtable,file=paste0(args[1],"_testPegas.csv"), row.names=FALSE,  col.names=FALSE,  quote=FALSE, sep=',')
 
 
+# # 2 level AMOVA test
+# dd.regs<-factor(c(rep("reg1",6),rep("reg2",3)))
+# amv2<-pegas::amova(dd.d ~ dd.regs/dd.pops,is.squared=TRUE)
+# sig2_2<-setNames(amv2$varcomp$sigma2,rownames(amv2$varcomp))
+# phi_2<-getPhi(sig2_2)

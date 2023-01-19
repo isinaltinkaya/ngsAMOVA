@@ -178,9 +178,19 @@ namespace AMOVA {
                 fprintf(fp,"\t");
                 // fprintf(fp,"%20s", mS->levelNames[i]);
                 fprintf(fp,"\t");
+            for(size_t i=0; i<_ncoef; i++){
+            }
                 fprintf(fp,"%f", sigmasq[i]);
                 fprintf(fp,"\n");
-                fprintf(fp,"\n\t%f",ncoef[i]);
+            }
+            
+            fprintf(fp, "\nn coef:\t\t");
+            if(nLevels==1){
+                fprintf(fp,"%f",ncoef[0]);
+            }else{
+                for(size_t i=0; i<_ncoef; i++){
+                    fprintf(fp,"%f\t",ncoef[i]);
+                }
             }
             fprintf(fp,"\n\n");
             fprintf(fp,"Phi-statistic:");
