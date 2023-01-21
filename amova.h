@@ -38,6 +38,10 @@ namespace AMOVA {
     /// @param msd - array of mean squared distances
     /// @param ncoef - array of n coefficients
     /// @param sigmasq - array of variance components
+    ///               e.g. Individual ~ Region/Population
+    ///           - sigmasq[0] = variance component among regions
+    ///           - sigmasq[1] = variance component among populations within regions
+    ///           - sigmasq[2] = variance component among individuals within populations
     /// @param phi - array of phi statistics
     /// @param _ncoef - size of ncoef array :: nLevels+1
     /// @param _phi - size of phi array :: choose(nLevels+1, 2)
@@ -151,6 +155,7 @@ namespace AMOVA {
             fprintf(fp,"\n\n");
             fprintf(fp,"\n");
 
+//TODO print formula
             int x=1;
             fprintf(fp, "Among %-15s\t\t\t\t\t%d\t%f\t%f", mS->levelNames[x], df[0], ssd[0], msd[0]);
 
@@ -170,21 +175,17 @@ namespace AMOVA {
             fprintf(fp,"\n");
             fprintf(fp,"Total\t\t\t\t\t\t\t%d\t%f\t%f", df[nAmovaLevels-1], ssd[nAmovaLevels-1], msd[nAmovaLevels-1]);
             fprintf(fp,"\n\n\n");
-            fprintf(fp,"Variance components:");
-            fprintf(fp,"\n\n");
-            for(size_t i=0; i<_ncoef; i++){
-                fprintf(fp,"\n");
-                fprintf(fp,"sigma^2");
-                fprintf(fp,"\t");
-                // fprintf(fp,"%20s", mS->levelNames[i]);
-                fprintf(fp,"\t");
-            for(size_t i=0; i<_ncoef; i++){
+            fprintf(fp,"Variance components:\n\n");
+            for(size_t i=0; i<_ncoef-1; i++){
+                fprintf(fp,"\n\t%-20s", mS->levelNames[i+1]);
+                fprintf(fp,"\t%f", sigmasq[i]);
             }
-                fprintf(fp,"%f", sigmasq[i]);
-                fprintf(fp,"\n");
-            }
+            // Lowest level (i.e. Individual)
+            fprintf(fp,"\n\t%-20s", mS->levelNames[0]);
+            fprintf(fp, "\t%f", sigmasq[_ncoef-1]);
             
-            fprintf(fp, "\nn coef:\t\t");
+            fprintf(fp,"\n\n\n");
+            fprintf(fp, "\nVariance coefficients:\n\n\t");
             if(nLevels==1){
                 fprintf(fp,"%f",ncoef[0]);
             }else{
@@ -192,10 +193,9 @@ namespace AMOVA {
                     fprintf(fp,"%f\t",ncoef[i]);
                 }
             }
-            fprintf(fp,"\n\n");
-            fprintf(fp,"Phi-statistic:");
+            fprintf(fp,"\n\n\n");
+            fprintf(fp,"Phi-statistic:\n\n");
             for(size_t i=0; i<_phi; i++){
-                fprintf(fp,"\n");
                 fprintf(fp,"\t%f", phi[i]);
             }
             fprintf(fp,"\n\n");
@@ -204,15 +204,56 @@ namespace AMOVA {
 
         }
 
-        void print_as_csv(FILE *fp, const char *analysis_type){
-            fprintf(fp, "%s,%i,%f,%f,%i,%f,%f,%i,%f,%f,%f,%f,%f,%f\n",
-                analysis_type, 
-                df[0], ssd[0], msd[0],
-                df[1], ssd[1], msd[1],
-                df[2], ssd[2], msd[2],
-                ncoef[0], sigmasq[0], sigmasq[1], phi[0]);
-        }
+        void print_as_csv(FILE *fp, DATA::metadataStruct* mS){
 
+//TODO add percentage total?
+            //header
+            // type,label,value
+            // SSD,Among_region,0.1234
+            // fprintf(fp, "type,label,value\n");
+            fprintf(fp, "df,Total,%d\n", df[nAmovaLevels-1]);
+            fprintf(fp, "SSD,Total,%f\n", ssd[nAmovaLevels-1]);
+            fprintf(fp, "MSD,Total,%f\n", msd[nAmovaLevels-1]);
+
+
+
+            int x=1;
+            fprintf(fp, "df,Among_%s_within_%s,%d\n", mS->levelNames[x], "Total", df[0]);
+            fprintf(fp, "SSD,Among_%s_within_%s,%f\n", mS->levelNames[x], "Total", ssd[0]);
+            fprintf(fp, "MSD,Among_%s_within_%s,%f\n", mS->levelNames[x], "Total", msd[0]);
+            while(x<mS->nLevels+1){
+                if(x==mS->nLevels){
+                    fprintf(fp, "df,Among_%s_within_%s,%d\n", mS->levelNames[0], mS->levelNames[mS->nLevels], df[x]);
+                    fprintf(fp, "SSD,Among_%s_within_%s,%f\n", mS->levelNames[0], mS->levelNames[mS->nLevels], ssd[x]);
+                    fprintf(fp, "MSD,Among_%s_within_%s,%f\n", mS->levelNames[0], mS->levelNames[mS->nLevels], msd[x]);
+                }else{
+                    fprintf(fp, "df,Among_%s_within_%s,%d\n", mS->levelNames[x+1], mS->levelNames[x], df[x]);
+                    fprintf(fp, "SSD,Among_%s_within_%s,%f\n", mS->levelNames[x+1], mS->levelNames[x], ssd[x]);
+                    fprintf(fp, "MSD,Among_%s_within_%s,%f\n", mS->levelNames[x+1], mS->levelNames[x], msd[x]);
+                }
+                x++;
+            }
+
+            if(nLevels==1){
+                fprintf(fp, "Phi,%s_in_%s,%f\n", mS->levelNames[1], "Total", phi[0]);
+                fprintf(fp,"Variance_coefficient,a,%f\n",ncoef[0]);
+                fprintf(fp,"Variance_component,%s,%f\n",mS->levelNames[1],sigmasq[0]);
+                fprintf(fp ,"Variance_component,%s,%f\n",mS->levelNames[0],sigmasq[1]);
+            }else if(nLevels==2){
+                fprintf(fp,"Phi,%s_in_%s,%f\n",mS->levelNames[1],"Total", phi[0]);
+                fprintf(fp, "Phi,%s_in_%s,%f\n", mS->levelNames[2], mS->levelNames[1], phi[1]);
+                fprintf(fp, "Phi,%s_in_%s,%f\n", mS->levelNames[2], "Total", phi[2]);
+                fprintf(fp,"Variance_coefficient,a,%f\n",ncoef[0]);
+                fprintf(fp,"Variance_coefficient,b,%f\n",ncoef[1]);
+                fprintf(fp,"Variance_coefficient,c,%f\n",ncoef[2]);
+                fprintf(fp,"Variance_component,%s,%f\n",mS->levelNames[1],sigmasq[0]);
+                fprintf(fp ,"Variance_component,%s,%f\n",mS->levelNames[2],sigmasq[1]);
+                fprintf(fp ,"Variance_component,%s,%f\n",mS->levelNames[0],sigmasq[2]);
+            }else{
+                fprintf(stderr,"[ERROR]: nLevels > 2 not supported yet\n");
+            }
+
+        }
     
     }amovaStruct;
 

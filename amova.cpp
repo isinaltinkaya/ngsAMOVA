@@ -216,18 +216,26 @@ int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DA
 		aS->sigmasq[0] = (aS->msd[0] - aS->msd[2] - (aS->ncoef[1] * aS->sigmasq[1])) / aS->ncoef[2];
 
 
-		//lvl1 (i.e. pop) in TOTAL
-		//Phi_ST
-		aS->phi[0] = (aS->sigmasq[0] + aS->sigmasq[1])/ (aS->sigmasq[0] + aS->sigmasq[1] + aS->sigmasq[2]);
+		// ----------------------------------------------- //
+		// PHI STATISTIC
+		// ----------------------------------------------- //
+		// calculate phi statistics
+		//
+		// Individual,Region,Population,Total
+		// 
+		
 
 		//lvl0 (i.e. reg) in TOTAL
 		//Phi_CT
-		aS->phi[1] = aS->sigmasq[0] / (aS->sigmasq[0] + aS->sigmasq[1] + aS->sigmasq[2]);
+		aS->phi[0] = aS->sigmasq[0] / (aS->sigmasq[0] + aS->sigmasq[1] + aS->sigmasq[2]);
 
 		//lvl1 in lvl0
 		//Phi_SC
-		aS->phi[2] = aS->sigmasq[1] / (aS->sigmasq[1] + aS->sigmasq[2]);
+		aS->phi[1] = aS->sigmasq[1] / (aS->sigmasq[1] + aS->sigmasq[2]);
 
+		//lvl1 (i.e. pop) in TOTAL
+		//Phi_ST
+		aS->phi[2] = (aS->sigmasq[0] + aS->sigmasq[1])/ (aS->sigmasq[0] + aS->sigmasq[1] + aS->sigmasq[2]);
 
 
 	}else{
@@ -235,7 +243,7 @@ int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DA
 	}
 
 	aS->print_as_table(stderr,mS);
-	aS->print_as_csv(out_amova_ff, analysis_type);
+	aS->print_as_csv(out_amova_ff,mS);
 
 	delete aS;
 	return 0;

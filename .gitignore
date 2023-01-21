@@ -39,3 +39,5 @@ wd/*
 .vscode/settings.json
 .vscode/
 test/testwd/
+
+*code-workspace*

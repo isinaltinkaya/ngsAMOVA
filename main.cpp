@@ -619,19 +619,14 @@ int main(int argc, char **argv)
 			{
 
 			case 1:
-				fprintf(outSt->out_amova_fs->fp, "df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
 				ASSERT(AMOVA::doAMOVA(dMS_GL, metadataSt, samplesSt, outSt->out_amova_fs->fp, pars->LUT_indPair_idx, "gl") == 0);
 				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 				break;
 			case 2:
-				fprintf(outSt->out_amova_fs->fp, "df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
-				fprintf(outSt->out_amova_fs->fp, "df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
 				ASSERT(AMOVA::doAMOVA(dMS_GT, metadataSt, samplesSt, outSt->out_amova_fs->fp, pars->LUT_indPair_idx, "gt") == 0);
 				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 				break;
 			case 3:
-				fprintf(outSt->out_amova_fs->fp, "df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
-				fprintf(outSt->out_amova_fs->fp, "df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a\n");
 				ASSERT(AMOVA::doAMOVA(dMS_GL, metadataSt, samplesSt, outSt->out_amova_fs->fp, pars->LUT_indPair_idx, "gl") == 0);
 				ASSERT(AMOVA::doAMOVA(dMS_GT, metadataSt, samplesSt, outSt->out_amova_fs->fp, pars->LUT_indPair_idx, "gt") == 0);
 				fprintf(stderr, "\n\t-> Finished running AMOVA\n");
