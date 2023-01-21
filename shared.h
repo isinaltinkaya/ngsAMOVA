@@ -230,7 +230,6 @@ typedef struct
 
 	char *formula;
 	int *keyCols;
-	int hasColNames;
 
 	int blockSize;
 	int doAMOVA;
@@ -244,6 +243,7 @@ typedef struct
 	int minInd;
 
 	int seed;
+	int hasColNames;
 
 	double tole;
 	int doTest;
@@ -258,7 +258,7 @@ typedef struct
 argStruct *argStruct_init();
 argStruct *argStruct_get(int argc, char **argv);
 void argStruct_destroy(argStruct *arg);
-void argStruct_print(argStruct *arg);
+void argStruct_print(FILE* fp, argStruct *arg);
 
 /*
  * @typedef
@@ -268,7 +268,7 @@ void argStruct_print(argStruct *arg);
  * @field nInd					number of individuals
  * @field pos					position
  *
- * @field LUT_indPair_idx		lookup table for mapping two individuals
+ * @field LUT_indPairIdx		lookup table for mapping two individuals
  * 								to their pair index
  * @field n_ind_cmb				number of unique pairwise individual combinations
  *
@@ -288,7 +288,7 @@ typedef struct
 
 	// int *pos;
 
-	int **LUT_indPair_idx;
+	int **LUT_indPairIdx;
 	int n_ind_cmb;
 
 	// char *major;
@@ -309,7 +309,7 @@ typedef struct
 		{
 			for (int i2 = i1 + 1; i2 < nInd; i2++)
 			{
-				fprintf(stderr, "\n%i %i %i\n", LUT_indPair_idx[i1][i2], i1, i2);
+				fprintf(stderr, "\n%i %i %i\n", LUT_indPairIdx[i1][i2], i1, i2);
 			}
 		}
 	}
@@ -348,7 +348,6 @@ namespace DATA
 			fprintf(fp, "\nTokens: %i", nTokens);
 			for (int i = 0; i < nTokens; i++)
 			{
-				// fprintf(fp, "\n\t%i\t%s\t%i", i, formulaTokens[i], formulaTokenIdx[i]);
 				fprintf(fp, "\n\t%i\t%s\n", i, formulaTokens[i]);
 			}
 		}
@@ -356,7 +355,7 @@ namespace DATA
 	} formulaStruct;
 	formulaStruct *formulaStruct_get(const char *formula);
 
-	typedef struct contigsStruct
+	typedef struct contigStruct
 	{
 
 		// Number of contigs
@@ -384,11 +383,8 @@ namespace DATA
 		// 2D array of pointers to actual contig block starts
 		double ***contigBlockStartPtrs;
 
-		// void contig_set_ContigBlockStarts(int ci, int nBlocks){
-		// 	contigBlockStarts[ci] = (int *)realloc(contigBlockStarts[ci], nBlocks * sizeof(int));
-		// }
 
-		contigsStruct(const int nContigs_)
+		contigStruct(const int nContigs_)
 		{
 
 			nContigs = (size_t)nContigs_;
@@ -408,28 +404,25 @@ namespace DATA
 			}
 		}
 
-		~contigsStruct()
+		~contigStruct()
 		{
 			for (size_t i = 0; i < nContigs; i++)
 			{
 
 				FREE(contigBlockStartPtrs[i]);
-
 				FREE(contigNames[i]);
-
 				FREE(contigBlockStarts[i]);
 			}
 			FREE(contigBlockStarts);
 			FREE(contigNames);
 			FREE(contigLengths);
 			FREE(contigNBlocks);
-
 			FREE(contigBlockStartPtrs);
-			contigBlockStartPtrs = NULL;
 		}
 
-	} contigsStruct;
-	contigsStruct *contigsStruct_init(const int n_contigs);
+	} contigStruct;
+
+	contigStruct *contigStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *hdr);
 
 	typedef struct pairStruct
 	{
@@ -520,14 +513,14 @@ namespace DATA
 
 	} pairStruct;
 
-	typedef struct samplesStruct
+	typedef struct sampleStruct
 	{
 
 		char **sampleNames = NULL; // sample names in bcf sample order
 
 		int nSamples = 0;
 
-		samplesStruct(int nSamples_)
+		sampleStruct(int nSamples_)
 		{
 			nSamples = nSamples_;
 
@@ -539,7 +532,7 @@ namespace DATA
 			}
 		}
 
-		~samplesStruct()
+		~sampleStruct()
 		{
 
 			for (int i = 0; i < nSamples; i++)
@@ -558,7 +551,7 @@ namespace DATA
 			strncpy(sampleNames[i], str, size);
 		}
 
-	} samplesStruct;
+	} sampleStruct;
 
 	/// @brief hierStruct store the hierarchical structure of the metadata
 	typedef struct hierStruct
@@ -1055,7 +1048,7 @@ namespace DATA
 
 	} metadataStruct;
 
-	metadataStruct *metadataStruct_get(FILE *in_mtd_fp, samplesStruct *SAMPLES, formulaStruct *FORMULA, int has_colnames, paramStruct *pars);
+	metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *SAMPLES, formulaStruct *FORMULA, int has_colnames, paramStruct *pars);
 
 	/**
 	 * @brief distanceMatrixStruct stores the distance matrix
@@ -1069,7 +1062,7 @@ namespace DATA
 	{
 		double *M = NULL;
 
-		// samplesStruct *samples;
+		// sampleStruct *samples;
 
 		int nInd = 0;
 		int nIndCmb = 0;
@@ -1124,7 +1117,7 @@ namespace IO
 
 	namespace readFile
 	{
-		int SFS(FILE *in_sfs_fp, const char *delims, DATA::samplesStruct *SAMPLES);
+		int SFS(FILE *in_sfs_fp, const char *delims, DATA::sampleStruct *SAMPLES);
 
 		char *getFirstLine(char *fn);
 		char *getFirstLine(FILE *fp);
@@ -1259,9 +1252,7 @@ typedef struct threadStruct
 		lngls = lngl;
 		nSites = nSites_t;
 		out_sfs_fp = out_sfs_fs->fp;
-		// M_PWD_GL_PAIR=M_PWD_GL_P;
 		tole = toleArg;
-		// doDist=doDistArg;
 		mEmIter = mEmIterArg;
 	}
 

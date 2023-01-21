@@ -128,7 +128,7 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 					for (int indi2 = indi - 1; indi2 > -1; indi2--)
 					{
 						// both inds has data
-						pidx = pars->LUT_indPair_idx[indi2][indi];
+						pidx = pars->LUT_indPairIdx[indi2][indi];
 
 						if (cmbArr[pidx])
 						{
@@ -143,7 +143,7 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 				{
 					for (int indi2 = indi + 1; indi2 < pars->nInd; indi2++)
 					{
-						cmbArr[pars->LUT_indPair_idx[indi][indi2]]++;
+						cmbArr[pars->LUT_indPairIdx[indi][indi2]]++;
 					}
 				}
 
@@ -245,7 +245,7 @@ int VCF::GL_to_GT_1_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *par
 
 			int32_t *ptr1 = new_gt.data + i1 * new_gt.ploidy;
 			int32_t *ptr2 = new_gt.data + i2 * new_gt.ploidy;
-			int pair_idx = pars->LUT_indPair_idx[i1][i2];
+			int pair_idx = pars->LUT_indPairIdx[i1][i2];
 
 			int gti1 = 0;
 			int gti2 = 0;
@@ -378,7 +378,7 @@ int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars
 				//  skip the pair
 				continue;
 			}
-			int pair_idx = pars->LUT_indPair_idx[i1][i2];
+			int pair_idx = pars->LUT_indPairIdx[i1][i2];
 
 			int gti1 = 0;
 			int gti2 = 0;

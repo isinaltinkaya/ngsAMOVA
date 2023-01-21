@@ -47,7 +47,7 @@ int nCk_idx(int nInd, int i1, int i2);
  * Find index of individual pairs using individual IDs
  *
  */
-void prepare_LUT_indPair_idx(int nInd, int **LUT_indPair_idx);
+int** set_LUT_indPairIdx(int nInd);
 
 namespace MATH {
 

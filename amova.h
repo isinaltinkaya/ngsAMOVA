@@ -259,7 +259,7 @@ namespace AMOVA {
 
     int doAMOVA(DATA::distanceMatrixStruct *dMS,
         DATA::metadataStruct *MTD, 
-        DATA::samplesStruct *SAMPLES, FILE *out_amova_ff, int **LUT_indPair_idx, const char *type);
+        DATA::sampleStruct *SAMPLES, FILE *out_amova_ff, int **LUT_indPairIdx);
 
 
 

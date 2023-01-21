@@ -46,29 +46,19 @@ int nCk_idx(int nInd, int i1, int i2){
 
 /// @brief prepare LUT for pair indices
 /// @param nInd number of individuals
-/// @param LUT_indPair_idx lookup table for pair indices
-void prepare_LUT_indPair_idx(int nInd, int **LUT_indPair_idx){
-	for(int i1=0;i1<nInd-1;i1++){
-		for(int i2=i1+1;i2<nInd;i2++){
-			LUT_indPair_idx[i1][i2]=nCk_idx(nInd,i1,i2);
-		}
-	}
-}
-
-int** prepare_LUT_indPair_idx(int nInd){
-	int** LUT_indPair_idx=(int **)malloc(nInd * sizeof(int*));
+int** set_LUT_indPairIdx(int nInd){
+	int** LUT=(int **)malloc(nInd * sizeof(int*));
 	for (int i=0; i<nInd; i++){
-		LUT_indPair_idx[i]=(int*) malloc(nInd * sizeof(int));
+		LUT[i]=(int*) malloc(nInd * sizeof(int));
 	}
 
 	for(int i1=0;i1<nInd-1;i1++){
 		for(int i2=i1+1;i2<nInd;i2++){
-			LUT_indPair_idx[i1][i2]=nCk_idx(nInd,i1,i2);
+			LUT[i1][i2]=nCk_idx(nInd,i1,i2);
 		}
 	}
-	return LUT_indPair_idx;
+	return LUT;
 }
-
 
 double MATH::SUM(double* M){
 	double sum=0.0;

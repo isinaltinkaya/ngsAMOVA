@@ -315,9 +315,9 @@ int IO::validateFile::Metadata(FILE *in_mtd_fp, int nInds, int *keyCols,
 /// @brief read SFS file
 /// @param in_sfs_fp input sfs file ff
 /// @param delims delimiters
-/// @param SAMPLES samplesStruct samples
+/// @param SAMPLES sampleStruct samples
 /// @return ???
-int IO::readFile::SFS(FILE *in_sfs_fp, const char *delims, DATA::samplesStruct *SAMPLES)
+int IO::readFile::SFS(FILE *in_sfs_fp, const char *delims, DATA::sampleStruct *SAMPLES)
 {
 
 	char sfs_buf[FGETS_BUF_SIZE];
@@ -412,7 +412,7 @@ DATA::distanceMatrixStruct *DATA::distanceMatrixStruct_read(FILE *in_dm_fp, para
 // which translates to the formula:
 // individual ~ region / population / subpopulation
 
-DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStruct *SAMPLES,
+DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::sampleStruct *SAMPLES,
 											   DATA::formulaStruct *FORMULA, int has_colnames,
 											   paramStruct *pars)
 {
@@ -586,9 +586,6 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 			}
 		}
 
-		mS->print(stderr);
-		// mS->print_stratakey2stratas(stderr);
-		// mS->getSumUniqStrataAtEachLevel(0);
 
 		for (size_t i = 0; i < (size_t)mS->nLevels + 1; i++)
 		{
@@ -599,7 +596,7 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::samplesStr
 
 
 
-		mS->print_ind2stratakey(stderr);
+		// mS->print_ind2stratakey(stderr);
 
 		return (mS);
 	}
@@ -938,7 +935,7 @@ argStruct *argStruct_get(int argc, char **argv)
 	{
 		if (args->doAMOVA != 0)
 		{
-			fprintf(stderr, "\n[ERROR]\tMust supply -m <Metadata_file>.\n");
+			fprintf(stderr, "\n[ERROR]\tMust supply -m <Metadata_file> for performing AMOVA.\n");
 			exit(1);
 		}
 	}
@@ -1097,9 +1094,23 @@ void argStruct_destroy(argStruct *args)
 	FREE(args);
 }
 
-// void argStruct_print(argStruct *args){
-// 	fprintf(stderr, "\nCommand: %s", args->command);
-// }
+/// @brief argStruct_print - print the arguments to a file pointer
+/// @param fp	file pointer
+/// @param args	pointer to the argStruct
+void argStruct_print(FILE* fp, argStruct *args){
+	// fprintf(fp, "\nCommand: %s", args->command);//TODO
+	fprintf(fp, "\n\t-> -in_vcf_fn %s", args->in_vcf_fn);
+
+	// TODO print based on analysis type, and to args file, collect all from args automatically
+	fprintf(fp, "\nngsAMOVA -doAMOVA %d -doTest %d -in %s -out %s -isSim %d -minInd %d -printMatrix %d -m %s -doDist %d -maxIter %d -nThreads %d", args->doAMOVA, args->doTest, args->in_vcf_fn, args->out_fn, args->isSim, args->minInd, args->printMatrix, args->in_mtd_fn, args->doDist, args->mEmIter, args->mThreads);
+	if (args->doEM != 0)
+	{
+		fprintf(fp, " -tole %e ", args->tole);
+		fprintf(fp, " -maxIter %d ", args->mEmIter);
+	}
+	fprintf(fp, "\n");
+}
+
 
 /// @brief paramStruct_init initialize the paramStruct
 /// @param args arguments argStruct
@@ -1126,15 +1137,13 @@ paramStruct *paramStruct_init(argStruct *args)
 	// total number of sites processed
 	pars->totSites = 0;
 
-	pars->LUT_indPair_idx = NULL;
+	pars->LUT_indPairIdx = NULL;
 	pars->n_ind_cmb = 0;
-
 	pars->nInd = 0;
 
 	pars->DATETIME = NULL;
 
 	// pars->pos = NULL;
-
 	// pars->major = NULL;
 	// pars->minor = NULL;
 	// pars->ref = NULL;
@@ -1170,10 +1179,10 @@ void paramStruct_destroy(paramStruct *pars)
 
 	for (int i = 0; i < pars->nInd; i++)
 	{
-		free(pars->LUT_indPair_idx[i]);
-		pars->LUT_indPair_idx[i] = NULL;
+		free(pars->LUT_indPairIdx[i]);
+		pars->LUT_indPairIdx[i] = NULL;
 	}
-	free(pars->LUT_indPair_idx);
+	free(pars->LUT_indPairIdx);
 
 	delete pars;
 }
@@ -1322,4 +1331,48 @@ void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, argStruct *a
 		exit(1);
 	}
 	fprintf(out_sfs_fs->fp, "\n");
+}
+
+
+DATA::contigStruct *DATA::contigStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *hdr){
+
+	DATA::contigStruct *contigSt = new DATA::contigStruct(nContigs);
+
+	for (int ci = 0; ci < nContigs; ci++)
+	{
+
+		const int contigSize = hdr->id[BCF_DT_CTG][ci].val->info[0];
+
+		contigSt->contigLengths[ci] = contigSize;
+
+		fprintf(stderr, "\nContig %d length:%d\n", ci, contigSize);
+
+		int nBlocks = 0;
+
+		if (blockSize < contigSize)
+		{
+			nBlocks = (contigSize / blockSize) + 1;
+		}
+		else
+		{
+			nBlocks = 1;
+			fprintf(stderr, "\nContig %d is smaller than block size, setting block size to contig size (%d)\n", ci, contigSize);
+		}
+
+		// allocate memory for contigBlockStarts
+		contigSt->contigBlockStarts[ci] = (int *)malloc(nBlocks * sizeof(int));
+		contigSt->contigBlockStartPtrs[ci] = (double **)malloc(nBlocks * sizeof(double *));
+		contigSt->contigNBlocks[ci] = nBlocks;
+
+		// fprintf(stderr, "\nContig %d length:%d nBlocks: %d\n", ci, contigSize, nBlocks);
+		for (int bi = 0; bi < nBlocks; bi++)
+		{
+			int blockStart = bi * blockSize;
+
+			contigSt->contigBlockStarts[ci][bi] = blockStart;
+			fprintf(stderr, "\nContig %d block %d starts at %d\n", ci, bi, contigSt->contigBlockStarts[ci][bi]);
+		}
+	}
+
+	return contigSt;
 }
