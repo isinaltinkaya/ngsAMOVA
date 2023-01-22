@@ -35,6 +35,7 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2)
 	return bcf_alleles2gt(bcf_allele_charToInt[a1], bcf_allele_charToInt[a2]);
 }
 
+
 // return 1: skip site for all individuals
 int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i, DATA::pairStruct **PAIRS)
 {
@@ -406,3 +407,422 @@ int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars
 
 	return 0;
 }
+
+void VCF::vcfData_destroy(VCF::vcfData *v)
+{
+	bcf_hdr_destroy(v->hdr);
+	bcf_destroy(v->bcf);
+	int BCF_CLOSE;
+	if ((BCF_CLOSE = bcf_close(v->in_fp)))
+	{
+		fprintf(stderr, "\n[ERROR]\tbcf_close had non-zero status %d\n", BCF_CLOSE);
+		exit(BCF_CLOSE);
+	}
+
+	if(v->lngl != NULL){
+		for (size_t s = 0; s < (size_t) v->nSites; s++)
+		{
+			FREE(v->lngl[s]);
+		}
+		FREE(v->lngl);
+	}
+	if(v->SFS_GT3 != NULL){
+		for(int i=0; i<v->nIndCmb; i++){
+			FREE(v->SFS_GT3[i]);
+		}
+		FREE(v->SFS_GT3);
+	}
+
+	delete v;
+}
+
+VCF::vcfData *VCF::vcfData_init(argStruct *args, paramStruct *pars, DATA::sampleStruct *sampleSt)
+{
+
+	VCF::vcfData *VCF = new VCF::vcfData;
+
+	if(args->doEM==1){
+		//TODO check nind instead of bufsize?
+		VCF->lngl = (double **)malloc(VCF->buf_size * sizeof(double*));
+
+	}
+
+	VCF->in_fp = bcf_open(args->in_vcf_fn, "r");
+	if (VCF->in_fp == NULL)
+	{
+		fprintf(stderr, "\n[ERROR] Could not open VCF/BCF file: %s\n", args->in_vcf_fn);
+		exit(1);
+	}
+
+	VCF->hdr = bcf_hdr_read(VCF->in_fp);
+	VCF->bcf = bcf_init();
+	ASSERT(bcf);
+
+	pars->nInd = bcf_hdr_nsamples(VCF->hdr);
+	VCF->nInd=pars->nInd;
+	pars->n_ind_cmb = nCk(pars->nInd, 2);
+	VCF->nIndCmb=pars->n_ind_cmb;
+	pars->LUT_indPairIdx = set_LUT_indPairIdx(pars->nInd);
+	fprintf(stderr, "\nNumber of individual pairs: %d\n", pars->n_ind_cmb);
+	
+
+	sampleSt->init(pars->nInd);
+	for (int i = 0; i < pars->nInd; i++)
+	{
+		sampleSt->addSampleName(i, VCF->hdr->samples[i]);
+	}
+
+	VCF->nContigs = VCF->hdr->n[BCF_DT_CTG];
+
+	check_consistency_args_pars(args, pars);
+
+	if (args->doAMOVA==2){
+		// use genotypes
+		VCF->set_SFS_GT3();
+	}
+	
+
+	return VCF;
+}
+
+
+	// read VCF sites AND store block pointers for block bootstrapping
+	// if block block size for block bootstrapping is set
+	// collect pointers to blocks while reading the sites
+void VCF::vcfData::readSites_GL(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt, DATA::contigStruct *contigSt) 
+{
+	/*
+	* [START] Reading sites
+	*
+	* nSites=0; totSites=0
+	*
+	* if minInd is set
+	* 		nSites==where minInd threshold can be passed
+	* 		totSites==all sites processed
+	*
+	*/
+	int last_ci = -1;
+	int last_bi = -1;
+	double *last_ptr = NULL;
+	while (bcf_read(in_fp, hdr, bcf) == 0)
+	{
+
+		if (bcf->rlen != 1)
+		{
+			fprintf(stderr, "\n[ERROR](File reading)\tVCF file REF allele with length of %ld is currently not supported, will exit!\n\n", bcf->rlen);
+			exit(1);
+		}
+
+		while ((int)pars->nSites >= buf_size)
+		{
+			buf_size = buf_size * 2;
+			lngl = (double **)realloc(lngl, buf_size * sizeof(*lngl));
+		}
+
+		if (VCF::read_GL10_to_GL3(hdr, bcf, lngl, pars, args, pars->nSites, pairSt) != 0)
+		{
+			fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
+
+			pars->totSites++;
+
+			// next loop will skip this and use the same site_i
+			free(lngl[pars->nSites]);
+			lngl[pars->nSites] = NULL;
+
+			continue;
+		}
+
+
+		int ci = bcf->rid;
+
+
+		// if first contig
+		if (last_ci == -1)
+		{
+			last_ci = ci;
+			last_bi = 0;
+		}
+
+		// if contig changes, reset block index
+		if (ci != last_ci)
+		{
+			last_ci = ci;
+			last_bi = 0;
+		}
+
+		last_ptr = lngl[pars->nSites];
+
+		// calculate which block first site belongs to using contigLengths and contigNBlocks
+		//  last_bi = (int)floor((double)bcf->pos/(double)args->blockSize);
+		//  fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block last_bi %d\n\n",bcf->pos,ci,last_bi);
+
+		// if current pos is bigger than contigBlockStarts, add last_ptr to contigBlockStartPtrs
+		if (bcf->pos > contigSt->contigBlockStarts[ci][last_bi])
+		{
+			// fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block %d contigSt->contigBlockStarts[%d][%d] %d\n\n",bcf->pos,ci,last_bi,ci,last_bi,contigSt->contigBlockStarts[ci][last_bi]);
+			contigSt->contigBlockStartPtrs[ci][last_bi] = last_ptr;
+			last_bi++;
+		}
+		pars->nSites++;
+		pars->totSites++;
+
+	}
+	nSites = pars->nSites;
+	totSites = pars->totSites;
+	/*
+	[END] Read sites
+	*/
+#if 0
+	fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",pars->nSites);
+	fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu) totSites:%d\n\n",pars->nSites,bcf->pos,bcf->pos+1,pars->totSites);
+#endif
+
+	fprintf(stderr, "\n\t-> Finished reading sites\n");
+
+}
+
+
+
+void VCF::vcfData::readSites_GL(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt)
+{
+
+	// no block bootstrapping
+	while (bcf_read(in_fp, hdr, bcf) == 0)
+	{
+
+		if (bcf->rlen != 1)
+		{
+			fprintf(stderr, "\n[ERROR](File reading)\tVCF file REF allele with length of %ld is currently not supported, will exit!\n\n", bcf->rlen);
+			exit(1);
+		}
+
+		while ((int)pars->nSites >= buf_size)
+		{
+			buf_size = buf_size * 2;
+			lngl = (double **)realloc(lngl, buf_size * sizeof(*lngl));
+		}
+
+		if (VCF::read_GL10_to_GL3(hdr, bcf, lngl, pars, args, pars->nSites, pairSt) != 0)
+		{
+			fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
+			pars->totSites++;
+
+			// next loop will skip this and use the same site_i
+			free(lngl[pars->nSites]);
+			lngl[pars->nSites] = NULL;
+
+			continue;
+		}
+		pars->nSites++;
+		pars->totSites++;
+
+	}
+
+
+	nSites = pars->nSites;
+	totSites = pars->totSites;
+#if 0
+	fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",pars->nSites);
+	fprintf(stderr,"%d\n\n",pars->nSites);
+	fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu) totSites:%d\n\n",pars->nSites,bcf->pos,bcf->pos+1,pars->totSites);
+#endif
+	/*
+	[END] Read sites
+	*/
+
+	fprintf(stderr, "\n\t-> Finished reading sites\n");
+
+}
+
+
+
+
+
+void VCF::vcfData::readSites_GT(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt)
+{
+	
+	/*
+	* [START] Reading sites
+	*
+	* nSites=0; totSites=0
+	*
+	* if minInd is set
+	* 		nSites==where minInd threshold can be passed
+	* 		totSites==all sites processed
+	*
+	*/
+	while (bcf_read(in_fp, hdr, bcf) == 0)
+	{
+
+		if (bcf->rlen != 1)
+		{
+			fprintf(stderr, "\n[ERROR](File reading)\tVCF file REF allele with length of %ld is currently not supported, will exit!\n\n", bcf->rlen);
+			exit(1);
+		}
+
+
+
+		if (args->gl2gt == 1)
+		{
+			ASSERT(VCF::GT_to_i2i_SFS(hdr, bcf, SFS_GT3, pars, args) == 0);
+		}
+		else if (args->gl2gt < 0)
+		{
+			ASSERT(VCF::GT_to_i2i_SFS(hdr, bcf, SFS_GT3, pars, args) == 0);
+		}
+		else
+		{
+			exit(1);
+		}
+		fprintf(stderr, "\n\n\n SFS_GT3[0][0] %d SFS_GT3[0][1] %d SFS_GT3[0][2] %d\n\n\n", SFS_GT3[0][0], SFS_GT3[0][1], SFS_GT3[0][2]);
+		pars->nSites++;
+		pars->totSites++;
+
+	}
+	/*
+	[END] Read sites
+	*/
+#if 0
+	fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",pars->nSites);
+	fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu) totSites:%d\n\n",pars->nSites,bcf->pos,bcf->pos+1,pars->totSites);
+#endif
+
+	fprintf(stderr, "\n\t-> Finished reading sites\n");
+
+
+}
+
+
+//readSites
+
+
+// 	/*
+// 		* [START] Reading sites
+// 		*
+// 		* nSites=0; totSites=0
+// 		*
+// 		* if minInd is set
+// 		* 		nSites==where minInd threshold can be passed
+// 		* 		totSites==all sites processed
+// 		*
+// 		*/
+
+// 	int last_ci = -1;
+// 	int last_bi = -1;
+// 	double *last_ptr = NULL;
+
+
+// 	// starts to diverge here
+// 	/*
+// 		* lngl[nSites][nInd*10*double]
+// 		*/
+// 	double **lngl = NULL;
+
+// 	/*
+// 		* SFS_GT3[n_pairs][9+1]
+// 		* last element contains total number of sites shared
+// 		*/
+// 	int **SFS_GT3 = NULL;
+
+
+// 	while (bcf_read(in_fp, hdr, bcf) == 0)
+// 	{
+
+// 		if (bcf->rlen != 1)
+// 		{
+// 			fprintf(stderr, "\n[ERROR](File reading)\tVCF file REF allele with length of %ld is currently not supported, will exit!\n\n", bcf->rlen);
+// 			exit(1);
+// 		}
+
+// 		if (args->doAMOVA == 1 || args->doAMOVA == 3 || args->doAMOVA == 0)
+// 		{
+// 			while ((int)pars->nSites >= buf_size)
+// 			{
+
+// 				buf_size = buf_size * 2;
+
+// 				lngl = (double **)realloc(lngl, buf_size * sizeof(*lngl));
+// 			}
+
+// 			if (VCF::read_GL10_to_GL3(hdr, bcf, lngl, pars, args, pars->nSites, pairSt) != 0)
+// 			{
+// 				fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
+
+// 				pars->totSites++;
+
+// 				// next loop will skip this and use the same site_i
+// 				free(lngl[pars->nSites]);
+// 				lngl[pars->nSites] = NULL;
+
+// 				continue;
+// 			}
+// 		}
+
+// 		// if doAMOVA==3 and site is skipped for gle; it will be skipped for gt, too
+
+// 		if (args->doAMOVA == 2 || args->doAMOVA == 3)
+// 		{
+
+// 			if (args->gl2gt == 1)
+// 			{
+// 				ASSERT(VCF::GT_to_i2i_SFS(hdr, bcf, SFS_GT3, pars, args) == 0);
+// 			}
+// 			else if (args->gl2gt < 0)
+// 			{
+// 				ASSERT(VCF::GT_to_i2i_SFS(hdr, bcf, SFS_GT3, pars, args) == 0);
+// 			}
+// 			else
+// 			{
+// 				exit(1);
+// 			}
+// 		}
+
+// 		int ci = bcf->rid;
+
+// 		// if block block size for block bootstrapping is set
+// 		// collect pointers to blocks while reading the sites
+// 		if (args->blockSize != 0)
+// 		{
+
+// 			// if first contig
+// 			if (last_ci == -1)
+// 			{
+// 				last_ci = ci;
+// 				last_bi = 0;
+// 			}
+
+// 			// if contig changes, reset block index
+// 			if (ci != last_ci)
+// 			{
+// 				last_ci = ci;
+// 				last_bi = 0;
+// 			}
+
+// 			last_ptr = lngl[pars->nSites];
+
+// 			// calculate which block first site belongs to using contigLengths and contigNBlocks
+// 			//  last_bi = (int)floor((double)bcf->pos/(double)args->blockSize);
+// 			//  fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block last_bi %d\n\n",bcf->pos,ci,last_bi);
+
+// 			// if current pos is bigger than contigBlockStarts, add last_ptr to contigBlockStartPtrs
+// 			if (bcf->pos > contigSt->contigBlockStarts[ci][last_bi])
+// 			{
+// 				// fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block %d contigSt->contigBlockStarts[%d][%d] %d\n\n",bcf->pos,ci,last_bi,ci,last_bi,contigSt->contigBlockStarts[ci][last_bi]);
+// 				contigSt->contigBlockStartPtrs[ci][last_bi] = last_ptr;
+// 				last_bi++;
+// 			}
+// 		}
+// 		pars->nSites++;
+// 		pars->totSites++;
+
+// #if 0
+// 	fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",pars->nSites);
+// 	fprintf(stderr,"%d\n\n",pars->nSites);
+// 	fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu) totSites:%d\n\n",pars->nSites,bcf->pos,bcf->pos+1,pars->totSites);
+// #endif
+// 	}
+// 	/*
+// 	[END] Read sites
+// 	*/
+
+// 	fprintf(stderr, "\n\t-> Finished reading sites\n");

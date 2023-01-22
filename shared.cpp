@@ -353,7 +353,6 @@ int IO::readFile::SFS(FILE *in_sfs_fp, const char *delims, DATA::sampleStruct *S
 /// @param in_dm_fp input distance matrix file
 /// @param pars paramStruct parameters
 /// @return distance matrix double*
-// double *IO::readFile::distance_matrix(FILE *in_dm_fp, paramStruct *pars, argStruct *args)
 DATA::distanceMatrixStruct *DATA::distanceMatrixStruct_read(FILE *in_dm_fp, paramStruct *pars, argStruct *args)
 {
 
@@ -771,7 +770,6 @@ argStruct *argStruct_init()
 
 	args->blockSize = 0;
 
-	args->seed = -1;
 	args->doAMOVA = 0;
 	args->doEM = 0;
 
@@ -785,12 +783,16 @@ argStruct *argStruct_init()
 
 	args->doDist = -1;
 	args->do_square_distance = 1;
+	args->printMatrix = 0;
 
 	args->isSim = 0;
 	args->isTest = 0;
 	args->minInd = -1;
 
-	args->printMatrix = 0;
+
+
+	args->seed = -1;
+	args->nBootstraps = 0;
 
 	args->gl2gt = -1;
 
@@ -830,6 +832,8 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->blockSize = atoi(val);
 		else if (strcasecmp("-bSize", arv) == 0)
 			args->blockSize = atoi(val);
+		else if (strcasecmp("-nb", arv) == 0)
+			args->nBootstraps = atoi(val);
 		else if (strcasecmp("-f", arv) == 0)
 		{
 			args->formula = strdup(val);
@@ -995,90 +999,122 @@ argStruct *argStruct_get(int argc, char **argv)
 
 	switch (args->doAMOVA)
 	{
-
-	case 0:
-	{
-		fprintf(stderr, "\n\t-> -doAMOVA is set to 0, will not perform AMOVA.\n");
-
-		if (args->doEM == 0)
+		case 0:
 		{
-			fprintf(stderr, "\n\t-> Nothing to do.\n");
-			exit(1);
+			fprintf(stderr, "\n\t-> -doAMOVA is set to 0, will not perform AMOVA.\n");
+
+			if (args->doEM == 0)
+			{
+				fprintf(stderr, "\n\t-> Nothing to do.\n");
+				exit(1);
+			}
+			else if (args->doEM == 1)
+			{
+				if (args->in_dm_fn != NULL)
+				{
+					fprintf(stderr, "\n[ERROR] Cannot use -in_dm %s with -doEM 1.\n", args->in_dm_fn);
+					exit(1);
+				}
+				if (args->in_vcf_fn == NULL)
+				{
+					fprintf(stderr, "\n[ERROR] Must supply -in <input_file> for -doEM 1.\n");
+					exit(1);
+				}
+
+				fprintf(stderr, "\n\t-> -doEM is set to 1, will use EM algorithm to estimate parameters.\n");
+			}
+
+			break;
 		}
-		else if (args->doEM == 1)
+		case 1:
+		{
+
+			if (args->doEM == 0)
+			{
+				fprintf(stderr, "\n[ERROR]\t-doAMOVA %i requires -doEM 1.\n", args->doAMOVA);
+				exit(1);
+			}
+
+			if (args->in_dm_fn != NULL)
+			{
+				fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
+			}
+			else
+			{
+
+				fprintf(stderr, "\n\t-> -doAMOVA 1; will use 10 genotype likelihoods from GL tag.\n");
+			}
+			break;
+		}
+		case 2:
 		{
 			if (args->in_dm_fn != NULL)
 			{
-				fprintf(stderr, "\n[ERROR] Cannot use -in_dm %s with -doEM 1.\n", args->in_dm_fn);
-				exit(1);
+				fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
+				args->doAMOVA = 1; // 1: use dm input or gle tag in vcf
 			}
-			if (args->in_vcf_fn == NULL)
+			else
 			{
-				fprintf(stderr, "\n[ERROR] Must supply -in <input_file> for -doEM 1.\n");
+
+				fprintf(stderr, "\n\t-> -doAMOVA 2; will use genotypes from GT tag.\n");
+			}
+			
+			if (args->doEM != 0){
+				fprintf(stderr, "\n[ERROR]\t-doAMOVA %i cannot be used with -doEM %i.\n", args->doAMOVA, args->doEM);
+				exit(1);
+			}
+			break;
+		}
+		case 3:
+		{
+
+			if (args->doEM == 0)
+			{
+				fprintf(stderr, "\n[ERROR]\t-doAMOVA %i requires -doEM 1.\n", args->doAMOVA);
 				exit(1);
 			}
 
-			fprintf(stderr, "\n\t-> -doEM is set to 1, will use EM algorithm to estimate parameters.\n");
+			if (args->in_dm_fn != NULL)
+			{
+				fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
+				args->doAMOVA = 1; // 1: use dm input or gle tag in vcf
+			}
+			else
+			{
+				fprintf(stderr, "\n\t-> -doAMOVA 3; will do both 1 and 2.\n");
+			}
+			break;
+		}
+	}
+
+
+	if(args->nBootstraps>0){
+
+		fprintf(stderr, "\n\t-> -nBootstraps %d is set, will perform %d bootstraps for AMOVA significance testing.\n", args->nBootstraps, args->nBootstraps);
+		if(args->blockSize==0){
+			fprintf(stderr, "\n[ERROR] -blockSize must be set to a positive integer when -nBootstraps is set.\n");
+			exit(1);
+		}else{
+			fprintf(stderr, "\n\t-> -blockSize %d is set, will use %d as the genomic block size for block bootstrapping.\n", args->blockSize, args->blockSize);
+
+			if(args->seed == -1){
+				args->seed = time(NULL);
+				fprintf(stderr, "\n\t[INFO] -> -seed is not set, will use current time as seed for random number generator: %d.\n", args->seed);
+				srand48(args->seed);
+			}else{
+				fprintf(stderr, "\n\t-> -seed is set to %d, will use this seed for random number generator.\n", args->seed);
+				srand48(args->seed);
+			}
 		}
 
-		break;
-	}
-	case 1:
-	{
+	}else{
 
-		if (args->doEM == 0)
-		{
-			fprintf(stderr, "\n[ERROR]\t-doAMOVA %i requires -doEM 1.\n", args->doAMOVA);
+		if(args->blockSize!=0){
+			fprintf(stderr, "\n[ERROR] -blockSize is set to %d, but -nBootstraps is not set. Define both to perform block bootstrapping.\n", args->blockSize);
 			exit(1);
 		}
 
-		if (args->in_dm_fn != NULL)
-		{
-			fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
-		}
-		else
-		{
-
-			fprintf(stderr, "\n\t-> -doAMOVA 1; will use 10 genotype likelihoods from GL tag.\n");
-		}
-		break;
 	}
-	case 2:
-	{
-		if (args->in_dm_fn != NULL)
-		{
-			fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
-			args->doAMOVA = 1; // 1: use dm input or gle tag in vcf
-		}
-		else
-		{
-
-			fprintf(stderr, "\n\t-> -doAMOVA 2; will use genotypes from GT tag.\n");
-		}
-		break;
-	}
-	case 3:
-	{
-
-		if (args->doEM == 0)
-		{
-			fprintf(stderr, "\n[ERROR]\t-doAMOVA %i requires -doEM 1.\n", args->doAMOVA);
-			exit(1);
-		}
-
-		if (args->in_dm_fn != NULL)
-		{
-			fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
-			args->doAMOVA = 1; // 1: use dm input or gle tag in vcf
-		}
-		else
-		{
-			fprintf(stderr, "\n\t-> -doAMOVA 3; will do both 1 and 2.\n");
-		}
-		break;
-	}
-	}
-
 	return args;
 }
 
@@ -1333,20 +1369,49 @@ void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, argStruct *a
 	fprintf(out_sfs_fs->fp, "\n");
 }
 
+void DATA::contigStruct_destroy(DATA::contigStruct *c){
+
+	for (size_t i = 0; i < (size_t) c->nContigs; i++)
+	{
+		FREE(c->contigBlockStartPtrs[i]);
+		FREE(c->contigNames[i]);
+		FREE(c->contigBlockStarts[i]);
+	}
+	FREE(c->contigBlockStarts);
+	FREE(c->contigNames);
+	FREE(c->contigLengths);
+	FREE(c->contigNBlocks);
+	FREE(c->contigBlockStartPtrs);
+
+	delete c;
+}
 
 DATA::contigStruct *DATA::contigStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *hdr){
 
-	DATA::contigStruct *contigSt = new DATA::contigStruct(nContigs);
+	DATA::contigStruct *c= new DATA::contigStruct();
 
-	for (int ci = 0; ci < nContigs; ci++)
+	c->nContigs = (size_t)nContigs;
+	c->contigNames = (char **)malloc(nContigs * sizeof(char *));
+	c->contigLengths = (int *)malloc(nContigs * sizeof(int));
+
+	c->contigBlockStarts = (int **)malloc(nContigs * sizeof(int *));
+
+	c->contigBlockStartPtrs = (double ***)malloc(nContigs * sizeof(double **));
+	c->contigNBlocks = (int *)malloc(nContigs * sizeof(int));
+
+	for (size_t i = 0; i < c->nContigs; i++)
+	{
+		c->contigNames[i] = NULL;
+		c->contigBlockStarts[i] = NULL;
+		c->contigBlockStartPtrs[i] = NULL;
+	}
+
+	for (size_t ci = 0; ci < c->nContigs; ci++)
 	{
 
 		const int contigSize = hdr->id[BCF_DT_CTG][ci].val->info[0];
-
-		contigSt->contigLengths[ci] = contigSize;
-
-		fprintf(stderr, "\nContig %d length:%d\n", ci, contigSize);
-
+		c->contigLengths[ci] = contigSize;
+		fprintf(stderr, "\nContig %ld length:%d\n", ci, contigSize);
 		int nBlocks = 0;
 
 		if (blockSize < contigSize)
@@ -1356,23 +1421,50 @@ DATA::contigStruct *DATA::contigStruct_init(const int nContigs, const int blockS
 		else
 		{
 			nBlocks = 1;
-			fprintf(stderr, "\nContig %d is smaller than block size, setting block size to contig size (%d)\n", ci, contigSize);
+			fprintf(stderr, "\nContig %ld is smaller than block size, setting block size to contig size (%d)\n", ci, contigSize);
 		}
 
 		// allocate memory for contigBlockStarts
-		contigSt->contigBlockStarts[ci] = (int *)malloc(nBlocks * sizeof(int));
-		contigSt->contigBlockStartPtrs[ci] = (double **)malloc(nBlocks * sizeof(double *));
-		contigSt->contigNBlocks[ci] = nBlocks;
+		c->contigBlockStarts[ci] = (int *)malloc(nBlocks * sizeof(int));
+		c->contigBlockStartPtrs[ci] = (double **)malloc(nBlocks * sizeof(double *));
+		c->contigNBlocks[ci] = nBlocks;
 
 		// fprintf(stderr, "\nContig %d length:%d nBlocks: %d\n", ci, contigSize, nBlocks);
 		for (int bi = 0; bi < nBlocks; bi++)
 		{
 			int blockStart = bi * blockSize;
-
-			contigSt->contigBlockStarts[ci][bi] = blockStart;
-			fprintf(stderr, "\nContig %d block %d starts at %d\n", ci, bi, contigSt->contigBlockStarts[ci][bi]);
+			c->contigBlockStarts[ci][bi] = blockStart;
+			fprintf(stderr, "\nContig %ld block %d starts at %d\n", ci, bi, c->contigBlockStarts[ci][bi]);
 		}
 	}
 
-	return contigSt;
+	return c;
 }
+
+/// @brief check_consistency_args_pars - check consistency between arguments and parameters
+/// @param args pointer to argStruct
+/// @param pars pointer to paramStruct
+void check_consistency_args_pars(argStruct *args, paramStruct *pars){
+
+			if (args->minInd == pars->nInd)
+			{
+				fprintf(stderr, "\n\t-> -minInd %d is equal to the number of individuals found in file: %d. Setting -minInd to 0 (all).\n", args->minInd, pars->nInd);
+				args->minInd = 0;
+			}
+
+			if (pars->nInd == 1)
+			{
+				fprintf(stderr, "\n\n[ERROR]\tOnly one sample; will exit\n\n");
+				exit(1);
+			}
+
+			if (pars->nInd < args->minInd)
+			{
+				fprintf(stderr, "\n\n[ERROR]\tMinimum number of individuals -minInd is set to %d, but input file contains %d individuals; will exit!\n\n", args->minInd, pars->nInd);
+				exit(1);
+			}
+
+}
+
+
+

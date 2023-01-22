@@ -94,7 +94,9 @@
 	{                 \
 		fclose(expr); \
 		expr = NULL;  \
-	}
+	}                 \
+
+
 
 #ifndef FREAD_BUF_SIZE
 #define FREAD_BUF_SIZE 4096
@@ -131,7 +133,6 @@ using size_t = decltype(sizeof(int));
  * @field *in_vcf_fn		pointer to input file name
  * @field *in_mtd_fn	pointer to input Metadata file name
  * @field *out_fn		pointer to output file prefix [angsdput]
- * @field seed			random seed
  *
  * @field isSim			input is vcfgl simulation output
  * 							anc=ref and der=alt[0]
@@ -213,6 +214,9 @@ using size_t = decltype(sizeof(int));
  *
  * @field mThreads		maximum number of threads defined by user
  * @field mEmIter		maximum number of iterations allowed for em
+ * 
+ * @field seed			random seed for bootstrapping
+ * @field nBootstraps	number of bootstraps to be performed for AMOVA significance test
  *
  */
 typedef struct
@@ -242,7 +246,6 @@ typedef struct
 	int do_square_distance;
 	int minInd;
 
-	int seed;
 	int hasColNames;
 
 	double tole;
@@ -250,6 +253,9 @@ typedef struct
 
 	int mThreads;
 	int mEmIter;
+
+	int seed;
+	int nBootstraps;
 
 	int gl2gt;
 
@@ -384,45 +390,10 @@ namespace DATA
 		double ***contigBlockStartPtrs;
 
 
-		contigStruct(const int nContigs_)
-		{
-
-			nContigs = (size_t)nContigs_;
-			contigNames = (char **)malloc(nContigs * sizeof(char *));
-			contigLengths = (int *)malloc(nContigs * sizeof(int));
-
-			contigBlockStarts = (int **)malloc(nContigs * sizeof(int *));
-
-			contigBlockStartPtrs = (double ***)malloc(nContigs * sizeof(double **));
-			contigNBlocks = (int *)malloc(nContigs * sizeof(int));
-
-			for (size_t i = 0; i < nContigs; i++)
-			{
-				contigNames[i] = NULL;
-				contigBlockStarts[i] = NULL;
-				contigBlockStartPtrs[i] = NULL;
-			}
-		}
-
-		~contigStruct()
-		{
-			for (size_t i = 0; i < nContigs; i++)
-			{
-
-				FREE(contigBlockStartPtrs[i]);
-				FREE(contigNames[i]);
-				FREE(contigBlockStarts[i]);
-			}
-			FREE(contigBlockStarts);
-			FREE(contigNames);
-			FREE(contigLengths);
-			FREE(contigNBlocks);
-			FREE(contigBlockStartPtrs);
-		}
-
 	} contigStruct;
 
 	contigStruct *contigStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *hdr);
+	void contigStruct_destroy(contigStruct *c);
 
 	typedef struct pairStruct
 	{
@@ -449,13 +420,13 @@ namespace DATA
 
 		double *SFS = NULL;
 
-		pairStruct(int ind1, int ind2, int pair_idx)
+		pairStruct()
 		{
-			i1 = ind1;
-			i2 = ind2;
-			idx = pair_idx;
 			d = 0.0;
 			n_em_iter = 0;
+			i1=-1;
+			i2=-1;
+			idx=-1;
 			sharedSites = (int *)malloc(_sharedSites * sizeof(int));
 			for (size_t i = 0; i < _sharedSites; i++)
 			{
@@ -478,6 +449,7 @@ namespace DATA
 			SFS = NULL;
 			// FREE(SFS);
 		}
+
 
 		void print(FILE *fp, bcf_hdr_t *hdr)
 		{
@@ -513,14 +485,34 @@ namespace DATA
 
 	} pairStruct;
 
+
+
+	/// @brief sampleStruct - contains sample names and other sample related information
+	/// used in comparing samples in the VCF file with the samples in the metadata file
 	typedef struct sampleStruct
 	{
 
 		char **sampleNames = NULL; // sample names in bcf sample order
 
-		int nSamples = 0;
+		int nSamples;
 
-		sampleStruct(int nSamples_)
+		sampleStruct()
+		{
+			nSamples=-1;
+		}
+
+		~sampleStruct()
+		{
+			for (int i = 0; i < nSamples; i++)
+			{
+				free(sampleNames[i]);
+				sampleNames[i] = NULL;
+			}
+			free(sampleNames);
+			sampleNames = NULL;
+		}
+
+		void init(int nSamples_)
 		{
 			nSamples = nSamples_;
 
@@ -530,18 +522,6 @@ namespace DATA
 			{
 				sampleNames[i] = NULL;
 			}
-		}
-
-		~sampleStruct()
-		{
-
-			for (int i = 0; i < nSamples; i++)
-			{
-				free(sampleNames[i]);
-				sampleNames[i] = NULL;
-			}
-			free(sampleNames);
-			sampleNames = NULL;
 		}
 
 		void addSampleName(int i, char *str)
@@ -1062,7 +1042,6 @@ namespace DATA
 	{
 		double *M = NULL;
 
-		// sampleStruct *samples;
 
 		int nInd = 0;
 		int nIndCmb = 0;
@@ -1083,6 +1062,21 @@ namespace DATA
 		{
 			delete[] M;
 		}
+		void print(FILE *fp)
+		{
+			for (int px = 0; px < nIndCmb; px++)
+			{
+				fprintf(fp, "%.*f", (int)DBL_MAXDIG10, M[px]);
+				if (px != nIndCmb - 1)
+				{
+					fprintf(fp, ",");
+				}
+				else
+				{
+					fprintf(fp, "\n");
+				}
+			}
+		}
 
 		void print(FILE *fp, const char *TYPE)
 		{
@@ -1100,8 +1094,8 @@ namespace DATA
 				}
 			}
 		}
-
 	} distanceMatrixStruct;
+
 	// read distance matrix from distance matrix file
 	distanceMatrixStruct *distanceMatrixStruct_read(FILE *in_dm_fp, paramStruct *pars, argStruct *args);
 };
@@ -1140,6 +1134,7 @@ namespace IO
 	{
 		char *fn = NULL;
 		FILE *fp = NULL;
+		// int has_header = 0; //TODO
 
 		outputStruct(const char *fn_, const char *suffix)
 		{
@@ -1151,6 +1146,10 @@ namespace IO
 			fclose(fp);
 			free(fn);
 			fn = NULL;
+		}
+		void flush()
+		{
+			fflush(fp);
 		}
 
 	} outputStruct;
@@ -1189,6 +1188,26 @@ namespace IO
 			delete out_dm_fs;
 			delete out_sfs_fs;
 			delete out_amova_fs;
+		}
+
+		void flushAll()
+		{
+			if (out_emtest_fs != NULL)
+			{
+				out_emtest_fs->flush();
+			}
+			if (out_dm_fs != NULL)
+			{
+				out_dm_fs->flush();
+			}
+			if (out_sfs_fs != NULL)
+			{
+				out_sfs_fs->flush();
+			}
+			if (out_amova_fs != NULL)
+			{
+				out_amova_fs->flush();
+			}
 		}
 
 	} outFilesStruct;
@@ -1238,25 +1257,26 @@ typedef struct threadStruct
 
 	FILE *out_sfs_fp;
 
-	// double* M_PWD_GL_PAIR;
-
 	// TODO use them globally?
 	double tole;
 	int mEmIter;
 
 	size_t nSites;
 
-	threadStruct(DATA::pairStruct *tPair, double **lngl, size_t nSites_t, IO::outputStruct *out_sfs_fs, double toleArg, int mEmIterArg)
+	threadStruct(DATA::pairStruct *tPair, double **lngl, size_t nSites_t, IO::outputStruct *out_sfs_fs, argStruct *args)
 	{
 		pair = tPair;
 		lngls = lngl;
 		nSites = nSites_t;
 		out_sfs_fp = out_sfs_fs->fp;
-		tole = toleArg;
-		mEmIter = mEmIterArg;
+		tole = args->tole;
+		mEmIter = args->mEmIter;
 	}
 
 } threadStruct;
 void print_SFS_GT(const char *TYPE, IO::outputStruct *out_sfs_fs, paramStruct *pars, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
+
+
+void check_consistency_args_pars(argStruct *args, paramStruct *pars);
 
 #endif
