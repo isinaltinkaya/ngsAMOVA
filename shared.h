@@ -276,7 +276,7 @@ void argStruct_print(FILE* fp, argStruct *arg);
  *
  * @field LUT_indPairIdx		lookup table for mapping two individuals
  * 								to their pair index
- * @field n_ind_cmb				number of unique pairwise individual combinations
+ * @field nIndCmb				number of unique pairwise individual combinations
  *
  * @field major					major allele
  * @field minor					minor allele
@@ -295,7 +295,7 @@ typedef struct
 	// int *pos;
 
 	int **LUT_indPairIdx;
-	int n_ind_cmb;
+	int nIndCmb;
 
 	// char *major;
 	// char *minor;
@@ -320,6 +320,15 @@ typedef struct
 		}
 	}
 
+	// validate that parameters make sense
+	void validate()
+	{
+		ASSERT(nIndCmb > 0);
+		ASSERT(nInd > 0);
+		ASSERT(nSites > 0);
+		ASSERT(totSites > 0);
+	}
+
 } paramStruct;
 
 paramStruct *paramStruct_init(argStruct *args);
@@ -334,7 +343,6 @@ void usage(FILE *fp);
  * @abstract data structures
  *
  * @typedef formulaStruct - structure for storing AMOVA formula
- * @typedef contigStruct - structure for storing contig information
  *
  */
 namespace DATA
@@ -361,7 +369,9 @@ namespace DATA
 	} formulaStruct;
 	formulaStruct *formulaStruct_get(const char *formula);
 
-	typedef struct contigStruct
+
+	/// @brief blobStruct - structure for storing blocks of contig data
+	typedef struct blobStruct
 	{
 
 		// Number of contigs
@@ -375,25 +385,26 @@ namespace DATA
 		char **contigNames;
 
 		// Array of number of blocks per contig
+		// contigNBlocs[Contig] = number of blocks in the contig
 		int *contigNBlocks;
 
 		// Array of contig lengths
+		// contigLengths[Contig] = length of the contig
 		int *contigLengths;
 
 		// 2D array of contig block starts
 		// [Contig][BlockStart]
-		// size_t *contigBlockStarts;
 		int **contigBlockStarts;
 
-		// [Contig][Block] int* to block start
+		// [Contig][Block] int* to block start in vcfData->lngl
 		// 2D array of pointers to actual contig block starts
 		double ***contigBlockStartPtrs;
 
 
-	} contigStruct;
+	} blobStruct;
 
-	contigStruct *contigStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *hdr);
-	void contigStruct_destroy(contigStruct *c);
+	blobStruct *blobStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *hdr);
+	void blobStruct_destroy(blobStruct *c);
 
 	typedef struct pairStruct
 	{
@@ -402,13 +413,13 @@ namespace DATA
 		int i2;
 		int idx;
 
+		// number of shared sites
 		size_t snSites = 0;
 
 		// contains index of the shared sites of the pair
 		int *sharedSites = NULL;
 		size_t _sharedSites = 1024;
 
-		// int nDim;
 
 		double d;
 		int n_em_iter;
@@ -441,25 +452,18 @@ namespace DATA
 		}
 		~pairStruct()
 		{
-			free(sharedSites);
-			sharedSites = NULL;
-			// FREE(sharedSites);
-
-			free(SFS);
-			SFS = NULL;
-			// FREE(SFS);
+			FREE(sharedSites);
+			FREE(SFS);
 		}
 
 
 		void print(FILE *fp, bcf_hdr_t *hdr)
 		{
-
 			fprintf(fp, "%d,%d,%d,%s,%s", i1, i2, idx, hdr->samples[i1], hdr->samples[i2]);
 		}
 
 		void print(FILE *fp)
 		{
-
 			fprintf(fp, "%d,%d,%d", i1, i2, idx);
 		}
 
@@ -533,6 +537,7 @@ namespace DATA
 
 	} sampleStruct;
 
+	//TODO calculate associations once and store in a LUT
 	/// @brief hierStruct store the hierarchical structure of the metadata
 	typedef struct hierStruct
 	{
@@ -1245,7 +1250,7 @@ namespace IO
 
 		void Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, argStruct *args, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
 
-		void M_PWD(const char *TYPE, IO::outputStruct *out_dm_fs, int n_ind_cmb, double *M_PWD);
+		void M_PWD(const char *TYPE, IO::outputStruct *out_dm_fs, int nIndCmb, double *M_PWD);
 	}
 }
 

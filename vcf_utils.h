@@ -31,7 +31,7 @@ namespace VCF
 
 	int GL_to_GT_1_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args);
 
-	int parse_VCF_GL(paramStruct *pars, argStruct *args, vcfFile *in_fp, bcf_hdr_t *hdr, bcf1_t *bcf, DATA::contigStruct *contigSt);
+	int parse_VCF_GL(paramStruct *pars, argStruct *args, vcfFile *in_fp, bcf_hdr_t *hdr, bcf1_t *bcf, DATA::blobStruct *blobSt);
 
 
 	typedef struct vcfData
@@ -72,9 +72,13 @@ namespace VCF
 		
 
 		void readSites_GL(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt);
-		void readSites_GL(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt, DATA::contigStruct *contigSt);
+		void readSites_GL(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt, DATA::blobStruct *blobSt);
 
 		void readSites_GT(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt);
+
+
+		void read_GL10_to_GL3_block(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i, DATA::pairStruct **pairSt);
+
 
 		void print(FILE *fp){
 			fprintf(stderr, "\nNumber of samples: %i", nInd);

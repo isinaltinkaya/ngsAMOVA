@@ -26,10 +26,10 @@ using size_t = decltype(sizeof(int));
 void spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt, VCF::vcfData *VCF, IO::outFilesStruct *outSt, DATA::distanceMatrixStruct *dMS)
 {
 
-	pthread_t pairThreads[pars->n_ind_cmb];
-	threadStruct *PTHREADS[pars->n_ind_cmb];
+	pthread_t pairThreads[pars->nIndCmb];
+	threadStruct *PTHREADS[pars->nIndCmb];
 
-	for (int i = 0; i < pars->n_ind_cmb; i++)
+	for (int i = 0; i < pars->nIndCmb; i++)
 	{
 		PTHREADS[i] = new threadStruct(pairSt[i], VCF->lngl, pars->nSites, outSt->out_sfs_fs, args);
 	}
@@ -37,7 +37,7 @@ void spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, DATA::pairStruct
 	int nJobs_sent = 0;
 
 	fprintf(outSt->out_sfs_fs->fp, "Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Dij,Dij2\n");
-	for (int pidx = 0; pidx < pars->n_ind_cmb; pidx++)
+	for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
 	{
 		if (args->mThreads > 1)
 		{
@@ -92,7 +92,7 @@ void spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, DATA::pairStruct
 	int t = 0;
 	while (nJobs_sent > 0)
 	{
-		t = pars->n_ind_cmb - nJobs_sent;
+		t = pars->nIndCmb - nJobs_sent;
 		if (pthread_join(pairThreads[t], NULL) != 0)
 		{
 			fprintf(stderr, "\n[ERROR] Problem with joining thread.\n");
@@ -104,7 +104,7 @@ void spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, DATA::pairStruct
 		}
 	}
 
-	for (int pidx = 0; pidx < pars->n_ind_cmb; pidx++)
+	for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
 	{
 
 		DATA::pairStruct *pair = PTHREADS[pidx]->pair;
@@ -125,12 +125,13 @@ void spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, DATA::pairStruct
 	}
 }
 
-void prepare_bootstrap_block(VCF::vcfData *VCF, paramStruct *pars, argStruct *args, DATA::distanceMatrixStruct *dMS, DATA::sampleStruct *sampleSt, DATA::metadataStruct *mS, DATA::formulaStruct *formulaSt, IO::outFilesStruct *outSt, DATA::contigStruct *contigSt)
+void prepare_bootstrap_block(VCF::vcfData *VCF, paramStruct *pars, argStruct *args, DATA::distanceMatrixStruct *dMS, DATA::sampleStruct *sampleSt, DATA::metadataStruct *mS, DATA::formulaStruct *formulaSt, IO::outFilesStruct *outSt, DATA::blobStruct *blobSt)
 {
 
 	fprintf(stderr, "\n\n\n\n################ Bootstrap blocks");
 	// Bootstrap genomic blocks among individuals 
 	// while keeping the order of blocks the same (based on AMOVA levels)
+	fprintf(stderr,"\nvcf: %d", VCF->nSites);
 
 
 	if (mS->nLevels == 1)
@@ -139,19 +140,32 @@ void prepare_bootstrap_block(VCF::vcfData *VCF, paramStruct *pars, argStruct *ar
 		for(int i=0; i<mS->nIndMetadata; i++)
 		{
 
-			for(int contig=0; contig < contigSt->nContigs; contig++){
+			for(int contig=0; contig < blobSt->nContigs; contig++){
 				//loop through blocks and shuffle
-				for(int block=0; block<contigSt->contigNBlocks[contig]; block++)
+				for(int block=0; block<blobSt->contigNBlocks[contig]; block++)
 				{
-					int blockStart = contigSt->contigBlockStarts[contig][block];
+					int blockStart = blobSt->contigBlockStarts[contig][block];
+
 					// shuffle genomic blocks among all individuals in given level
-					// save to a new simulated VCF data
+
 
 					// choose a random individual among the individual set in the shuffling level
 					// then set the block to the chosen individual's block at the same position
-					int chosen_block = rand() % mS->nIndMetadata;
-					fprintf(stderr, "\n\n\n\n######## chosen_block: %d", chosen_block);
-					// bootVCF->lngl[blockStart][chosen_block] = VCF->lngl[blockStart][i];
+					// iblock= block from an individual at this_block
+					int chosen_iblock= rand() % mS->nIndMetadata;
+					fprintf(stderr, "\n\n\n\n######## chosen_block: %d", chosen_iblock);
+
+
+					// to access the data
+					// if this block is not the last block in the contig
+					// 		loop: from this_blockStart to next_blockStart 
+					// if this block is the last block in the contig
+					// 		loop: from this_blockStart to the end of the contig
+					for(int gti=0; gti<3; gti++){
+						double x = VCF->lngl[0][3 * chosen_iblock + gti];
+						fprintf(stderr, "\n\n\n\n######## x: %f", x);
+					}
+
 				}
 
 			}
@@ -162,8 +176,10 @@ void prepare_bootstrap_block(VCF::vcfData *VCF, paramStruct *pars, argStruct *ar
 		// more than one level; shuffle blocks within each level
 		for(int level=0; level<mS->nLevels; level++)
 		{
+
 			for(int i=0; i<mS->nIndMetadata; i++)
 			{
+					// int chosen_iblock= rand() % mS->hierArr[level]->nIndPerStrata[i];
 			}
 		}
 	}
@@ -213,8 +229,8 @@ int main(int argc, char **argv)
 
 			VCF::vcfData* VCF = VCF::vcfData_init(args, pars, sampleSt);
 
-			ASSERT(pars->n_ind_cmb>0);
-			DATA::pairStruct **pairSt = new DATA::pairStruct *[pars->n_ind_cmb];
+			ASSERT(pars->nIndCmb>0);
+			DATA::pairStruct **pairSt = new DATA::pairStruct *[pars->nIndCmb];
 
 			for (int i1 = 0; i1 < pars->nInd - 1; i1++)
 			{
@@ -253,7 +269,7 @@ int main(int argc, char **argv)
 				}
 
 				DATA::distanceMatrixStruct **dMS = new DATA::distanceMatrixStruct *[nAmovaRuns];
-				DATA::contigStruct *contigSt = NULL;
+				DATA::blobStruct *blobSt = NULL;
 
 				// prepare distance matrix dMS given analysis type (-doAMOVA)
 				switch (args->doAMOVA)
@@ -281,12 +297,12 @@ int main(int argc, char **argv)
 
 						}else{
 
-							contigSt = DATA::contigStruct_init(VCF->nContigs, args->blockSize, VCF->hdr);
-							VCF->readSites_GL(args, pars, pairSt, contigSt);
+							blobSt = DATA::blobStruct_init(VCF->nContigs, args->blockSize, VCF->hdr);
+							VCF->readSites_GL(args, pars, pairSt, blobSt);
 
 						}
 
-						dMS[0] = new DATA::distanceMatrixStruct(pars->nInd, pars->n_ind_cmb, args->do_square_distance);
+						dMS[0] = new DATA::distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
 
 
 						// [BEGIN] ----------------------- READ METADATA ------------------------- //
@@ -319,12 +335,12 @@ int main(int argc, char **argv)
 
 							fprintf(stderr,"\n[ERROR]\t-> Not implemented yet. Please use -blockSize 0\n");
 							exit(1);
-							// DATA::contigStruct *contigSt = DATA::contigStruct_init(VCF->nContigs, args->blockSize, VCF->hdr);
-							// VCF->readSites_GT(args, pars, pairSt, contigSt);
-							// DATA::contigStruct_destroy(contigSt);
+							// DATA::blobStruct *blobSt = DATA::blobStruct_init(VCF->nContigs, args->blockSize, VCF->hdr);
+							// VCF->readSites_GT(args, pars, pairSt, blobSt);
+							// DATA::blobStruct_destroy(blobSt);
 						}
 
-						dMS[0] = new DATA::distanceMatrixStruct(pars->nInd, pars->n_ind_cmb, args->do_square_distance);
+						dMS[0] = new DATA::distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
 
 						// [BEGIN] ----------------------- READ METADATA ------------------------- //
 						// If VCF/BCF input, read metadata after VCF
@@ -403,9 +419,9 @@ int main(int argc, char **argv)
 
 							fprintf(stderr, "\n\t-> Bootstrapping %d/%d", b+1, args->nBootstraps);
 
-							dMS[b+1] = new DATA::distanceMatrixStruct(pars->nInd, pars->n_ind_cmb, args->do_square_distance);
+							dMS[b+1] = new DATA::distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
 
-							prepare_bootstrap_block(VCF, pars, args, dMS[b+1], sampleSt, metadataSt, formulaSt, outSt, contigSt);
+							prepare_bootstrap_block(VCF, pars, args, dMS[b+1], sampleSt, metadataSt, formulaSt, outSt, blobSt);
 
 							// // perform AMOVA using the bootstrapped dMS
 							ASSERT(AMOVA::doAMOVA(dMS[b+1], metadataSt, sampleSt, outSt->out_amova_fs->fp, pars->LUT_indPairIdx) == 0);
@@ -415,7 +431,7 @@ int main(int argc, char **argv)
 						}
 
 
-						DATA::contigStruct_destroy(contigSt);
+						DATA::blobStruct_destroy(blobSt);
 
 						for(int b=0; b < nAmovaRuns; b++){
 							delete dMS[b];
@@ -450,7 +466,7 @@ int main(int argc, char **argv)
 
 			outSt->flushAll();
 
-			for (int i = 0; i < pars->n_ind_cmb; i++)
+			for (int i = 0; i < pars->nIndCmb; i++)
 			{
 				delete pairSt[i];
 			}

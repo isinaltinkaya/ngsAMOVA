@@ -36,6 +36,136 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2)
 }
 
 
+// void VCF::vcfData::read_GL10_to_GL3_block(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i, DATA::pairStruct **PAIRS)
+// {
+
+// 	VCF::get_data<float> lgl;
+
+// 	lgl.n = bcf_get_format_float(hdr, bcf, "GL", &lgl.data, &lgl.size_e);
+
+// 	if (lgl.n < 0)
+// 	{
+// 		fprintf(stderr, "\n[ERROR](File reading)\tVCF tag GL does not exist; will exit!\n\n");
+// 		exit(1);
+// 	}
+
+// 	// store 3 values per individual
+// 	lngl[site_i] = (double *)malloc(pars->nInd * 3 * sizeof(double));
+
+// 	int *cmbArr = (int *)malloc(pars->nIndCmb * sizeof(int));
+// 	ASSERT(cmbArr!=NULL);
+// 	for (int i = 0; i < pars->nIndCmb; i++)
+// 	{
+// 		cmbArr[i] = 0;
+// 	}
+
+// 	// TODO check why neccessary
+// 	if (bcf_is_snp(bcf))
+// 	{
+// 		char a1 = bcf_allele_charToInt[(unsigned char)bcf->d.allele[0][0]];
+// 		char a2 = bcf_allele_charToInt[(unsigned char)bcf->d.allele[1][0]];
+
+// 		for (int indi = 0; indi < pars->nInd; indi++)
+// 		{
+
+// 			for (int ix = 0; ix < 3; ix++)
+// 			{
+// 				lngl[site_i][(3 * indi) + ix] = NEG_INF;
+// 			}
+
+// 			// TODO only checking the first for now
+// 			// what is the expectation in real cases?
+// 			// should we skip sites where at least one is set to missing?
+// 			//
+// 			if (isnan(lgl.data[(10 * indi) + 0]))
+// 			{
+
+// 				// if only use sites shared across all individuals; skip site when you first encounter nan
+// 				if (args->minInd == 0)
+// 				{
+// 					free(cmbArr);
+// 					return 1;
+// 				}
+// 				else
+// 				{
+
+// 					// if there are only 2 individuals any missing will skip the site
+// 					if (pars->nInd == 2)
+// 					{
+// 						free(cmbArr);
+// 						return 1;
+// 					}
+
+// 					lgl.n_missing_ind++;
+
+// 					if (pars->nInd == lgl.n_missing_ind)
+// 					{
+// 						free(cmbArr);
+// 						return 1;
+// 					}
+
+// 					if (args->minInd != 2)
+// 					{
+// 						// skip site if minInd is defined and #non-missing inds=<nInd
+// 						if ((pars->nInd - lgl.n_missing_ind) < args->minInd)
+// 						{
+// 							// fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,pars->nInd-n_missing_ind,site);
+// 							free(cmbArr);
+// 							return 1;
+// 						}
+// 					}
+// 				}
+// 			}
+// 			else
+// 			{
+
+// 				// if not first individual, check previous individuals pairing with current ind
+// 				if (indi != 0)
+// 				{
+// 					int pidx=-1;
+// 					for (int indi2 = indi - 1; indi2 > -1; indi2--)
+// 					{
+// 						// both inds has data
+// 						pidx = pars->LUT_indPairIdx[indi2][indi];
+
+// 						if (cmbArr[pidx])
+// 						{
+// 							// append site to sharedSites shared sites list
+// 							PAIRS[pidx]->sharedSites_add(site_i);
+// 						}
+// 					}
+// 				}
+
+// 				// if not last individual, check latter individuals pairing with current ind
+// 				if (indi != pars->nInd - 1)
+// 				{
+// 					for (int indi2 = indi + 1; indi2 < pars->nInd; indi2++)
+// 					{
+// 						cmbArr[pars->LUT_indPairIdx[indi][indi2]]++;
+// 					}
+// 				}
+
+// 				// TODO we are losing precision here when we go from log2ln?
+// 				lngl[site_i][(3 * indi) + 0] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a1)]);
+// 				lngl[site_i][(3 * indi) + 1] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a2)]);
+// 				lngl[site_i][(3 * indi) + 2] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a2, a2)]);
+// 			}
+// 		}
+// 	}
+// 	else
+// 	{
+// 		// TODO check
+// 		fprintf(stderr, "\n\nHERE BCF_IS_SNP==0!!!\n\n");
+// 		exit(1);
+// 		// free(lngl[nSites]);
+// 		// lngl[nSites]=NULL;
+// 		// return 1;
+// 	}
+
+// 	free(cmbArr);
+// 	return 0;
+// }
+
 // return 1: skip site for all individuals
 int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i, DATA::pairStruct **PAIRS)
 {
@@ -54,10 +184,8 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 	lngl[site_i] = (double *)malloc(pars->nInd * 3 * sizeof(double));
 
 	int *cmbArr;
-	// ASSERT(pars->n_ind_cmb!=0);
-	cmbArr = (int *)malloc(pars->n_ind_cmb * sizeof(int));
-	ASSERT(cmbArr);
-	for (int i = 0; i < pars->n_ind_cmb; i++)
+	cmbArr = (int *)malloc(pars->nIndCmb * sizeof(int));
+	for (int i = 0; i < pars->nIndCmb; i++)
 	{
 		cmbArr[i] = 0;
 	}
@@ -65,7 +193,10 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 	// TODO check why neccessary
 	if (bcf_is_snp(bcf))
 	{
+		// reference allele
 		char a1 = bcf_allele_charToInt[(unsigned char)bcf->d.allele[0][0]];
+
+		//alternative allele
 		char a2 = bcf_allele_charToInt[(unsigned char)bcf->d.allele[1][0]];
 
 		for (int indi = 0; indi < pars->nInd; indi++)
@@ -160,9 +291,6 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 		// TODO check
 		fprintf(stderr, "\n\nHERE BCF_IS_SNP==0!!!\n\n");
 		exit(1);
-		// free(lngl[nSites]);
-		// lngl[nSites]=NULL;
-		// return 1;
 	}
 
 	free(cmbArr);
@@ -460,10 +588,10 @@ VCF::vcfData *VCF::vcfData_init(argStruct *args, paramStruct *pars, DATA::sample
 
 	pars->nInd = bcf_hdr_nsamples(VCF->hdr);
 	VCF->nInd=pars->nInd;
-	pars->n_ind_cmb = nCk(pars->nInd, 2);
-	VCF->nIndCmb=pars->n_ind_cmb;
+	pars->nIndCmb = nCk(pars->nInd, 2);
+	VCF->nIndCmb=pars->nIndCmb;
 	pars->LUT_indPairIdx = set_LUT_indPairIdx(pars->nInd);
-	fprintf(stderr, "\nNumber of individual pairs: %d\n", pars->n_ind_cmb);
+	fprintf(stderr, "\nNumber of individual pairs: %d\n", pars->nIndCmb);
 	
 
 	sampleSt->init(pars->nInd);
@@ -489,7 +617,7 @@ VCF::vcfData *VCF::vcfData_init(argStruct *args, paramStruct *pars, DATA::sample
 	// read VCF sites AND store block pointers for block bootstrapping
 	// if block block size for block bootstrapping is set
 	// collect pointers to blocks while reading the sites
-void VCF::vcfData::readSites_GL(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt, DATA::contigStruct *contigSt) 
+void VCF::vcfData::readSites_GL(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt, DATA::blobStruct *blobSt) 
 {
 	/*
 	* [START] Reading sites
@@ -557,10 +685,10 @@ void VCF::vcfData::readSites_GL(argStruct *args, paramStruct *pars, DATA::pairSt
 		//  fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block last_bi %d\n\n",bcf->pos,ci,last_bi);
 
 		// if current pos is bigger than contigBlockStarts, add last_ptr to contigBlockStartPtrs
-		if (bcf->pos > contigSt->contigBlockStarts[ci][last_bi])
+		if (bcf->pos > blobSt->contigBlockStarts[ci][last_bi])
 		{
-			// fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block %d contigSt->contigBlockStarts[%d][%d] %d\n\n",bcf->pos,ci,last_bi,ci,last_bi,contigSt->contigBlockStarts[ci][last_bi]);
-			contigSt->contigBlockStartPtrs[ci][last_bi] = last_ptr;
+			// fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block %d blobSt->contigBlockStarts[%d][%d] %d\n\n",bcf->pos,ci,last_bi,ci,last_bi,blobSt->contigBlockStarts[ci][last_bi]);
+			blobSt->contigBlockStartPtrs[ci][last_bi] = last_ptr;
 			last_bi++;
 		}
 		pars->nSites++;
@@ -691,138 +819,3 @@ void VCF::vcfData::readSites_GT(argStruct *args, paramStruct *pars, DATA::pairSt
 
 
 }
-
-
-//readSites
-
-
-// 	/*
-// 		* [START] Reading sites
-// 		*
-// 		* nSites=0; totSites=0
-// 		*
-// 		* if minInd is set
-// 		* 		nSites==where minInd threshold can be passed
-// 		* 		totSites==all sites processed
-// 		*
-// 		*/
-
-// 	int last_ci = -1;
-// 	int last_bi = -1;
-// 	double *last_ptr = NULL;
-
-
-// 	// starts to diverge here
-// 	/*
-// 		* lngl[nSites][nInd*10*double]
-// 		*/
-// 	double **lngl = NULL;
-
-// 	/*
-// 		* SFS_GT3[n_pairs][9+1]
-// 		* last element contains total number of sites shared
-// 		*/
-// 	int **SFS_GT3 = NULL;
-
-
-// 	while (bcf_read(in_fp, hdr, bcf) == 0)
-// 	{
-
-// 		if (bcf->rlen != 1)
-// 		{
-// 			fprintf(stderr, "\n[ERROR](File reading)\tVCF file REF allele with length of %ld is currently not supported, will exit!\n\n", bcf->rlen);
-// 			exit(1);
-// 		}
-
-// 		if (args->doAMOVA == 1 || args->doAMOVA == 3 || args->doAMOVA == 0)
-// 		{
-// 			while ((int)pars->nSites >= buf_size)
-// 			{
-
-// 				buf_size = buf_size * 2;
-
-// 				lngl = (double **)realloc(lngl, buf_size * sizeof(*lngl));
-// 			}
-
-// 			if (VCF::read_GL10_to_GL3(hdr, bcf, lngl, pars, args, pars->nSites, pairSt) != 0)
-// 			{
-// 				fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
-
-// 				pars->totSites++;
-
-// 				// next loop will skip this and use the same site_i
-// 				free(lngl[pars->nSites]);
-// 				lngl[pars->nSites] = NULL;
-
-// 				continue;
-// 			}
-// 		}
-
-// 		// if doAMOVA==3 and site is skipped for gle; it will be skipped for gt, too
-
-// 		if (args->doAMOVA == 2 || args->doAMOVA == 3)
-// 		{
-
-// 			if (args->gl2gt == 1)
-// 			{
-// 				ASSERT(VCF::GT_to_i2i_SFS(hdr, bcf, SFS_GT3, pars, args) == 0);
-// 			}
-// 			else if (args->gl2gt < 0)
-// 			{
-// 				ASSERT(VCF::GT_to_i2i_SFS(hdr, bcf, SFS_GT3, pars, args) == 0);
-// 			}
-// 			else
-// 			{
-// 				exit(1);
-// 			}
-// 		}
-
-// 		int ci = bcf->rid;
-
-// 		// if block block size for block bootstrapping is set
-// 		// collect pointers to blocks while reading the sites
-// 		if (args->blockSize != 0)
-// 		{
-
-// 			// if first contig
-// 			if (last_ci == -1)
-// 			{
-// 				last_ci = ci;
-// 				last_bi = 0;
-// 			}
-
-// 			// if contig changes, reset block index
-// 			if (ci != last_ci)
-// 			{
-// 				last_ci = ci;
-// 				last_bi = 0;
-// 			}
-
-// 			last_ptr = lngl[pars->nSites];
-
-// 			// calculate which block first site belongs to using contigLengths and contigNBlocks
-// 			//  last_bi = (int)floor((double)bcf->pos/(double)args->blockSize);
-// 			//  fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block last_bi %d\n\n",bcf->pos,ci,last_bi);
-
-// 			// if current pos is bigger than contigBlockStarts, add last_ptr to contigBlockStartPtrs
-// 			if (bcf->pos > contigSt->contigBlockStarts[ci][last_bi])
-// 			{
-// 				// fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block %d contigSt->contigBlockStarts[%d][%d] %d\n\n",bcf->pos,ci,last_bi,ci,last_bi,contigSt->contigBlockStarts[ci][last_bi]);
-// 				contigSt->contigBlockStartPtrs[ci][last_bi] = last_ptr;
-// 				last_bi++;
-// 			}
-// 		}
-// 		pars->nSites++;
-// 		pars->totSites++;
-
-// #if 0
-// 	fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",pars->nSites);
-// 	fprintf(stderr,"%d\n\n",pars->nSites);
-// 	fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu) totSites:%d\n\n",pars->nSites,bcf->pos,bcf->pos+1,pars->totSites);
-// #endif
-// 	}
-// 	/*
-// 	[END] Read sites
-// 	*/
-
-// 	fprintf(stderr, "\n\t-> Finished reading sites\n");

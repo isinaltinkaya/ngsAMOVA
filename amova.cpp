@@ -258,7 +258,7 @@ int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DA
 		// use approximation
 	}
 
-	// aS->print_as_table(stderr,mS);
+	aS->print_as_table(stderr,mS);
 	aS->print_as_csv(out_amova_ff,mS);
 
 	delete aS;

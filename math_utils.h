@@ -23,6 +23,9 @@
 #define LOG2LN(x) (x/M_LOG10E)
 
 
+#define LN2LOG(x) (x*M_LOG10E)
+
+
 void gl_log10(int base, double errate, double *like);
 
 

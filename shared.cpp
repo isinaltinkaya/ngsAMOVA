@@ -381,9 +381,9 @@ DATA::distanceMatrixStruct *DATA::distanceMatrixStruct_read(FILE *in_dm_fp, para
 			tok = strtok(NULL, ", \n");
 		}
 	}
-	pars->n_ind_cmb = n_vals;
+	pars->nIndCmb = n_vals;
 
-	distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->n_ind_cmb, args->do_square_distance);
+	distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
 	dMS->isSquared = args->do_square_distance;
 
 	if (args->do_square_distance == 1)
@@ -767,18 +767,15 @@ argStruct *argStruct_init()
 	args->hasColNames = 1;
 
 	args->command = NULL;
-
 	args->blockSize = 0;
 
 	args->doAMOVA = 0;
 	args->doEM = 0;
 
 	args->mThreads = 0;
-
 	args->mEmIter = 1e2;
 
 	args->tole = 1e-10;
-
 	args->doTest = 0;
 
 	args->doDist = -1;
@@ -828,12 +825,18 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->out_fn = strdup(val);
 		else if (strcasecmp("-o", arv) == 0)
 			args->out_fn = strdup(val);
+
+
+		// read block size as float and convert to int
+		// this is to allow for the use of scientific notation (e.g. 1e6)
 		else if (strcasecmp("-bs", arv) == 0)
-			args->blockSize = atoi(val);
+			args->blockSize = (int) atof(val);
 		else if (strcasecmp("-bSize", arv) == 0)
-			args->blockSize = atoi(val);
+			args->blockSize = (int) atof(val);
 		else if (strcasecmp("-nb", arv) == 0)
-			args->nBootstraps = atoi(val);
+			args->nBootstraps = (int) atof(val);
+
+
 		else if (strcasecmp("-f", arv) == 0)
 		{
 			args->formula = strdup(val);
@@ -1174,7 +1177,7 @@ paramStruct *paramStruct_init(argStruct *args)
 	pars->totSites = 0;
 
 	pars->LUT_indPairIdx = NULL;
-	pars->n_ind_cmb = 0;
+	pars->nIndCmb = 0;
 	pars->nInd = 0;
 
 	pars->DATETIME = NULL;
@@ -1369,7 +1372,7 @@ void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, argStruct *a
 	fprintf(out_sfs_fs->fp, "\n");
 }
 
-void DATA::contigStruct_destroy(DATA::contigStruct *c){
+void DATA::blobStruct_destroy(DATA::blobStruct *c){
 
 	for (size_t i = 0; i < (size_t) c->nContigs; i++)
 	{
@@ -1386,9 +1389,9 @@ void DATA::contigStruct_destroy(DATA::contigStruct *c){
 	delete c;
 }
 
-DATA::contigStruct *DATA::contigStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *hdr){
+DATA::blobStruct *DATA::blobStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *hdr){
 
-	DATA::contigStruct *c= new DATA::contigStruct();
+	DATA::blobStruct *c= new DATA::blobStruct();
 
 	c->nContigs = (size_t)nContigs;
 	c->contigNames = (char **)malloc(nContigs * sizeof(char *));
