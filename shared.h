@@ -126,6 +126,10 @@ const double NEG_INF = -std::numeric_limits<double>::infinity();
 
 using size_t = decltype(sizeof(int));
 
+
+int extractDigits(int num, int digits);
+
+
 /*
  * @typedef
  * @abstract argStruct - argument structure
@@ -858,6 +862,7 @@ namespace DATA
 			}
 			return res;
 		}
+
 
 		size_t initKey()
 		{

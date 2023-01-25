@@ -52,6 +52,21 @@ int nCk_idx(int nInd, int i1, int i2);
  */
 int** set_LUT_indPairIdx(int nInd);
 
+/*
+ * rand()
+ * 		generates a random integer between 0 (incl) and RAND_MAX (incl)
+ * 
+ *
+ * rand() / (RAND_MAX + 1.0)
+ * 		generates a floating point number [0,1)
+ * 		max value is RAND_MAX / (RAND_MAX + 1.0)
+ * 		which is 0.99996... (for RAND_MAX = 32767)
+ * 		guaranteed min value for RAND_MAX is 32767
+ *
+ */
+
+// int sample_
+
 namespace MATH {
 
 	double SUM(double M[3][3]);
@@ -71,17 +86,7 @@ namespace MATH {
 
 	//ESTIMATE?
 	namespace EST{
-		//TODO do these more efficiently
 
-// double A=M[0][0];
-// double D=M[0][1];
-// double G=M[0][2];
-// double B=M[1][0];
-// double E=M[1][1];
-// double H=M[1][2];
-// double C=M[2][0];
-// double F=M[2][1];
-// double I=M[2][2];
 		double Sij(double M[3][3]);
 		double Fij(double M[3][3]);
 		double IBS0(double M[3][3]);

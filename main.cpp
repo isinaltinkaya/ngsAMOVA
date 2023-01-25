@@ -152,7 +152,7 @@ void prepare_bootstrap_block(VCF::vcfData *VCF, paramStruct *pars, argStruct *ar
 					// choose a random individual among the individual set in the shuffling level
 					// then set the block to the chosen individual's block at the same position
 					// iblock= block from an individual at this_block
-					int chosen_iblock= rand() % mS->nIndMetadata;
+					int chosen_iblock =  1 + int(mS->nIndMetadata * (rand() / (RAND_MAX + 1.0)));
 					fprintf(stderr, "\n\n\n\n######## chosen_block: %d", chosen_iblock);
 
 
@@ -195,6 +195,7 @@ int main(int argc, char **argv)
 	}
 
 	argStruct *args = argStruct_get(--argc, ++argv);
+
 
 	if (args != NULL)
 	{
