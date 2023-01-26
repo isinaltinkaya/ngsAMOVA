@@ -35,15 +35,15 @@ using size_t = decltype(sizeof(int));
 
 //TODO
 // extract digits using bit masking
-int extractDigits(int num, int digits)
-{
-	uint32_t x = 100101;
-	uint32_t y = 100102;
-	for(int i=0;i<sizeof(uint32_t);i++){
-		fprintf(stderr,"\n\n\n\n -> x: %d y: %d\n",(x>>i)&0xF,(y>>i)&0xF);
-	}
-	exit(0);
-}
+// int extractDigits(int num, int digits)
+// {
+// 	uint32_t x = 100101;
+// 	uint32_t y = 100102;
+// 	for(int i=0;i<sizeof(uint32_t);i++){
+// 		fprintf(stderr,"\n\n\n\n -> x: %d y: %d\n",(x>>i)&0xF,(y>>i)&0xF);
+// 	}
+// 	exit(0);
+// }
 
 
 
@@ -738,8 +738,11 @@ void usage(FILE *fp)
 			"\t-seed\n"
 			"\t-doAMOVA\n"
 			"\t-printMatrix\n"
+
+
 			"\t-doDist\n"
 			"\t-sqDist (default: 1)\n"
+
 			"\t-minInd\n"
 			"\t-doTest\n"
 			"\t-maxIter/maxEmIter/mEmIter\n"
@@ -754,13 +757,13 @@ void usage(FILE *fp)
 	// fprintf(fp, "  -in <vcf file>		: input vcf file\n");
 	// fprintf(fp, "  -out <output file>		: output file\n");
 	// fprintf(fp, "  -doAMOVA <0/1>		: do AMOVA (default: 1)\n");
-	// fprintf(fp, "  -doTest <0/1>		: do EM test (default: 1)\n");
+	// fprintf(fp, "  -doTest <0/1>		: do EM test (default: 
 	// fprintf(fp, "  -printMatrix <0/1>		: print distance matrix (default: 0)\n");
 	// fprintf(fp, "  -printSFS <0/1>		: print SFS (default: 0)\n");
 
 	//
 	//
-	// exit(0);
+	exit(0);
 }
 
 /// @brief argStruct_init - initialize the argStruct structure
@@ -802,6 +805,7 @@ argStruct *argStruct_init()
 	args->isTest = 0;
 	args->minInd = -1;
 
+	args->printDev= -1;
 
 
 	args->seed = -1;
@@ -841,6 +845,10 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->out_fn = strdup(val);
 		else if (strcasecmp("-o", arv) == 0)
 			args->out_fn = strdup(val);
+
+		else if (strcasecmp("-dev", arv) == 0)
+			args->printDev = atoi(val);
+
 
 
 		// read block size as float and convert to int
@@ -966,14 +974,14 @@ argStruct *argStruct_get(int argc, char **argv)
 	{
 		if (args->formula == NULL)
 		{
-			fprintf(stderr, "\nFormula not defined, will use all columns in Metadata file %s assuming they are ordered as hierarchical levels.\n", args->in_mtd_fn);
+			fprintf(stderr, "\nAMOVA formula not defined, will use all columns in Metadata file %s assuming they are ordered as hierarchical levels.\n", args->in_mtd_fn);
 		}
 		else
 		{
-			fprintf(stderr, "\nFormula is defined as %s; will use the formula to define hierarchical structure in Metadata file %s.\n", args->formula, args->in_mtd_fn);
+			fprintf(stderr, "\nAMOVA formula is defined as %s; will use the formula to define hierarchical structure in Metadata file %s.\n", args->formula, args->in_mtd_fn);
 			if (args->hasColNames == 0)
 			{
-				fprintf(stderr, "\n[ERROR]\tFormula is defined but -hasColnames is set to 0. Metadata file must have column names if formula is defined.\n");
+				fprintf(stderr, "\n[ERROR]\tAMOVA formula is defined but -hasColnames is set to 0. Metadata file must have column names if formula is defined.\n");
 			}
 		}
 	}
@@ -1061,7 +1069,7 @@ argStruct *argStruct_get(int argc, char **argv)
 			else
 			{
 
-				fprintf(stderr, "\n\t-> -doAMOVA 1; will use 10 genotype likelihoods from GL tag.\n");
+				fprintf(stderr, "\n[INFO]\t-> -doAMOVA 1; will use 10 genotype likelihoods from VCF GL tag.\n");
 			}
 			break;
 		}
@@ -1075,7 +1083,7 @@ argStruct *argStruct_get(int argc, char **argv)
 			else
 			{
 
-				fprintf(stderr, "\n\t-> -doAMOVA 2; will use genotypes from GT tag.\n");
+				fprintf(stderr, "\n[INFO]\t-> -doAMOVA 2; will use genotypes from VCF GT tag.\n");
 			}
 			
 			if (args->doEM != 0){
@@ -1100,8 +1108,16 @@ argStruct *argStruct_get(int argc, char **argv)
 			}
 			else
 			{
-				fprintf(stderr, "\n\t-> -doAMOVA 3; will do both 1 and 2.\n");
+				fprintf(stderr, "\n[INFO]\t-> -doAMOVA 3; will do both -doAMOVA 1 and -doAMOVA 2.\n");
 			}
+			break;
+		}
+
+		// ---------------------- doAMOVA NOT in {0,1,2,3} ---------------------- //
+		default:
+		{
+			fprintf(stderr, "\n[ERROR]\t-> -doAMOVA %d not recognized\n", args->doAMOVA);
+			exit(1);
 			break;
 		}
 	}
@@ -1126,8 +1142,10 @@ argStruct *argStruct_get(int argc, char **argv)
 			}
 		}
 
+	}else if(args->nBootstraps<0){
+		fprintf(stderr, "\n[ERROR]\t-> -nBootstraps should be a positive integer or 0. You entered a negative value: %d.\n", args->nBootstraps);
+		exit(1);
 	}else{
-
 		if(args->blockSize!=0){
 			fprintf(stderr, "\n[ERROR] -blockSize is set to %d, but -nBootstraps is not set. Define both to perform block bootstrapping.\n", args->blockSize);
 			exit(1);
@@ -1192,11 +1210,15 @@ paramStruct *paramStruct_init(argStruct *args)
 	// total number of sites processed
 	pars->totSites = 0;
 
-	pars->LUT_indPairIdx = NULL;
+	pars->LUT_inds2idx = NULL;
+	pars->LUT_idx2inds = NULL;
+
 	pars->nIndCmb = 0;
 	pars->nInd = 0;
 
 	pars->DATETIME = NULL;
+
+	pars->nAmovaRuns = 0;
 
 	// pars->pos = NULL;
 	// pars->major = NULL;
@@ -1229,15 +1251,20 @@ void paramStruct_destroy(paramStruct *pars)
 	// delete[] pars->anc;
 	// delete[] pars->der;
 
-	delete pars->DATETIME;
-	pars->DATETIME = NULL;
+	FREE(pars->DATETIME);
 
 	for (int i = 0; i < pars->nInd; i++)
 	{
-		free(pars->LUT_indPairIdx[i]);
-		pars->LUT_indPairIdx[i] = NULL;
+		FREE(pars->LUT_inds2idx[i]);
 	}
-	free(pars->LUT_indPairIdx);
+
+    for (int i = 0; i < pars->nIndCmb; i++)
+    {
+        FREE(pars->LUT_idx2inds[i]);
+    }
+
+	FREE(pars->LUT_inds2idx);
+	FREE(pars->LUT_idx2inds);
 
 	delete pars;
 }

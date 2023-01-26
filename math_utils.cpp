@@ -32,23 +32,35 @@ int nCk_idx(int nInd, int i1, int i2)
 
 /// @brief prepare LUT for pair indices
 /// @param nInd number of individuals
-int **set_LUT_indPairIdx(int nInd)
+/// @return 2 LUTs
+/// 		1. LUT_inds2idx - lookup table for individual pair to pair's index
+/// 				- LUT_inds2idx[i1][i2] = index of pair (i1,i2)
+/// 		2. LUT_idx2inds - lookup table for pair's index to individual pair
+/// 				- LUT_idx2inds[idx][0] = i1
+/// 				- LUT_idx2inds[idx][1] = i2
+void set_LUT_inds2idx_2way(int nInd, int nIndCmb, int** LUT_inds2idx, int** LUT_idx2inds)
 {
-	int **LUT = (int **)malloc(nInd * sizeof(int *));
-	for (int i = 0; i < nInd; i++)
-	{
-		LUT[i] = (int *)malloc(nInd * sizeof(int));
-	}
-
 	for (int i1 = 0; i1 < nInd - 1; i1++)
 	{
 		for (int i2 = i1 + 1; i2 < nInd; i2++)
 		{
-			LUT[i1][i2] = nCk_idx(nInd, i1, i2);
+			int idx = nCk_idx(nInd, i1, i2);
+			LUT_inds2idx[i1][i2] = idx;
+			LUT_idx2inds[idx][0] = i1;
+			LUT_idx2inds[idx][1] = i2;
 		}
 	}
-	return LUT;
 }
+	// for (int i1 = 0; i1 < nInd - 1; i1++)
+	// {
+	// 	for (int i2 = i1 + 1; i2 < nInd; i2++)
+	// 	{
+	// 		int idx = nCk_idx(nInd, i1, i2);
+	// 		LUTs[0][i1][i2] = idx;
+	// 		LUTs[1][idx][0] = i1;
+	// 		LUTs[1][idx][1] = i2;
+	// 	}
+	// }
 
 
 // calculations based on 3x3 matrix

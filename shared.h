@@ -220,7 +220,14 @@ int extractDigits(int num, int digits);
  * @field mEmIter		maximum number of iterations allowed for em
  * 
  * @field seed			random seed for bootstrapping
+ * 
  * @field nBootstraps	number of bootstraps to be performed for AMOVA significance test
+ * 
+ * 						bootstraps[0] = original data
+ * 						bootstraps[1..nBootstraps] = bootstrapped data
+ * 							size is nBootstraps+1
+ * 
+ * 						
  *
  */
 typedef struct
@@ -250,6 +257,8 @@ typedef struct
 	int do_square_distance;
 	int minInd;
 
+	int printDev;
+
 	int hasColNames;
 
 	double tole;
@@ -278,7 +287,7 @@ void argStruct_print(FILE* fp, argStruct *arg);
  * @field nInd					number of individuals
  * @field pos					position
  *
- * @field LUT_indPairIdx		lookup table for mapping two individuals
+ * @field LUT_inds2idx		lookup table for mapping two individuals
  * 								to their pair index
  * @field nIndCmb				number of unique pairwise individual combinations
  *
@@ -298,8 +307,11 @@ typedef struct
 
 	// int *pos;
 
-	int **LUT_indPairIdx;
+	int **LUT_inds2idx;
+	int **LUT_idx2inds;
 	int nIndCmb;
+
+	int nAmovaRuns;
 
 	// char *major;
 	// char *minor;
@@ -319,8 +331,23 @@ typedef struct
 		{
 			for (int i2 = i1 + 1; i2 < nInd; i2++)
 			{
-				fprintf(stderr, "\n%i %i %i\n", LUT_indPairIdx[i1][i2], i1, i2);
+				fprintf(stderr, "\n%i %i %i\n", LUT_inds2idx[i1][i2], i1, i2);
 			}
+		}
+	}
+
+
+	void init_LUTs(){
+		LUT_idx2inds = (int **)malloc(nIndCmb * sizeof(int *));
+		LUT_inds2idx = (int **)malloc(nInd * sizeof(int *));
+		for (int i = 0; i < nIndCmb; i++){
+
+			LUT_idx2inds[i] = (int *)malloc(2 * sizeof(int));
+		}
+
+		for (int i = 0; i < nInd; i++)
+		{
+			LUT_inds2idx[i] = (int *)malloc(nInd * sizeof(int));
 		}
 	}
 
@@ -371,8 +398,8 @@ namespace DATA
 		}
 
 	} formulaStruct;
-	formulaStruct *formulaStruct_get(const char *formula);
 
+	formulaStruct *formulaStruct_get(const char *formula);
 
 	/// @brief blobStruct - structure for storing blocks of contig data
 	typedef struct blobStruct
@@ -413,8 +440,6 @@ namespace DATA
 	typedef struct pairStruct
 	{
 
-		int i1;
-		int i2;
 		int idx;
 
 		// number of shared sites
@@ -424,6 +449,7 @@ namespace DATA
 		int *sharedSites = NULL;
 		size_t _sharedSites = 1024;
 
+		paramStruct *pars;
 
 		double d;
 		int n_em_iter;
@@ -435,13 +461,12 @@ namespace DATA
 
 		double *SFS = NULL;
 
-		pairStruct()
+		pairStruct(paramStruct *pars_, int pidx)
 		{
+			idx=pidx;
 			d = 0.0;
 			n_em_iter = 0;
-			i1=-1;
-			i2=-1;
-			idx=-1;
+			pars = pars_;
 			sharedSites = (int *)malloc(_sharedSites * sizeof(int));
 			for (size_t i = 0; i < _sharedSites; i++)
 			{
@@ -463,12 +488,12 @@ namespace DATA
 
 		void print(FILE *fp, bcf_hdr_t *hdr)
 		{
-			fprintf(fp, "%d,%d,%d,%s,%s", i1, i2, idx, hdr->samples[i1], hdr->samples[i2]);
+			fprintf(fp, "%d,%d,%d,%s,%s", pars->LUT_idx2inds[idx][0], pars->LUT_idx2inds[idx][1], idx, hdr->samples[pars->LUT_idx2inds[idx][0]],hdr->samples[pars->LUT_idx2inds[idx][1]]);
 		}
 
 		void print(FILE *fp)
 		{
-			fprintf(fp, "%d,%d,%d", i1, i2, idx);
+			fprintf(fp, "%d,%d,%d", pars->LUT_idx2inds[idx][0], pars->LUT_idx2inds[idx][1], idx);
 		}
 
 		void sharedSites_add(size_t site_i)
@@ -490,6 +515,7 @@ namespace DATA
 				sharedSites[i] = -1;
 			}
 		}
+
 
 	} pairStruct;
 
@@ -1108,6 +1134,10 @@ namespace DATA
 
 	// read distance matrix from distance matrix file
 	distanceMatrixStruct *distanceMatrixStruct_read(FILE *in_dm_fp, paramStruct *pars, argStruct *args);
+
+	// prepare distance matrix using genotype likelihoods and EM algorithm
+	distanceMatrixStruct *distanceMatrixStruct_get(sampleStruct *SAMPLES, formulaStruct *FORMULA, paramStruct *pars, argStruct *args);
+
 };
 
 namespace IO
@@ -1170,6 +1200,7 @@ namespace IO
 		outputStruct *out_sfs_fs = NULL;
 		outputStruct *out_dm_fs = NULL;
 		outputStruct *out_amova_fs = NULL;
+		outputStruct *out_dev_fs = NULL;
 
 		outFilesStruct(argStruct *args)
 		{
@@ -1190,6 +1221,10 @@ namespace IO
 			{
 				out_amova_fs = new outputStruct(args->out_fn, ".amova.csv");
 			}
+			if (args->printDev > 0)
+			{
+				out_dev_fs = new outputStruct(args->out_fn, ".dev.csv");
+			}
 		}
 
 		~outFilesStruct()
@@ -1198,6 +1233,7 @@ namespace IO
 			delete out_dm_fs;
 			delete out_sfs_fs;
 			delete out_amova_fs;
+			delete out_dev_fs;
 		}
 
 		void flushAll()
@@ -1217,6 +1253,10 @@ namespace IO
 			if (out_amova_fs != NULL)
 			{
 				out_amova_fs->flush();
+			}
+			if (out_dev_fs != NULL)
+			{
+				out_dev_fs->flush();
 			}
 		}
 
@@ -1267,20 +1307,20 @@ typedef struct threadStruct
 
 	FILE *out_sfs_fp;
 
-	// TODO use them globally?
-	double tole;
-	int mEmIter;
+	argStruct const *args;
+	paramStruct const *pars;
 
 	size_t nSites;
 
-	threadStruct(DATA::pairStruct *tPair, double **lngl, size_t nSites_t, IO::outputStruct *out_sfs_fs, argStruct *args)
+	threadStruct(DATA::pairStruct *tPair, double **lngl, IO::outputStruct *out_sfs_fs, argStruct *args_, paramStruct *pars_)
 	{
 		pair = tPair;
 		lngls = lngl;
-		nSites = nSites_t;
+
 		out_sfs_fp = out_sfs_fs->fp;
-		tole = args->tole;
-		mEmIter = args->mEmIter;
+		args = args_;
+		pars = pars_;
+		nSites = pars->nSites;
 	}
 
 } threadStruct;

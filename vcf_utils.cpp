@@ -126,7 +126,7 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2)
 // 					for (int indi2 = indi - 1; indi2 > -1; indi2--)
 // 					{
 // 						// both inds has data
-// 						pidx = pars->LUT_indPairIdx[indi2][indi];
+// 						pidx = pars->LUT_inds2idx[indi2][indi];
 
 // 						if (cmbArr[pidx])
 // 						{
@@ -141,7 +141,7 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2)
 // 				{
 // 					for (int indi2 = indi + 1; indi2 < pars->nInd; indi2++)
 // 					{
-// 						cmbArr[pars->LUT_indPairIdx[indi][indi2]]++;
+// 						cmbArr[pars->LUT_inds2idx[indi][indi2]]++;
 // 					}
 // 				}
 
@@ -260,7 +260,7 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 					for (int indi2 = indi - 1; indi2 > -1; indi2--)
 					{
 						// both inds has data
-						pidx = pars->LUT_indPairIdx[indi2][indi];
+						pidx = pars->LUT_inds2idx[indi2][indi];
 
 						if (cmbArr[pidx])
 						{
@@ -275,7 +275,7 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 				{
 					for (int indi2 = indi + 1; indi2 < pars->nInd; indi2++)
 					{
-						cmbArr[pars->LUT_indPairIdx[indi][indi2]]++;
+						cmbArr[pars->LUT_inds2idx[indi][indi2]]++;
 					}
 				}
 
@@ -374,7 +374,7 @@ int VCF::GL_to_GT_1_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *par
 
 			int32_t *ptr1 = new_gt.data + i1 * new_gt.ploidy;
 			int32_t *ptr2 = new_gt.data + i2 * new_gt.ploidy;
-			int pair_idx = pars->LUT_indPairIdx[i1][i2];
+			int pair_idx = pars->LUT_inds2idx[i1][i2];
 
 			int gti1 = 0;
 			int gti2 = 0;
@@ -507,7 +507,7 @@ int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars
 				//  skip the pair
 				continue;
 			}
-			int pair_idx = pars->LUT_indPairIdx[i1][i2];
+			int pair_idx = pars->LUT_inds2idx[i1][i2];
 
 			int gti1 = 0;
 			int gti2 = 0;
@@ -590,7 +590,13 @@ VCF::vcfData *VCF::vcfData_init(argStruct *args, paramStruct *pars, DATA::sample
 	VCF->nInd=pars->nInd;
 	pars->nIndCmb = nCk(pars->nInd, 2);
 	VCF->nIndCmb=pars->nIndCmb;
-	pars->LUT_indPairIdx = set_LUT_indPairIdx(pars->nInd);
+
+
+	pars->init_LUTs();
+
+	set_LUT_inds2idx_2way(pars->nInd, pars->nIndCmb, pars->LUT_inds2idx, pars->LUT_idx2inds);
+	
+
 	fprintf(stderr, "\nNumber of individual pairs: %d\n", pars->nIndCmb);
 	
 
@@ -609,6 +615,7 @@ VCF::vcfData *VCF::vcfData_init(argStruct *args, paramStruct *pars, DATA::sample
 		VCF->set_SFS_GT3();
 	}
 	
+
 
 	return VCF;
 }
@@ -713,8 +720,8 @@ void VCF::vcfData::readSites_GL(argStruct *args, paramStruct *pars, DATA::pairSt
 
 void VCF::vcfData::readSites_GL(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt)
 {
+	// not saving blob information for block bootstrapping
 
-	// no block bootstrapping
 	while (bcf_read(in_fp, hdr, bcf) == 0)
 	{
 
@@ -746,17 +753,8 @@ void VCF::vcfData::readSites_GL(argStruct *args, paramStruct *pars, DATA::pairSt
 
 	}
 
-
 	nSites = pars->nSites;
 	totSites = pars->totSites;
-#if 0
-	fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",pars->nSites);
-	fprintf(stderr,"%d\n\n",pars->nSites);
-	fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu) totSites:%d\n\n",pars->nSites,bcf->pos,bcf->pos+1,pars->totSites);
-#endif
-	/*
-	[END] Read sites
-	*/
 
 	fprintf(stderr, "\n\t-> Finished reading sites\n");
 

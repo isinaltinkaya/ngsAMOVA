@@ -17,28 +17,29 @@ void* t_EM_2DSFS_GL3(void* p){
 }
 
 
-/// @brief EM algorithm for 2DSFS from 3 GL values
+/// @brief EM algorithm for 3x3 PGC (pairwise genotype categories)
+/// 	2DSFS from 3 GL values
 /// @param THREAD 
 /// @return 
 int EM_2DSFS_GL3(threadStruct* THREAD){
 
-
 	double **lngls=THREAD->lngls;
 	DATA::pairStruct* pair=THREAD->pair;
-	double tole=THREAD->tole;
-	int mEmIter=THREAD->mEmIter;
+	const double tole = THREAD->args->tole;
+	const int mEmIter=THREAD->args->mEmIter;
 
+	const int i1=pair->pars->LUT_idx2inds[pair->idx][0];
+	const int i2=pair->pars->LUT_idx2inds[pair->idx][1];
 
-	// fprintf(stderr,"\nEM begin for ind1:%d and ind2:%d \n",pair->i1,pair->i2);
+	// fprintf(stderr,"\nEM begin for ind1:%d and ind2:%d \n",i1,i2);
 
 	double temp;
 	double sum;
 	double d;
 
-
 	// initial guess: 1/9 flat prior
 	for (int i=0; i<9; i++){
-		pair->SFS[i]=(double) 1/ (double) 9;
+		pair->SFS[i]=(double) 1 / (double) 9;
 	}
 
 	do{
@@ -46,7 +47,6 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 		if(pair->n_em_iter >= mEmIter){
 			break;
 		}
-
 
 		double TMP[3][3];
 		// double *TMP;
@@ -72,7 +72,7 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 			//lngls3 (anc,anc),(anc,der),(der,der)
 			for(int i=0;i<3;i++){
 				for(int j=0;j<3;j++){
-					TMP[i][j] = pair->SFS[i*3+j] * exp( lngls[s][(3*pair->i1)+i] + lngls[s][(3*pair->i2)+j]);
+					TMP[i][j] = pair->SFS[i*3+j] * exp( lngls[s][(3*i1)+i] + lngls[s][(3*i2)+j]);
 					sum += TMP[i][j];
 				}
 			}
@@ -110,6 +110,117 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 }
 
 
+/// @brief thread handler for EM_2DSFS_GL3 DEV version
+/// @param p 
+/// @return 
+void* DEV_t_EM_2DSFS_GL3(void* p){
+
+	threadStruct* THREAD= (threadStruct*) p;
+
+	if (DEV_EM_2DSFS_GL3(THREAD) != 0){
+		fprintf(stderr,"\n[ERROR] Problem with EM\n");
+		exit(1);
+	}
+	return 0;
+}
+
+
+/// @brief EM algorithm for 3x3 PGC (pairwise genotype categories)
+/// 		Version: Development (Print per iteration values)
+/// @param THREAD 
+/// @return 
+int DEV_EM_2DSFS_GL3(threadStruct* THREAD){
+
+	double **lngls=THREAD->lngls;
+	DATA::pairStruct* pair=THREAD->pair;
+	const double tole = THREAD->args->tole;
+	const int mEmIter=THREAD->args->mEmIter;
+
+
+	const int i1=pair->pars->LUT_idx2inds[pair->idx][0];
+	const int i2=pair->pars->LUT_idx2inds[pair->idx][1];
+
+	double temp;
+	double sum;
+	double d;
+
+
+	// initial guess: 1/9 flat prior
+	for (int i=0; i<9; i++){
+		pair->SFS[i]=(double) 1 / (double) 9;
+	}
+
+	do{
+		
+		if(pair->n_em_iter >= mEmIter){
+			break;
+		}
+
+		double TMP[3][3];
+		// double *TMP;
+		double ESFS[3][3];
+		// double *ESFS;
+
+		// for (int i=0; i<9; i++){
+			// ESFS[i]=0.0;
+		// }
+
+			for(int i=0;i<3;i++){
+				for(int j=0;j<3;j++){
+					ESFS[i][j]=0.0;
+				}
+			}
+
+		//loop through shared sites for pair
+		for(size_t sn=0; sn<pair->snSites; sn++){
+			size_t s=pair->sharedSites[sn];
+			sum=0.0;
+
+			// SFS * ind1 * ind2
+			//lngls3 (anc,anc),(anc,der),(der,der)
+			for(int i=0;i<3;i++){
+				for(int j=0;j<3;j++){
+					TMP[i][j] = pair->SFS[i*3+j] * exp( lngls[s][(3*i1)+i] + lngls[s][(3*i2)+j]);
+					sum += TMP[i][j];
+				}
+			}
+
+			for(int i=0;i<3;i++){
+				for(int j=0;j<3;j++){
+					ESFS[i][j] += TMP[i][j]/sum;
+				}
+			}
+		}
+
+		d=0.0;
+		for(int i=0;i<3;i++){
+			for(int j=0;j<3;j++){
+				temp=ESFS[i][j]/(double)pair->snSites;
+				d += fabs(temp - pair->SFS[i*3+j]);
+				pair->SFS[i*3+j]=temp;
+
+			}
+		}
+
+		pair->n_em_iter++;
+
+		// IO::print::Array(stdout,pair->SFS, 3, 3, ',');
+
+#if 1
+		fprintf(stdout,"%d,%d,",pair->idx,pair->n_em_iter);
+		fprintf(stdout,"%.*f,",(int)DBL_MAXDIG10, (double) SQUARE(MATH::EST::Dij(pair->SFS)));
+		fprintf(stdout,"%.*f,",(int)DBL_MAXDIG10, log10(d));
+		fprintf(stdout,"\n");
+#endif
+
+	}while(d>tole);
+
+	pair->d=d;
+	
+	return 0;
+}
+
+
 
 
 
@@ -136,8 +247,12 @@ int block_EM_2DSFS_GL3(threadStruct* THREAD){
 
 	double **lngls=THREAD->lngls;
 	DATA::pairStruct* pair=THREAD->pair;
-	double tole=THREAD->tole;
-	int mEmIter=THREAD->mEmIter;
+	const double tole = THREAD->args->tole;
+	const int mEmIter=THREAD->args->mEmIter;
+
+
+	const int i1=pair->pars->LUT_idx2inds[pair->idx][0];
+	const int i2=pair->pars->LUT_idx2inds[pair->idx][1];
 
 	double temp;
 	double sum;
@@ -180,7 +295,7 @@ int block_EM_2DSFS_GL3(threadStruct* THREAD){
 			//lngls3 (anc,anc),(anc,der),(der,der)
 			for(int i=0;i<3;i++){
 				for(int j=0;j<3;j++){
-					TMP[i][j] = pair->SFS[i*3+j] * exp( lngls[s][(3*pair->i1)+i] + lngls[s][(3*pair->i2)+j]);
+					TMP[i][j] = pair->SFS[i*3+j] * exp( lngls[s][(3*i1)+i] + lngls[s][(3*i2)+j]);
 					sum += TMP[i][j];
 				}
 			}

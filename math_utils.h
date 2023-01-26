@@ -45,12 +45,11 @@ int nCk(int n, int k);
 int nCk_idx(int nInd, int i1, int i2);
 
 
-/*
- * [Look-Up Table]
- * Find index of individual pairs using individual IDs
+/* [Look-Up Table]
+ * Prepare individual pair - pair index lookup tables
  *
  */
-int** set_LUT_indPairIdx(int nInd);
+void set_LUT_inds2idx_2way(int nInd, int nIndCmb, int** LUT_inds2idx, int** LUT_idx2inds);
 
 /*
  * rand()
