@@ -285,6 +285,8 @@ typedef struct
 
 	int gl2gt;
 
+	int printAmovaTable;
+
 } argStruct;
 
 argStruct *argStruct_init();

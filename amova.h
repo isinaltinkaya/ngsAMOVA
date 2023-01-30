@@ -144,6 +144,7 @@ namespace AMOVA {
             }
         }
 
+        // TODO print to a table file
         void print_as_table(FILE *fp, DATA::metadataStruct* mS){
             fprintf(fp,"\n");
             fprintf(fp,"\n\n");
@@ -261,6 +262,9 @@ namespace AMOVA {
         DATA::metadataStruct *MTD, 
         DATA::sampleStruct *SAMPLES, FILE *out_amova_ff, int **LUT_inds2idx);
 
+    amovaStruct *amovaStruct_doAmova(DATA::distanceMatrixStruct *dMS,
+        DATA::metadataStruct *MTD, 
+        DATA::sampleStruct *SAMPLES, int **LUT_inds2idx);
 
 
 }

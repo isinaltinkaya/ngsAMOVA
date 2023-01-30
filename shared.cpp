@@ -898,7 +898,9 @@ argStruct *argStruct_init()
 
 	args->doDist = -1;
 	args->do_square_distance = 1;
+	
 	args->printMatrix = 0;
+	args->printAmovaTable = 0;
 
 	args->isSim = 0;
 	args->isTest = 0;
@@ -948,6 +950,8 @@ argStruct *argStruct_get(int argc, char **argv)
 		else if (strcasecmp("-dev", arv) == 0)
 			args->printDev = atoi(val);
 
+		else if (strcasecmp("--print-amova-table", arv) == 0)
+			args->printAmovaTable = atoi(val);
 
 
 		// read block size as float and convert to int

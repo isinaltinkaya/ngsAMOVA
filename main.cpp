@@ -476,7 +476,15 @@ void input_DM(argStruct *args, paramStruct *pars, DATA::formulaStruct *formulaSt
 		}
 
 
-		ASSERT(AMOVA::doAMOVA(dMS, metadataSt, sampleSt, outSt->out_amova_fs->fp, pars->LUT_inds2idx) == 0);
+		AMOVA::amovaStruct *amv = AMOVA::amovaStruct_doAmova(dMS, metadataSt, sampleSt, pars->LUT_inds2idx);
+
+		if(args->printAmovaTable == 1){
+			amv->print_as_table(stdout,metadataSt);
+		}
+		amv->print_as_csv(outSt->out_amova_fs->fp, metadataSt);
+
+		delete amv;
+
 		sampleSt->print(stderr);
 
 
