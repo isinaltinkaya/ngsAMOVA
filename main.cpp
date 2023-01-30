@@ -290,7 +290,8 @@ void prepare_dMS_orig(argStruct *args, paramStruct *pars,  DATA::distanceMatrixS
 }
 
 // --------------------------- INPUT: VCF/BCF --------------------------- //
-void input_VCF(argStruct *args, paramStruct *pars, DATA::formulaStruct *formulaSt, IO::outFilesStruct *outSt){
+void input_VCF(argStruct *args, paramStruct *pars, DATA::formulaStruct *formulaSt, IO::outFilesStruct *outSt)
+{
 	fprintf(stderr, "\n[INFO]\t-> Input file type: VCF/BCF\n");
 
 	DATA::sampleStruct *sampleSt = new DATA::sampleStruct();
@@ -449,26 +450,27 @@ void input_DM(argStruct *args, paramStruct *pars, DATA::formulaStruct *formulaSt
 
 	fprintf(stderr, "\n[INFO]\t-> Input file type: Distance Matrix\n");
 
-	FILE *in_dm_fp = IO::getFile(args->in_dm_fn, "r");
-	DATA::distanceMatrixStruct *dMS = DATA::distanceMatrixStruct_read(in_dm_fp, pars, args);
 
 	DATA::sampleStruct *sampleSt = new DATA::sampleStruct();
-	sampleSt->init(pars->nInd);
 
 	if(args->doAMOVA == 1){
 
 		// will run AMOVA; prepare for AMOVA
 
 		// [BEGIN] ----------------------- READ METADATA ------------------------- //
-		// If VCF/BCF input, read metadata after VCF
-		// so you can compare VCF records with metadata when reading metadata
+		// 
+		// Metadata reading
+		// 	sets pars->nInd
+		// 	sets pars->nIndCmb
+		// 	sets pars->LUT_inds2idx
+		// 	sets pars->LUT_idx2inds
 		ASSERT(args->in_mtd_fn!=NULL);
-
 		FILE *in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
 		DATA::metadataStruct *metadataSt = DATA::metadataStruct_get(in_mtd_fp, sampleSt, formulaSt, args->hasColNames, pars);
 		FCLOSE(in_mtd_fp);
 		// [END] ----------------------- READ METADATA ------------------------- //
 		
+		DATA::distanceMatrixStruct *dMS = DATA::distanceMatrixStruct_read_csv(pars, args, metadataSt);
 
 		DATA::pairStruct **pairSt = new DATA::pairStruct *[pars->nIndCmb];
 		for(int pidx=0; pidx < pars->nIndCmb; pidx++){
@@ -497,13 +499,13 @@ void input_DM(argStruct *args, paramStruct *pars, DATA::formulaStruct *formulaSt
 		}
 		delete[] pairSt;
 
+		 delete dMS;
+
 	}
 	
 
 
-	FCLOSE(in_dm_fp);
 
-	delete dMS;
 	delete formulaSt;
 	delete sampleSt;
 

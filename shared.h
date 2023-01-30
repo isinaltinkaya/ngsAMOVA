@@ -544,42 +544,57 @@ namespace DATA
 
 		char **sampleNames = NULL; // sample names in bcf sample order
 
-		int nSamples;
+		int nSamples=0;
 
 		sampleStruct()
 		{
-			nSamples=-1;
+			sampleNames = (char **)malloc(1 * sizeof(char *));
+			sampleNames[0] = NULL;
 		}
 
 		~sampleStruct()
 		{
 			for (int i = 0; i < nSamples; i++)
 			{
-				free(sampleNames[i]);
-				sampleNames[i] = NULL;
+				FREE(sampleNames[i]);
 			}
-			free(sampleNames);
-			sampleNames = NULL;
-		}
-
-		void init(int nSamples_)
-		{
-			nSamples = nSamples_;
-
-			sampleNames = (char **)malloc(nSamples * sizeof(char *));
-
-			for (size_t i = 0; i < (size_t)nSamples; i++)
-			{
-				sampleNames[i] = NULL;
+			if(nSamples == 0){
+				FREE(sampleNames[0]);
 			}
+			FREE(sampleNames);
 		}
 
-		void addSampleName(int i, char *str)
+		void addSample(int sampleIdx, char *sampleName)
 		{
-			size_t size = strlen(str) + 1;
-			sampleNames[i] = (char *)malloc(size);
-			strncpy(sampleNames[i], str, size);
+			while (sampleIdx+1 > nSamples){
+				nSamples++;
+				sampleNames = (char **)realloc(sampleNames, nSamples * sizeof(char *));
+			}
+
+			size_t size = strlen(sampleName) + 1;
+			sampleNames[sampleIdx] = (char *)malloc(size);
+			strncpy(sampleNames[sampleIdx], sampleName, size);
 		}
+
+		// void init(int nSamples_)
+		// {
+		// 	nSamples = nSamples_;
+
+		// 	sampleNames = (char **)malloc(nSamples * sizeof(char *));
+
+		// 	for (size_t i = 0; i < (size_t)nSamples; i++)
+		// 	{
+		// 		sampleNames[i] = NULL;
+		// 	}
+		// }
+
+
+		// void addSampleName(int i, char *str)
+		// {
+		// 	size_t size = strlen(str) + 1;
+		// 	sampleNames[i] = (char *)malloc(size);
+		// 	strncpy(sampleNames[i], str, size);
+		// }
 
 		void print(FILE *fp)
 		{
@@ -1160,8 +1175,9 @@ namespace DATA
 		}
 	} distanceMatrixStruct;
 
-	// read distance matrix from distance matrix file
-	distanceMatrixStruct *distanceMatrixStruct_read(FILE *in_dm_fp, paramStruct *pars, argStruct *args);
+	// read distance matrix from distance matrix csv file
+	// distanceMatrixStruct *distanceMatrixStruct_read_csv(FILE *in_dm_fp, paramStruct *pars, argStruct *args, metadataStruct *metadataSt);
+	distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct *args, metadataStruct *metadataSt);
 
 	// prepare distance matrix using genotype likelihoods and EM algorithm
 	distanceMatrixStruct *distanceMatrixStruct_get(sampleStruct *SAMPLES, formulaStruct *FORMULA, paramStruct *pars, argStruct *args);

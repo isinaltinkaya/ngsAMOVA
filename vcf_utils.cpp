@@ -600,10 +600,9 @@ VCF::vcfData *VCF::vcfData_init(argStruct *args, paramStruct *pars, DATA::sample
 	fprintf(stderr, "\nNumber of individual pairs: %d\n", pars->nIndCmb);
 	
 
-	sampleSt->init(pars->nInd);
 	for (int i = 0; i < pars->nInd; i++)
 	{
-		sampleSt->addSampleName(i, VCF->hdr->samples[i]);
+		sampleSt->addSample(i, VCF->hdr->samples[i]);
 	}
 
 	VCF->nContigs = VCF->hdr->n[BCF_DT_CTG];

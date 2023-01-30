@@ -382,22 +382,21 @@ int IO::readFile::SFS(FILE *in_sfs_fp, const char *delims, DATA::sampleStruct *s
 /// @param in_dm_fp input distance matrix file
 /// @param pars paramStruct parameters
 /// @return distance matrix double*
-DATA::distanceMatrixStruct *DATA::distanceMatrixStruct_read(FILE *in_dm_fp, paramStruct *pars, argStruct *args)
+DATA::distanceMatrixStruct *DATA::distanceMatrixStruct_read_csv(paramStruct *pars, argStruct *args, metadataStruct *metadataSt)
 {
+
+	FILE *in_dm_fp = IO::getFile(args->in_dm_fn, "r");
 
 	char dm_buf[FGETS_BUF_SIZE];
 
 	int dm_vals_size = 1225;
 	double *dm_vals = (double *)malloc((dm_vals_size) * sizeof(double));
 
-	// first value is type string indicating analysis type
-	// TODO exclude this from distance matrix
-	// int n_vals = -1;
 	int n_vals = 0;
 
 	while (fgets(dm_buf, FGETS_BUF_SIZE, in_dm_fp))
 	{
-		char *tok = strtok(dm_buf, ",");
+		char *tok = strtok(dm_buf, ",\n");
 		while (tok != NULL)
 		{
 			if (n_vals > dm_vals_size)
@@ -408,16 +407,13 @@ DATA::distanceMatrixStruct *DATA::distanceMatrixStruct_read(FILE *in_dm_fp, para
 
 			dm_vals[n_vals] = atof(tok);
 			n_vals++;
-			tok = strtok(NULL, ", \n");
+			tok = strtok(NULL, ",\n");
 		}
 	}
-	pars->nIndCmb = n_vals;
-	fprintf(stderr, "\t-> Number of values in distance matrix: %d. (i.e. number of unique individual pairs)\n", n_vals);
-	pars->nInd = find_n_given_nC2(n_vals);
-	fprintf(stderr, "\n\t-> Number of individuals in distance matrix: %d\n", pars->nInd);
-	pars->init_LUTs();
-	set_LUT_inds2idx_2way(pars->nInd, pars->nIndCmb, pars->LUT_inds2idx, pars->LUT_idx2inds);
 
+	fprintf(stderr, "[INFO]\t-> Number of values in distance matrix: %d. (i.e. number of unique individual pairs)\n", n_vals);
+	fprintf(stderr, "[INFO]\t-> Number of individuals based on the number of individuals in the distance matrix: %d.\n", find_n_given_nC2(n_vals));
+	
 	distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
 	dMS->isSquared = args->do_square_distance;
 
@@ -440,6 +436,7 @@ DATA::distanceMatrixStruct *DATA::distanceMatrixStruct_read(FILE *in_dm_fp, para
 
 	FREE(dm_vals);
 
+	FCLOSE(in_dm_fp);
 
 	return dMS;
 }
@@ -536,14 +533,15 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::sampleStru
 
 
 			// ----------------------- INPUT: VCF ----------------------- //
+			// vcf input has pars->nInd and pars->nIndCmb already set from VCF reading
 			if (pars->in_ft == IN_VCF)
 			{
 
 				// if input file type is vcf, find the index of the individual in the bcf header
-				for (sidx = 0; sidx < sampleSt->nSamples + 1; sidx++)
+				for (sidx = 0; sidx < pars->nInd + 1; sidx++)
 				{
 
-					if (sidx == sampleSt->nSamples)
+					if (sidx == pars->nInd)
 					{
 						fprintf(stderr, "\n\n======\n[ERROR] Sample %s not found in the metadata file. \n\n", tok);
 						exit(1);
@@ -627,7 +625,8 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::sampleStru
 			else if (pars->in_ft == IN_DM)
 			{
 
-				sampleSt->addSampleName(sidx, tok);
+				// sampleSt->addSampleName(sidx, tok);
+				sampleSt->addSample(sidx, tok);
 				// loop through the hierarchical levels in the line
 				for (int lvl_i = 0; lvl_i < mS->nLevels; lvl_i++)
 				{
@@ -710,6 +709,12 @@ DATA::metadataStruct *DATA::metadataStruct_get(FILE *in_mtd_fp, DATA::sampleStru
 		delete[] mtd_buf;
 
 
+		if (pars->in_ft == IN_DM){
+			pars->nInd = mS->nIndMetadata;
+			pars->nIndCmb = nChoose2[pars->nInd];
+			pars->init_LUTs();
+			set_LUT_inds2idx_2way(pars->nInd, pars->nIndCmb, pars->LUT_inds2idx, pars->LUT_idx2inds);
+		}
 		return (mS);
 
 	}else{
