@@ -88,3 +88,5 @@ test:
 	bash -c "diff test/testwd/test_s9_d1_1K_mtd2.amova.csv test/reference/test_s9_d1_1K_mtd2.amova.csv";
 	#./ngsAMOVA -doEM 1 -doAMOVA 2 -doTest 0 -in test/test_s9_d1_1K.vcf -isSim 1 -minInd 2 -printMatrix 0  -doDist 1 -maxIter 100 -nThreads 0 -tole 1e-10  --hascolnames 1 -m test/metadata_with_header_1lvl.tsv -out test/testwd/test_s9_d1_1K_mtd1_gt;
 	#bash -c "diff <(cut -d, -f4-12 test/testwd/test_s9_d1_1K_mtd1_gt.sfs.csv)  test/reference/test_s9_d1_1K_gt.sfs.csv";
+	./ngsAMOVA -doEM 0 -doAMOVA 1 -doTest 0 -in_dm test/test_s9_d1_1K_mtd1_maxIter100_tole10.distance_matrix.csv -isSim 1 -minInd 2 -printMatrix 0  -doDist 1 -nThreads 0 --hascolnames 1 -m test/metadata_with_header_1lvl.tsv  -sqDist 0 -out test/testwd/indm_test_s9_d1_1K_mtd1;
+	bash -c "diff test/testwd/indm_test_s9_d1_1K_mtd1.amova.csv test/testwd/test_s9_d1_1K_mtd1.amova.csv";

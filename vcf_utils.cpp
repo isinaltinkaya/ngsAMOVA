@@ -588,7 +588,7 @@ VCF::vcfData *VCF::vcfData_init(argStruct *args, paramStruct *pars, DATA::sample
 
 	pars->nInd = bcf_hdr_nsamples(VCF->hdr);
 	VCF->nInd=pars->nInd;
-	pars->nIndCmb = nCk(pars->nInd, 2);
+	pars->nIndCmb = nChoose2[pars->nInd];
 	VCF->nIndCmb=pars->nIndCmb;
 
 

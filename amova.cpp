@@ -264,3 +264,4 @@ int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DA
 	delete aS;
 	return 0;
 }
+
