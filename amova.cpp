@@ -1,6 +1,6 @@
 #include "amova.h"
 
-double calculate_SumOfSquares_Total(DATA::distanceMatrixStruct *dMS)
+double calculate_SumOfSquares_Total(distanceMatrixStruct *dMS)
 {
 
 	double ssd_TOTAL = 0.0;
@@ -21,9 +21,9 @@ double calculate_SumOfSquares_Total(DATA::distanceMatrixStruct *dMS)
 /// @param dMS pointer to distanceMatrixStruct
 /// @param mS  pointer to metadataStruct
 /// @param sS  pointer to sampleStruct
-/// @param LUT_inds2idx  lookup table for index pair to index in distance matrix
+/// @param lut_indsToIdx  lookup table for index pair to index in distance matrix
 /// @return (double) sum of squares within a hierarchical level
-double calculate_SumOfSquares_Within(int lvl, AMOVA::amovaStruct *aS, DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DATA::sampleStruct *sS, int **LUT_inds2idx)
+double calculate_SumOfSquares_Within(int lvl, AMOVA::amovaStruct *aS, distanceMatrixStruct *dMS, metadataStruct *mS, sampleStruct *sS, int **lut_indsToIdx)
 {
 
 	ASSERT(lvl >= 0 && lvl < aS->nAmovaLevels);
@@ -51,7 +51,7 @@ double calculate_SumOfSquares_Within(int lvl, AMOVA::amovaStruct *aS, DATA::dist
 					if(mS->pairInStrataAtLevel(i1, i2, lvl, sti) == 1){
 						
 						// the distance is already stored in squared form, so no need to square it again
-						sum += dMS->M[LUT_inds2idx[i1][i2]]/n;
+						sum += dMS->M[lut_indsToIdx[i1][i2]]/n;
 					}
 				}
 			}
@@ -67,9 +67,9 @@ double calculate_SumOfSquares_Within(int lvl, AMOVA::amovaStruct *aS, DATA::dist
 /// @param mS   pointer to metadataStruct
 /// @param sS   pointer to sampleStruct
 /// @param out_amova_ff   pointer to output file
-/// @param LUT_inds2idx lookup table for index pair to index in distance matrix
+/// @param lut_indsToIdx lookup table for index pair to index in distance matrix
 /// @return 
-int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DATA::sampleStruct *sS, FILE *out_amova_ff, int **LUT_inds2idx)
+int AMOVA::doAMOVA(distanceMatrixStruct *dMS, metadataStruct *mS, sampleStruct *sS, FILE *out_amova_ff, int **lut_indsToIdx)
 {
 
 	// ----------------------------------------------- //
@@ -125,7 +125,7 @@ int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DA
 
 	for(size_t i=0; i<aS->_ncoef; i++){
 		// within level sum of squares
-		aS->ss[i] = calculate_SumOfSquares_Within(i, aS, dMS, mS, sS, LUT_inds2idx);
+		aS->ss[i] = calculate_SumOfSquares_Within(i, aS, dMS, mS, sS, lut_indsToIdx);
 	}
 
 	// ----------------------------------------------- //
@@ -269,9 +269,9 @@ int AMOVA::doAMOVA(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DA
 /// @param dMS  pointer to distanceMatrixStruct
 /// @param mS   pointer to metadataStruct
 /// @param sS   pointer to sampleStruct
-/// @param LUT_inds2idx lookup table for index pair to index in distance matrix
+/// @param lut_indsToIdx lookup table for index pair to index in distance matrix
 /// @return 
-AMOVA::amovaStruct *AMOVA::amovaStruct_doAmova(DATA::distanceMatrixStruct *dMS, DATA::metadataStruct *mS, DATA::sampleStruct *sS, int **LUT_inds2idx)
+AMOVA::amovaStruct *AMOVA::amovaStruct_doAmova(distanceMatrixStruct *dMS, metadataStruct *mS, sampleStruct *sS, int **lut_indsToIdx)
 {
 
 	// ----------------------------------------------- //
@@ -327,7 +327,7 @@ AMOVA::amovaStruct *AMOVA::amovaStruct_doAmova(DATA::distanceMatrixStruct *dMS, 
 
 	for(size_t i=0; i<aS->_ncoef; i++){
 		// within level sum of squares
-		aS->ss[i] = calculate_SumOfSquares_Within(i, aS, dMS, mS, sS, LUT_inds2idx);
+		aS->ss[i] = calculate_SumOfSquares_Within(i, aS, dMS, mS, sS, lut_indsToIdx);
 	}
 
 	// ----------------------------------------------- //

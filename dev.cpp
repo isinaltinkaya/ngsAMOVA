@@ -27,13 +27,13 @@ void* DEV_t_EM_2DSFS_GL3(void* p){
 int DEV_EM_2DSFS_GL3(threadStruct* THREAD){
 
 	double **lngls=THREAD->lngls;
-	DATA::pairStruct* pair=THREAD->pair;
+	pairStruct* pair=THREAD->pair;
 	const double tole = THREAD->args->tole;
 	const int mEmIter=THREAD->args->mEmIter;
 
 
-	const int i1=pair->pars->LUT_idx2inds[pair->idx][0];
-	const int i2=pair->pars->LUT_idx2inds[pair->idx][1];
+	const int i1=pair->pars->lut_idxToInds[pair->idx][0];
+	const int i2=pair->pars->lut_idxToInds[pair->idx][1];
 
 	double temp;
 	double sum;
@@ -121,7 +121,7 @@ int DEV_EM_2DSFS_GL3(threadStruct* THREAD){
 
 
 
-void DEV_prepare_dMS_orig(argStruct *args, paramStruct *pars,  DATA::distanceMatrixStruct *dMS_orig, VCF::vcfData *VCF, DATA::pairStruct **pairSt,  DATA::formulaStruct *formulaSt, IO::outFilesStruct *outSt, DATA::sampleStruct *sampleSt)
+void DEV_prepare_dMS_orig(argStruct *args, paramStruct *pars,  distanceMatrixStruct *dMS_orig, VCF::vcfData *VCF, pairStruct **pairSt,  formulaStruct *formulaSt, IO::outFilesStruct *outSt, sampleStruct *sampleSt)
 {
 
 	switch (args->doAMOVA)
@@ -151,9 +151,9 @@ void DEV_prepare_dMS_orig(argStruct *args, paramStruct *pars,  DATA::distanceMat
 
 				fprintf(stderr,"\n[ERROR]\t-> Not implemented yet. Please use -blockSize 0\n");
 				exit(1);
-				// DATA::blobStruct *blobSt = DATA::blobStruct_init(VCF->nContigs, args->blockSize, VCF->hdr);
+				// blobStruct *blobSt = blobStruct_init(VCF->nContigs, args->blockSize, VCF->hdr);
 				// VCF->readSites_GT(args, pars, pairSt, blobSt);
-				// DATA::blobStruct_destroy(blobSt);
+				// blobStruct_destroy(blobSt);
 			}
 			for (int pidx=0; pidx < pars->nIndCmb; pidx++)
 			{
@@ -168,7 +168,7 @@ void DEV_prepare_dMS_orig(argStruct *args, paramStruct *pars,  DATA::distanceMat
 					dMS_orig->M[pidx] = (double) MATH::EST::Dij(VCF->SFS_GT3[pidx], snSites);
 				}
 				
-				IO::print::Sfs("gt", outSt->out_sfs_fs, args, VCF->SFS_GT3[pidx], snSites, VCF->hdr->samples[pars->LUT_idx2inds[pidx][0]], VCF->hdr->samples[pars->LUT_idx2inds[pidx][1]]);
+				IO::print::Sfs("gt", outSt->out_sfs_fs, args, VCF->SFS_GT3[pidx], snSites, VCF->hdr->samples[pars->lut_idxToInds[pidx][0]], VCF->hdr->samples[pars->lut_idxToInds[pidx][1]]);
 			}
 
 			break;
@@ -195,7 +195,7 @@ void DEV_prepare_dMS_orig(argStruct *args, paramStruct *pars,  DATA::distanceMat
 
 }
 
-void DEV_spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt, VCF::vcfData *VCF, IO::outFilesStruct *outSt, DATA::distanceMatrixStruct *distMatrix)
+void DEV_spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, pairStruct **pairSt, VCF::vcfData *VCF, IO::outFilesStruct *outSt, distanceMatrixStruct *distMatrix)
 {
 
 	pthread_t pairThreads[pars->nIndCmb];
@@ -279,7 +279,7 @@ void DEV_spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, DATA::pairSt
 	for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
 	{
 
-		DATA::pairStruct *pair = PTHREADS[pidx]->pair;
+		pairStruct *pair = PTHREADS[pidx]->pair;
 		ASSERT(pair->snSites > 0);
 
 		if (args->do_square_distance == 1)
@@ -291,7 +291,7 @@ void DEV_spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, DATA::pairSt
 			distMatrix->M[pidx] = (double)MATH::EST::Dij(pair->SFS);
 		}
 
-		IO::print::Sfs("gle", outSt->out_sfs_fs, pair, args, VCF->hdr->samples[pars->LUT_idx2inds[pidx][0]], VCF->hdr->samples[pars->LUT_idx2inds[pidx][1]]);
+		IO::print::Sfs("gle", outSt->out_sfs_fs, pair, args, VCF->hdr->samples[pars->lut_idxToInds[pidx][0]], VCF->hdr->samples[pars->lut_idxToInds[pidx][1]]);
 
 		delete PTHREADS[pidx];
 	}

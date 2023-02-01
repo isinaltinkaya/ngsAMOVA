@@ -24,12 +24,12 @@ void* t_EM_2DSFS_GL3(void* p){
 int EM_2DSFS_GL3(threadStruct* THREAD){
 
 	double **lngls=THREAD->lngls;
-	DATA::pairStruct* pair=THREAD->pair;
+	pairStruct* pair=THREAD->pair;
 	const double tole = THREAD->args->tole;
 	const int mEmIter=THREAD->args->mEmIter;
 
-	const int i1=pair->pars->LUT_idx2inds[pair->idx][0];
-	const int i2=pair->pars->LUT_idx2inds[pair->idx][1];
+	const int i1=pair->pars->lut_idxToInds[pair->idx][0];
+	const int i2=pair->pars->lut_idxToInds[pair->idx][1];
 
 	// fprintf(stderr,"\nEM begin for ind1:%d and ind2:%d \n",i1,i2);
 
@@ -135,13 +135,13 @@ int block_EM_2DSFS_GL3(threadStruct* THREAD){
 
 
 	double **lngls=THREAD->lngls;
-	DATA::pairStruct* pair=THREAD->pair;
+	pairStruct* pair=THREAD->pair;
 	const double tole = THREAD->args->tole;
 	const int mEmIter=THREAD->args->mEmIter;
 
 
-	const int i1=pair->pars->LUT_idx2inds[pair->idx][0];
-	const int i2=pair->pars->LUT_idx2inds[pair->idx][1];
+	const int i1=pair->pars->lut_idxToInds[pair->idx][0];
+	const int i2=pair->pars->lut_idxToInds[pair->idx][1];
 
 	double temp;
 	double sum;

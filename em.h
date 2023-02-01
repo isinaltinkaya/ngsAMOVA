@@ -2,7 +2,7 @@
 #define __EM__
 
 #include "shared.h"
-#include "math_utils.h"
+#include "mathUtils.h"
 
 #include <stdio.h>
 #include <math.h>

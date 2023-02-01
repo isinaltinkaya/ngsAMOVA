@@ -1,4 +1,6 @@
-#include "vcf_utils.h"
+#include "vcfUtils.h"
+#include "dataStructs.h"
+
 
 // from angsd analysisFunction.cpp
 extern const int bcf_allele_charToInt[256] = {
@@ -36,7 +38,7 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2)
 }
 
 
-// void VCF::vcfData::read_GL10_to_GL3_block(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i, DATA::pairStruct **PAIRS)
+// void VCF::read_GL10_to_GL3_block(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i, pairStruct **PAIRS)
 // {
 
 // 	VCF::get_data<float> lgl;
@@ -126,7 +128,7 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2)
 // 					for (int indi2 = indi - 1; indi2 > -1; indi2--)
 // 					{
 // 						// both inds has data
-// 						pidx = pars->LUT_inds2idx[indi2][indi];
+// 						pidx = pars->lut_indsToIdx[indi2][indi];
 
 // 						if (cmbArr[pidx])
 // 						{
@@ -141,7 +143,7 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2)
 // 				{
 // 					for (int indi2 = indi + 1; indi2 < pars->nInd; indi2++)
 // 					{
-// 						cmbArr[pars->LUT_inds2idx[indi][indi2]]++;
+// 						cmbArr[pars->lut_indsToIdx[indi][indi2]]++;
 // 					}
 // 				}
 
@@ -167,7 +169,7 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2)
 // }
 
 // return 1: skip site for all individuals
-int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i, DATA::pairStruct **PAIRS)
+int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i, pairStruct **PAIRS)
 {
 
 	VCF::get_data<float> lgl;
@@ -260,7 +262,7 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 					for (int indi2 = indi - 1; indi2 > -1; indi2--)
 					{
 						// both inds has data
-						pidx = pars->LUT_inds2idx[indi2][indi];
+						pidx = pars->lut_indsToIdx[indi2][indi];
 
 						if (cmbArr[pidx])
 						{
@@ -275,7 +277,7 @@ int VCF::read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruc
 				{
 					for (int indi2 = indi + 1; indi2 < pars->nInd; indi2++)
 					{
-						cmbArr[pars->LUT_inds2idx[indi][indi2]]++;
+						cmbArr[pars->lut_indsToIdx[indi][indi2]]++;
 					}
 				}
 
@@ -374,7 +376,7 @@ int VCF::GL_to_GT_1_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *par
 
 			int32_t *ptr1 = new_gt.data + i1 * new_gt.ploidy;
 			int32_t *ptr2 = new_gt.data + i2 * new_gt.ploidy;
-			int pair_idx = pars->LUT_inds2idx[i1][i2];
+			int pair_idx = pars->lut_indsToIdx[i1][i2];
 
 			int gti1 = 0;
 			int gti2 = 0;
@@ -507,7 +509,7 @@ int VCF::GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars
 				//  skip the pair
 				continue;
 			}
-			int pair_idx = pars->LUT_inds2idx[i1][i2];
+			int pair_idx = pars->lut_indsToIdx[i1][i2];
 
 			int gti1 = 0;
 			int gti2 = 0;
@@ -564,7 +566,7 @@ void VCF::vcfData_destroy(VCF::vcfData *v)
 	delete v;
 }
 
-VCF::vcfData *VCF::vcfData_init(argStruct *args, paramStruct *pars, DATA::sampleStruct *sampleSt)
+VCF::vcfData *VCF::vcfData_init(argStruct *args, paramStruct *pars, sampleStruct *sampleSt)
 {
 
 	VCF::vcfData *VCF = new VCF::vcfData;
@@ -594,7 +596,7 @@ VCF::vcfData *VCF::vcfData_init(argStruct *args, paramStruct *pars, DATA::sample
 
 	pars->init_LUTs();
 
-	set_LUT_inds2idx_2way(pars->nInd, pars->nIndCmb, pars->LUT_inds2idx, pars->LUT_idx2inds);
+	set_lut_indsToIdx_2way(pars->nInd, pars->nIndCmb, pars->lut_indsToIdx, pars->lut_idxToInds);
 	
 
 	fprintf(stderr, "\nNumber of individual pairs: %d\n", pars->nIndCmb);
@@ -623,7 +625,7 @@ VCF::vcfData *VCF::vcfData_init(argStruct *args, paramStruct *pars, DATA::sample
 	// read VCF sites AND store block pointers for block bootstrapping
 	// if block block size for block bootstrapping is set
 	// collect pointers to blocks while reading the sites
-void VCF::vcfData::readSites_GL(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt, DATA::blobStruct *blobSt) 
+void VCF::vcfData::readSites_GL(argStruct *args, paramStruct *pars, pairStruct **pairSt, blobStruct *blobSt) 
 {
 	/*
 	* [START] Reading sites
@@ -717,7 +719,7 @@ void VCF::vcfData::readSites_GL(argStruct *args, paramStruct *pars, DATA::pairSt
 
 
 
-void VCF::vcfData::readSites_GL(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt)
+void VCF::vcfData::readSites_GL(argStruct *args, paramStruct *pars, pairStruct **pairSt)
 {
 	// not saving blob information for block bootstrapping
 
@@ -763,7 +765,7 @@ void VCF::vcfData::readSites_GL(argStruct *args, paramStruct *pars, DATA::pairSt
 
 
 
-void VCF::vcfData::readSites_GT(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt)
+void VCF::vcfData::readSites_GT(argStruct *args, paramStruct *pars, pairStruct **pairSt)
 {
 	
 	/*

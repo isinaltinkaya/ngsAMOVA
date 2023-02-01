@@ -1,8 +1,8 @@
-#ifndef __MATH_UTILS__
-#define __MATH_UTILS__
+#ifndef __mathUtils__
+#define __mathUtils__
 
 #include "shared.h"
-#include "vcf_utils.h"
+#include "vcfUtils.h"
 
 #include <stdio.h>
 #include <math.h>
@@ -49,7 +49,7 @@ int nCk_idx(int nInd, int i1, int i2);
  * Prepare individual pair - pair index lookup tables
  *
  */
-void set_LUT_inds2idx_2way(int nInd, int nIndCmb, int** LUT_inds2idx, int** LUT_idx2inds);
+void set_lut_indsToIdx_2way(int nInd, int nIndCmb, int** lut_indsToIdx, int** lut_idxToInds);
 
 /*
  * rand()

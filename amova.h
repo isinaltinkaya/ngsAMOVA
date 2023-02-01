@@ -1,5 +1,7 @@
-#include "shared.h"
-#include "math_utils.h"
+#ifndef __AMOVA__
+#define __AMOVA__
+
+#include "mathUtils.h"
 
 
 
@@ -73,7 +75,7 @@ namespace AMOVA {
         size_t _ncoef = 0;
         size_t _phi = 0;
 
-        amovaStruct(DATA::metadataStruct* mS){
+        amovaStruct(metadataStruct* mS){
 
             // storing levels in order of highest to lowest level + total
             // {level1, level2, level3, ..., total}
@@ -145,7 +147,7 @@ namespace AMOVA {
         }
 
         // TODO print to a table file
-        void print_as_table(FILE *fp, DATA::metadataStruct* mS){
+        void print_as_table(FILE *fp, metadataStruct* mS){
             fprintf(fp,"\n");
             fprintf(fp,"\n\n");
             fprintf(fp,"==========================================  AMOVA  =========================================="); 
@@ -205,7 +207,7 @@ namespace AMOVA {
 
         }
 
-        void print_as_csv(FILE *fp, DATA::metadataStruct* mS){
+        void print_as_csv(FILE *fp, metadataStruct* mS){
 
 //TODO add percentage total?
             //header
@@ -258,13 +260,15 @@ namespace AMOVA {
     
     }amovaStruct;
 
-    int doAMOVA(DATA::distanceMatrixStruct *dMS,
-        DATA::metadataStruct *MTD, 
-        DATA::sampleStruct *SAMPLES, FILE *out_amova_ff, int **LUT_inds2idx);
+    int doAMOVA(distanceMatrixStruct *dMS,
+        metadataStruct *MTD, 
+        sampleStruct *SAMPLES, FILE *out_amova_ff, int **lut_indsToIdx);
 
-    amovaStruct *amovaStruct_doAmova(DATA::distanceMatrixStruct *dMS,
-        DATA::metadataStruct *MTD, 
-        DATA::sampleStruct *SAMPLES, int **LUT_inds2idx);
+    amovaStruct *amovaStruct_doAmova(distanceMatrixStruct *dMS,
+        metadataStruct *MTD, 
+        sampleStruct *SAMPLES, int **lut_indsToIdx);
 
 
 }
+
+#endif

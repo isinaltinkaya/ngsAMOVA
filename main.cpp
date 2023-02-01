@@ -15,16 +15,20 @@
 #include <pthread.h>
 
 #include "main.h"
+#include "dataStructs.h"
+#include "io.h"
+#include "argStruct.h"
+#include "paramStruct.h"
 #include "shared.h"
-#include "math_utils.h"
-#include "vcf_utils.h"
+#include "mathUtils.h"
+#include "vcfUtils.h"
 #include "em.h"
 #include "amova.h"
 #include "dev.h"
 
 using size_t = decltype(sizeof(int));
 
-void spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt, VCF::vcfData *VCF, IO::outFilesStruct *outSt, DATA::distanceMatrixStruct *distMatrix)
+void spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, pairStruct **pairSt, VCF::vcfData *VCF, IO::outFilesStruct *outSt, distanceMatrixStruct *distMatrix)
 {
 
 	pthread_t pairThreads[pars->nIndCmb];
@@ -108,7 +112,7 @@ void spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, DATA::pairStruct
 	for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
 	{
 
-		DATA::pairStruct *pair = PTHREADS[pidx]->pair;
+		pairStruct *pair = PTHREADS[pidx]->pair;
 		ASSERT(pair->snSites > 0);
 
 		if (args->do_square_distance == 1)
@@ -120,14 +124,14 @@ void spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, DATA::pairStruct
 			distMatrix->M[pidx] = (double)MATH::EST::Dij(pair->SFS);
 		}
 
-		IO::print::Sfs("gle", outSt->out_sfs_fs, pair, args, VCF->hdr->samples[pars->LUT_idx2inds[pidx][0]], VCF->hdr->samples[pars->LUT_idx2inds[pidx][1]]);
+		IO::print::Sfs("gle", outSt->out_sfs_fs, pair, args, VCF->hdr->samples[pars->lut_idxToInds[pidx][0]], VCF->hdr->samples[pars->lut_idxToInds[pidx][1]]);
 
 		delete PTHREADS[pidx];
 	}
 }
 
 
-void prepare_bootstrap_blocks(VCF::vcfData *VCF, paramStruct *pars, argStruct *args, DATA::distanceMatrixStruct *dMS, DATA::sampleStruct *sampleSt, DATA::metadataStruct *mS, DATA::formulaStruct *formulaSt, IO::outFilesStruct *outSt, DATA::blobStruct *blobSt)
+void prepare_bootstrap_blocks(VCF::vcfData *VCF, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, sampleStruct *sampleSt, metadataStruct *mS, formulaStruct *formulaSt, IO::outFilesStruct *outSt, blobStruct *blobSt)
 {
 
 	fprintf(stderr, "\n\n\n\n################ Bootstrap blocks");
@@ -191,7 +195,7 @@ void prepare_bootstrap_blocks(VCF::vcfData *VCF, paramStruct *pars, argStruct *a
 
 
 // prepare distance matrix using original data
-void prepare_dMS_orig(argStruct *args, paramStruct *pars,  DATA::distanceMatrixStruct *dMS_orig, VCF::vcfData *VCF, DATA::pairStruct **pairSt,  DATA::formulaStruct *formulaSt, IO::outFilesStruct *outSt, DATA::blobStruct *blobSt, DATA::sampleStruct *sampleSt)
+void prepare_dMS_orig(argStruct *args, paramStruct *pars,  distanceMatrixStruct *dMS_orig, VCF::vcfData *VCF, pairStruct **pairSt,  formulaStruct *formulaSt, IO::outFilesStruct *outSt, blobStruct *blobSt, sampleStruct *sampleSt)
 {
 
 
@@ -207,7 +211,7 @@ void prepare_dMS_orig(argStruct *args, paramStruct *pars,  DATA::distanceMatrixS
 
 			}else{
 
-				blobSt = DATA::blobStruct_init(VCF->nContigs, args->blockSize, VCF->hdr);
+				blobSt = blobStruct_init(VCF->nContigs, args->blockSize, VCF->hdr);
 				VCF->readSites_GL(args, pars, pairSt, blobSt);
 
 			}
@@ -230,9 +234,9 @@ void prepare_dMS_orig(argStruct *args, paramStruct *pars,  DATA::distanceMatrixS
 
 				fprintf(stderr,"\n[ERROR]\t-> Not implemented yet. Please use -blockSize 0\n");
 				exit(1);
-				// DATA::blobStruct *blobSt = DATA::blobStruct_init(VCF->nContigs, args->blockSize, VCF->hdr);
+				// blobStruct *blobSt = blobStruct_init(VCF->nContigs, args->blockSize, VCF->hdr);
 				// VCF->readSites_GT(args, pars, pairSt, blobSt);
-				// DATA::blobStruct_destroy(blobSt);
+				// blobStruct_destroy(blobSt);
 			}
 			for (int pidx=0; pidx < pars->nIndCmb; pidx++)
 			{
@@ -247,7 +251,7 @@ void prepare_dMS_orig(argStruct *args, paramStruct *pars,  DATA::distanceMatrixS
 					dMS_orig->M[pidx] = (double) MATH::EST::Dij(VCF->SFS_GT3[pidx], snSites);
 				}
 				
-				IO::print::Sfs("gt", outSt->out_sfs_fs, args, VCF->SFS_GT3[pidx], snSites, VCF->hdr->samples[pars->LUT_idx2inds[pidx][0]], VCF->hdr->samples[pars->LUT_idx2inds[pidx][1]]);
+				IO::print::Sfs("gt", outSt->out_sfs_fs, args, VCF->SFS_GT3[pidx], snSites, VCF->hdr->samples[pars->lut_idxToInds[pidx][0]], VCF->hdr->samples[pars->lut_idxToInds[pidx][1]]);
 			}
 
 			break;
@@ -290,21 +294,21 @@ void prepare_dMS_orig(argStruct *args, paramStruct *pars,  DATA::distanceMatrixS
 }
 
 // --------------------------- INPUT: VCF/BCF --------------------------- //
-void input_VCF(argStruct *args, paramStruct *pars, DATA::formulaStruct *formulaSt, IO::outFilesStruct *outSt)
+void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::outFilesStruct *outSt)
 {
 	fprintf(stderr, "\n[INFO]\t-> Input file type: VCF/BCF\n");
 
-	DATA::sampleStruct *sampleSt = new DATA::sampleStruct();
+	sampleStruct *sampleSt = new sampleStruct();
 	VCF::vcfData* VCF = VCF::vcfData_init(args, pars, sampleSt);
-	DATA::pairStruct **pairSt = new DATA::pairStruct *[pars->nIndCmb];
+	pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
 
 	for(int pidx=0; pidx < pars->nIndCmb; pidx++){
-			pairSt[pidx] = new DATA::pairStruct(pars, pidx);
+			pairSt[pidx] = new pairStruct(pars, pidx);
 	}
 
 	if(args->printDev == 1){
-		DATA::distanceMatrixStruct **dMS = new DATA::distanceMatrixStruct *[1];
-		dMS[0] = new DATA::distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
+		distanceMatrixStruct **dMS = new distanceMatrixStruct *[1];
+		dMS[0] = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
 		fprintf(stderr, "\n[INFO]\t-> -printDev 1; will print per EM iteration distance matrix\n");
 		DEV_prepare_dMS_orig(args, pars, dMS[0], VCF, pairSt, formulaSt, outSt, sampleSt);
 		
@@ -340,7 +344,7 @@ void input_VCF(argStruct *args, paramStruct *pars, DATA::formulaStruct *formulaS
 
 		if(args->doEM != 0 && args->printMatrix == 1){
 			fprintf(stderr, "\n[INFO]\t-> -printMatrix 1; will print distance matrix\n");
-			DATA::distanceMatrixStruct *dMS = new DATA::distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
+			distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
 			prepare_dMS_orig(args, pars, dMS, VCF, pairSt, formulaSt, outSt, NULL, sampleSt);
 			delete dMS;
 		}
@@ -358,7 +362,7 @@ void input_VCF(argStruct *args, paramStruct *pars, DATA::formulaStruct *formulaS
 		ASSERT(args->in_mtd_fn!=NULL);
 
 		FILE *in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
-		DATA::metadataStruct *metadataSt = DATA::metadataStruct_get(in_mtd_fp, sampleSt, formulaSt, args->hasColNames, pars);
+		metadataStruct *metadataSt = metadataStruct_get(in_mtd_fp, sampleSt, formulaSt, args->hasColNames, pars);
 		FCLOSE(in_mtd_fp);
 		// [END] ----------------------- READ METADATA ------------------------- //
 
@@ -366,16 +370,16 @@ void input_VCF(argStruct *args, paramStruct *pars, DATA::formulaStruct *formulaS
 		pars->nAmovaRuns = 1;
 		if(args->nBootstraps > 0) pars->nAmovaRuns += args->nBootstraps;
 		
-		DATA::blobStruct *blobSt = NULL;
+		blobStruct *blobSt = NULL;
 
-		DATA::distanceMatrixStruct **dMS = new DATA::distanceMatrixStruct *[pars->nAmovaRuns];
+		distanceMatrixStruct **dMS = new distanceMatrixStruct *[pars->nAmovaRuns];
 
 		for (int r=0; r < pars->nAmovaRuns; r++){
-			dMS[r] = new DATA::distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
+			dMS[r] = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
 		}
 
 		if(args->blockSize != 0){
-			blobSt = DATA::blobStruct_init(VCF->nContigs, args->blockSize, VCF->hdr);
+			blobSt = blobStruct_init(VCF->nContigs, args->blockSize, VCF->hdr);
 		}
 
 
@@ -399,16 +403,16 @@ void input_VCF(argStruct *args, paramStruct *pars, DATA::formulaStruct *formulaS
 				prepare_bootstrap_blocks(VCF, pars, args, dMS[b], sampleSt, metadataSt, formulaSt, outSt, blobSt);
 
 				// // perform AMOVA using the bootstrapped dMS
-				ASSERT(AMOVA::doAMOVA(dMS[b], metadataSt, sampleSt, outSt->out_amova_fs->fp, pars->LUT_inds2idx) == 0);
+				ASSERT(AMOVA::doAMOVA(dMS[b], metadataSt, sampleSt, outSt->out_amova_fs->fp, pars->lut_indsToIdx) == 0);
 
 				fprintf(stderr, "\n\t-> Finished running AMOVA for bootstrap %d/%d", b, args->nBootstraps);
 				b++;
 			}
-			DATA::blobStruct_destroy(blobSt);
+			blobStruct_destroy(blobSt);
 		}
 
 		for(int a=0; a < pars->nAmovaRuns; a++){
-			ASSERT(AMOVA::doAMOVA(dMS[a], metadataSt, sampleSt, outSt->out_amova_fs->fp, pars->LUT_inds2idx) == 0);
+			ASSERT(AMOVA::doAMOVA(dMS[a], metadataSt, sampleSt, outSt->out_amova_fs->fp, pars->lut_indsToIdx) == 0);
 		}
 
 		for(int a=0; a < pars->nAmovaRuns; a++){
@@ -440,7 +444,7 @@ void input_VCF(argStruct *args, paramStruct *pars, DATA::formulaStruct *formulaS
 }
 
 // --------------------------- INPUT: DISTANCE MATRIX --------------------------- //
-void input_DM(argStruct *args, paramStruct *pars, DATA::formulaStruct *formulaSt, IO::outFilesStruct *outSt)
+void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::outFilesStruct *outSt)
 {
 
 	if(args->blockSize != 0){
@@ -451,7 +455,7 @@ void input_DM(argStruct *args, paramStruct *pars, DATA::formulaStruct *formulaSt
 	fprintf(stderr, "\n[INFO]\t-> Input file type: Distance Matrix\n");
 
 
-	DATA::sampleStruct *sampleSt = new DATA::sampleStruct();
+	sampleStruct *sampleSt = new sampleStruct();
 
 	if(args->doAMOVA == 1){
 
@@ -462,23 +466,23 @@ void input_DM(argStruct *args, paramStruct *pars, DATA::formulaStruct *formulaSt
 		// Metadata reading
 		// 	sets pars->nInd
 		// 	sets pars->nIndCmb
-		// 	sets pars->LUT_inds2idx
-		// 	sets pars->LUT_idx2inds
+		// 	sets pars->lut_indsToIdx
+		// 	sets pars->lut_idxToInds
 		ASSERT(args->in_mtd_fn!=NULL);
 		FILE *in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
-		DATA::metadataStruct *metadataSt = DATA::metadataStruct_get(in_mtd_fp, sampleSt, formulaSt, args->hasColNames, pars);
+		metadataStruct *metadataSt = metadataStruct_get(in_mtd_fp, sampleSt, formulaSt, args->hasColNames, pars);
 		FCLOSE(in_mtd_fp);
 		// [END] ----------------------- READ METADATA ------------------------- //
 		
-		DATA::distanceMatrixStruct *dMS = DATA::distanceMatrixStruct_read_csv(pars, args, metadataSt);
+		distanceMatrixStruct *dMS = distanceMatrixStruct_read_csv(pars, args, metadataSt);
 
-		DATA::pairStruct **pairSt = new DATA::pairStruct *[pars->nIndCmb];
+		pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
 		for(int pidx=0; pidx < pars->nIndCmb; pidx++){
-				pairSt[pidx] = new DATA::pairStruct(pars, pidx);
+				pairSt[pidx] = new pairStruct(pars, pidx);
 		}
 
 
-		AMOVA::amovaStruct *amv = AMOVA::amovaStruct_doAmova(dMS, metadataSt, sampleSt, pars->LUT_inds2idx);
+		AMOVA::amovaStruct *amv = AMOVA::amovaStruct_doAmova(dMS, metadataSt, sampleSt, pars->lut_indsToIdx);
 
 		if(args->printAmovaTable == 1){
 			amv->print_as_table(stdout,metadataSt);
@@ -531,8 +535,8 @@ int main(int argc, char **argv)
 
 	argStruct_print(stderr, args);
 
-	DATA::formulaStruct *formulaSt = NULL;
-	if (args->formula != NULL) formulaSt = DATA::formulaStruct_get(args->formula);
+	formulaStruct *formulaSt = NULL;
+	if (args->formula != NULL) formulaSt = formulaStruct_get(args->formula);
 
 	// SWITCH: input file type
 	switch (pars->in_ft)

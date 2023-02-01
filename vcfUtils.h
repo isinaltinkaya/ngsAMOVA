@@ -1,18 +1,19 @@
 #ifndef __VCF_UTILS__
 #define __VCF_UTILS__
 
-#include "shared.h"
-#include "math_utils.h"
 
-#include <htslib/vcf.h>
-#include <htslib/vcfutils.h>
-#include <cstddef>
 
-#include <limits>
-#include <math.h>
 
-#include <stdio.h>
-#include <string.h>
+
+#include "paramStruct.h"
+#include "dataStructs.h"
+
+
+
+struct sampleStruct;
+struct blobStruct;
+struct formulaStruct;
+struct pairStruct;
 
 extern const int get_3x3_idx[3][3];
 
@@ -25,13 +26,13 @@ int bcf_alleles_get_gtidx(char a1, char a2);
 namespace VCF
 {
 
-	int read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i, DATA::pairStruct **pairSt);
+	int read_GL10_to_GL3(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i, pairStruct **pairSt);
 
 	int GT_to_i2i_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args);
 
 	int GL_to_GT_1_SFS(bcf_hdr_t *hdr, bcf1_t *bcf, int **sfs, paramStruct *pars, argStruct *args);
 
-	int parse_VCF_GL(paramStruct *pars, argStruct *args, vcfFile *in_fp, bcf_hdr_t *hdr, bcf1_t *bcf, DATA::blobStruct *blobSt);
+	int parse_VCF_GL(paramStruct *pars, argStruct *args, vcfFile *in_fp, bcf_hdr_t *hdr, bcf1_t *bcf, blobStruct *blobSt);
 
 
 	typedef struct vcfData
@@ -71,13 +72,13 @@ namespace VCF
 		}
 		
 
-		void readSites_GL(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt);
-		void readSites_GL(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt, DATA::blobStruct *blobSt);
+		void readSites_GL(argStruct *args, paramStruct *pars, pairStruct **pairSt);
+		void readSites_GL(argStruct *args, paramStruct *pars, pairStruct **pairSt, blobStruct *blobSt);
 
-		void readSites_GT(argStruct *args, paramStruct *pars, DATA::pairStruct **pairSt);
+		void readSites_GT(argStruct *args, paramStruct *pars, pairStruct **pairSt);
 
 
-		void read_GL10_to_GL3_block(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i, DATA::pairStruct **pairSt);
+		void read_GL10_to_GL3_block(bcf_hdr_t *hdr, bcf1_t *bcf, double **lngl, paramStruct *pars, argStruct *args, size_t site_i, pairStruct **pairSt);
 
 
 		void print(FILE *fp){
@@ -87,7 +88,7 @@ namespace VCF
 
 	} vcfData;
 
-	vcfData* vcfData_init(argStruct *args, paramStruct *pars, DATA::sampleStruct *sampleSt);
+	vcfData* vcfData_init(argStruct *args, paramStruct *pars, sampleStruct *sampleSt);
 	void vcfData_destroy(vcfData *v);
 
 
@@ -139,4 +140,4 @@ namespace VCF
 
 }
 
-#endif
+#endif // __VCF_UTILS__
