@@ -16,7 +16,6 @@ struct threadStruct;
 struct argStruct;
 struct paramStruct;
 
-
 typedef struct formulaStruct
 {
 	int nTokens;
@@ -69,7 +68,6 @@ typedef struct blobStruct
 	// 2D array of pointers to actual contig block starts
 	double ***contigBlockStartPtrs;
 
-
 } blobStruct;
 
 blobStruct *blobStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *hdr);
@@ -101,7 +99,7 @@ typedef struct pairStruct
 
 	pairStruct(paramStruct *pars_, int pidx)
 	{
-		idx=pidx;
+		idx = pidx;
 		d = 0.0;
 		n_em_iter = 0;
 		pars = pars_;
@@ -123,10 +121,9 @@ typedef struct pairStruct
 		FREE(SFS);
 	}
 
-
 	void print(FILE *fp, bcf_hdr_t *hdr)
 	{
-		fprintf(fp, "%d,%d,%d,%s,%s", pars->lut_idxToInds[idx][0], pars->lut_idxToInds[idx][1], idx, hdr->samples[pars->lut_idxToInds[idx][0]],hdr->samples[pars->lut_idxToInds[idx][1]]);
+		fprintf(fp, "%d,%d,%d,%s,%s", pars->lut_idxToInds[idx][0], pars->lut_idxToInds[idx][1], idx, hdr->samples[pars->lut_idxToInds[idx][0]], hdr->samples[pars->lut_idxToInds[idx][1]]);
 	}
 
 	void print(FILE *fp)
@@ -154,10 +151,7 @@ typedef struct pairStruct
 		}
 	}
 
-
 } pairStruct;
-
-
 
 /// @brief sampleStruct - contains sample names and other sample related information
 /// used in comparing samples in the VCF file with the samples in the metadata file
@@ -166,7 +160,7 @@ typedef struct sampleStruct
 
 	char **sampleNames = NULL; // sample names in bcf sample order
 
-	int nSamples=0;
+	int nSamples = 0;
 
 	sampleStruct()
 	{
@@ -180,7 +174,8 @@ typedef struct sampleStruct
 		{
 			FREE(sampleNames[i]);
 		}
-		if(nSamples == 0){
+		if (nSamples == 0)
+		{
 			FREE(sampleNames[0]);
 		}
 		FREE(sampleNames);
@@ -188,7 +183,8 @@ typedef struct sampleStruct
 
 	void addSample(int sampleIdx, char *sampleName)
 	{
-		while (sampleIdx+1 > nSamples){
+		while (sampleIdx + 1 > nSamples)
+		{
 			nSamples++;
 			sampleNames = (char **)realloc(sampleNames, nSamples * sizeof(char *));
 		}
@@ -209,7 +205,6 @@ typedef struct sampleStruct
 	// 		sampleNames[i] = NULL;
 	// 	}
 	// }
-
 
 	// void addSampleName(int i, char *str)
 	// {
@@ -232,7 +227,7 @@ typedef struct sampleStruct
 
 } sampleStruct;
 
-//TODO calculate associations once and store in a LUT
+// TODO calculate associations once and store in a LUT
 /// @brief hierStruct store the hierarchical structure of the metadata
 typedef struct hierStruct
 {
@@ -420,14 +415,14 @@ typedef struct metadataStruct
 	/// @example lvl=1, strata_idx=2 -> 1[02]00
 	int calculateKeyAtLevel(int lvl, int strata_idx)
 	{
-		return (int)(pow(10, MAXDIG_PER_HLEVEL * (lvl +1)) + strata_idx);
+		return (int)(pow(10, MAXDIG_PER_HLEVEL * (lvl + 1)) + strata_idx);
 		// pow10[]
 	}
 
 	int pairInStrataAtLevel(int i1, int i2, int lvl, int strata_idx)
 	{
-		int digit_idx = nLevels - lvl -1;
-		if( (strata_idx==getDigits(ind2stratakey[i1], digit_idx)) && (strata_idx==getDigits(ind2stratakey[i2], digit_idx)) )
+		int digit_idx = nLevels - lvl - 1;
+		if ((strata_idx == getDigits(ind2stratakey[i1], digit_idx)) && (strata_idx == getDigits(ind2stratakey[i2], digit_idx)))
 		{
 			return 1;
 		}
@@ -478,10 +473,12 @@ typedef struct metadataStruct
 		fprintf(fp, "\n------------------\n\n");
 	};
 
-	void print_pair2assoc(FILE *fp){
+	void print_pair2assoc(FILE *fp)
+	{
 
-		for(int lvl=0; lvl < nLevels; lvl++){
-			for (int sti=0; sti < hierArr[lvl]->nStrata; sti++)
+		for (int lvl = 0; lvl < nLevels; lvl++)
+		{
+			for (int sti = 0; sti < hierArr[lvl]->nStrata; sti++)
 			{
 
 				for (int i1 = 0; i1 < nIndMetadata - 1; i1++)
@@ -489,15 +486,15 @@ typedef struct metadataStruct
 					for (int i2 = i1 + 1; i2 < nIndMetadata; i2++)
 					{
 						// include only pairs that are in the same strata at this hierarchical level
-						if(pairInStrataAtLevel(i1, i2, lvl, sti) == 1){
-						fprintf(stderr, "\n->Pair %i %i ", i1, i2);
-							fprintf(stderr, "in strata %i at level %d", sti,lvl);
+						if (pairInStrataAtLevel(i1, i2, lvl, sti) == 1)
+						{
+							fprintf(stderr, "\n->Pair %i %i ", i1, i2);
+							fprintf(stderr, "in strata %i at level %d", sti, lvl);
 						}
 					}
 				}
 			}
 		}
-
 	}
 
 	/// @brief get the number at a given digit of a number
@@ -527,12 +524,11 @@ typedef struct metadataStruct
 	int getDigits(int number, int idx, int n_digits)
 	{
 
+		int res = number % pow10[(n_digits * idx) + n_digits];
 
-		int res = number % pow10[(n_digits* idx)+n_digits];
-
-		if(idx>0)
+		if (idx > 0)
 		{
-			res = res / pow10[(n_digits* (idx-1))+n_digits];
+			res = res / pow10[(n_digits * (idx - 1)) + n_digits];
 		}
 
 		return res;
@@ -545,15 +541,14 @@ typedef struct metadataStruct
 	int getDigits(int number, int idx)
 	{
 
-		int res = number % pow10[(MAXDIG_PER_HLEVEL* idx)+2];
+		int res = number % pow10[(MAXDIG_PER_HLEVEL * idx) + 2];
 
-		if(idx>0)
+		if (idx > 0)
 		{
-			res = res / pow10[(MAXDIG_PER_HLEVEL* (idx-1))+2];
+			res = res / pow10[(MAXDIG_PER_HLEVEL * (idx - 1)) + 2];
 		}
 		return res;
 	}
-
 
 	size_t initKey()
 	{
@@ -570,7 +565,7 @@ typedef struct metadataStruct
 			exit(1);
 		}
 
-		int dig_lvl= nLevels - lvl_i -1;
+		int dig_lvl = nLevels - lvl_i - 1;
 
 		size_t ret = pow10[dig_lvl * MAXDIG_PER_HLEVEL] * lvl_strata_i;
 		ret = ret + key;
@@ -586,8 +581,8 @@ typedef struct metadataStruct
 
 		size_t ret = key % pow10[(MAXDIG_PER_HLEVEL * (lvl) + 2)];
 		// if(ret == 0){
-			// if 910023 % 10000 = 0, return 0 + 10000
-			ret = ret + pow10[(MAXDIG_PER_HLEVEL * (lvl) + 2)];
+		// if 910023 % 10000 = 0, return 0 + 10000
+		ret = ret + pow10[(MAXDIG_PER_HLEVEL * (lvl) + 2)];
 		// }
 		return ret;
 	}
@@ -635,12 +630,12 @@ typedef struct metadataStruct
 
 	int nMemberStrataAtStrataAtLevel(int strata_i, int lvl)
 	{
-		//digits count from right side
-		// hlvl0     hlvl1     hlvl2
-		// digitlvl2 digitlvl1 digitlvl0
-		int diglvl= nLevels-1-lvl;
-		
-		ASSERT(diglvl>0);
+		// digits count from right side
+		//  hlvl0     hlvl1     hlvl2
+		//  digitlvl2 digitlvl1 digitlvl0
+		int diglvl = nLevels - 1 - lvl;
+
+		ASSERT(diglvl > 0);
 		size_t key_i = 0;
 
 		int found = 0;
@@ -652,7 +647,8 @@ typedef struct metadataStruct
 		{
 			key_i = ind2stratakey[i];
 
-			if(getDigits(key_i,diglvl) == strata_i){
+			if (getDigits(key_i, diglvl) == strata_i)
+			{
 				int new_subkey = extractSubkey(key_i, diglvl - 1);
 
 				found = 0;
@@ -677,7 +673,6 @@ typedef struct metadataStruct
 		}
 		return sum;
 	}
-
 
 	//
 	// for each strata at this level;
@@ -709,10 +704,12 @@ typedef struct metadataStruct
 		if (lvl == nLevels - 1)
 		{
 			return hierArr[0]->nStrata;
-		}else if (nLevels == 1)
+		}
+		else if (nLevels == 1)
 		{
 			ASSERT(0 == 1);
-		}else if (nLevels > 1 && lvl < nLevels - 1)
+		}
+		else if (nLevels > 1 && lvl < nLevels - 1)
 		{
 
 			int lvl_i = lvl + 1;
@@ -720,7 +717,7 @@ typedef struct metadataStruct
 			for (int i = 0; i < hierArr[lvl_i]->nStrata; i++)
 			{
 
-				sum += nMemberStrataAtStrataAtLevel(i, lvl_i-1);
+				sum += nMemberStrataAtStrataAtLevel(i, lvl_i - 1);
 			}
 			return sum;
 		}
@@ -743,7 +740,6 @@ typedef struct distanceMatrixStruct
 {
 	double *M = NULL;
 
-
 	int nInd = 0;
 	int nIndCmb = 0;
 	int isSquared = -1;
@@ -763,38 +759,11 @@ typedef struct distanceMatrixStruct
 	{
 		delete[] M;
 	}
-	void print(FILE *fp)
-	{
-		for (int px = 0; px < nIndCmb; px++)
-		{
-			fprintf(fp, "%.*f", (int)DBL_MAXDIG10, M[px]);
-			if (px != nIndCmb - 1)
-			{
-				fprintf(fp, ",");
-			}
-			else
-			{
-				fprintf(fp, "\n");
-			}
-		}
-	}
 
-	void print(FILE *fp, const char *TYPE)
-	{
-		fprintf(fp, "%s,", TYPE);
-		for (int px = 0; px < nIndCmb; px++)
-		{
-			fprintf(fp, "%.*f", (int)DBL_MAXDIG10, M[px]);
-			if (px != nIndCmb - 1)
-			{
-				fprintf(fp, ",");
-			}
-			else
-			{
-				fprintf(fp, "\n");
-			}
-		}
-	}
+	void print(FILE *fp);
+	void print(FILE *fp, const char *TYPE);
+	void printGz(IO::outputStruct *out_dm_fs);
+
 } distanceMatrixStruct;
 
 // read distance matrix from distance matrix csv file
@@ -802,9 +771,6 @@ distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct
 
 // prepare distance matrix using genotype likelihoods and EM algorithm
 distanceMatrixStruct *distanceMatrixStruct_get(sampleStruct *SAMPLES, formulaStruct *FORMULA, paramStruct *pars, argStruct *args);
-
-
-
 
 typedef struct threadStruct
 {
@@ -832,7 +798,5 @@ typedef struct threadStruct
 
 } threadStruct;
 void print_SFS_GT(const char *TYPE, IO::outputStruct *out_sfs_fs, paramStruct *pars, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
-
-
 
 #endif // __DATA_STRUCTS__

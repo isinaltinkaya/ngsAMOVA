@@ -1,9 +1,14 @@
 #include "mathUtils.h"
 
-/// @brief nCk - n choose k recursive function
-/// @param n
-/// @param k 
-/// @return choose(n,k)
+
+/*
+ * Binomial coefficient: n choose k
+ *
+ * @brief nCk - n choose k recursive function
+ * @param n
+ * @param k
+ * @return choose(n,k)
+ */
 int nCk(int n, int k)
 {
 	if (k == 0)
@@ -13,11 +18,41 @@ int nCk(int n, int k)
 	return (n * nCk(n - 1, k - 1)) / k;
 }
 
-/// @brief  get index of pair
-/// @param nInd number of individuals
-/// @param i1 index of individual 1
-/// @param i2 index of individual 2
-/// @return index of pair
+/*
+ * [nCk_idx]
+ * Maps a given pair of objects to their index in
+ * the lexicographically ordered binomial coefficients
+ * a.k.a. array of pairs
+ *
+ * @param nInd: number of individuals
+ * @param i1: index of first individual
+ * @param i2: index of second individual
+ *
+ * @return: index of pair in lexicographically ordered array of pairs
+ *
+ * @example:
+ *
+ *  	0	1	2	3
+ * 0		01	02	03
+ * 1			12	13
+ * 2				23
+ * 3
+ *
+ * 01 = 0, 02 = 1, 03 = 2, 12 = 3, 13 = 4, 23 = 5
+ *
+ * Formula:
+ * (nCk(nInd, 2) - nCk((nInd - i1), 2)) + (i2 - i1) - 1;
+ *
+ * e.g.:
+ * nInd=5, i1=1, i2=3
+ * nCk(5,2) - nCk(4,2) + (3-1) - 1 = 5 - 6 + 2 - 1 = 0
+ *
+ * Total number of pairs: nCk(nInd, 2)
+ * Starting index for each individual: nCk(nInd, 2) - nCk((nInd - i), 2)
+ * Difference between i2 and i1: (i2 - i1)
+ * Index of pair: (nCk(nInd, 2) - nCk((nInd - i1), 2)) + (i2 - i1) - 1;
+ *
+ */
 int nCk_idx(int nInd, int i1, int i2)
 {
 	if (i2 > i1)
@@ -30,6 +65,7 @@ int nCk_idx(int nInd, int i1, int i2)
 	}
 }
 
+
 /// @brief prepare LUT for pair indices
 /// @param nInd number of individuals
 /// @return 2 LUTs
@@ -38,7 +74,7 @@ int nCk_idx(int nInd, int i1, int i2)
 /// 		2. lut_idxToInds - lookup table for pair's index to individual pair
 /// 				- lut_idxToInds[idx][0] = i1
 /// 				- lut_idxToInds[idx][1] = i2
-void set_lut_indsToIdx_2way(int nInd, int nIndCmb, int** lut_indsToIdx, int** lut_idxToInds)
+void set_lut_indsToIdx_2way(int nInd, int nIndCmb, int **lut_indsToIdx, int **lut_idxToInds)
 {
 	for (int i1 = 0; i1 < nInd - 1; i1++)
 	{
@@ -51,17 +87,16 @@ void set_lut_indsToIdx_2way(int nInd, int nIndCmb, int** lut_indsToIdx, int** lu
 		}
 	}
 }
-	// for (int i1 = 0; i1 < nInd - 1; i1++)
-	// {
-	// 	for (int i2 = i1 + 1; i2 < nInd; i2++)
-	// 	{
-	// 		int idx = nCk_idx(nInd, i1, i2);
-	// 		LUTs[0][i1][i2] = idx;
-	// 		LUTs[1][idx][0] = i1;
-	// 		LUTs[1][idx][1] = i2;
-	// 	}
-	// }
-
+// for (int i1 = 0; i1 < nInd - 1; i1++)
+// {
+// 	for (int i2 = i1 + 1; i2 < nInd; i2++)
+// 	{
+// 		int idx = nCk_idx(nInd, i1, i2);
+// 		LUTs[0][i1][i2] = idx;
+// 		LUTs[1][idx][0] = i1;
+// 		LUTs[1][idx][1] = i2;
+// 	}
+// }
 
 // calculations based on 3x3 matrix
 // 		of pairwise genotype categories

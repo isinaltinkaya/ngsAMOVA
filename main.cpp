@@ -289,7 +289,15 @@ void prepare_dMS_orig(argStruct *args, paramStruct *pars,  distanceMatrixStruct 
 
 	}
 
-	if (args->printMatrix == 1) dMS_orig->print(outSt->out_dm_fs->fp);
+	// if (args->printMatrix == 1) dMS_orig->print(outSt->out_dm_fs->fp);
+	if (args->printMatrix == 1){
+		if(args->gzMatrix == 0){
+			dMS_orig->print(outSt->out_dm_fs->fp);
+		}else{
+			dMS_orig->printGz(outSt->out_dm_fs);
+		}
+		dMS_orig->printGz(outSt->out_dm_fs);
+	}
 
 }
 

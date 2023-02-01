@@ -1,14 +1,10 @@
 #ifndef __ARG_STRUCT__
 #define __ARG_STRUCT__
 
-
 #include "shared.h"
 
-
-
-//TODO is this necessary?
+// TODO is this necessary?
 struct argStruct;
-
 
 /*
  * @typedef
@@ -98,62 +94,63 @@ struct argStruct;
  *
  * @field mThreads		maximum number of threads defined by user
  * @field mEmIter		maximum number of iterations allowed for em
- * 
+ *
  * @field seed			random seed for bootstrapping
- * 
+ *
  * @field nBootstraps	number of bootstraps to be performed for AMOVA significance test
- * 
+ *
  * 						bootstraps[0] = original data
  * 						bootstraps[1..nBootstraps] = bootstrapped data
  * 							size is nBootstraps+1
- * 
- * 						
+ *
+ *
  *
  */
 struct argStruct
 {
 
-	int verbose;
+    int verbose;
 
-	char *in_vcf_fn;
-	char *in_sfs_fn;
-	char *in_dm_fn;
-	char *in_mtd_fn;
-	char *out_fn;
+    char *in_vcf_fn;
+    char *in_sfs_fn;
+    char *in_dm_fn;
+    char *in_mtd_fn;
+    char *out_fn;
 
-	char *command;
+    char *command;
 
-	char *formula;
-	int *keyCols;
+    char *formula;
+    int *keyCols;
 
-	int blockSize;
-	int doAMOVA;
-	int doEM;
+    int blockSize;
+    int doAMOVA;
+    int doEM;
 
-	int printMatrix;
-	int isSim;
-	int isTest;
-	int doDist;
-	int do_square_distance;
-	int minInd;
+    int printMatrix;
+    int gzMatrix; //write matrix in gz format
 
-	int printDev;
+    int isSim;
+    int isTest;
+    int doDist;
+    int do_square_distance;
+    int minInd;
 
-	int hasColNames;
+    int printDev;
 
-	double tole;
-	int doTest;
+    int hasColNames;
 
-	int mThreads;
-	int mEmIter;
+    double tole;
+    int doTest;
 
-	int seed;
-	int nBootstraps;
+    int mThreads;
+    int mEmIter;
 
-	int gl2gt;
+    int seed;
+    int nBootstraps;
 
-	int printAmovaTable;
+    int gl2gt;
 
+    int printAmovaTable;
 };
 
 //
@@ -161,9 +158,8 @@ struct argStruct
 /// @return pointer to the argStruct structure
 argStruct *argStruct_init();
 
-
 argStruct *argStruct_get(int argc, char **argv);
 void argStruct_destroy(argStruct *arg);
-void argStruct_print(FILE* fp, argStruct *arg);
+void argStruct_print(FILE *fp, argStruct *arg);
 
 #endif // __ARG_STRUCT__

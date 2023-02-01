@@ -1,11 +1,9 @@
 #ifndef __PARAM_STRUCT__
 #define __PARAM_STRUCT__
 
-
 // #include "shared.h"
 
 #include <stdio.h>
-
 
 struct paramStruct;
 struct argStruct;
@@ -31,44 +29,38 @@ struct argStruct;
 struct paramStruct
 {
 
-	// number of sites non skipped for all individuals
-	// nSites may not be !=totSites if minInd is set
-	// or if a site is missing for all inds
-	size_t nSites;
-	// total number of sites processed
-	size_t totSites;
+    // number of sites non skipped for all individuals
+    // nSites may not be !=totSites if minInd is set
+    // or if a site is missing for all inds
+    size_t nSites;
+    // total number of sites processed
+    size_t totSites;
 
-	int nInd;
+    int nInd;
 
+    int **lut_indsToIdx;
+    int **lut_idxToInds;
 
-	int **lut_indsToIdx;
-	int **lut_idxToInds;
+    int nIndCmb;
 
-	int nIndCmb;
+    int nAmovaRuns;
+    int verbose;
 
-	int nAmovaRuns;
-	int verbose;
+    // input file type from enum
+    int in_ft;
 
-	// input file type from enum
-	int in_ft;
-
-	char *DATETIME;
-
+    char *DATETIME;
 
     // PRINT FUNCTIONS
-	void printParams(FILE* fp);
-	void printLut(FILE* fp);
+    void printParams(FILE *fp);
+    void printLut(FILE *fp);
 
+    void init_LUTs();
 
-
-	void init_LUTs();
-
-	// validate that parameters make sense
+    // validate that parameters make sense
     // e.g. nInd > 0
-	void validate();
-
+    void validate();
 };
-
 
 /// @brief paramStruct_init initialize the paramStruct
 /// @param args arguments argStruct

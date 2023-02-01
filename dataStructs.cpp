@@ -1,6 +1,46 @@
 #include "io.h"
 #include "dataStructs.h"
 
+void distanceMatrixStruct::printGz(IO::outputStruct *out_dm_fs)
+{
+	gzFile gzfp = gzopen(out_dm_fs->fn, "wb");
+	fprintf(stderr, "[INFO]\tWriting distance matrix to %s\n", out_dm_fs->fn);
+	gzwrite(gzfp, M, nIndCmb * sizeof(double));
+	gzclose(gzfp);
+}
+
+void distanceMatrixStruct::print(FILE *fp)
+{
+	for (int px = 0; px < nIndCmb; px++)
+	{
+		fprintf(fp, "%.*f", (int)DBL_MAXDIG10, M[px]);
+		if (px != nIndCmb - 1)
+		{
+			fprintf(fp, ",");
+		}
+		else
+		{
+			fprintf(fp, "\n");
+		}
+	}
+}
+
+void distanceMatrixStruct::print(FILE *fp, const char *TYPE)
+{
+	fprintf(fp, "%s,", TYPE);
+	for (int px = 0; px < nIndCmb; px++)
+	{
+		fprintf(fp, "%.*f", (int)DBL_MAXDIG10, M[px]);
+		if (px != nIndCmb - 1)
+		{
+			fprintf(fp, ",");
+		}
+		else
+		{
+			fprintf(fp, "\n");
+		}
+	}
+}
 
 /// @brief read distance matrix file
 /// @param in_dm_fp input distance matrix file
@@ -9,16 +49,52 @@
 distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct *args, metadataStruct *metadataSt)
 {
 
-	FILE *in_dm_fp = IO::getFile(args->in_dm_fn, "r");
+	// if(args->gzMatrix == 1){
+	// 	gzFile fp = gzopen(args->in_dm_fn, "rb");
+	// 	size_t buf_size = FGETS_BUF_SIZE;
+	// 	char *line = (char *)malloc(buf_size);
+	// 	ASSERT(line != NULL);
 
-	char dm_buf[FGETS_BUF_SIZE];
+	// 	while (gzgets(fp, line, buf_size) != NULL)
+	// 	{
+	// 		// check if the line was fully read
+	// 		size_t line_len = strlen(line);
+	// 		if (line[line_len - 1] == '\n')
+	// 		{
+	// 			// line was fully read
+	// 			break;
+	// 		}
+	// 		else
+	// 		{
+	// 			fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
+	// 			// line was not fully read
+	// 			buf_size *= 2;
 
+	// 			char *new_line = new char[buf_size];
+	// 			new_line = (char *)realloc(line, buf_size);
+	// 			ASSERT(new_line != NULL);
+	// 			line = new_line;
+	// 		}
+	// 	}
+	// 	gzclose(fp);
+
+
+	// 	// return distanceMatrixStruct_read_gz(pars, args, metadataSt);
+	// }else{
+		//TODO detect if gz from file extension
+		// then read accordingly
+
+	int buf_size = IO::readFile::getBufferSize(args->in_dm_fn);
+	char *line = (char *)malloc(buf_size);
+	ASSERT(line != NULL);
+
+	char dm_buf[buf_size];
 	int dm_vals_size = 1225;
 	double *dm_vals = (double *)malloc((dm_vals_size) * sizeof(double));
-
 	int n_vals = 0;
 
-	while (fgets(dm_buf, FGETS_BUF_SIZE, in_dm_fp))
+	FILE *in_dm_fp = fopen(args->in_dm_fn, "r");
+	while (fgets(dm_buf, buf_size, in_dm_fp))
 	{
 		char *tok = strtok(dm_buf, ",\n");
 		while (tok != NULL)
@@ -28,7 +104,6 @@ distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct
 				dm_vals_size = dm_vals_size * 2;
 				dm_vals = (double *)realloc(dm_vals, (dm_vals_size) * sizeof(double));
 			}
-
 			dm_vals[n_vals] = atof(tok);
 			n_vals++;
 			tok = strtok(NULL, ",\n");
@@ -37,7 +112,7 @@ distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct
 
 	fprintf(stderr, "[INFO]\t-> Number of values in distance matrix: %d. (i.e. number of unique individual pairs)\n", n_vals);
 	fprintf(stderr, "[INFO]\t-> Number of individuals based on the number of individuals in the distance matrix: %d.\n", find_n_given_nC2(n_vals));
-	
+
 	distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
 	dMS->isSquared = args->do_square_distance;
 
@@ -56,15 +131,13 @@ distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct
 		}
 	}
 
-	check_consistency_args_pars(args, pars);
-
 	FREE(dm_vals);
-
 	FCLOSE(in_dm_fp);
 
 	return dMS;
-}
 
+	// }
+}
 
 // if formula is not defined, hierarchical levels must defined in this order:
 // individual, highest_level, ..., lowest_level
@@ -73,8 +146,8 @@ distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct
 // which translates to the formula:
 // individual ~ region / population / subpopulation
 metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
-											   formulaStruct *FORMULA, int has_colnames,
-											   paramStruct *pars)
+								   formulaStruct *FORMULA, int has_colnames,
+								   paramStruct *pars)
 {
 
 	char *mtd_buf = new char[FGETS_BUF_SIZE];
@@ -87,11 +160,12 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 	if (FORMULA == NULL)
 	{
 
-		if (has_colnames != 1){
+		if (has_colnames != 1)
+		{
 			fprintf(stderr, "\n[ERROR]\t If no formula is provided, the metadata file must have a header line with the column names.\n");
 			exit(1);
 		}
-			
+
 		// if no formula is provided, then we assume that columns are ordered based on hierarchical structure
 		fprintf(stderr, "\n[INFO]\t-> Formula is not set, will assume that columns are ordered based on hierarchical structure and will use all columns.\n");
 
@@ -125,14 +199,13 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 
 		fprintf(stderr, "\n[INFO]\t-> Number of levels in metadata file: %ld\n", nLevels);
 
-
 		metadataStruct *mS = new metadataStruct(nLevels, levelNames);
 
 		// collect the strata_i indexes for each hierarchical level until the lowest level
 		size_t key = 0;
 
-		// sample index 
-		int sidx= 0;
+		// sample index
+		int sidx = 0;
 
 		// loop through the remaining lines; one line per individual
 		while (fgets(mtd_buf, FGETS_BUF_SIZE, in_mtd_fp))
@@ -154,8 +227,6 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 			// first column = individual id
 			char *tok = strtok(mtd_buf, METADATA_DELIMS);
 
-
-
 			// ----------------------- INPUT: VCF ----------------------- //
 			// vcf input has pars->nInd and pars->nIndCmb already set from VCF reading
 			if (pars->in_ft == IN_VCF)
@@ -172,7 +243,8 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 					}
 					else if (strcmp(tok, sampleSt->sampleNames[sidx]) == 0)
 					{
-						if (pars->verbose == 2) {
+						if (pars->verbose == 2)
+						{
 							fprintf(stderr, "\n\n======\n[INFO] Found sample (vcf_index=%d,id=%s) in the metadata file. \n\n", sidx, tok);
 						}
 						// break when found, so that sidx is now the index of the sample in the vcf file
@@ -184,23 +256,21 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 				for (int lvl_i = 0; lvl_i < mS->nLevels; lvl_i++)
 				{
 
-					//index of the strata in the current hierarchical level
-					int lvl_strata_i=0;
+					// index of the strata in the current hierarchical level
+					int lvl_strata_i = 0;
 
 					// first column after individual is the highest hierarchical level
 					tok = strtok(NULL, METADATA_DELIMS);
-
 
 					// if we are reading the first line
 					if (mS->hierArr[lvl_i] == NULL)
 					{
 						// we are in the first line, initialize the hierStruct for this level
 
-						//TODO
-						// mS->addHierStruct(lvl_i, tok);
+						// TODO
+						//  mS->addHierStruct(lvl_i, tok);
 						mS->hierArr[lvl_i] = new hierStruct(tok);
 						mS->hierArr[lvl_i]->nIndPerStrata[0]++;
-
 
 						// EOL end of the first line
 						if (lvl_i == mS->nLevels - 1)
@@ -209,11 +279,10 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 							// lowest level (excluding individual) in the first line
 							// no check because this is the first line of data we read
 							ASSERT(lvl_strata_i == 0);
-							key = mS->setKeyDigitAtLevel(key, lvl_i,lvl_strata_i);
+							key = mS->setKeyDigitAtLevel(key, lvl_i, lvl_strata_i);
 							mS->ind2stratakey[sidx] = key;
 							continue;
 						}
-
 					}
 
 					// EOL we are at the lowest level column
@@ -227,9 +296,7 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 
 						mS->ind2stratakey[sidx] = key;
 
-
 						// at the lowest level; end of the individual's line
-
 					}
 					else
 					{
@@ -237,7 +304,7 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 						// (not the first line; not the first column; not the last column)
 						//
 						// e.g. ind1,x1,y1,z1
-						// 		ind2,[x1],y2,z3  
+						// 		ind2,[x1],y2,z3
 						//   		we are at 'x1' of ind2, already allocated in previous individual
 
 						int strata_idx_i = mS->hierArr[lvl_i]->getStrataIndex(tok);
@@ -255,23 +322,21 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 				for (int lvl_i = 0; lvl_i < mS->nLevels; lvl_i++)
 				{
 
-					//index of the strata in the current hierarchical level
-					int lvl_strata_i=0;
+					// index of the strata in the current hierarchical level
+					int lvl_strata_i = 0;
 
 					// first column after individual is the highest hierarchical level
 					tok = strtok(NULL, METADATA_DELIMS);
-
 
 					// if we are reading the first line
 					if (mS->hierArr[lvl_i] == NULL)
 					{
 						// we are in the first line, initialize the hierStruct for this level
 
-						//TODO
-						// mS->addHierStruct(lvl_i, tok);
+						// TODO
+						//  mS->addHierStruct(lvl_i, tok);
 						mS->hierArr[lvl_i] = new hierStruct(tok);
 						mS->hierArr[lvl_i]->nIndPerStrata[0]++;
-
 
 						// EOL end of the first line
 						if (lvl_i == mS->nLevels - 1)
@@ -280,15 +345,14 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 							// lowest level (excluding individual) in the first line
 							// no check because this is the first line of data we read
 							ASSERT(lvl_strata_i == 0);
-							key = mS->setKeyDigitAtLevel(key, lvl_i,lvl_strata_i);
+							key = mS->setKeyDigitAtLevel(key, lvl_i, lvl_strata_i);
 							mS->ind2stratakey[sidx] = key;
 							sidx++;
 							continue;
 						}
-
 					}
 
-					// EOL 
+					// EOL
 					// at the lowest level column; end of the individual's line
 					else if (lvl_i == mS->nLevels - 1)
 					{
@@ -302,7 +366,6 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 						mS->ind2stratakey[sidx] = key;
 
 						sidx++;
-
 					}
 					else
 					{
@@ -310,7 +373,7 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 						// (not the first line; not the first column; not the last column)
 						//
 						// e.g. ind1,x1,y1,z1
-						// 		ind2,[x1],y2,z3  
+						// 		ind2,[x1],y2,z3
 						//   		we are at 'x1' of ind2, already allocated in previous individual
 
 						int strata_idx_i = mS->hierArr[lvl_i]->getStrataIndex(tok);
@@ -332,16 +395,17 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 		delete[] levelNames;
 		delete[] mtd_buf;
 
-
-		if (pars->in_ft == IN_DM){
+		if (pars->in_ft == IN_DM)
+		{
 			pars->nInd = mS->nIndMetadata;
 			pars->nIndCmb = nChoose2[pars->nInd];
 			pars->init_LUTs();
 			set_lut_indsToIdx_2way(pars->nInd, pars->nIndCmb, pars->lut_indsToIdx, pars->lut_idxToInds);
 		}
 		return (mS);
-
-	}else{
+	}
+	else
+	{
 		// formula is defined, i.e. not NULL
 
 		fprintf(stderr, "[ERROR] NOT IMPLEMENTED YET");
@@ -467,7 +531,6 @@ void usage(FILE *fp)
 			"\t-doAMOVA\n"
 			"\t-printMatrix\n"
 
-
 			"\t-doDist\n"
 			"\t-sqDist (default: 1)\n"
 
@@ -485,7 +548,7 @@ void usage(FILE *fp)
 	// fprintf(fp, "  -in <vcf file>		: input vcf file\n");
 	// fprintf(fp, "  -out <output file>		: output file\n");
 	// fprintf(fp, "  -doAMOVA <0/1>		: do AMOVA (default: 1)\n");
-	// fprintf(fp, "  -doTest <0/1>		: do EM test (default: 
+	// fprintf(fp, "  -doTest <0/1>		: do EM test (default:
 	// fprintf(fp, "  -printMatrix <0/1>		: print distance matrix (default: 0)\n");
 	// fprintf(fp, "  -printSFS <0/1>		: print SFS (default: 0)\n");
 
@@ -493,9 +556,6 @@ void usage(FILE *fp)
 	//
 	exit(0);
 }
-
-
-
 
 /// @brief formulaStruct_get initialize the formulaStruct
 /// @param formula formula string
@@ -643,9 +703,10 @@ void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, argStruct *a
 	fprintf(out_sfs_fs->fp, "\n");
 }
 
-void blobStruct_destroy(blobStruct *c){
+void blobStruct_destroy(blobStruct *c)
+{
 
-	for (size_t i = 0; i < (size_t) c->nContigs; i++)
+	for (size_t i = 0; i < (size_t)c->nContigs; i++)
 	{
 		FREE(c->contigBlockStartPtrs[i]);
 		FREE(c->contigNames[i]);
@@ -660,9 +721,10 @@ void blobStruct_destroy(blobStruct *c){
 	delete c;
 }
 
-blobStruct *blobStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *hdr){
+blobStruct *blobStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *hdr)
+{
 
-	blobStruct *c= new blobStruct();
+	blobStruct *c = new blobStruct();
 
 	c->nContigs = (size_t)nContigs;
 	c->contigNames = (char **)malloc(nContigs * sizeof(char *));
@@ -714,6 +776,3 @@ blobStruct *blobStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *
 
 	return c;
 }
-
-
-

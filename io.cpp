@@ -1,6 +1,8 @@
-#include "io.h"
+#include <zlib.h>
 
+#include "io.h"
 #include "dataStructs.h"
+
 
 /// @brief get file handle fp
 /// @param fname file name
@@ -37,7 +39,7 @@ char *IO::setFileName(const char *a, const char *b)
 /// @brief open file for writing
 /// @param c name of file
 /// @return  file *fp
-FILE *IO::openFile(char *c)
+FILE *IO::openFileW(char *c)
 {
 	fprintf(stderr, "\t-> Opening output file for writing: %s\n", c);
 	FILE *fp = getFile(c, "w");
@@ -48,7 +50,7 @@ FILE *IO::openFile(char *c)
 /// @param a prefix
 /// @param b suffix
 /// @return file *fp
-FILE *IO::openFile(const char *a, const char *b)
+FILE *IO::openFileW(const char *a, const char *b)
 {
 	char *c = (char *)malloc(strlen(a) + strlen(b) + 1);
 	strcpy(c, a);
@@ -71,8 +73,7 @@ char *IO::readFile::getFirstLine(char *fn)
 
 	ASSERT(line != NULL);
 
-	// ASSERT(fgets(line, 1024, fp) != NULL);
-	while (fgets(line, 1024, fp) != NULL)
+	while (fgets(line, buf_size, fp) != NULL)
 	{
 		// check if the line was fully read
 		size_t line_len = strlen(line);
@@ -89,15 +90,14 @@ char *IO::readFile::getFirstLine(char *fn)
 
 			char *new_line = new char[buf_size];
 			new_line = (char *)realloc(line, buf_size);
-			// char *new_line = (char*) realloc(line, buf_size);
 			ASSERT(new_line != NULL);
 			line = new_line;
 		}
 	}
-	// fprintf(stderr, "\t-> First line of file: %s\n", line);
+	fprintf(stderr, "\t-> First line of file: %s\n", line);
 	fclose(fp);
 	// TODO check this return
-	return strdup(line);
+	return line;
 }
 
 /// @brief getFirstLine get first line of a file
@@ -108,17 +108,17 @@ char *IO::readFile::getFirstLine(FILE *fp)
 
 	ASSERT(fseek(fp, 0, SEEK_SET) == 0);
 	size_t buf_size = FGETS_BUF_SIZE;
-	char *line = (char *)malloc(buf_size);
 
+	char *line = (char *)malloc(buf_size);
 	ASSERT(line != NULL);
 
-	while (fgets(line, 1024, fp) != NULL)
+	while (fgets(line, buf_size, fp) != NULL)
 	{
 		// check if the line was fully read
 		size_t line_len = strlen(line);
 		if (line[line_len - 1] == '\n')
 		{
-			// line was fully read
+			// line was fully readu
 			break;
 		}
 		else
@@ -135,7 +135,130 @@ char *IO::readFile::getFirstLine(FILE *fp)
 		}
 	}
 	// fprintf(stderr, "\t-> First line of file: %s\n", line);
-	return strdup(line);
+	return line;
+}
+
+int IO::readFile::getBufferSize(FILE* fp)
+{
+	ASSERT(fseek(fp, 0, SEEK_SET) == 0);
+    size_t buf_size = FGETS_BUF_SIZE;
+    char *line = (char *)malloc(buf_size);
+    ASSERT(line != NULL);
+
+	while (fgets(line, buf_size, fp) != NULL)
+	{
+		// check if the line was fully read
+		size_t line_len = strlen(line);
+		if (line[line_len - 1] == '\n')
+		{
+			// line was fully read
+			break;
+		}
+		else
+		{
+			fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
+			// line was not fully read; increase buffer size
+			buf_size *= 2;
+			line = (char *)realloc(line, buf_size);
+			ASSERT(line!= NULL);
+		}
+	}
+    FREE(line);
+    return buf_size;
+}
+
+int IO::readFile::getBufferSize(char* fn)
+{
+	FILE *fp = IO::getFile(fn, "r");
+    size_t buf_size = FGETS_BUF_SIZE;
+    char *line = (char *)malloc(buf_size);
+    ASSERT(line != NULL);
+	while (fgets(line, buf_size, fp) != NULL)
+	{
+		// check if the line was fully read
+		size_t line_len = strlen(line);
+		if (line[line_len - 1] == '\n')
+		{
+			// line was fully read
+			break;
+		}
+		else
+		{
+			fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
+			// line was not fully read; increase buffer size
+			buf_size *= 2;
+			line = (char *)realloc(line, buf_size);
+			ASSERT(line!= NULL);
+		}
+	}
+    FCLOSE(fp);
+    FREE(line);
+    return buf_size;
+}
+
+char *IO::readFileGz::getFirstLine(char *fn)
+{
+	gzFile gzfp = gzopen(fn, "rb");
+    size_t buf_size = FGETS_BUF_SIZE;
+    char *line = (char *)malloc(buf_size);
+    ASSERT(line != NULL);
+
+    while (gzgets(gzfp, line, buf_size) != NULL)
+    {
+        // check if the line was fully read
+        size_t line_len = strlen(line);
+        if (line[line_len - 1] == '\n')
+        {
+            // line was fully read
+            break;
+        }
+        else
+        {
+            fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
+            // line was not fully read
+            buf_size *= 2;
+
+            char *new_line = new char[buf_size];
+            new_line = (char *)realloc(line, buf_size);
+            ASSERT(new_line != NULL);
+            line = new_line;
+        }
+    }
+    gzclose(gzfp);
+    return line;
+}
+
+char *IO::readFileGz::getFirstLine(gzFile fp)
+{
+    ASSERT(fp != NULL);
+	ASSERT(gzseek(fp, 0, SEEK_SET) == 0);
+
+    size_t buf_size = FGETS_BUF_SIZE;
+    char *line = (char *)malloc(buf_size);
+    ASSERT(line != NULL);
+
+    while (gzgets(fp, line, buf_size) != NULL)
+    {
+        // check if the line was fully read
+        size_t line_len = strlen(line);
+        if (line[line_len - 1] == '\n')
+        {
+            // line was fully read
+            break;
+        }
+        else
+        {
+            fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
+            // line was not fully read
+            buf_size *= 2;
+
+            char *new_line = new char[buf_size];
+            new_line = (char *)realloc(line, buf_size);
+            ASSERT(new_line != NULL);
+            line = new_line;
+        }
+    }
+    return line;
 }
 
 /// @brief count_nColumns count number of columns in a line
