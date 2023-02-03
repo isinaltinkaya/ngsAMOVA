@@ -10,12 +10,55 @@
 /// @return file *fp
 FILE *IO::getFile(const char *fname, const char *mode)
 {
+
+	FILE *fp = NULL;
 	if (strcmp(mode, "r") == 0)
 	{
 		fprintf(stderr, "\n\t-> Reading file: %s\n", fname);
 	}
-	FILE *fp;
 	if (NULL == (fp = fopen(fname, mode)))
+	{
+		fprintf(stderr, "[%s:%s()]\t->Error opening FILE handle for file:%s exiting\n", __FILE__, __FUNCTION__, fname);
+		exit(1);
+	}
+	return fp;
+}
+
+/// @brief getFileExtension
+/// @param fn	filename
+/// @return pointer to file extension
+///     	 NULL if there is no file extension
+const char* IO::getFileExtension(const char* fn)
+{
+	const char* dot = strrchr(fn, '.');
+	// if there is no dot or the dot is the first character in the string, return NULL
+	if(dot == NULL || dot == fn) return NULL; 
+	// otherwise, return the dot+1 (the file extension)
+	return dot + 1;
+}
+
+int IO::isGzFile(const char *fname)
+{
+	const char *ext = IO::getFileExtension(fname);
+	if (ext == NULL)
+	{
+		return -1;
+	}
+	if (strcmp(ext, "gz") != 0)
+	{
+		return 0;
+	}
+	return 1;
+}
+
+gzFile IO::getGzFile(const char *fname, const char *mode)
+{
+	gzFile fp=Z_NULL;
+	if (strcmp(mode, "r") == 0)
+	{
+		fprintf(stderr, "\n\t-> Reading file: %s\n", fname);
+	}
+	if (Z_NULL == (fp = gzopen(fname, mode)))
 	{
 		fprintf(stderr, "[%s:%s()]\t->Error opening FILE handle for file:%s exiting\n", __FILE__, __FUNCTION__, fname);
 		exit(1);
@@ -57,7 +100,31 @@ FILE *IO::openFileW(const char *a, const char *b)
 	strcat(c, b);
 	fprintf(stderr, "\t-> Opening output file for writing: %s\n", c);
 	FILE *fp = getFile(c, "w");
-	free(c);
+	FREE(c);
+	return fp;
+}
+
+/// @brief open gzipped file for writing
+/// @param c name of file
+/// @return  
+gzFile IO::openGzFileW(char *c)
+{
+	fprintf(stderr, "\t-> Opening gzipped output file for writing: %s\n", c);
+	gzFile fp = getGzFile(c, "wb");
+	return fp;
+}
+
+/// @brief open gzipped file for writing using given prefix and suffix
+/// @param a prefix
+/// @param b suffix
+gzFile IO::openGzFileW(const char *a, const char *b)
+{
+	char *c = (char *)malloc(strlen(a) + strlen(b) + 1);
+	strcpy(c, a);
+	strcat(c, b);
+	fprintf(stderr, "\t-> Opening gzipped output file for writing: %s\n", c);
+	gzFile fp = getGzFile(c, "wb");
+	FREE(c);
 	return fp;
 }
 
@@ -138,6 +205,33 @@ char *IO::readFile::getFirstLine(FILE *fp)
 	return line;
 }
 
+int IO::readGzFile::readToBuffer(char* fn, char** buffer_p, size_t* buf_size_p)
+{
+	gzFile fp = IO::getGzFile(fn, "r");
+
+	int rlen = 0;
+	while (true) {
+		char *tok = gzgets(fp, *buffer_p + rlen, *buf_size_p - rlen);
+		if (tok == Z_NULL){
+			GZCLOSE(fp);
+			return rlen;
+		}
+		int tmp = strlen(tok);
+		if (tok[tmp - 1] != '\n') {
+			rlen += tmp;
+			*buf_size_p *= 2;
+			char *new_buf = (char*)realloc(*buffer_p, *buf_size_p);
+			ASSERT(new_buf != NULL);
+			*buffer_p = new_buf;
+		} else {
+			rlen += tmp;
+			GZCLOSE(fp);
+			return rlen;
+		}
+	}
+}
+
+
 int IO::readFile::getBufferSize(FILE* fp)
 {
 	ASSERT(fseek(fp, 0, SEEK_SET) == 0);
@@ -196,7 +290,7 @@ int IO::readFile::getBufferSize(char* fn)
     return buf_size;
 }
 
-char *IO::readFileGz::getFirstLine(char *fn)
+char *IO::readGzFile::getFirstLine(char *fn)
 {
 	gzFile gzfp = gzopen(fn, "rb");
     size_t buf_size = FGETS_BUF_SIZE;
@@ -224,11 +318,11 @@ char *IO::readFileGz::getFirstLine(char *fn)
             line = new_line;
         }
     }
-    gzclose(gzfp);
+	GZCLOSE(gzfp);
     return line;
 }
 
-char *IO::readFileGz::getFirstLine(gzFile fp)
+char *IO::readGzFile::getFirstLine(gzFile fp)
 {
     ASSERT(fp != NULL);
 	ASSERT(gzseek(fp, 0, SEEK_SET) == 0);

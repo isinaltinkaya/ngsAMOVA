@@ -121,7 +121,7 @@ int DEV_EM_2DSFS_GL3(threadStruct* THREAD){
 
 
 
-void DEV_prepare_dMS_orig(argStruct *args, paramStruct *pars,  distanceMatrixStruct *dMS_orig, VCF::vcfData *VCF, pairStruct **pairSt,  formulaStruct *formulaSt, IO::outFilesStruct *outSt, sampleStruct *sampleSt)
+void DEV_prepare_distanceMatrix_originalData(argStruct *args, paramStruct *pars,  distanceMatrixStruct *dMS_orig, VCF::vcfData *VCF, pairStruct **pairSt,  formulaStruct *formulaSt, IO::outFilesStruct *outSt, sampleStruct *sampleSt)
 {
 
 	switch (args->doAMOVA)
@@ -191,7 +191,7 @@ void DEV_prepare_dMS_orig(argStruct *args, paramStruct *pars,  distanceMatrixStr
 
 	}
 
-	if (args->printMatrix == 1) dMS_orig->print(outSt->out_dm_fs->fp);
+	if (args->printMatrix == 1) dMS_orig->print(outSt->out_dm_fs);
 
 }
 

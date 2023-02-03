@@ -459,6 +459,8 @@ AMOVA::amovaStruct *AMOVA::amovaStruct_doAmova(distanceMatrixStruct *dMS, metada
 		// use approximation
 	}
 
+	fprintf(stderr, "[INFO]\t-> Finished running AMOVA\n");
+
 	return aS;
 }
 

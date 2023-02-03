@@ -8,6 +8,7 @@ struct sampleStruct;
 struct formulaStruct;
 struct pairStruct;
 
+
 //********************************************************************************
 //*****************************  IO  *********************************************
 //********************************************************************************
@@ -16,10 +17,17 @@ namespace IO
 {
 
     char *setFileName(const char *a, const char *b);
+    const char *getFileExtension(const char *fn);
 
     FILE *getFile(const char *fname, const char *mode);
+    gzFile getGzFile(const char *fname, const char *mode);
     FILE *openFileW(const char *a, const char *b);
     FILE *openFileW(char *c);
+    gzFile openGzFileW(const char *a, const char *b);
+    gzFile openGzFileW(char *c);
+
+    int isGzFile(const char *fn);
+
 
     namespace readFile
     {
@@ -28,16 +36,19 @@ namespace IO
         char *getFirstLine(char *fn);
         char *getFirstLine(FILE *fp);
 
+        int readToBuffer(char* fn, char **buffer_p, size_t* buf_size_p);
+
         int getBufferSize(FILE *fp);
         int getBufferSize(char *fn);
     };
 
 
-    namespace readFileGz
+    namespace readGzFile
     {
         char *getFirstLine(char *fn);
         char *getFirstLine(gzFile fp);
 
+        int readToBuffer(char* fn, char **buffer_p, size_t* buf_size_p);
         // int getBufferSize(gzFile *fp);
         // int getBufferSize(char *fn);
     };
@@ -57,28 +68,54 @@ namespace IO
 
     typedef struct outputStruct
     {
+
+        
         char *fn = NULL;
-        //TODO maybe no fp
+
+        OUTFC fc;
+
         FILE *fp = NULL;
+        gzFile gzfp = NULL;
+
+        
         // int has_header = 0; //TODO
 
-        // gzfp = gzopen(fn); //TODO
-
-        outputStruct(const char *fn_, const char *suffix)
+        outputStruct(const char *fn_, const char *suffix, OUTFC fc_)
         {
+            fc = fc_;
             fn = setFileName(fn_, suffix);
-            fp = openFileW(fn);
-        //     gzclose(gzfp); //TODO
+            switch (fc) {
+                case OUTFC::NONE:
+                    fp = openFileW(fn);
+                    break;
+                case OUTFC::GZ:
+                    gzfp = openGzFileW(fn);
+                    break;
+            }
         }
         ~outputStruct()
         {
-            fclose(fp);
+            flush();
+            switch (fc) {
+                case OUTFC::NONE:
+                    FCLOSE(fp);
+                    break;
+                case OUTFC::GZ:
+                    GZCLOSE(gzfp);
+                    break;
+            }
             FREE(fn);
         }
         void flush()
         {
-            fflush(fp);
-        //     gzflush(gzfp, Z_SYNC_FLUSH); //TODO
+            switch(fc) {
+                case OUTFC::NONE:
+                    fflush(fp);
+                    break;
+                case OUTFC::GZ:
+                    gzflush(gzfp, Z_SYNC_FLUSH);
+                    break;
+            }
         }
 
     } outputStruct;
@@ -95,36 +132,33 @@ namespace IO
         {
             if (args->printMatrix == 1)
             {
-                if (args->gzMatrix == 0)
-                {
-                    out_dm_fs = new outputStruct(args->out_fn, ".distance_matrix.csv");
-                }
-                else
-                {
-                    out_dm_fs = new outputStruct(args->out_fn, ".distance_matrix.csv.gz");
-                }
+                out_dm_fs = new outputStruct(args->out_fn, ".distance_matrix.csv", OUTFC::NONE);
+            }else if (args->printMatrix == 2){
+                out_dm_fs = new outputStruct(args->out_fn, ".distance_matrix.csv.gz", OUTFC::GZ);
             }
+
             if (args->doTest == 1)
             {
-                out_emtest_fs = new outputStruct(args->out_fn, ".emtest.csv");
+                out_emtest_fs = new outputStruct(args->out_fn, ".emtest.csv", OUTFC::NONE);
             }
 
             if (args->doEM == 1)
             {
-                out_sfs_fs = new outputStruct(args->out_fn, ".sfs.csv");
+                out_sfs_fs = new outputStruct(args->out_fn, ".sfs.csv", OUTFC::NONE);
             }
             if (args->doAMOVA > 0)
             {
-                out_amova_fs = new outputStruct(args->out_fn, ".amova.csv");
+                out_amova_fs = new outputStruct(args->out_fn, ".amova.csv", OUTFC::NONE);
             }
             if (args->printDev > 0)
             {
-                out_dev_fs = new outputStruct(args->out_fn, ".dev.csv");
+                out_dev_fs = new outputStruct(args->out_fn, ".dev.csv", OUTFC::NONE);
             }
         }
 
         ~outFilesStruct()
         {
+            flushAll();
             delete out_emtest_fs;
             delete out_dm_fs;
             delete out_sfs_fs;

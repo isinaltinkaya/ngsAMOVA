@@ -104,6 +104,10 @@ struct argStruct;
  * 							size is nBootstraps+1
  *
  *
+ * @field printMatrix   [default = 0]
+ *                      [0] do NOT print distance matrix
+ *                      [1] print distance matrix in human-readable format
+ *                      [2] print distance matrix in gzipped format
  *
  */
 struct argStruct
@@ -127,7 +131,6 @@ struct argStruct
     int doEM;
 
     int printMatrix;
-    int gzMatrix; //write matrix in gz format
 
     int isSim;
     int isTest;

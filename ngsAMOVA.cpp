@@ -2,19 +2,17 @@
  * ngsAMOVA
  */
 
-#include <stdio.h>
 
 #include <htslib/vcf.h>
 #include <htslib/vcfutils.h>
 
+#include <stdio.h>
 #include <inttypes.h>
 #include <limits>
 #include <math.h>
 #include <time.h>
-
 #include <pthread.h>
 
-#include "main.h"
 #include "dataStructs.h"
 #include "io.h"
 #include "argStruct.h"
@@ -124,7 +122,7 @@ void spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, pairStruct **pai
 			distMatrix->M[pidx] = (double)MATH::EST::Dij(pair->SFS);
 		}
 
-		IO::print::Sfs("gle", outSt->out_sfs_fs, pair, args, VCF->hdr->samples[pars->lut_idxToInds[pidx][0]], VCF->hdr->samples[pars->lut_idxToInds[pidx][1]]);
+		// IO::print::Sfs("gle", outSt->out_sfs_fs, pair, args, VCF->hdr->samples[pars->lut_idxToInds[pidx][0]], VCF->hdr->samples[pars->lut_idxToInds[pidx][1]]);
 
 		delete PTHREADS[pidx];
 	}
@@ -195,7 +193,7 @@ void prepare_bootstrap_blocks(VCF::vcfData *VCF, paramStruct *pars, argStruct *a
 
 
 // prepare distance matrix using original data
-void prepare_dMS_orig(argStruct *args, paramStruct *pars,  distanceMatrixStruct *dMS_orig, VCF::vcfData *VCF, pairStruct **pairSt,  formulaStruct *formulaSt, IO::outFilesStruct *outSt, blobStruct *blobSt, sampleStruct *sampleSt)
+void prepare_distanceMatrix_originalData(argStruct *args, paramStruct *pars,  distanceMatrixStruct *dMS_orig, VCF::vcfData *VCF, pairStruct **pairSt,  formulaStruct *formulaSt, IO::outFilesStruct *outSt, blobStruct *blobSt, sampleStruct *sampleSt)
 {
 
 
@@ -251,7 +249,7 @@ void prepare_dMS_orig(argStruct *args, paramStruct *pars,  distanceMatrixStruct 
 					dMS_orig->M[pidx] = (double) MATH::EST::Dij(VCF->SFS_GT3[pidx], snSites);
 				}
 				
-				IO::print::Sfs("gt", outSt->out_sfs_fs, args, VCF->SFS_GT3[pidx], snSites, VCF->hdr->samples[pars->lut_idxToInds[pidx][0]], VCF->hdr->samples[pars->lut_idxToInds[pidx][1]]);
+				// IO::print::Sfs("gt", outSt->out_sfs_fs, args, VCF->SFS_GT3[pidx], snSites, VCF->hdr->samples[pars->lut_idxToInds[pidx][0]], VCF->hdr->samples[pars->lut_idxToInds[pidx][1]]);
 			}
 
 			break;
@@ -289,14 +287,8 @@ void prepare_dMS_orig(argStruct *args, paramStruct *pars,  distanceMatrixStruct 
 
 	}
 
-	// if (args->printMatrix == 1) dMS_orig->print(outSt->out_dm_fs->fp);
-	if (args->printMatrix == 1){
-		if(args->gzMatrix == 0){
-			dMS_orig->print(outSt->out_dm_fs->fp);
-		}else{
-			dMS_orig->printGz(outSt->out_dm_fs);
-		}
-		dMS_orig->printGz(outSt->out_dm_fs);
+	if (args->printMatrix != 0){
+		dMS_orig->print(outSt->out_dm_fs);
 	}
 
 }
@@ -318,7 +310,7 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO:
 		distanceMatrixStruct **dMS = new distanceMatrixStruct *[1];
 		dMS[0] = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
 		fprintf(stderr, "\n[INFO]\t-> -printDev 1; will print per EM iteration distance matrix\n");
-		DEV_prepare_dMS_orig(args, pars, dMS[0], VCF, pairSt, formulaSt, outSt, sampleSt);
+		DEV_prepare_distanceMatrix_originalData(args, pars, dMS[0], VCF, pairSt, formulaSt, outSt, sampleSt);
 		
 
 		fprintf(stderr, "Total number of sites processed: %lu\n", pars->totSites);
@@ -353,7 +345,10 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO:
 		if(args->doEM != 0 && args->printMatrix == 1){
 			fprintf(stderr, "\n[INFO]\t-> -printMatrix 1; will print distance matrix\n");
 			distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
-			prepare_dMS_orig(args, pars, dMS, VCF, pairSt, formulaSt, outSt, NULL, sampleSt);
+			prepare_distanceMatrix_originalData(args, pars, dMS, VCF, pairSt, formulaSt, outSt, NULL, sampleSt);
+			if(args->printMatrix != 0){
+				dMS->print(outSt->out_dm_fs);
+			}
 			delete dMS;
 		}
 
@@ -391,10 +386,12 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO:
 		}
 
 
+
 		// prepare distance matrix dMS given analysis type (-doAMOVA)
 
+
 		// dMS[0] is the original distance matrix (not bootstrapped)
-		prepare_dMS_orig(args, pars, dMS[0], VCF, pairSt, formulaSt, outSt, blobSt, sampleSt);
+		prepare_distanceMatrix_originalData(args, pars, dMS[0], VCF, pairSt, formulaSt, outSt, blobSt, sampleSt);
 
 
 		if(args->nBootstraps > 0){
@@ -499,7 +496,6 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::
 
 		delete amv;
 
-		sampleSt->print(stderr);
 
 
 		outSt->flushAll();
@@ -521,9 +517,6 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::
 	delete formulaSt;
 	delete sampleSt;
 
-
-	//
-	fprintf(stderr, "\n\t-> Finished running AMOVA\n");
 
 }
 

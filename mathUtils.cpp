@@ -87,6 +87,7 @@ void set_lut_indsToIdx_2way(int nInd, int nIndCmb, int **lut_indsToIdx, int **lu
 		}
 	}
 }
+
 // for (int i1 = 0; i1 < nInd - 1; i1++)
 // {
 // 	for (int i2 = i1 + 1; i2 < nInd; i2++)

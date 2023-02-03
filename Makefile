@@ -79,10 +79,18 @@ clean:
 test:
 	rm -rvf test/testwd;
 	mkdir -pv test/testwd;
-	./ngsAMOVA -doEM 1 -doAMOVA 1 -doTest 0 -in test/test_s9_d1_1K.vcf -isSim 1 -minInd 2 -printMatrix 0  -doDist 1 -maxIter 100 -nThreads 0 -tole 1e-10  --hascolnames 1 -m test/metadata_with_header_1lvl.tsv -out test/testwd/test_s9_d1_1K_mtd1;
+	echo "Test 1";
+	./ngsAMOVA -doEM 1 -doAMOVA 1 -in test/test_s9_d1_1K.vcf -isSim 1 -minInd 2 -printMatrix 1 -doDist 1 -maxIter 100 -nThreads 0 -tole 1e-10 --hascolnames 1 -m test/metadata_with_header_1lvl.tsv -out test/testwd/test_s9_d1_1K_mtd1;
 	bash -c "diff test/testwd/test_s9_d1_1K_mtd1.amova.csv test/reference/test_s9_d1_1K_mtd1.amova.csv";
-	./ngsAMOVA -doEM 1 -doAMOVA 1 -doTest 0 -in test/test_s9_d1_1K.vcf -isSim 1 -minInd 2 -printMatrix 0  -doDist 1 -maxIter 100 -nThreads 0 -tole 1e-10  --hascolnames 1 -m test/metadata_with_header_2lvl.tsv -out test/testwd/test_s9_d1_1K_mtd2;
+	echo "Test 2";
+	./ngsAMOVA -doEM 0 -doAMOVA 1 -in_dm test/testwd/test_s9_d1_1K_mtd1.distance_matrix.csv -isSim 1 -minInd 2 -doDist 1 -sqDist 0 --hascolnames 1 -m test/metadata_with_header_1lvl.tsv -out test/testwd/test_s9_d1_1K_mtd1_indm;
+	bash -c "diff test/testwd/test_s9_d1_1K_mtd1_indm.amova.csv test/reference/test_s9_d1_1K_mtd1.amova.csv";
+	echo "Test 3";
+	./ngsAMOVA -doEM 1 -doAMOVA 1 -doTest 0 -in test/test_s9_d1_1K.vcf -isSim 1 -minInd 2 -printMatrix 0 -doDist 1 -maxIter 100 -nThreads 0 -tole 1e-10  --hascolnames 1 -m test/metadata_with_header_2lvl.tsv -out test/testwd/test_s9_d1_1K_mtd2;
 	bash -c "diff test/testwd/test_s9_d1_1K_mtd2.amova.csv test/reference/test_s9_d1_1K_mtd2.amova.csv";
-	./ngsAMOVA -doEM 0 -doAMOVA 1 -doTest 0 -in_dm test/test_s9_d1_1K_mtd1_maxIter100_tole10.distance_matrix.csv -isSim 1 -minInd 2 -printMatrix 0  -doDist 1 -nThreads 0 --hascolnames 1 -m test/metadata_with_header_1lvl.tsv  -sqDist 0 -out test/testwd/indm_test_s9_d1_1K_mtd1;
+	echo "Test 4";
+	./ngsAMOVA -doEM 0 -doAMOVA 1 -doTest 0 -in_dm test/test_s9_d1_1K_mtd1_maxIter100_tole10.distance_matrix.csv -isSim 1 -minInd 2 -printMatrix 0 -doDist 1 -nThreads 0 --hascolnames 1 -m test/metadata_with_header_1lvl.tsv  -sqDist 0 -out test/testwd/indm_test_s9_d1_1K_mtd1;
 	bash -c "diff test/testwd/indm_test_s9_d1_1K_mtd1.amova.csv test/testwd/test_s9_d1_1K_mtd1.amova.csv";
-	#TODO add printMatrix 1 and test on it
+	echo "Test 5";
+	./ngsAMOVA -doEM 0 -doAMOVA 2 -in test/test_s9_d1_1K.vcf -isSim 1 -minInd 2 -printMatrix 0 -doDist 1 --hascolnames 1 -m test/metadata_with_header_1lvl.tsv -out test/testwd/test_s9_d1_1K_mtd1_gt;
+	bash -c "diff test/testwd/test_s9_d1_1K_mtd1_gt.amova.csv test/reference/test_s9_d1_1K_mtd1_gt.amova.csv";

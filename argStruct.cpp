@@ -34,7 +34,6 @@ argStruct *argStruct_init()
 	args->do_square_distance = 1;
 	
 	args->printMatrix = 0;
-	args->gzMatrix = 1;
 	args->printAmovaTable = 0;
 
 	args->isSim = 0;
@@ -123,8 +122,6 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->isTest = atoi(val);
 		else if (strcasecmp("-printMatrix", arv) == 0)
 			args->printMatrix = atoi(val);
-		else if (strcasecmp("-gzMatrix", arv) == 0)
-			args->gzMatrix = atoi(val);
 		else if (strcasecmp("-doDist", arv) == 0)
 			args->doDist = atoi(val);
 		else if (strcasecmp("-sqDist", arv) == 0)

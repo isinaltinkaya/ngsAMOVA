@@ -18,9 +18,9 @@
 
 #include <math.h>
 
-/******************************************************************************
- * MACRO DEFINITIONS
- *****************************************************************************/
+/* ========================================================================== */
+/* MACRO DEFINITIONS ======================================================== */
+/* ========================================================================== */
 
 /* -> FUNCTION-LIKE MACROS ---------------------------------------------------*/
 
@@ -78,12 +78,29 @@
 #define FCLOSE(expr)  \
 	if (expr)         \
 	{                 \
-		fclose(expr); \
+		if (fclose(expr) != 0){ \
+			fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr); \
+			exit(1); \
+		}; \
 		expr = NULL;  \
 	}
 
-/* ========================================================================== */
-/* LIMIT DEFINING MACROS ==================================================== */
+/*
+ * Macro:[GZCLOSE]
+ * shortcut to check if gzFile is open and close it
+ */
+#define GZCLOSE(expr)  \
+	if (expr)         \
+	{                 \
+		if(gzclose(expr) != Z_OK){ \
+			fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr); \
+			exit(1); \
+		}; \
+		expr = Z_NULL;  \
+	}
+
+
+/* LIMIT DEFINING MACROS -----------------------------------------------------*/
 
 // maximum number of tokens allowed in amova formula string
 #define MAX_FORMULA_TOKENS 10
@@ -129,13 +146,21 @@ const int nChoose2[301] = {0, 0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66, 78, 91
 
 int find_n_given_nC2(int nC2_res);
 
-// input file type
-enum
+/* ========================================================================== */
+/* ENUMERATIONS ============================================================= */
+
+// output file compression types
+enum OUTFC {NONE, GZ};
+
+// input file types
+enum INFT
 {
 	IN_VCF,
 	IN_DM,
 	IN_SFS
 };
+
+/* ========================================================================== */
 
 const double NEG_INF = -std::numeric_limits<double>::infinity();
 

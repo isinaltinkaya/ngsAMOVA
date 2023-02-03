@@ -760,9 +760,7 @@ typedef struct distanceMatrixStruct
 		delete[] M;
 	}
 
-	void print(FILE *fp);
-	void print(FILE *fp, const char *TYPE);
-	void printGz(IO::outputStruct *out_dm_fs);
+	void print(IO::outputStruct *out_dm_fs);
 
 } distanceMatrixStruct;
 

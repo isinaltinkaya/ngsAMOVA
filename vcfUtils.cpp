@@ -801,7 +801,7 @@ void VCF::vcfData::readSites_GT(argStruct *args, paramStruct *pars, pairStruct *
 		{
 			exit(1);
 		}
-		fprintf(stderr, "\n\n\n SFS_GT3[0][0] %d SFS_GT3[0][1] %d SFS_GT3[0][2] %d\n\n\n", SFS_GT3[0][0], SFS_GT3[0][1], SFS_GT3[0][2]);
+		// fprintf(stderr, "\n\n\n SFS_GT3[0][0] %d SFS_GT3[0][1] %d SFS_GT3[0][2] %d\n\n\n", SFS_GT3[0][0], SFS_GT3[0][1], SFS_GT3[0][2]);
 		pars->nSites++;
 		pars->totSites++;
 

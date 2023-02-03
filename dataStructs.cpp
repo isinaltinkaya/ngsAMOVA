@@ -1,46 +1,49 @@
 #include "io.h"
 #include "dataStructs.h"
 
-void distanceMatrixStruct::printGz(IO::outputStruct *out_dm_fs)
-{
-	gzFile gzfp = gzopen(out_dm_fs->fn, "wb");
-	fprintf(stderr, "[INFO]\tWriting distance matrix to %s\n", out_dm_fs->fn);
-	gzwrite(gzfp, M, nIndCmb * sizeof(double));
-	gzclose(gzfp);
-}
 
-void distanceMatrixStruct::print(FILE *fp)
+void distanceMatrixStruct::print(IO::outputStruct *out_dm_fs)
 {
+	fprintf(stderr, "[INFO]\t-> Writing distance matrix to %s.\n", out_dm_fs->fn);
+
+	char buf_values[8192];
+	char *bufptr=buf_values;
+
 	for (int px = 0; px < nIndCmb; px++)
 	{
-		fprintf(fp, "%.*f", (int)DBL_MAXDIG10, M[px]);
-		if (px != nIndCmb - 1)
+		if (px != 0 && px != nIndCmb - 1)
 		{
-			fprintf(fp, ",");
+			bufptr += sprintf(bufptr, ",%.*f", (int) DBL_MAXDIG10, M[px]);
+		}
+		else if (px == 0)
+		{
+			bufptr += sprintf(bufptr, "%.*f", (int) DBL_MAXDIG10, M[px]);
+		}
+		else if (px == nIndCmb - 1)
+		{
+			sprintf(bufptr, ",%.*f\n", (int) DBL_MAXDIG10, M[px]);
 		}
 		else
 		{
-			fprintf(fp, "\n");
+			ASSERT(0==1);
 		}
+	}
+	
+	switch(out_dm_fs->fc)
+	{
+		case OUTFC::NONE:
+			fprintf(out_dm_fs->fp, "%s", buf_values);
+			break;
+		case OUTFC::GZ:
+			// gzwrite(out_dm_fs->gzfp, M, nIndCmb * sizeof(double));
+			gzprintf(out_dm_fs->gzfp, "%s", buf_values);
+			break;
+		default:
+			fprintf(stderr, "[ERROR]\t-> Unknown output file format.\n");
+			exit(1);
 	}
 }
 
-void distanceMatrixStruct::print(FILE *fp, const char *TYPE)
-{
-	fprintf(fp, "%s,", TYPE);
-	for (int px = 0; px < nIndCmb; px++)
-	{
-		fprintf(fp, "%.*f", (int)DBL_MAXDIG10, M[px]);
-		if (px != nIndCmb - 1)
-		{
-			fprintf(fp, ",");
-		}
-		else
-		{
-			fprintf(fp, "\n");
-		}
-	}
-}
 
 /// @brief read distance matrix file
 /// @param in_dm_fp input distance matrix file
@@ -49,54 +52,22 @@ void distanceMatrixStruct::print(FILE *fp, const char *TYPE)
 distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct *args, metadataStruct *metadataSt)
 {
 
-	// if(args->gzMatrix == 1){
-	// 	gzFile fp = gzopen(args->in_dm_fn, "rb");
-	// 	size_t buf_size = FGETS_BUF_SIZE;
-	// 	char *line = (char *)malloc(buf_size);
-	// 	ASSERT(line != NULL);
-
-	// 	while (gzgets(fp, line, buf_size) != NULL)
-	// 	{
-	// 		// check if the line was fully read
-	// 		size_t line_len = strlen(line);
-	// 		if (line[line_len - 1] == '\n')
-	// 		{
-	// 			// line was fully read
-	// 			break;
-	// 		}
-	// 		else
-	// 		{
-	// 			fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
-	// 			// line was not fully read
-	// 			buf_size *= 2;
-
-	// 			char *new_line = new char[buf_size];
-	// 			new_line = (char *)realloc(line, buf_size);
-	// 			ASSERT(new_line != NULL);
-	// 			line = new_line;
-	// 		}
-	// 	}
-	// 	gzclose(fp);
-
-
-	// 	// return distanceMatrixStruct_read_gz(pars, args, metadataSt);
-	// }else{
-		//TODO detect if gz from file extension
-		// then read accordingly
-
-	int buf_size = IO::readFile::getBufferSize(args->in_dm_fn);
-	char *line = (char *)malloc(buf_size);
-	ASSERT(line != NULL);
-
-	char dm_buf[buf_size];
 	int dm_vals_size = 1225;
 	double *dm_vals = (double *)malloc((dm_vals_size) * sizeof(double));
+
 	int n_vals = 0;
 
-	FILE *in_dm_fp = fopen(args->in_dm_fn, "r");
-	while (fgets(dm_buf, buf_size, in_dm_fp))
-	{
-		char *tok = strtok(dm_buf, ",\n");
+	if(IO::isGzFile(args->in_dm_fn) == 1){
+
+		// gzFile fp = gzopen(args->in_dm_fn, "rb");
+		size_t buf_size = FGETS_BUF_SIZE;
+		size_t* buf_size_ptr= &buf_size;
+		char *line = (char *)malloc(buf_size);
+		char **line_ptr = &line;
+		IO::readGzFile::readToBuffer(args->in_dm_fn, line_ptr, buf_size_ptr);
+
+		ASSERT(line != NULL);
+		char *tok = strtok(line, ",\n");
 		while (tok != NULL)
 		{
 			if (n_vals > dm_vals_size)
@@ -108,6 +79,62 @@ distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct
 			n_vals++;
 			tok = strtok(NULL, ",\n");
 		}
+
+		FREE(line);
+		FREE(tok);
+
+
+
+		// while (gzgets(fp, line, buf_size) != NULL)
+		// {
+		// 	// check if the line was fully read
+		// 	size_t line_len = strlen(line);
+		// 	if (line[line_len - 1] == '\n')
+		// 	{
+		// 		// line was fully read
+		// 		break;
+		// 	}
+		// 	else
+		// 	{
+		// 		fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
+		// 		// line was not fully read
+		// 		buf_size *= 2;
+
+		// 		char *new_line = new char[buf_size];
+		// 		new_line = (char *)realloc(line, buf_size);
+		// 		ASSERT(new_line != NULL);
+		// 		line = new_line;
+		// 	}
+		// }
+		// gzclose(fp);
+
+	} else {
+
+		int buf_size = IO::readFile::getBufferSize(args->in_dm_fn);
+		char *line = (char *)malloc(buf_size);
+		ASSERT(line != NULL);
+
+		char dm_buf[buf_size];
+
+		FILE *in_dm_fp = fopen(args->in_dm_fn, "r");
+		while (fgets(dm_buf, buf_size, in_dm_fp))
+		{
+			char *tok = strtok(dm_buf, ",\n");
+			while (tok != NULL)
+			{
+				if (n_vals > dm_vals_size)
+				{
+					dm_vals_size = dm_vals_size * 2;
+					dm_vals = (double *)realloc(dm_vals, (dm_vals_size) * sizeof(double));
+				}
+				dm_vals[n_vals] = atof(tok);
+				n_vals++;
+				tok = strtok(NULL, ",\n");
+			}
+		}
+
+		FREE(line);
+		FCLOSE(in_dm_fp);
 	}
 
 	fprintf(stderr, "[INFO]\t-> Number of values in distance matrix: %d. (i.e. number of unique individual pairs)\n", n_vals);
@@ -131,12 +158,10 @@ distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct
 		}
 	}
 
-	FREE(dm_vals);
-	FCLOSE(in_dm_fp);
 
+	FREE(dm_vals);
 	return dMS;
 
-	// }
 }
 
 // if formula is not defined, hierarchical levels must defined in this order:
@@ -691,10 +716,16 @@ void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, argStruct *a
 
 	fprintf(out_sfs_fs->fp, ",%s,%d,%s,%s", TYPE, snSites, TYPE, TYPE);
 
-	if (args->doDist == 1 && args->do_square_distance == 1)
+	if (args->doDist == 1)
 	{
-		fprintf(out_sfs_fs->fp, ",%f,%f", (double)(1.0 - (double)MATH::EST::Sij(SFS_GT3, snSites)), SQUARE((double)(1.0 - (double)MATH::EST::Sij(SFS_GT3, snSites))));
-		// fprintf(out_sfs_fs->fp, ",%f", SQUARE((double)(1.0 - (double)MATH::EST::Sij(SFS_GT3, snSites))));
+		if (args->do_square_distance == 1)
+		{
+			fprintf(out_sfs_fs->fp, "%f", (double)SQUARE(MATH::EST::Dij(SFS_GT3, snSites)));
+		}
+		else
+		{
+			fprintf(out_sfs_fs->fp, "%f", (double)MATH::EST::Dij(SFS_GT3, snSites));
+		}
 	}
 	else
 	{
