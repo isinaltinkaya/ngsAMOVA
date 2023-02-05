@@ -4,6 +4,9 @@
 
 
 
+
+void DEV_input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::outFilesStruct *outSt);
+
 void* DEV_t_EM_2DSFS_GL3(void* p);
 
 int DEV_EM_2DSFS_GL3(threadStruct* THREAD);

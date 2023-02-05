@@ -109,6 +109,9 @@ struct argStruct;
  *                      [1] print distance matrix in human-readable format
  *                      [2] print distance matrix in gzipped format
  *
+ * @field windowSize    [default = 0]
+ *                     [0] do NOT use sliding window
+ *                    [VALUE] use sliding window of size VALUE
  */
 struct argStruct
 {
@@ -154,6 +157,8 @@ struct argStruct
     int gl2gt;
 
     int printAmovaTable;
+    
+    int windowSize;
 };
 
 //

@@ -1,5 +1,48 @@
 #include "dev.h"
 
+
+// --------------------------- INPUT: VCF/BCF --------------------------- //
+void DEV_input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::outFilesStruct *outSt)
+{
+	fprintf(stderr, "\n[INFO]\t-> Input file type: VCF/BCF\n");
+
+	sampleStruct *sampleSt = new sampleStruct();
+	VCF::vcfData* VCF = VCF::vcfData_init(args, pars, sampleSt);
+	pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
+
+	for(int pidx=0; pidx < pars->nIndCmb; pidx++){
+			pairSt[pidx] = new pairStruct(pars, pidx);
+	}
+
+	distanceMatrixStruct **dMS = new distanceMatrixStruct *[1];
+	dMS[0] = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
+	fprintf(stderr, "\n[INFO]\t-> -printDev 1; will print per EM iteration distance matrix\n");
+	DEV_prepare_distanceMatrix_originalData(args, pars, dMS[0], VCF, pairSt, formulaSt, outSt, sampleSt);
+	
+
+	fprintf(stderr, "Total number of sites processed: %lu\n", pars->totSites);
+	fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", pars->totSites - pars->nSites);
+
+	outSt->flushAll();
+
+	for (int i = 0; i < pars->nIndCmb; i++)
+	{
+		delete pairSt[i];
+	}
+	delete[] pairSt;
+	delete formulaSt;
+	delete sampleSt;
+	delete dMS[0];
+	delete[] dMS;
+	
+
+	VCF::vcfData_destroy(VCF);
+
+	return;
+
+}
+
+
 /// @brief thread handler for EM_2DSFS_GL3 DEV version
 /// @param p 
 /// @return 

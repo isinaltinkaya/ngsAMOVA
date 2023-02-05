@@ -21,6 +21,8 @@ argStruct *argStruct_init()
 	args->command = NULL;
 	args->blockSize = 0;
 
+	args->windowSize = 0;
+
 	args->doAMOVA = 0;
 	args->doEM = 0;
 
@@ -92,6 +94,14 @@ argStruct *argStruct_get(int argc, char **argv)
 		// this is to allow for the use of scientific notation (e.g. 1e6)
 		else if (strcasecmp("-bs", arv) == 0)
 			args->blockSize = (int) atof(val);
+		else if (strcasecmp("--blockSize", arv) == 0)
+			args->blockSize = (int) atof(val);
+
+		else if (strcasecmp("-ws", arv) == 0)
+			args->windowSize = (int) atof(val);
+		else if (strcasecmp("--windowSize", arv) == 0)
+			args->windowSize = (int) atof(val);
+
 		else if (strcasecmp("-bSize", arv) == 0)
 			args->blockSize = (int) atof(val);
 		else if (strcasecmp("-nb", arv) == 0)
@@ -255,6 +265,14 @@ argStruct *argStruct_get(int argc, char **argv)
 		exit(1);
 	}
 
+	if (args->printMatrix == 1){
+		fprintf(stderr, "\n[INFO]\t-> -printMatrix 1; will print distance matrix\n");
+	}else if (args->printMatrix == 0){
+		// fprintf(stderr, "\n[INFO]\t-> -printMatrix 0; will not print distance matrix\n");
+	}else{
+		fprintf(stderr, "\n[ERROR]\t-> -printMatrix %d is not available.\n", args->printMatrix);
+		exit(1);
+	}
 
 	switch (args->doAMOVA)
 	{
@@ -394,6 +412,14 @@ argStruct *argStruct_get(int argc, char **argv)
 			exit(1);
 		}
 	}
+
+
+	if(args->windowSize == 0){
+		fprintf(stderr, "\n[INFO]\t-> -windowSize 0; will not use sliding window\n");
+	}else{
+		fprintf(stderr, "\n[INFO]\t-> -windowSize %d; will use sliding windows of size %d\n", args->windowSize, args->windowSize);
+	}
+
 
 	return args;
 }
