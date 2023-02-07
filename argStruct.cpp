@@ -6,10 +6,10 @@ argStruct *argStruct_init()
 
 	argStruct *args = (argStruct *)calloc(1, sizeof(argStruct));
 
-	args->verbose = 1;
+	args->verbose = 0;
 
 	args->in_vcf_fn = NULL;
-	args->in_sfs_fn = NULL;
+	// args->in_sfs_fn = NULL;
 	args->in_dm_fn = NULL;
 	args->in_mtd_fn = NULL;
 	args->out_fn = NULL;
@@ -35,14 +35,16 @@ argStruct *argStruct_init()
 	args->doDist = -1;
 	args->do_square_distance = 1;
 	
-	args->printMatrix = 0;
-	args->printAmovaTable = 0;
 
 	args->isSim = 0;
 	args->isTest = 0;
 	args->minInd = -1;
 
-	args->printDev= -1;
+	args->printDev= 0;
+	args->printMatrix = 0;
+	args->printAmovaTable = 0;
+	args->printJointGenoCountDist = 0;
+	args->printJointGenoProbDist = 0;
 
 
 	args->seed = -1;
@@ -68,26 +70,77 @@ argStruct *argStruct_get(int argc, char **argv)
 		char *arv = *argv;
 		char *val = *(++argv);
 
-		if (strcasecmp("-in", arv) == 0)
+
+		if ((strcasecmp("--input", arv) == 0) || (strcasecmp("-in", arv) == 0) || (strcasecmp("-i", arv) == 0)){
 			args->in_vcf_fn = strdup(val);
-		else if (strcasecmp("-i", arv) == 0)
-			args->in_vcf_fn = strdup(val);
-		else if (strcasecmp("-in_sfs", arv) == 0)
-			args->in_sfs_fn = strdup(val);
+		}
+		// else if ((strcasecmp("--inputJointGenoProbDist", arv) == 0) || (strcasecmp("--inputJGPD", arv) == 0) || (strcasecmp("-iJGPD", arv) == 0)){
+		// 	args->in_sfs_fn = strdup(val);
+		// }
 		else if (strcasecmp("-in_dm", arv) == 0)
 			args->in_dm_fn = strdup(val);
 		else if (strcasecmp("-m", arv) == 0)
 			args->in_mtd_fn = strdup(val);
-		else if (strcasecmp("-out", arv) == 0)
+		else if ((strcasecmp("--output", arv) == 0) || (strcasecmp("-out", arv) == 0) || (strcasecmp("-o", arv) == 0)){
 			args->out_fn = strdup(val);
-		else if (strcasecmp("-o", arv) == 0)
-			args->out_fn = strdup(val);
+		}
 
 		else if (strcasecmp("-dev", arv) == 0)
 			args->printDev = atoi(val);
 
-		else if (strcasecmp("--print-amova-table", arv) == 0)
+
+		else if ((strcasecmp("--printJointGenoCountDist", arv) == 0) || (strcasecmp("--printJGCD", arv) == 0) || (strcasecmp("-pJGCD", arv) == 0)){
+			args->printJointGenoCountDist = atoi(val);
+		}
+		else if ((strcasecmp("--printJointGenoProbDist", arv) == 0) || (strcasecmp("--printJGPD", arv) == 0) || (strcasecmp("-pJGPD", arv) == 0)){
+			args->printJointGenoProbDist = atoi(val);
+		}
+		else if ((strcasecmp("--printAmovaTable", arv) == 0) || (strcasecmp("--printAT", arv) == 0) || (strcasecmp("-pAT", arv) == 0)){
 			args->printAmovaTable = atoi(val);
+		}
+
+		else if ((strcasecmp("--verbose", arv) == 0) || (strcasecmp("-v", arv) == 0)) 
+		{
+			if (val == NULL)
+				args->verbose = 1;
+			else if (isdigit(val[0]))
+				args->verbose = atoi(val);
+			else
+				args->verbose = 1;
+		}
+
+		else if (strcasecmp("--isSim", arv) == 0)
+			args->isSim = atoi(val);
+		else if (strcasecmp("--isTest", arv) == 0)
+			args->isTest = atoi(val);
+		else if (strcasecmp("--minInd", arv) == 0)
+			args->minInd = atoi(val);
+
+		else if (strcasecmp("--doDist", arv) == 0)
+			args->doDist = atoi(val);
+		else if (strcasecmp("--do_square_distance", arv) == 0)
+			args->do_square_distance = atoi(val);
+
+		else if (strcasecmp("--doAMOVA", arv) == 0)
+			args->doAMOVA = atoi(val);
+		else if (strcasecmp("--doEM", arv) == 0)
+			args->doEM = atoi(val);
+
+		else if (strcasecmp("--mThreads", arv) == 0)
+			args->mThreads = atoi(val);
+		else if (strcasecmp("--mEmIter", arv) == 0)
+			args->mEmIter = atoi(val);
+
+		else if (strcasecmp("--tole", arv) == 0)
+			args->tole = atof(val);
+		else if (strcasecmp("--doTest", arv) == 0)
+			args->doTest = atoi(val);
+
+		else if (strcasecmp("--gl2gt", arv) == 0)
+			args->gl2gt = atoi(val);
+
+		else if (strcasecmp("--seed", arv) == 0)
+			args->seed = atoi(val);
 
 
 		// read block size as float and convert to int
@@ -427,7 +480,8 @@ argStruct *argStruct_get(int argc, char **argv)
 void argStruct_destroy(argStruct *args)
 {
 	FREE(args->in_vcf_fn);
-	FREE(args->in_sfs_fn);
+	FREE(args->in_jgcd_fn);
+	FREE(args->in_jgpd_fn);
 	FREE(args->in_dm_fn);
 	FREE(args->in_mtd_fn);
 	FREE(args->out_fn);

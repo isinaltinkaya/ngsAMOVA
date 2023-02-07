@@ -2,6 +2,7 @@
 #define __ARG_STRUCT__
 
 #include "shared.h"
+#include "ctype.h"
 
 // TODO is this necessary?
 struct argStruct;
@@ -104,14 +105,17 @@ struct argStruct;
  * 							size is nBootstraps+1
  *
  *
- * @field printMatrix   [default = 0]
+ * @field printMatrix           [default = 0]
  *                      [0] do NOT print distance matrix
  *                      [1] print distance matrix in human-readable format
  *                      [2] print distance matrix in gzipped format
  *
- * @field windowSize    [default = 0]
- *                     [0] do NOT use sliding window
- *                    [VALUE] use sliding window of size VALUE
+ * @field windowSize            [default = 0]
+ *                              [0] do NOT use sliding window
+ *                              [VALUE] use sliding window of size VALUE
+ * 
+ * @field printJointGenoDist    [default = 0]
+ *                              [0] do NOT print joint genotype distributions of pairs of individuals
  */
 struct argStruct
 {
@@ -119,9 +123,10 @@ struct argStruct
     int verbose;
 
     char *in_vcf_fn;
-    char *in_sfs_fn;
     char *in_dm_fn;
     char *in_mtd_fn;
+    char *in_jgcd_fn;
+    char *in_jgpd_fn;
     char *out_fn;
 
     char *command;
@@ -133,7 +138,11 @@ struct argStruct
     int doAMOVA;
     int doEM;
 
+    int printAmovaTable;
     int printMatrix;
+    int printJointGenoCountDist;
+    int printJointGenoProbDist;
+    int printDev;
 
     int isSim;
     int isTest;
@@ -141,7 +150,6 @@ struct argStruct
     int do_square_distance;
     int minInd;
 
-    int printDev;
 
     int hasColNames;
 
@@ -156,7 +164,6 @@ struct argStruct
 
     int gl2gt;
 
-    int printAmovaTable;
     
     int windowSize;
 };

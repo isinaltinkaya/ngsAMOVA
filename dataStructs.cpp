@@ -675,29 +675,29 @@ formulaStruct *formulaStruct_get(const char *formula)
 
 /// @param sample1 name of sample 1
 /// @param sample2 name of sample 2
-void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, pairStruct *pair, argStruct *args, const char *sample1, const char *sample2)
-{
+// void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, pairStruct *pair, argStruct *args, const char *sample1, const char *sample2)
+// {
 
-	fprintf(out_sfs_fs->fp, "%s,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f",
-			TYPE,
-			sample1,
-			sample2,
-			pair->snSites * pair->SFS[0], pair->snSites * pair->SFS[1], pair->snSites * pair->SFS[2],
-			pair->snSites * pair->SFS[3], pair->snSites * pair->SFS[4], pair->snSites * pair->SFS[5],
-			pair->snSites * pair->SFS[6], pair->snSites * pair->SFS[7], pair->snSites * pair->SFS[8]);
+// 	fprintf(out_sfs_fs->fp, "%s,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f",
+// 			TYPE,
+// 			sample1,
+// 			sample2,
+// 			pair->snSites * pair->SFS[0], pair->snSites * pair->SFS[1], pair->snSites * pair->SFS[2],
+// 			pair->snSites * pair->SFS[3], pair->snSites * pair->SFS[4], pair->snSites * pair->SFS[5],
+// 			pair->snSites * pair->SFS[6], pair->snSites * pair->SFS[7], pair->snSites * pair->SFS[8]);
 
-	fprintf(out_sfs_fs->fp, ",%d,%ld,%e,%e", pair->n_em_iter, pair->snSites, pair->d, args->tole);
+// 	fprintf(out_sfs_fs->fp, ",%d,%ld,%e,%e", pair->n_em_iter, pair->snSites, pair->d, args->tole);
 
-	if (args->doDist == 1 && args->do_square_distance == 1)
-	{
-		fprintf(out_sfs_fs->fp, ",%f,%f", (double)(1.0 - (double)MATH::EST::Sij(pair->SFS)), SQUARE((double)(1.0 - (double)MATH::EST::Sij(pair->SFS))));
-	}
-	else
-	{
-		exit(1);
-	}
-	fprintf(out_sfs_fs->fp, "\n");
-}
+// 	if (args->doDist == 1 && args->do_square_distance == 1)
+// 	{
+// 		fprintf(out_sfs_fs->fp, ",%f,%f", (double)(1.0 - (double)MATH::EST::Sij(pair->SFS)), SQUARE((double)(1.0 - (double)MATH::EST::Sij(pair->SFS))));
+// 	}
+// 	else
+// 	{
+// 		exit(1);
+// 	}
+// 	fprintf(out_sfs_fs->fp, "\n");
+// }
 
 /// @brief print_SFS_GT print SFS_GT3
 /// @param TYPE type of analysis
@@ -705,34 +705,34 @@ void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, pairStruct *
 /// @param args pointer to argStruct
 /// @param SFS_GT3 matrix of 3 GT SFS for pair (int **SFS_GT3[pidx])
 /// @param snSites (shared) number of sites
-void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, argStruct *args, int *SFS_GT3, int snSites, const char *sample1, const char *sample2)
-{
+// void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, argStruct *args, int *SFS_GT3, int snSites, const char *sample1, const char *sample2)
+// {
 
-	fprintf(out_sfs_fs->fp, "%s,%s,%s,", TYPE, sample1, sample2);
-	fprintf(out_sfs_fs->fp, "%d,%d,%d,%d,%d,%d,%d,%d,%d",
-			SFS_GT3[0], SFS_GT3[1], SFS_GT3[2],
-			SFS_GT3[3], SFS_GT3[4], SFS_GT3[5],
-			SFS_GT3[6], SFS_GT3[7], SFS_GT3[8]);
+// 	fprintf(out_sfs_fs->fp, "%s,%s,%s,", TYPE, sample1, sample2);
+// 	fprintf(out_sfs_fs->fp, "%d,%d,%d,%d,%d,%d,%d,%d,%d",
+// 			SFS_GT3[0], SFS_GT3[1], SFS_GT3[2],
+// 			SFS_GT3[3], SFS_GT3[4], SFS_GT3[5],
+// 			SFS_GT3[6], SFS_GT3[7], SFS_GT3[8]);
 
-	fprintf(out_sfs_fs->fp, ",%s,%d,%s,%s", TYPE, snSites, TYPE, TYPE);
+// 	fprintf(out_sfs_fs->fp, ",%s,%d,%s,%s", TYPE, snSites, TYPE, TYPE);
 
-	if (args->doDist == 1)
-	{
-		if (args->do_square_distance == 1)
-		{
-			fprintf(out_sfs_fs->fp, "%f", (double)SQUARE(MATH::EST::Dij(SFS_GT3, snSites)));
-		}
-		else
-		{
-			fprintf(out_sfs_fs->fp, "%f", (double)MATH::EST::Dij(SFS_GT3, snSites));
-		}
-	}
-	else
-	{
-		exit(1);
-	}
-	fprintf(out_sfs_fs->fp, "\n");
-}
+// 	if (args->doDist == 1)
+// 	{
+// 		if (args->do_square_distance == 1)
+// 		{
+// 			fprintf(out_sfs_fs->fp, "%f", (double)SQUARE(MATH::EST::Dij(SFS_GT3, snSites)));
+// 		}
+// 		else
+// 		{
+// 			fprintf(out_sfs_fs->fp, "%f", (double)MATH::EST::Dij(SFS_GT3, snSites));
+// 		}
+// 	}
+// 	else
+// 	{
+// 		exit(1);
+// 	}
+// 	fprintf(out_sfs_fs->fp, "\n");
+// }
 
 void blobStruct_destroy(blobStruct *c)
 {

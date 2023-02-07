@@ -211,7 +211,7 @@ void DEV_prepare_distanceMatrix_originalData(argStruct *args, paramStruct *pars,
 					dMS_orig->M[pidx] = (double) MATH::EST::Dij(VCF->SFS_GT3[pidx], snSites);
 				}
 				
-				IO::print::Sfs("gt", outSt->out_sfs_fs, args, VCF->SFS_GT3[pidx], snSites, VCF->hdr->samples[pars->lut_idxToInds[pidx][0]], VCF->hdr->samples[pars->lut_idxToInds[pidx][1]]);
+				// IO::print::Sfs("gt", outSt->out_sfs_fs, args, VCF->SFS_GT3[pidx], snSites, VCF->hdr->samples[pars->lut_idxToInds[pidx][0]], VCF->hdr->samples[pars->lut_idxToInds[pidx][1]]);
 			}
 
 			break;
@@ -246,12 +246,12 @@ void DEV_spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, pairStruct *
 
 	for (int i = 0; i < pars->nIndCmb; i++)
 	{
-		PTHREADS[i] = new threadStruct(pairSt[i], VCF->lngl, outSt->out_sfs_fs, args, pars);
+		PTHREADS[i] = new threadStruct(pairSt[i], VCF->lngl, args, pars);
 	}
 
 	int nJobs_sent = 0;
 
-	fprintf(outSt->out_sfs_fs->fp, "Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Dij,Dij2\n");
+	// fprintf(outSt->out_sfs_fs->fp, "Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Dij,Dij2\n");
 	for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
 	{
 		if (args->mThreads > 1)
@@ -334,7 +334,7 @@ void DEV_spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, pairStruct *
 			distMatrix->M[pidx] = (double)MATH::EST::Dij(pair->SFS);
 		}
 
-		IO::print::Sfs("gle", outSt->out_sfs_fs, pair, args, VCF->hdr->samples[pars->lut_idxToInds[pidx][0]], VCF->hdr->samples[pars->lut_idxToInds[pidx][1]]);
+		// IO::print::Sfs("gle", outSt->out_sfs_fs, pair, args, VCF->hdr->samples[pars->lut_idxToInds[pidx][0]], VCF->hdr->samples[pars->lut_idxToInds[pidx][1]]);
 
 		delete PTHREADS[pidx];
 	}

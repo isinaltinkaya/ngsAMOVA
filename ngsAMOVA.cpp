@@ -34,12 +34,12 @@ void spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, pairStruct **pai
 
 	for (int i = 0; i < pars->nIndCmb; i++)
 	{
-		PTHREADS[i] = new threadStruct(pairSt[i], VCF->lngl, outSt->out_sfs_fs, args, pars);
+		PTHREADS[i] = new threadStruct(pairSt[i], VCF->lngl, args, pars);
 	}
 
 	int nJobs_sent = 0;
 
-	fprintf(outSt->out_sfs_fs->fp, "Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Dij,Dij2\n");
+	// fprintf(outSt->out_sfs_fs->fp, "Method,Ind1,Ind2,A,D,G,B,E,H,C,F,I,n_em_iter,shared_nSites,Delta,Tole,Dij,Dij2\n");
 	for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
 	{
 		if (args->mThreads > 1)

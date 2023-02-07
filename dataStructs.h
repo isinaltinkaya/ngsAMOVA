@@ -776,25 +776,24 @@ typedef struct threadStruct
 	pairStruct *pair;
 	double **lngls;
 
-	FILE *out_sfs_fp;
+	// FILE *out_sfs_fp;
 
 	argStruct const *args;
 	paramStruct const *pars;
 
 	size_t nSites;
 
-	threadStruct(pairStruct *tPair, double **lngl, IO::outputStruct *out_sfs_fs, argStruct *args_, paramStruct *pars_)
+	threadStruct(pairStruct *tPair, double **lngl, argStruct *args_, paramStruct *pars_)
 	{
 		pair = tPair;
 		lngls = lngl;
 
-		out_sfs_fp = out_sfs_fs->fp;
 		args = args_;
 		pars = pars_;
 		nSites = pars->nSites;
 	}
 
 } threadStruct;
-void print_SFS_GT(const char *TYPE, IO::outputStruct *out_sfs_fs, paramStruct *pars, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
+// void print_SFS_GT(const char *TYPE, IO::outputStruct *out_sfs_fs, paramStruct *pars, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
 
 #endif // __DATA_STRUCTS__

@@ -68,7 +68,6 @@ namespace IO
 
     typedef struct outputStruct
     {
-
         
         char *fn = NULL;
 
@@ -78,7 +77,7 @@ namespace IO
         gzFile gzfp = NULL;
 
         
-        // int has_header = 0; //TODO
+        // int print_header = 0; //TODO
 
         outputStruct(const char *fn_, const char *suffix, OUTFC fc_)
         {
@@ -123,10 +122,11 @@ namespace IO
     typedef struct outFilesStruct
     {
         outputStruct *out_emtest_fs = NULL;
-        outputStruct *out_sfs_fs = NULL;
         outputStruct *out_dm_fs = NULL;
         outputStruct *out_amova_fs = NULL;
         outputStruct *out_dev_fs = NULL;
+        outputStruct *out_jgcd_fs = NULL;
+        outputStruct *out_jgpd_fs = NULL;
 
         outFilesStruct(argStruct *args)
         {
@@ -144,7 +144,14 @@ namespace IO
 
             if (args->doEM == 1)
             {
-                out_sfs_fs = new outputStruct(args->out_fn, ".sfs.csv", OUTFC::NONE);
+                if (args->printJointGenoCountDist > 0)
+                {
+                    out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", OUTFC::NONE);
+                }
+                if (args->printJointGenoProbDist > 0)
+                {
+                    out_jgpd_fs = new outputStruct(args->out_fn, ".joint_geno_prob_dist.csv", OUTFC::NONE);
+                }
             }
             if (args->doAMOVA > 0)
             {
@@ -161,9 +168,10 @@ namespace IO
             flushAll();
             delete out_emtest_fs;
             delete out_dm_fs;
-            delete out_sfs_fs;
             delete out_amova_fs;
             delete out_dev_fs;
+            delete out_jgcd_fs;
+            delete out_jgpd_fs;
         }
 
         void flushAll()
@@ -176,9 +184,13 @@ namespace IO
             {
                 out_dm_fs->flush();
             }
-            if (out_sfs_fs != NULL)
+            if (out_jgcd_fs != NULL)
             {
-                out_sfs_fs->flush();
+                out_jgcd_fs->flush();
+            }
+            if (out_jgpd_fs != NULL)
+            {
+                out_jgpd_fs->flush();
             }
             if (out_amova_fs != NULL)
             {
@@ -221,9 +233,9 @@ namespace IO
         /// @param args arguments struct
         /// @param sample1 name of sample 1
         /// @param sample2 name of sample 2
-        void Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, pairStruct *pair, argStruct *args, const char *sample1, const char *sample2);
+        // void Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, pairStruct *pair, argStruct *args, const char *sample1, const char *sample2);
 
-        void Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, argStruct *args, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
+        // void Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, argStruct *args, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
 
         void M_PWD(const char *TYPE, IO::outputStruct *out_dm_fs, int nIndCmb, double *M_PWD);
     }
