@@ -96,7 +96,6 @@ typedef struct vcfData
 	void init_JointGenoCountDistGT(int nGT_)
 	{
 		set_nGT(nGT_);
-		fprintf(stderr, "\n\nnJointClasses: %d", nJointClasses);
 		ASSERT(nJointClasses > 0);
 		ASSERT(nIndCmb > 0);
 		JointGenoCountDistGT = (int **)malloc(nIndCmb * sizeof(int *));

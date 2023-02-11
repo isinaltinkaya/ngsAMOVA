@@ -320,18 +320,9 @@ argStruct *argStruct_get(int argc, char **argv)
 		exit(1);
 	}
 
-	if (args->printMatrix == 1)
+	if (args->printMatrix != 0)
 	{
-		fprintf(stderr, "\n[INFO]\t-> -printMatrix 1; will print distance matrix\n");
-	}
-	else if (args->printMatrix == 0)
-	{
-		// fprintf(stderr, "\n[INFO]\t-> -printMatrix 0; will not print distance matrix\n");
-	}
-	else
-	{
-		fprintf(stderr, "\n[ERROR]\t-> -printMatrix %d is not available.\n", args->printMatrix);
-		exit(1);
+		fprintf(stderr, "\n[INFO]\t-> -printMatrix %d; will print distance matrix\n", args->printMatrix);
 	}
 
 	switch (args->doAMOVA)

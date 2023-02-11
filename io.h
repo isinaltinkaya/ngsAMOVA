@@ -86,6 +86,7 @@ namespace IO
         {
             fc = fc_;
             fn = setFileName(fn_, suffix, FILE_EXTENSIONS[(OUTFC)fc]);
+            fprintf(stderr,"\n[INFO] Opening output file: %s\n", fn);
             switch (fc)
             {
             case OUTFC::NONE:
@@ -105,6 +106,7 @@ namespace IO
                 exit(1);
                 break;
             }
+
         }
 
         ~outputStruct()
