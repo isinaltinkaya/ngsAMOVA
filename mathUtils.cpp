@@ -1,6 +1,5 @@
 #include "mathUtils.h"
 
-
 /*
  * Binomial coefficient: n choose k
  *
@@ -64,7 +63,6 @@ int nCk_idx(int nInd, int i1, int i2)
 		return (nCk(nInd, 2) - nCk((nInd - i2), 2)) + (i1 - i2) - 1;
 	}
 }
-
 
 /// @brief prepare LUT for pair indices
 /// @param nInd number of individuals

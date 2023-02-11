@@ -1,8 +1,11 @@
 #include <zlib.h>
+#include <htslib/bgzf.h>
 
 #include "io.h"
 #include "dataStructs.h"
 
+
+const char* IO::FILE_EXTENSIONS[] = {"", ".gz", ".bgz"};
 
 /// @brief get file handle fp
 /// @param fname file name
@@ -28,11 +31,12 @@ FILE *IO::getFile(const char *fname, const char *mode)
 /// @param fn	filename
 /// @return pointer to file extension
 ///     	 NULL if there is no file extension
-const char* IO::getFileExtension(const char* fn)
+const char *IO::getFileExtension(const char *fn)
 {
-	const char* dot = strrchr(fn, '.');
+	const char *dot = strrchr(fn, '.');
 	// if there is no dot or the dot is the first character in the string, return NULL
-	if(dot == NULL || dot == fn) return NULL; 
+	if (dot == NULL || dot == fn)
+		return NULL;
 	// otherwise, return the dot+1 (the file extension)
 	return dot + 1;
 }
@@ -53,7 +57,7 @@ int IO::isGzFile(const char *fname)
 
 gzFile IO::getGzFile(const char *fname, const char *mode)
 {
-	gzFile fp=Z_NULL;
+	gzFile fp = Z_NULL;
 	if (strcmp(mode, "r") == 0)
 	{
 		fprintf(stderr, "\n\t-> Reading file: %s\n", fname);
@@ -76,6 +80,38 @@ char *IO::setFileName(const char *a, const char *b)
 	strcpy(c, a);
 	strcat(c, b);
 	// fprintf(stderr,"\t-> Opening output file for writing: %s\n",c);
+	return c;
+}
+
+/// @brief set file name from prefix and suffix
+/// @param fn 			file name
+/// @param suffix		identifier suffix to be added to file name 
+/// 						e.g. ".sfs" or ".sfs.gz"
+/// @param fc			file compression type to be added to file name
+/// @return filename
+char *IO::setFileName(const char *fn, const char *suffix, const char *fc_ext)
+{
+	// char *fc_ext = FILE_EXTENSIONS[fc];
+	// switch(fc)
+	// {
+	// 	case OUTFC::NONE:
+	// 		fc_ext = "";
+	// 		break;
+	// 	case OUTFC::GZ:
+	// 		fc_ext = ".gz";
+	// 		break;
+	// 	case OUTFC::BGZ:
+	// 		fc_ext = ".bgz";
+	// 		break;
+	// 	default:
+	// 		fprintf(stderr, "[%s:%s()]\t->Error: unknown file compression type: %d\n", __FILE__, __FUNCTION__, fc);
+	// 		exit(1);
+	// }
+
+	char *c = (char *)malloc(strlen(fn) + strlen(suffix) + strlen(fc_ext) + 1);
+	strcpy(c, fn);
+	strcat(c, suffix);
+	strcat(c, fc_ext);
 	return c;
 }
 
@@ -106,7 +142,7 @@ FILE *IO::openFileW(const char *a, const char *b)
 
 /// @brief open gzipped file for writing
 /// @param c name of file
-/// @return  
+/// @return
 gzFile IO::openGzFileW(char *c)
 {
 	fprintf(stderr, "\t-> Opening gzipped output file for writing: %s\n", c);
@@ -205,25 +241,30 @@ char *IO::readFile::getFirstLine(FILE *fp)
 	return line;
 }
 
-int IO::readGzFile::readToBuffer(char* fn, char** buffer_p, size_t* buf_size_p)
+int IO::readGzFile::readToBuffer(char *fn, char **buffer_p, size_t *buf_size_p)
 {
 	gzFile fp = IO::getGzFile(fn, "r");
 
 	int rlen = 0;
-	while (true) {
+	while (true)
+	{
 		char *tok = gzgets(fp, *buffer_p + rlen, *buf_size_p - rlen);
-		if (tok == Z_NULL){
+		if (tok == Z_NULL)
+		{
 			GZCLOSE(fp);
 			return rlen;
 		}
 		int tmp = strlen(tok);
-		if (tok[tmp - 1] != '\n') {
+		if (tok[tmp - 1] != '\n')
+		{
 			rlen += tmp;
 			*buf_size_p *= 2;
-			char *new_buf = (char*)realloc(*buffer_p, *buf_size_p);
+			char *new_buf = (char *)realloc(*buffer_p, *buf_size_p);
 			ASSERT(new_buf != NULL);
 			*buffer_p = new_buf;
-		} else {
+		}
+		else
+		{
 			rlen += tmp;
 			GZCLOSE(fp);
 			return rlen;
@@ -231,13 +272,12 @@ int IO::readGzFile::readToBuffer(char* fn, char** buffer_p, size_t* buf_size_p)
 	}
 }
 
-
-int IO::readFile::getBufferSize(FILE* fp)
+int IO::readFile::getBufferSize(FILE *fp)
 {
 	ASSERT(fseek(fp, 0, SEEK_SET) == 0);
-    size_t buf_size = FGETS_BUF_SIZE;
-    char *line = (char *)malloc(buf_size);
-    ASSERT(line != NULL);
+	size_t buf_size = FGETS_BUF_SIZE;
+	char *line = (char *)malloc(buf_size);
+	ASSERT(line != NULL);
 
 	while (fgets(line, buf_size, fp) != NULL)
 	{
@@ -254,19 +294,19 @@ int IO::readFile::getBufferSize(FILE* fp)
 			// line was not fully read; increase buffer size
 			buf_size *= 2;
 			line = (char *)realloc(line, buf_size);
-			ASSERT(line!= NULL);
+			ASSERT(line != NULL);
 		}
 	}
-    FREE(line);
-    return buf_size;
+	FREE(line);
+	return buf_size;
 }
 
-int IO::readFile::getBufferSize(char* fn)
+int IO::readFile::getBufferSize(char *fn)
 {
 	FILE *fp = IO::getFile(fn, "r");
-    size_t buf_size = FGETS_BUF_SIZE;
-    char *line = (char *)malloc(buf_size);
-    ASSERT(line != NULL);
+	size_t buf_size = FGETS_BUF_SIZE;
+	char *line = (char *)malloc(buf_size);
+	ASSERT(line != NULL);
 	while (fgets(line, buf_size, fp) != NULL)
 	{
 		// check if the line was fully read
@@ -282,77 +322,77 @@ int IO::readFile::getBufferSize(char* fn)
 			// line was not fully read; increase buffer size
 			buf_size *= 2;
 			line = (char *)realloc(line, buf_size);
-			ASSERT(line!= NULL);
+			ASSERT(line != NULL);
 		}
 	}
-    FCLOSE(fp);
-    FREE(line);
-    return buf_size;
+	FCLOSE(fp);
+	FREE(line);
+	return buf_size;
 }
 
 char *IO::readGzFile::getFirstLine(char *fn)
 {
 	gzFile gzfp = gzopen(fn, "rb");
-    size_t buf_size = FGETS_BUF_SIZE;
-    char *line = (char *)malloc(buf_size);
-    ASSERT(line != NULL);
+	size_t buf_size = FGETS_BUF_SIZE;
+	char *line = (char *)malloc(buf_size);
+	ASSERT(line != NULL);
 
-    while (gzgets(gzfp, line, buf_size) != NULL)
-    {
-        // check if the line was fully read
-        size_t line_len = strlen(line);
-        if (line[line_len - 1] == '\n')
-        {
-            // line was fully read
-            break;
-        }
-        else
-        {
-            fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
-            // line was not fully read
-            buf_size *= 2;
+	while (gzgets(gzfp, line, buf_size) != NULL)
+	{
+		// check if the line was fully read
+		size_t line_len = strlen(line);
+		if (line[line_len - 1] == '\n')
+		{
+			// line was fully read
+			break;
+		}
+		else
+		{
+			fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
+			// line was not fully read
+			buf_size *= 2;
 
-            char *new_line = new char[buf_size];
-            new_line = (char *)realloc(line, buf_size);
-            ASSERT(new_line != NULL);
-            line = new_line;
-        }
-    }
+			char *new_line = new char[buf_size];
+			new_line = (char *)realloc(line, buf_size);
+			ASSERT(new_line != NULL);
+			line = new_line;
+		}
+	}
 	GZCLOSE(gzfp);
-    return line;
+	return line;
 }
 
 char *IO::readGzFile::getFirstLine(gzFile fp)
 {
-    ASSERT(fp != NULL);
+	ASSERT(fp != NULL);
 	ASSERT(gzseek(fp, 0, SEEK_SET) == 0);
 
-    size_t buf_size = FGETS_BUF_SIZE;
-    char *line = (char *)malloc(buf_size);
-    ASSERT(line != NULL);
+	size_t buf_size = FGETS_BUF_SIZE;
+	char *line = (char *)malloc(buf_size);
+	ASSERT(line != NULL);
 
-    while (gzgets(fp, line, buf_size) != NULL)
-    {
-        // check if the line was fully read
-        size_t line_len = strlen(line);
-        if (line[line_len - 1] == '\n')
-        {
-            // line was fully read
-            break;
-        }
-        else
-        {
-            fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
-            // line was not fully read
-            buf_size *= 2;
+	while (gzgets(fp, line, buf_size) != NULL)
+	{
+		// check if the line was fully read
+		size_t line_len = strlen(line);
+		if (line[line_len - 1] == '\n')
+		{
+			// line was fully read
+			break;
+		}
+		else
+		{
+			fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
+			// line was not fully read
+			buf_size *= 2;
 
-            char *new_line = new char[buf_size];
-            new_line = (char *)realloc(line, buf_size);
-            ASSERT(new_line != NULL);
-            line = new_line;
-        }
-    }
-    return line;
+			char *new_line = new char[buf_size];
+			new_line = (char *)realloc(line, buf_size);
+			ASSERT(new_line != NULL);
+			line = new_line;
+		}
+	}
+	return line;
 }
 
 /// @brief count_nColumns count number of columns in a line
@@ -524,4 +564,77 @@ int IO::readFile::SFS(FILE *in_sfs_fp, const char *delims, sampleStruct *sampleS
 	}
 
 	return 0;
+}
+
+kstring_t *kbuf_init()
+{
+	kstring_t *kbuf = new kstring_t;
+	kbuf->l = 0;
+	kbuf->m = 0;
+	kbuf->s = NULL;
+	return kbuf;
+}
+
+void kbuf_destroy(kstring_t *kbuf)
+{
+	FREE(kbuf->s);
+	delete kbuf;
+}
+
+void IO::outputStruct::write(const char *buf)
+{
+	switch (fc)
+	{
+	case OUTFC::NONE:
+		fprintf(fp, "%s", buf);
+		break;
+	case OUTFC::GZ:
+		gzprintf(gzfp, "%s", buf);
+		break;
+	case OUTFC::BGZ:
+		if (bgzf_write(bgzfp, buf, strlen(buf)) != (ssize_t)strlen(buf))
+		{
+			fprintf(stderr, "\n[ERROR:%d] Could not write %ld bytes\n", bgzfp->errcode, strlen(buf));
+			exit(1);
+		}
+		break;
+	case OUTFC::BBGZ:
+		if (bgzf_write(bgzfp, buf, strlen(buf)) != (ssize_t)strlen(buf))
+		{
+			fprintf(stderr, "\n[ERROR:%d] Could not write %ld bytes\n", bgzfp->errcode, strlen(buf));
+			exit(1);
+		}
+		break;
+	}
+}
+
+void IO::outputStruct::write(const kstring_t *kbuf)
+{
+	switch (fc)
+	{
+	case OUTFC::NONE:
+		fprintf(fp, "%s", kbuf->s);
+		break;
+	case OUTFC::GZ:
+		gzprintf(gzfp, "%s", kbuf->s);
+		break;
+	case OUTFC::BGZ:
+		if (bgzf_write(bgzfp, kbuf->s, kbuf->l) != (ssize_t)kbuf->l)
+		{
+			fprintf(stderr, "\n[ERROR:%d] Could not write %ld bytes\n", bgzfp->errcode, kbuf->l);
+			exit(1);
+		}
+		break;
+	case OUTFC::BBGZ:
+		if (bgzf_write(bgzfp, kbuf->s, kbuf->l) != (ssize_t)kbuf->l)
+		{
+			fprintf(stderr, "\n[ERROR:%d] Could not write %ld bytes\n", bgzfp->errcode, kbuf->l);
+			exit(1);
+		}
+		break;
+	default:
+		fprintf(stderr, "\n[ERROR] Unknown output file type (%d)\n", fc);
+		exit(1);
+		break;
+	}
 }

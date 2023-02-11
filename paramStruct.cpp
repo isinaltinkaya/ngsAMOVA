@@ -6,7 +6,7 @@ void setInputFileType(paramStruct *pars, argStruct *args)
     if (args->in_vcf_fn != NULL)
     {
         pars->in_ft = IN_VCF;
-        fprintf(stderr, "[INFO]\tInput file type: VCF\n");
+        fprintf(stderr, "[INFO]\tInput file type: VCF/BCF\n");
     }
     else if (args->in_dm_fn != NULL)
     {
@@ -21,7 +21,6 @@ void paramStruct::printParams(FILE *fp)
     fprintf(fp, "nInd: %i", nInd);
     fprintf(fp, "nIndCmb: %i", nIndCmb);
     fprintf(fp, "nAmovaRuns: %i", nAmovaRuns);
-    fprintf(fp, "verbose: %i", verbose);
     fprintf(fp, "in_ft: %i", in_ft);
     fprintf(fp, "DATETIME: %s", DATETIME);
 }
@@ -78,11 +77,12 @@ paramStruct *paramStruct_init(argStruct *args)
     pars->nIndCmb = 0;
     pars->nInd = 0;
 
+    pars->verbose = args->verbose;
+
     pars->DATETIME = NULL;
 
     pars->nAmovaRuns = 0;
 
-    pars->verbose = 0;
     return pars;
 }
 
@@ -95,4 +95,34 @@ void paramStruct_destroy(paramStruct *pars)
     FREE(pars->DATETIME);
 
     delete pars;
+}
+
+void paramStruct::vprint(const char *format, ...)
+{
+    if (verbose > 0)
+    {
+        char str[1024];
+
+        va_list args;
+        va_start(args, format);
+        vsprintf(str, format, args);
+        va_end(args);
+
+        fprintf(stderr, "\n[VERBOSE:%d]\t%s\n", verbose, str);
+    }
+}
+
+void paramStruct::vprint(const int verbose_threshold, const char *format, ...)
+{
+    if (verbose >= verbose_threshold)
+    {
+        char str[1024];
+
+        va_list args;
+        va_start(args, format);
+        vsprintf(str, format, args);
+        va_end(args);
+
+        fprintf(stderr, "\n[VERBOSE:%d]\t%s\n", verbose, str);
+    }
 }

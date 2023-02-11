@@ -5,11 +5,10 @@
 #include <time.h>
 
 #include <stddef.h>
-
 #include <stdlib.h>
 #include <stdio.h>
-
 #include <stdint.h>
+
 #include <sys/stat.h>
 #include <float.h>
 
@@ -27,6 +26,8 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
+
+
 /*
  * Macro:[AT]
  * Injects the file and line info as string
@@ -38,12 +39,27 @@
 /*
  * Macro:[ASSERT]
  * shortcut to evaluate an expression, works the same way as the C-macro assert
+ * except that DEBUG does not affect it (it is always active)
+ * also prints the file and line info and exits the program
+ * if the expression evaluates to false
  */
 #define ASSERT(expr)                                                                             \
 	if (!(expr))                                                                                 \
 	{                                                                                            \
 		fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr); \
 		exit(1);                                                                                 \
+	}
+
+/*
+ * Macro:[ASSERTM]
+ * shortcut to evaluate an expression, works the same way as ASSERT macro
+ * but also prints a custom message
+ */
+#define ASSERTM(expr, msg)                                                                     \
+	if (!(expr))                                                                               \
+	{                                                                                          \
+		fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, msg); \
+		exit(1);                                                                               \
 	}
 
 /*
@@ -75,30 +91,46 @@
  * Macro:[FCLOSE]
  * shortcut to check if file is open and close it
  */
-#define FCLOSE(expr)  \
-	if (expr)         \
-	{                 \
-		if (fclose(expr) != 0){ \
+#define FCLOSE(expr)                                                                                 \
+	if (expr)                                                                                        \
+	{                                                                                                \
+		if (fclose(expr) != 0)                                                                       \
+		{                                                                                            \
 			fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr); \
-			exit(1); \
-		}; \
-		expr = NULL;  \
+			exit(1);                                                                                 \
+		};                                                                                           \
+		expr = NULL;                                                                                 \
+	}
+
+/*
+ * Macro:[BGZCLOSE]
+ * shortcut to check if bgzFile is open and close it
+ */
+#define BGZCLOSE(expr)                                                                               \
+	if (expr)                                                                                        \
+	{                                                                                                \
+		if (bgzf_close(expr) != 0)                                                                   \
+		{                                                                                            \
+			fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr); \
+			exit(1);                                                                                 \
+		};                                                                                           \
+		expr = NULL;                                                                                 \
 	}
 
 /*
  * Macro:[GZCLOSE]
  * shortcut to check if gzFile is open and close it
  */
-#define GZCLOSE(expr)  \
-	if (expr)         \
-	{                 \
-		if(gzclose(expr) != Z_OK){ \
+#define GZCLOSE(expr)                                                                                \
+	if (expr)                                                                                        \
+	{                                                                                                \
+		if (gzclose(expr) != Z_OK)                                                                   \
+		{                                                                                            \
 			fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr); \
-			exit(1); \
-		}; \
-		expr = Z_NULL;  \
+			exit(1);                                                                                 \
+		};                                                                                           \
+		expr = Z_NULL;                                                                               \
 	}
-
 
 /* LIMIT DEFINING MACROS -----------------------------------------------------*/
 
@@ -150,7 +182,13 @@ int find_n_given_nC2(int nC2_res);
 /* ENUMERATIONS ============================================================= */
 
 // output file compression types
-enum OUTFC {NONE, GZ};
+enum OUTFC
+{
+	NONE, // no compression [0]
+	GZ,	  // gzip [1]
+	BGZ,  // bgzip [2]
+	BBGZ, // binary bgzip [3]
+};
 
 // input file types
 enum INFT

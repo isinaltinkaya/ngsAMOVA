@@ -1,49 +1,47 @@
 #include "io.h"
 #include "dataStructs.h"
 
-
 void distanceMatrixStruct::print(IO::outputStruct *out_dm_fs)
 {
 	fprintf(stderr, "[INFO]\t-> Writing distance matrix to %s.\n", out_dm_fs->fn);
 
 	char buf_values[8192];
-	char *bufptr=buf_values;
+	char *bufptr = buf_values;
 
 	for (int px = 0; px < nIndCmb; px++)
 	{
 		if (px != 0 && px != nIndCmb - 1)
 		{
-			bufptr += sprintf(bufptr, ",%.*f", (int) DBL_MAXDIG10, M[px]);
+			bufptr += sprintf(bufptr, ",%.*f", (int)DBL_MAXDIG10, M[px]);
 		}
 		else if (px == 0)
 		{
-			bufptr += sprintf(bufptr, "%.*f", (int) DBL_MAXDIG10, M[px]);
+			bufptr += sprintf(bufptr, "%.*f", (int)DBL_MAXDIG10, M[px]);
 		}
 		else if (px == nIndCmb - 1)
 		{
-			sprintf(bufptr, ",%.*f\n", (int) DBL_MAXDIG10, M[px]);
+			sprintf(bufptr, ",%.*f\n", (int)DBL_MAXDIG10, M[px]);
 		}
 		else
 		{
-			ASSERT(0==1);
+			ASSERT(0 == 1);
 		}
 	}
-	
-	switch(out_dm_fs->fc)
+
+	switch (out_dm_fs->fc)
 	{
-		case OUTFC::NONE:
-			fprintf(out_dm_fs->fp, "%s", buf_values);
-			break;
-		case OUTFC::GZ:
-			// gzwrite(out_dm_fs->gzfp, M, nIndCmb * sizeof(double));
-			gzprintf(out_dm_fs->gzfp, "%s", buf_values);
-			break;
-		default:
-			fprintf(stderr, "[ERROR]\t-> Unknown output file format.\n");
-			exit(1);
+	case OUTFC::NONE:
+		fprintf(out_dm_fs->fp, "%s", buf_values);
+		break;
+	case OUTFC::GZ:
+		// gzwrite(out_dm_fs->gzfp, M, nIndCmb * sizeof(double));
+		gzprintf(out_dm_fs->gzfp, "%s", buf_values);
+		break;
+	default:
+		fprintf(stderr, "[ERROR]\t-> Unknown output file format.\n");
+		exit(1);
 	}
 }
-
 
 /// @brief read distance matrix file
 /// @param in_dm_fp input distance matrix file
@@ -57,11 +55,11 @@ distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct
 
 	int n_vals = 0;
 
-	if(IO::isGzFile(args->in_dm_fn) == 1){
+	if (IO::isGzFile(args->in_dm_fn) == 1)
+	{
 
-		// gzFile fp = gzopen(args->in_dm_fn, "rb");
 		size_t buf_size = FGETS_BUF_SIZE;
-		size_t* buf_size_ptr= &buf_size;
+		size_t *buf_size_ptr = &buf_size;
 		char *line = (char *)malloc(buf_size);
 		char **line_ptr = &line;
 		IO::readGzFile::readToBuffer(args->in_dm_fn, line_ptr, buf_size_ptr);
@@ -82,8 +80,6 @@ distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct
 
 		FREE(line);
 		FREE(tok);
-
-
 
 		// while (gzgets(fp, line, buf_size) != NULL)
 		// {
@@ -107,8 +103,9 @@ distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct
 		// 	}
 		// }
 		// gzclose(fp);
-
-	} else {
+	}
+	else
+	{
 
 		int buf_size = IO::readFile::getBufferSize(args->in_dm_fn);
 		char *line = (char *)malloc(buf_size);
@@ -158,10 +155,8 @@ distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct
 		}
 	}
 
-
 	FREE(dm_vals);
 	return dMS;
-
 }
 
 // if formula is not defined, hierarchical levels must defined in this order:
@@ -252,8 +247,8 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 			// first column = individual id
 			char *tok = strtok(mtd_buf, METADATA_DELIMS);
 
-			// ----------------------- INPUT: VCF ----------------------- //
-			// vcf input has pars->nInd and pars->nIndCmb already set from VCF reading
+			// ----------------------- INPUT: vcfd ----------------------- //
+			// vcf input has pars->nInd and pars->nIndCmb already set from vcfd reading
 			if (pars->in_ft == IN_VCF)
 			{
 
@@ -268,10 +263,8 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 					}
 					else if (strcmp(tok, sampleSt->sampleNames[sidx]) == 0)
 					{
-						if (pars->verbose == 2)
-						{
-							fprintf(stderr, "\n\n======\n[INFO] Found sample (vcf_index=%d,id=%s) in the metadata file. \n\n", sidx, tok);
-						}
+						pars->vprint(2, "Found sample (vcf_index=%d,id=%s) in the metadata file.", sidx, tok);
+						
 						// break when found, so that sidx is now the index of the sample in the vcf file
 						break;
 					}
@@ -525,7 +518,7 @@ void usage(FILE *fp)
 	// fprintf(stderr,"");
 	// fprintf(stderr,"\n");
 	// fprintf(stderr,"  --help         : Print this help\n");
-	// fprintf(stderr,"\t--in\t\t\t: input VCF/BCF filed\n");
+	// fprintf(stderr,"\t--in\t\t\t: input vcfd/BCF filed\n");
 
 	fprintf(fp,
 			"\n"

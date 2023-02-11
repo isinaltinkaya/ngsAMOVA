@@ -15,6 +15,7 @@ struct distanceMatrixStruct;
 struct threadStruct;
 struct argStruct;
 struct paramStruct;
+struct jointGenoDistStruct;
 
 typedef struct formulaStruct
 {
@@ -154,7 +155,7 @@ typedef struct pairStruct
 } pairStruct;
 
 /// @brief sampleStruct - contains sample names and other sample related information
-/// used in comparing samples in the VCF file with the samples in the metadata file
+/// used in comparing samples in the vcfd file with the samples in the metadata file
 typedef struct sampleStruct
 {
 
@@ -272,11 +273,9 @@ typedef struct hierStruct
 	{
 		for (size_t i = 0; i < _strataNames; i++)
 		{
-			free(strataNames[i]);
-			strataNames[i] = NULL;
+			FREE(strataNames[i]);
 		}
-		free(strataNames);
-		strataNames = NULL;
+		FREE(strataNames);
 
 		delete[] nIndPerStrata;
 	}
@@ -775,8 +774,6 @@ typedef struct threadStruct
 
 	pairStruct *pair;
 	double **lngls;
-
-	// FILE *out_sfs_fp;
 
 	argStruct const *args;
 	paramStruct const *pars;

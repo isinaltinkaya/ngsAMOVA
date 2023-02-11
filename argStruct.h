@@ -106,16 +106,26 @@ struct argStruct;
  *
  *
  * @field printMatrix           [default = 0]
- *                      [0] do NOT print distance matrix
- *                      [1] print distance matrix in human-readable format
- *                      [2] print distance matrix in gzipped format
+ *                              [0] do NOT print distance matrix
+ *                              [VALUE] print distance matrix
+ * 
  *
  * @field windowSize            [default = 0]
  *                              [0] do NOT use sliding window
  *                              [VALUE] use sliding window of size VALUE
- * 
+ *
  * @field printJointGenoDist    [default = 0]
- *                              [0] do NOT print joint genotype distributions of pairs of individuals
+ *                              [0] do NOT print 
+ *                              [VALUE] joint genotype distributions of pairs of individuals
+ * 
+ * 
+ * printing options
+ * ----------------
+ * VALUE = 0: do NOT print
+ * VALUE = 1: print in human-readable format
+ * VALUE = 2: print in gzipped format
+ * VALUE = 3: print in bgzipped format
+ * VALUE = 4: print in binary bgzipped format 
  */
 struct argStruct
 {
@@ -150,7 +160,6 @@ struct argStruct
     int do_square_distance;
     int minInd;
 
-
     int hasColNames;
 
     double tole;
@@ -164,7 +173,6 @@ struct argStruct
 
     int gl2gt;
 
-    
     int windowSize;
 };
 

@@ -34,18 +34,16 @@ argStruct *argStruct_init()
 
 	args->doDist = -1;
 	args->do_square_distance = 1;
-	
 
 	args->isSim = 0;
 	args->isTest = 0;
 	args->minInd = -1;
 
-	args->printDev= 0;
+	args->printDev = 0;
 	args->printMatrix = 0;
 	args->printAmovaTable = 0;
 	args->printJointGenoCountDist = 0;
 	args->printJointGenoProbDist = 0;
-
 
 	args->seed = -1;
 	args->nBootstraps = 0;
@@ -70,8 +68,8 @@ argStruct *argStruct_get(int argc, char **argv)
 		char *arv = *argv;
 		char *val = *(++argv);
 
-
-		if ((strcasecmp("--input", arv) == 0) || (strcasecmp("-in", arv) == 0) || (strcasecmp("-i", arv) == 0)){
+		if ((strcasecmp("--input", arv) == 0) || (strcasecmp("-in", arv) == 0) || (strcasecmp("-i", arv) == 0))
+		{
 			args->in_vcf_fn = strdup(val);
 		}
 		// else if ((strcasecmp("--inputJointGenoProbDist", arv) == 0) || (strcasecmp("--inputJGPD", arv) == 0) || (strcasecmp("-iJGPD", arv) == 0)){
@@ -81,25 +79,28 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->in_dm_fn = strdup(val);
 		else if (strcasecmp("-m", arv) == 0)
 			args->in_mtd_fn = strdup(val);
-		else if ((strcasecmp("--output", arv) == 0) || (strcasecmp("-out", arv) == 0) || (strcasecmp("-o", arv) == 0)){
+		else if ((strcasecmp("--output", arv) == 0) || (strcasecmp("-out", arv) == 0) || (strcasecmp("-o", arv) == 0))
+		{
 			args->out_fn = strdup(val);
 		}
 
 		else if (strcasecmp("-dev", arv) == 0)
 			args->printDev = atoi(val);
 
-
-		else if ((strcasecmp("--printJointGenoCountDist", arv) == 0) || (strcasecmp("--printJGCD", arv) == 0) || (strcasecmp("-pJGCD", arv) == 0)){
+		else if ((strcasecmp("--printJointGenoCountDist", arv) == 0) || (strcasecmp("--printJGCD", arv) == 0) || (strcasecmp("-pJGCD", arv) == 0))
+		{
 			args->printJointGenoCountDist = atoi(val);
 		}
-		else if ((strcasecmp("--printJointGenoProbDist", arv) == 0) || (strcasecmp("--printJGPD", arv) == 0) || (strcasecmp("-pJGPD", arv) == 0)){
+		else if ((strcasecmp("--printJointGenoProbDist", arv) == 0) || (strcasecmp("--printJGPD", arv) == 0) || (strcasecmp("-pJGPD", arv) == 0))
+		{
 			args->printJointGenoProbDist = atoi(val);
 		}
-		else if ((strcasecmp("--printAmovaTable", arv) == 0) || (strcasecmp("--printAT", arv) == 0) || (strcasecmp("-pAT", arv) == 0)){
+		else if ((strcasecmp("--printAmovaTable", arv) == 0) || (strcasecmp("--printAT", arv) == 0) || (strcasecmp("-pAT", arv) == 0))
+		{
 			args->printAmovaTable = atoi(val);
 		}
 
-		else if ((strcasecmp("--verbose", arv) == 0) || (strcasecmp("-v", arv) == 0)) 
+		else if ((strcasecmp("--verbose", arv) == 0) || (strcasecmp("-v", arv) == 0))
 		{
 			if (val == NULL)
 				args->verbose = 1;
@@ -142,24 +143,22 @@ argStruct *argStruct_get(int argc, char **argv)
 		else if (strcasecmp("--seed", arv) == 0)
 			args->seed = atoi(val);
 
-
 		// read block size as float and convert to int
 		// this is to allow for the use of scientific notation (e.g. 1e6)
 		else if (strcasecmp("-bs", arv) == 0)
-			args->blockSize = (int) atof(val);
+			args->blockSize = (int)atof(val);
 		else if (strcasecmp("--blockSize", arv) == 0)
-			args->blockSize = (int) atof(val);
+			args->blockSize = (int)atof(val);
 
 		else if (strcasecmp("-ws", arv) == 0)
-			args->windowSize = (int) atof(val);
+			args->windowSize = (int)atof(val);
 		else if (strcasecmp("--windowSize", arv) == 0)
-			args->windowSize = (int) atof(val);
+			args->windowSize = (int)atof(val);
 
 		else if (strcasecmp("-bSize", arv) == 0)
-			args->blockSize = (int) atof(val);
+			args->blockSize = (int)atof(val);
 		else if (strcasecmp("-nb", arv) == 0)
-			args->nBootstraps = (int) atof(val);
-
+			args->nBootstraps = (int)atof(val);
 
 		else if (strcasecmp("-f", arv) == 0)
 		{
@@ -303,7 +302,9 @@ argStruct *argStruct_get(int argc, char **argv)
 	else if (args->do_square_distance == 0)
 	{
 		fprintf(stderr, "\n\t-> -do_square_distance is set to 0, will not square the distance measure.\n");
-	}else{
+	}
+	else
+	{
 		fprintf(stderr, "\n[ERROR]\t-do_square_distance %d is not available.\n", args->do_square_distance);
 		exit(1);
 	}
@@ -312,150 +313,165 @@ argStruct *argStruct_get(int argc, char **argv)
 	{
 		fprintf(stderr, "\n[ERROR] Must supply either -in <VCF_file> or -in_dm <Distance_matrix_file>.\n");
 		exit(1);
-	}else if (args->in_vcf_fn != NULL && args->in_dm_fn != NULL)
+	}
+	else if (args->in_vcf_fn != NULL && args->in_dm_fn != NULL)
 	{
 		fprintf(stderr, "\n[ERROR] Cannot use -in %s with -in_dm %s.\n", args->in_vcf_fn, args->in_dm_fn);
 		exit(1);
 	}
 
-	if (args->printMatrix == 1){
+	if (args->printMatrix == 1)
+	{
 		fprintf(stderr, "\n[INFO]\t-> -printMatrix 1; will print distance matrix\n");
-	}else if (args->printMatrix == 0){
+	}
+	else if (args->printMatrix == 0)
+	{
 		// fprintf(stderr, "\n[INFO]\t-> -printMatrix 0; will not print distance matrix\n");
-	}else{
+	}
+	else
+	{
 		fprintf(stderr, "\n[ERROR]\t-> -printMatrix %d is not available.\n", args->printMatrix);
 		exit(1);
 	}
 
 	switch (args->doAMOVA)
 	{
-		case 0:
+	case 0:
+	{
+		fprintf(stderr, "\n\t-> -doAMOVA is set to 0, will not perform AMOVA.\n");
+
+		if (args->doEM == 0)
 		{
-			fprintf(stderr, "\n\t-> -doAMOVA is set to 0, will not perform AMOVA.\n");
-
-			if (args->doEM == 0)
-			{
-				fprintf(stderr, "\n\t-> Nothing to do.\n");
-				exit(1);
-			}
-			else if (args->doEM == 1)
-			{
-				if (args->in_dm_fn != NULL)
-				{
-					fprintf(stderr, "\n[ERROR] Cannot use -in_dm %s with -doEM 1.\n", args->in_dm_fn);
-					exit(1);
-				}
-				if (args->in_vcf_fn == NULL)
-				{
-					fprintf(stderr, "\n[ERROR] Must supply -in <input_file> for -doEM 1.\n");
-					exit(1);
-				}
-
-				fprintf(stderr, "\n\t-> -doEM is set to 1, will use EM algorithm to estimate parameters.\n");
-			}
-
-			break;
-		}
-		case 1:
-		{
-
-			if (args->doEM == 0 && args->in_dm_fn == NULL)
-			{
-				fprintf(stderr, "\n[ERROR]\t-doAMOVA %i requires -doEM 1.\n", args->doAMOVA);
-				exit(1);
-			}
-
-			if (args->in_dm_fn != NULL)
-			{
-				fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
-			}
-			else
-			{
-
-				fprintf(stderr, "\n[INFO]\t-> -doAMOVA 1; will use 10 genotype likelihoods from VCF GL tag.\n");
-			}
-			break;
-		}
-		case 2:
-		{
-			if (args->in_dm_fn != NULL)
-			{
-				fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
-				args->doAMOVA = 1; // 1: use dm input or gle tag in vcf
-			}
-			else
-			{
-
-				fprintf(stderr, "\n[INFO]\t-> -doAMOVA 2; will use genotypes from VCF GT tag.\n");
-			}
-			
-			if (args->doEM != 0){
-				fprintf(stderr, "\n[ERROR]\t-doAMOVA %i cannot be used with -doEM %i.\n", args->doAMOVA, args->doEM);
-				exit(1);
-			}
-			break;
-		}
-		case 3:
-		{
-
-			if (args->doEM == 0)
-			{
-				fprintf(stderr, "\n[ERROR]\t-doAMOVA %i requires -doEM 1.\n", args->doAMOVA);
-				exit(1);
-			}
-
-			if (args->in_dm_fn != NULL)
-			{
-				fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
-				args->doAMOVA = 1; // 1: use dm input or gle tag in vcf
-			}
-			else
-			{
-				fprintf(stderr, "\n[INFO]\t-> -doAMOVA 3; will do both -doAMOVA 1 and -doAMOVA 2.\n");
-			}
-			break;
-		}
-
-		// ---------------------- doAMOVA NOT in {0,1,2,3} ---------------------- //
-		default:
-		{
-			fprintf(stderr, "\n[ERROR]\t-> -doAMOVA %d not recognized\n", args->doAMOVA);
+			fprintf(stderr, "\n\t-> Nothing to do.\n");
 			exit(1);
-			break;
 		}
+		else if (args->doEM == 1)
+		{
+			if (args->in_dm_fn != NULL)
+			{
+				fprintf(stderr, "\n[ERROR] Cannot use -in_dm %s with -doEM 1.\n", args->in_dm_fn);
+				exit(1);
+			}
+			if (args->in_vcf_fn == NULL)
+			{
+				fprintf(stderr, "\n[ERROR] Must supply -in <input_file> for -doEM 1.\n");
+				exit(1);
+			}
+
+			fprintf(stderr, "\n\t-> -doEM is set to 1, will use EM algorithm to estimate parameters.\n");
+		}
+
+		break;
+	}
+	case 1:
+	{
+
+		if (args->doEM == 0 && args->in_dm_fn == NULL)
+		{
+			fprintf(stderr, "\n[ERROR]\t-doAMOVA %i requires -doEM 1.\n", args->doAMOVA);
+			exit(1);
+		}
+
+		if (args->in_dm_fn != NULL)
+		{
+			fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
+		}
+		else
+		{
+
+			fprintf(stderr, "\n[INFO]\t-> -doAMOVA 1; will use 10 genotype likelihoods from vcfd GL tag.\n");
+		}
+		break;
+	}
+	case 2:
+	{
+		if (args->in_dm_fn != NULL)
+		{
+			fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
+			args->doAMOVA = 1; // 1: use dm input or gle tag in vcf
+		}
+		else
+		{
+
+			fprintf(stderr, "\n[INFO]\t-> -doAMOVA 2; will use genotypes from vcfd GT tag.\n");
+		}
+
+		if (args->doEM != 0)
+		{
+			fprintf(stderr, "\n[ERROR]\t-doAMOVA %i cannot be used with -doEM %i.\n", args->doAMOVA, args->doEM);
+			exit(1);
+		}
+		break;
+	}
+	case 3:
+	{
+
+		if (args->doEM == 0)
+		{
+			fprintf(stderr, "\n[ERROR]\t-doAMOVA %i requires -doEM 1.\n", args->doAMOVA);
+			exit(1);
+		}
+
+		if (args->in_dm_fn != NULL)
+		{
+			fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
+			args->doAMOVA = 1; // 1: use dm input or gle tag in vcf
+		}
+		else
+		{
+			fprintf(stderr, "\n[INFO]\t-> -doAMOVA 3; will do both -doAMOVA 1 and -doAMOVA 2.\n");
+		}
+		break;
 	}
 
+	// ---------------------- doAMOVA NOT in {0,1,2,3} ---------------------- //
+	default:
+	{
+		fprintf(stderr, "\n[ERROR]\t-> -doAMOVA %d not recognized\n", args->doAMOVA);
+		exit(1);
+		break;
+	}
+	}
 
-	if(args->nBootstraps>0){
+	if (args->nBootstraps > 0)
+	{
 
 		fprintf(stderr, "\n\t-> -nBootstraps %d is set, will perform %d bootstraps for AMOVA significance testing.\n", args->nBootstraps, args->nBootstraps);
-		if(args->blockSize==0){
+		if (args->blockSize == 0)
+		{
 			fprintf(stderr, "\n[ERROR] -blockSize must be set to a positive integer when -nBootstraps is set.\n");
 			exit(1);
-		}else{
+		}
+		else
+		{
 			fprintf(stderr, "\n\t-> -blockSize %d is set, will use %d as the genomic block size for block bootstrapping.\n", args->blockSize, args->blockSize);
 
-			if(args->seed == -1){
+			if (args->seed == -1)
+			{
 				args->seed = time(NULL);
 				fprintf(stderr, "\n\t[INFO] -> -seed is not set, will use current time as seed for random number generator: %d.\n", args->seed);
 				srand48(args->seed);
-			}else{
+			}
+			else
+			{
 				fprintf(stderr, "\n\t-> -seed is set to %d, will use this seed for random number generator.\n", args->seed);
 				srand48(args->seed);
 			}
 		}
-
-	}else if(args->nBootstraps<0){
+	}
+	else if (args->nBootstraps < 0)
+	{
 		fprintf(stderr, "\n[ERROR]\t-> -nBootstraps should be a positive integer or 0. You entered a negative value: %d.\n", args->nBootstraps);
 		exit(1);
-	}else{
-		if(args->blockSize!=0){
+	}
+	else
+	{
+		if (args->blockSize != 0)
+		{
 			fprintf(stderr, "\n[ERROR] -blockSize is set to %d, but -nBootstraps is not set. Define both to perform block bootstrapping.\n", args->blockSize);
 			exit(1);
 		}
-
 	}
-
 
 	if (args->in_dm_fn != NULL)
 	{
@@ -466,13 +482,14 @@ argStruct *argStruct_get(int argc, char **argv)
 		}
 	}
 
-
-	if(args->windowSize == 0){
+	if (args->windowSize == 0)
+	{
 		fprintf(stderr, "\n[INFO]\t-> -windowSize 0; will not use sliding window\n");
-	}else{
+	}
+	else
+	{
 		fprintf(stderr, "\n[INFO]\t-> -windowSize %d; will use sliding windows of size %d\n", args->windowSize, args->windowSize);
 	}
-
 
 	return args;
 }
@@ -493,7 +510,8 @@ void argStruct_destroy(argStruct *args)
 /// @brief argStruct_print - print the arguments to a file pointer
 /// @param fp	file pointer
 /// @param args	pointer to the argStruct
-void argStruct_print(FILE* fp, argStruct *args){
+void argStruct_print(FILE *fp, argStruct *args)
+{
 	// fprintf(fp, "\nCommand: %s", args->command);//TODO
 	fprintf(fp, "\n\t-> -in_vcf_fn %s", args->in_vcf_fn);
 
@@ -510,29 +528,30 @@ void argStruct_print(FILE* fp, argStruct *args){
 /// @brief check_consistency_args_pars - check consistency between arguments and parameters
 /// @param args pointer to argStruct
 /// @param pars pointer to paramStruct
-void check_consistency_args_pars(argStruct *args, paramStruct *pars){
+void check_consistency_args_pars(argStruct *args, paramStruct *pars)
+{
 
-			if (args->minInd == pars->nInd)
-			{
-				fprintf(stderr, "\n\t-> -minInd %d is equal to the number of individuals found in file: %d. Setting -minInd to 0 (all).\n", args->minInd, pars->nInd);
-				args->minInd = 0;
-			}
+	if (args->minInd == pars->nInd)
+	{
+		fprintf(stderr, "\n\t-> -minInd %d is equal to the number of individuals found in file: %d. Setting -minInd to 0 (all).\n", args->minInd, pars->nInd);
+		args->minInd = 0;
+	}
 
-			if (pars->nInd == 1)
-			{
-				fprintf(stderr, "\n\n[ERROR]\tOnly one sample; will exit\n\n");
-				exit(1);
-			}
+	if (pars->nInd == 1)
+	{
+		fprintf(stderr, "\n\n[ERROR]\tOnly one sample; will exit\n\n");
+		exit(1);
+	}
 
-			if (pars->nInd < args->minInd)
-			{
-				fprintf(stderr, "\n\n[ERROR]\tMinimum number of individuals -minInd is set to %d, but input file contains %d individuals; will exit!\n\n", args->minInd, pars->nInd);
-				exit(1);
-			}
-		
-			if(pars->in_ft == IN_DM && args->printMatrix == 1){
-				fprintf(stderr, "\n\n[ERROR]\tCannot print distance matrix since input file is already a distance matrix; will exit!\n\n");
-				exit(1);
-			}
+	if (pars->nInd < args->minInd)
+	{
+		fprintf(stderr, "\n\n[ERROR]\tMinimum number of individuals -minInd is set to %d, but input file contains %d individuals; will exit!\n\n", args->minInd, pars->nInd);
+		exit(1);
+	}
 
+	if (pars->in_ft == IN_DM && args->printMatrix == 1)
+	{
+		fprintf(stderr, "\n\n[ERROR]\tCannot print distance matrix since input file is already a distance matrix; will exit!\n\n");
+		exit(1);
+	}
 }

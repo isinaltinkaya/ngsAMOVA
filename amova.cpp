@@ -28,30 +28,34 @@ double calculate_SumOfSquares_Within(int lvl, AMOVA::amovaStruct *aS, distanceMa
 
 	ASSERT(lvl >= 0 && lvl < aS->nAmovaLevels);
 	// if at the highest level, then calculate the total sum of squares
-	if(lvl == aS->nAmovaLevels-2){
+	if (lvl == aS->nAmovaLevels - 2)
+	{
 		return calculate_SumOfSquares_Total(dMS);
-	}else{
+	}
+	else
+	{
 
 		double sum = 0.0;
 		double ssd = 0.0;
-		int n=0;
+		int n = 0;
 		// loop over different stratas at this hierarchical level
 		// e.g. if hierarchical level is region, then loop over all regions {region1, region2, region3 ...}
-		for (int sti=0; sti < mS->hierArr[lvl]->nStrata; sti++)
+		for (int sti = 0; sti < mS->hierArr[lvl]->nStrata; sti++)
 		{
 
 			// sum of squared distances within this strata
 			sum = 0.0;
-			n=mS->hierArr[lvl]->nIndPerStrata[sti];
+			n = mS->hierArr[lvl]->nIndPerStrata[sti];
 			for (int i1 = 0; i1 < dMS->nInd - 1; i1++)
 			{
 				for (int i2 = i1 + 1; i2 < dMS->nInd; i2++)
 				{
 					// include only pairs that are in the same strata at this hierarchical level
-					if(mS->pairInStrataAtLevel(i1, i2, lvl, sti) == 1){
-						
+					if (mS->pairInStrataAtLevel(i1, i2, lvl, sti) == 1)
+					{
+
 						// the distance is already stored in squared form, so no need to square it again
-						sum += dMS->M[lut_indsToIdx[i1][i2]]/n;
+						sum += dMS->M[lut_indsToIdx[i1][i2]] / n;
 					}
 				}
 			}
@@ -61,14 +65,13 @@ double calculate_SumOfSquares_Within(int lvl, AMOVA::amovaStruct *aS, distanceMa
 	}
 }
 
-
 /// @brief doAMOVA - perform AMOVA analysis
 /// @param dMS  pointer to distanceMatrixStruct
 /// @param mS   pointer to metadataStruct
 /// @param sS   pointer to sampleStruct
 /// @param out_amova_ff   pointer to output file
 /// @param lut_indsToIdx lookup table for index pair to index in distance matrix
-/// @return 
+/// @return
 int AMOVA::doAMOVA(distanceMatrixStruct *dMS, metadataStruct *mS, sampleStruct *sS, FILE *out_amova_ff, int **lut_indsToIdx)
 {
 
@@ -82,12 +85,10 @@ int AMOVA::doAMOVA(distanceMatrixStruct *dMS, metadataStruct *mS, sampleStruct *
 	// }
 	amovaStruct *aS = new amovaStruct(mS);
 
-
 	// ----------------------------------------------- //
-	// DEGREES OF FREEDOM 
+	// DEGREES OF FREEDOM
 	// ----------------------------------------------- //
 	// calculate the degrees of freedom for each level
-	
 
 	// highest level df is nStrata - 1
 	// e.g. Individual ~ Region / Population / Subpopulation
@@ -96,26 +97,27 @@ int AMOVA::doAMOVA(distanceMatrixStruct *dMS, metadataStruct *mS, sampleStruct *
 	// aS->df[0] = mS->sumUniqStrataAtEachLevel(1) - 1;
 
 	// total df
-	aS->df[aS->nAmovaLevels-1] = dMS->nInd - 1;
+	aS->df[aS->nAmovaLevels - 1] = dMS->nInd - 1;
 
-	if(mS->nLevels == 1){
+	if (mS->nLevels == 1)
+	{
 
 		// df for lowest amova level
 		// e.g. Individual ~ Region / Population / Subpopulation
 		// nInd - sum(for each Population, nStrata (num_Subpopulation) in Population)
 		aS->df[1] = dMS->nInd - mS->hierArr[0]->nStrata;
-
-	}else if(mS->nLevels==2){
+	}
+	else if (mS->nLevels == 2)
+	{
 
 		aS->df[1] = mS->sumUniqStrataAtEachLevel(0) - mS->sumUniqStrataAtEachLevel(1);
 		aS->df[2] = dMS->nInd - mS->sumUniqStrataAtEachLevel(0);
-
-	}else{
+	}
+	else
+	{
 		fprintf(stderr, "[ERROR] NOT IMPLEMENTED YET");
 		ASSERT(0 == 1);
 	}
-
-	
 
 	// ----------------------------------------------- //
 	// SUM OF SQUARES
@@ -123,7 +125,8 @@ int AMOVA::doAMOVA(distanceMatrixStruct *dMS, metadataStruct *mS, sampleStruct *
 	// calculate the sum of squares within for each level
 	//
 
-	for(size_t i=0; i<aS->_ncoef; i++){
+	for (size_t i = 0; i < aS->_ncoef; i++)
+	{
 		// within level sum of squares
 		aS->ss[i] = calculate_SumOfSquares_Within(i, aS, dMS, mS, sS, lut_indsToIdx);
 	}
@@ -132,31 +135,35 @@ int AMOVA::doAMOVA(distanceMatrixStruct *dMS, metadataStruct *mS, sampleStruct *
 	// SUM OF SQUARED DEVIATIONS
 	// ----------------------------------------------- //
 
-	if( mS->nLevels == 1){
-	
+	if (mS->nLevels == 1)
+	{
+
 		aS->ssd[0] = aS->ss[1] - aS->ss[0];
 		aS->ssd[1] = aS->ss[0];
 		aS->ssd[2] = aS->ss[1];
-
-	}else if(mS->nLevels == 2){
-
+	}
+	else if (mS->nLevels == 2)
+	{
 
 		aS->ssd[3] = aS->ss[2];
 		aS->ssd[1] = aS->ss[0] - aS->ss[1];
 		aS->ssd[2] = aS->ss[1];
-		aS->ssd[0] = aS->ssd[3] - (aS->ssd[0]+aS->ssd[1]+aS->ssd[2]);
-
-	}else{
+		aS->ssd[0] = aS->ssd[3] - (aS->ssd[0] + aS->ssd[1] + aS->ssd[2]);
+	}
+	else
+	{
 		fprintf(stderr, "[ERROR] NOT IMPLEMENTED YET");
 		ASSERT(0 == 1);
 	}
 
 	// get msd from ssd and df
-	for(size_t i=0; i < (size_t) aS->nAmovaLevels; i++){
+	for (size_t i = 0; i < (size_t)aS->nAmovaLevels; i++)
+	{
 		aS->msd[i] = aS->ssd[i] / aS->df[i];
 	}
 
-	if(mS->nLevels == 1){
+	if (mS->nLevels == 1)
+	{
 
 		// ----------------------------------------------- //
 		// VARIANCE COEFFICIENTS
@@ -166,13 +173,12 @@ int AMOVA::doAMOVA(distanceMatrixStruct *dMS, metadataStruct *mS, sampleStruct *
 		double n_gi = 0.0;
 
 		// n = [ N - \sum_{g \in G} ( N^2_{g}/N) ) ]  /   G - 1
-		for (int sti=0; sti < mS->hierArr[0]->nStrata; sti++)
+		for (int sti = 0; sti < mS->hierArr[0]->nStrata; sti++)
 		{
-			n_gi += SQUARE(mS->hierArr[0]->nIndPerStrata[sti]) ;
+			n_gi += SQUARE(mS->hierArr[0]->nIndPerStrata[sti]);
 		}
-		n_gi = n_gi / (double) dMS->nInd;
+		n_gi = n_gi / (double)dMS->nInd;
 		aS->ncoef[0] = (double)((double)dMS->nInd - (double)n_gi) / (double)(mS->hierArr[0]->nStrata - 1);
-
 
 		// ----------------------------------------------- //
 		// VARIANCE COMPONENTS
@@ -180,13 +186,13 @@ int AMOVA::doAMOVA(distanceMatrixStruct *dMS, metadataStruct *mS, sampleStruct *
 		// calculate variance components (sigma squared)
 		// for 1 level AMOVA
 
-		aS->sigmasq[0] = (aS->msd[0]-aS->msd[1]) / aS->ncoef[0];
+		aS->sigmasq[0] = (aS->msd[0] - aS->msd[1]) / aS->ncoef[0];
 		aS->sigmasq[1] = aS->msd[1];
 
 		aS->phi[0] = aS->sigmasq[0] / (aS->sigmasq[0] + aS->sigmasq[1]);
-
-	}else if(mS->nLevels == 2){
-
+	}
+	else if (mS->nLevels == 2)
+	{
 
 		// ----------------------------------------------- //
 		// VARIANCE COEFFICIENTS
@@ -199,37 +205,37 @@ int AMOVA::doAMOVA(distanceMatrixStruct *dMS, metadataStruct *mS, sampleStruct *
 
 		double n_moment1 = 0.0;
 		double n_moment2 = 0.0;
-		for (int sti=0; sti < mS->hierArr[1]->nStrata; sti++)
+		for (int sti = 0; sti < mS->hierArr[1]->nStrata; sti++)
 		{
 			n_moment1 += mS->hierArr[1]->nIndPerStrata[sti];
 			n_moment2 += SQUARE(mS->hierArr[1]->nIndPerStrata[sti]);
 		}
 		aS->ncoef[1] = (double)((double)n_moment1 - (double)n_moment2 / (double)n_moment1) / (double)(mS->hierArr[1]->nStrata - 1);
-		double x=((SQUARE(mS->hierArr[0]->nIndPerStrata[0]))/dMS->nInd) +((SQUARE(mS->hierArr[0]->nIndPerStrata[1]))/dMS->nInd);
+		double x = ((SQUARE(mS->hierArr[0]->nIndPerStrata[0])) / dMS->nInd) + ((SQUARE(mS->hierArr[0]->nIndPerStrata[1])) / dMS->nInd);
 
 		double n_gi = 0.0;
-		for (int sti=0; sti < mS->hierArr[0]->nStrata; sti++)
+		for (int sti = 0; sti < mS->hierArr[0]->nStrata; sti++)
 		{
-			n_gi += SQUARE(mS->hierArr[0]->nIndPerStrata[sti]) ;
+			n_gi += SQUARE(mS->hierArr[0]->nIndPerStrata[sti]);
 		}
-		n_gi = n_gi / (double) dMS->nInd;
+		n_gi = n_gi / (double)dMS->nInd;
 
-		double sum=0.0;
-		for(int i=0; i< mS->hierArr[0]->nStrata; i++){
-			sum+=mS->nMemberStrataAtStrataAtLevel(i,0)-1;
+		double sum = 0.0;
+		for (int i = 0; i < mS->hierArr[0]->nStrata; i++)
+		{
+			sum += mS->nMemberStrataAtStrataAtLevel(i, 0) - 1;
 		}
-		aS->ncoef[0] = (dMS->nInd - (n_moment1 - (n_moment2/n_moment1))) / sum;
+		aS->ncoef[0] = (dMS->nInd - (n_moment1 - (n_moment2 / n_moment1))) / sum;
 
-		aS->ncoef[2] = (double) (dMS->nInd -  x) / (double) (mS->hierArr[0]->nStrata - 1);
+		aS->ncoef[2] = (double)(dMS->nInd - x) / (double)(mS->hierArr[0]->nStrata - 1);
 
 		// ----------------------------------------------- //
 		// VARIANCE COMPONENTS
 		// ----------------------------------------------- //
 		// calculate variance components (sigma squared)
 		aS->sigmasq[2] = aS->msd[2];
-		aS->sigmasq[1] = (aS->msd[1]-aS->sigmasq[2]) / aS->ncoef[0];
+		aS->sigmasq[1] = (aS->msd[1] - aS->sigmasq[2]) / aS->ncoef[0];
 		aS->sigmasq[0] = (aS->msd[0] - aS->msd[2] - (aS->ncoef[1] * aS->sigmasq[1])) / aS->ncoef[2];
-
 
 		// ----------------------------------------------- //
 		// PHI STATISTIC
@@ -237,40 +243,37 @@ int AMOVA::doAMOVA(distanceMatrixStruct *dMS, metadataStruct *mS, sampleStruct *
 		// calculate phi statistics
 		//
 		// Individual,Region,Population,Total
-		// 
-		
+		//
 
-		//lvl0 (i.e. reg) in TOTAL
-		//Phi_CT
+		// lvl0 (i.e. reg) in TOTAL
+		// Phi_CT
 		aS->phi[0] = aS->sigmasq[0] / (aS->sigmasq[0] + aS->sigmasq[1] + aS->sigmasq[2]);
 
-		//lvl1 in lvl0
-		//Phi_SC
+		// lvl1 in lvl0
+		// Phi_SC
 		aS->phi[1] = aS->sigmasq[1] / (aS->sigmasq[1] + aS->sigmasq[2]);
 
-		//lvl1 (i.e. pop) in TOTAL
-		//Phi_ST
-		aS->phi[2] = (aS->sigmasq[0] + aS->sigmasq[1])/ (aS->sigmasq[0] + aS->sigmasq[1] + aS->sigmasq[2]);
-
-
-	}else{
+		// lvl1 (i.e. pop) in TOTAL
+		// Phi_ST
+		aS->phi[2] = (aS->sigmasq[0] + aS->sigmasq[1]) / (aS->sigmasq[0] + aS->sigmasq[1] + aS->sigmasq[2]);
+	}
+	else
+	{
 		// use approximation
 	}
 
-	aS->print_as_csv(out_amova_ff,mS);
+	aS->print_as_csv(out_amova_ff, mS);
 
 	delete aS;
 	return 0;
 }
-
-
 
 /// @brief doAMOVA - perform AMOVA analysis
 /// @param dMS  pointer to distanceMatrixStruct
 /// @param mS   pointer to metadataStruct
 /// @param sS   pointer to sampleStruct
 /// @param lut_indsToIdx lookup table for index pair to index in distance matrix
-/// @return 
+/// @return
 AMOVA::amovaStruct *AMOVA::amovaStruct_doAmova(distanceMatrixStruct *dMS, metadataStruct *mS, sampleStruct *sS, int **lut_indsToIdx)
 {
 
@@ -284,12 +287,10 @@ AMOVA::amovaStruct *AMOVA::amovaStruct_doAmova(distanceMatrixStruct *dMS, metada
 	// }
 	amovaStruct *aS = new amovaStruct(mS);
 
-
 	// ----------------------------------------------- //
-	// DEGREES OF FREEDOM 
+	// DEGREES OF FREEDOM
 	// ----------------------------------------------- //
 	// calculate the degrees of freedom for each level
-	
 
 	// highest level df is nStrata - 1
 	// e.g. Individual ~ Region / Population / Subpopulation
@@ -298,26 +299,27 @@ AMOVA::amovaStruct *AMOVA::amovaStruct_doAmova(distanceMatrixStruct *dMS, metada
 	// aS->df[0] = mS->sumUniqStrataAtEachLevel(1) - 1;
 
 	// total df
-	aS->df[aS->nAmovaLevels-1] = dMS->nInd - 1;
+	aS->df[aS->nAmovaLevels - 1] = dMS->nInd - 1;
 
-	if(mS->nLevels == 1){
+	if (mS->nLevels == 1)
+	{
 
 		// df for lowest amova level
 		// e.g. Individual ~ Region / Population / Subpopulation
 		// nInd - sum(for each Population, nStrata (num_Subpopulation) in Population)
 		aS->df[1] = dMS->nInd - mS->hierArr[0]->nStrata;
-
-	}else if(mS->nLevels==2){
+	}
+	else if (mS->nLevels == 2)
+	{
 
 		aS->df[1] = mS->sumUniqStrataAtEachLevel(0) - mS->sumUniqStrataAtEachLevel(1);
 		aS->df[2] = dMS->nInd - mS->sumUniqStrataAtEachLevel(0);
-
-	}else{
+	}
+	else
+	{
 		fprintf(stderr, "[ERROR] NOT IMPLEMENTED YET");
 		ASSERT(0 == 1);
 	}
-
-	
 
 	// ----------------------------------------------- //
 	// SUM OF SQUARES
@@ -325,7 +327,8 @@ AMOVA::amovaStruct *AMOVA::amovaStruct_doAmova(distanceMatrixStruct *dMS, metada
 	// calculate the sum of squares within for each level
 	//
 
-	for(size_t i=0; i<aS->_ncoef; i++){
+	for (size_t i = 0; i < aS->_ncoef; i++)
+	{
 		// within level sum of squares
 		aS->ss[i] = calculate_SumOfSquares_Within(i, aS, dMS, mS, sS, lut_indsToIdx);
 	}
@@ -334,31 +337,35 @@ AMOVA::amovaStruct *AMOVA::amovaStruct_doAmova(distanceMatrixStruct *dMS, metada
 	// SUM OF SQUARED DEVIATIONS
 	// ----------------------------------------------- //
 
-	if( mS->nLevels == 1){
-	
+	if (mS->nLevels == 1)
+	{
+
 		aS->ssd[0] = aS->ss[1] - aS->ss[0];
 		aS->ssd[1] = aS->ss[0];
 		aS->ssd[2] = aS->ss[1];
-
-	}else if(mS->nLevels == 2){
-
+	}
+	else if (mS->nLevels == 2)
+	{
 
 		aS->ssd[3] = aS->ss[2];
 		aS->ssd[1] = aS->ss[0] - aS->ss[1];
 		aS->ssd[2] = aS->ss[1];
-		aS->ssd[0] = aS->ssd[3] - (aS->ssd[0]+aS->ssd[1]+aS->ssd[2]);
-
-	}else{
+		aS->ssd[0] = aS->ssd[3] - (aS->ssd[0] + aS->ssd[1] + aS->ssd[2]);
+	}
+	else
+	{
 		fprintf(stderr, "[ERROR] NOT IMPLEMENTED YET");
 		ASSERT(0 == 1);
 	}
 
 	// get msd from ssd and df
-	for(size_t i=0; i < (size_t) aS->nAmovaLevels; i++){
+	for (size_t i = 0; i < (size_t)aS->nAmovaLevels; i++)
+	{
 		aS->msd[i] = aS->ssd[i] / aS->df[i];
 	}
 
-	if(mS->nLevels == 1){
+	if (mS->nLevels == 1)
+	{
 
 		// ----------------------------------------------- //
 		// VARIANCE COEFFICIENTS
@@ -368,13 +375,12 @@ AMOVA::amovaStruct *AMOVA::amovaStruct_doAmova(distanceMatrixStruct *dMS, metada
 		double n_gi = 0.0;
 
 		// n = [ N - \sum_{g \in G} ( N^2_{g}/N) ) ]  /   G - 1
-		for (int sti=0; sti < mS->hierArr[0]->nStrata; sti++)
+		for (int sti = 0; sti < mS->hierArr[0]->nStrata; sti++)
 		{
-			n_gi += SQUARE(mS->hierArr[0]->nIndPerStrata[sti]) ;
+			n_gi += SQUARE(mS->hierArr[0]->nIndPerStrata[sti]);
 		}
-		n_gi = n_gi / (double) dMS->nInd;
+		n_gi = n_gi / (double)dMS->nInd;
 		aS->ncoef[0] = (double)((double)dMS->nInd - (double)n_gi) / (double)(mS->hierArr[0]->nStrata - 1);
-
 
 		// ----------------------------------------------- //
 		// VARIANCE COMPONENTS
@@ -382,13 +388,13 @@ AMOVA::amovaStruct *AMOVA::amovaStruct_doAmova(distanceMatrixStruct *dMS, metada
 		// calculate variance components (sigma squared)
 		// for 1 level AMOVA
 
-		aS->sigmasq[0] = (aS->msd[0]-aS->msd[1]) / aS->ncoef[0];
+		aS->sigmasq[0] = (aS->msd[0] - aS->msd[1]) / aS->ncoef[0];
 		aS->sigmasq[1] = aS->msd[1];
 
 		aS->phi[0] = aS->sigmasq[0] / (aS->sigmasq[0] + aS->sigmasq[1]);
-
-	}else if(mS->nLevels == 2){
-
+	}
+	else if (mS->nLevels == 2)
+	{
 
 		// ----------------------------------------------- //
 		// VARIANCE COEFFICIENTS
@@ -401,37 +407,37 @@ AMOVA::amovaStruct *AMOVA::amovaStruct_doAmova(distanceMatrixStruct *dMS, metada
 
 		double n_moment1 = 0.0;
 		double n_moment2 = 0.0;
-		for (int sti=0; sti < mS->hierArr[1]->nStrata; sti++)
+		for (int sti = 0; sti < mS->hierArr[1]->nStrata; sti++)
 		{
 			n_moment1 += mS->hierArr[1]->nIndPerStrata[sti];
 			n_moment2 += SQUARE(mS->hierArr[1]->nIndPerStrata[sti]);
 		}
 		aS->ncoef[1] = (double)((double)n_moment1 - (double)n_moment2 / (double)n_moment1) / (double)(mS->hierArr[1]->nStrata - 1);
-		double x=((SQUARE(mS->hierArr[0]->nIndPerStrata[0]))/dMS->nInd) +((SQUARE(mS->hierArr[0]->nIndPerStrata[1]))/dMS->nInd);
+		double x = ((SQUARE(mS->hierArr[0]->nIndPerStrata[0])) / dMS->nInd) + ((SQUARE(mS->hierArr[0]->nIndPerStrata[1])) / dMS->nInd);
 
 		double n_gi = 0.0;
-		for (int sti=0; sti < mS->hierArr[0]->nStrata; sti++)
+		for (int sti = 0; sti < mS->hierArr[0]->nStrata; sti++)
 		{
-			n_gi += SQUARE(mS->hierArr[0]->nIndPerStrata[sti]) ;
+			n_gi += SQUARE(mS->hierArr[0]->nIndPerStrata[sti]);
 		}
-		n_gi = n_gi / (double) dMS->nInd;
+		n_gi = n_gi / (double)dMS->nInd;
 
-		double sum=0.0;
-		for(int i=0; i< mS->hierArr[0]->nStrata; i++){
-			sum+=mS->nMemberStrataAtStrataAtLevel(i,0)-1;
+		double sum = 0.0;
+		for (int i = 0; i < mS->hierArr[0]->nStrata; i++)
+		{
+			sum += mS->nMemberStrataAtStrataAtLevel(i, 0) - 1;
 		}
-		aS->ncoef[0] = (dMS->nInd - (n_moment1 - (n_moment2/n_moment1))) / sum;
+		aS->ncoef[0] = (dMS->nInd - (n_moment1 - (n_moment2 / n_moment1))) / sum;
 
-		aS->ncoef[2] = (double) (dMS->nInd -  x) / (double) (mS->hierArr[0]->nStrata - 1);
+		aS->ncoef[2] = (double)(dMS->nInd - x) / (double)(mS->hierArr[0]->nStrata - 1);
 
 		// ----------------------------------------------- //
 		// VARIANCE COMPONENTS
 		// ----------------------------------------------- //
 		// calculate variance components (sigma squared)
 		aS->sigmasq[2] = aS->msd[2];
-		aS->sigmasq[1] = (aS->msd[1]-aS->sigmasq[2]) / aS->ncoef[0];
+		aS->sigmasq[1] = (aS->msd[1] - aS->sigmasq[2]) / aS->ncoef[0];
 		aS->sigmasq[0] = (aS->msd[0] - aS->msd[2] - (aS->ncoef[1] * aS->sigmasq[1])) / aS->ncoef[2];
-
 
 		// ----------------------------------------------- //
 		// PHI STATISTIC
@@ -439,23 +445,22 @@ AMOVA::amovaStruct *AMOVA::amovaStruct_doAmova(distanceMatrixStruct *dMS, metada
 		// calculate phi statistics
 		//
 		// Individual,Region,Population,Total
-		// 
-		
+		//
 
-		//lvl0 (i.e. reg) in TOTAL
-		//Phi_CT
+		// lvl0 (i.e. reg) in TOTAL
+		// Phi_CT
 		aS->phi[0] = aS->sigmasq[0] / (aS->sigmasq[0] + aS->sigmasq[1] + aS->sigmasq[2]);
 
-		//lvl1 in lvl0
-		//Phi_SC
+		// lvl1 in lvl0
+		// Phi_SC
 		aS->phi[1] = aS->sigmasq[1] / (aS->sigmasq[1] + aS->sigmasq[2]);
 
-		//lvl1 (i.e. pop) in TOTAL
-		//Phi_ST
-		aS->phi[2] = (aS->sigmasq[0] + aS->sigmasq[1])/ (aS->sigmasq[0] + aS->sigmasq[1] + aS->sigmasq[2]);
-
-
-	}else{
+		// lvl1 (i.e. pop) in TOTAL
+		// Phi_ST
+		aS->phi[2] = (aS->sigmasq[0] + aS->sigmasq[1]) / (aS->sigmasq[0] + aS->sigmasq[1] + aS->sigmasq[2]);
+	}
+	else
+	{
 		// use approximation
 	}
 
@@ -463,4 +468,3 @@ AMOVA::amovaStruct *AMOVA::amovaStruct_doAmova(distanceMatrixStruct *dMS, metada
 
 	return aS;
 }
-

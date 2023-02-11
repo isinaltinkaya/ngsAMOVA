@@ -1,8 +1,11 @@
 #ifndef __IO__
 #define __IO__
 
-#include "argStruct.h"
 #include <zlib.h>
+#include <htslib/bgzf.h>
+#include <htslib/kstring.h>
+
+#include "argStruct.h"
 
 struct sampleStruct;
 struct formulaStruct;
@@ -16,7 +19,11 @@ struct pairStruct;
 namespace IO
 {
 
+    extern const char* FILE_EXTENSIONS[];
+
     char *setFileName(const char *a, const char *b);
+    char *setFileName(const char *fn, const char *suffix, const char *fc_ext);
+
     const char *getFileExtension(const char *fn);
 
     FILE *getFile(const char *fname, const char *mode);
@@ -28,7 +35,6 @@ namespace IO
 
     int isGzFile(const char *fn);
 
-
     namespace readFile
     {
         int SFS(FILE *in_sfs_fp, const char *delims, sampleStruct *SAMPLES);
@@ -36,19 +42,18 @@ namespace IO
         char *getFirstLine(char *fn);
         char *getFirstLine(FILE *fp);
 
-        int readToBuffer(char* fn, char **buffer_p, size_t* buf_size_p);
+        int readToBuffer(char *fn, char **buffer_p, size_t *buf_size_p);
 
         int getBufferSize(FILE *fp);
         int getBufferSize(char *fn);
     };
-
 
     namespace readGzFile
     {
         char *getFirstLine(char *fn);
         char *getFirstLine(gzFile fp);
 
-        int readToBuffer(char* fn, char **buffer_p, size_t* buf_size_p);
+        int readToBuffer(char *fn, char **buffer_p, size_t *buf_size_p);
         // int getBufferSize(gzFile *fp);
         // int getBufferSize(char *fn);
     };
@@ -63,59 +68,118 @@ namespace IO
     namespace validateFile
     {
         int Metadata(FILE *in_mtd_fp, int nInds, int *keyCols, formulaStruct *FORMULA, const char *delims, int HAS_COLNAMES);
-
     };
 
     typedef struct outputStruct
     {
-        
+
         char *fn = NULL;
 
         OUTFC fc;
 
         FILE *fp = NULL;
         gzFile gzfp = NULL;
-
-        
+        BGZF *bgzfp = NULL;
         // int print_header = 0; //TODO
 
         outputStruct(const char *fn_, const char *suffix, OUTFC fc_)
         {
             fc = fc_;
-            fn = setFileName(fn_, suffix);
-            switch (fc) {
-                case OUTFC::NONE:
-                    fp = openFileW(fn);
-                    break;
-                case OUTFC::GZ:
-                    gzfp = openGzFileW(fn);
-                    break;
+            fn = setFileName(fn_, suffix, FILE_EXTENSIONS[(OUTFC)fc]);
+            switch (fc)
+            {
+            case OUTFC::NONE:
+                fp = openFileW(fn);
+                break;
+            case OUTFC::GZ:
+                gzfp = openGzFileW(fn);
+                break;
+            case OUTFC::BGZ:
+                bgzfp = bgzf_open(fn, "w");
+                break;
+            case OUTFC::BBGZ:
+                bgzfp = bgzf_open(fn, "wb");
+                break;
+            default:
+                fprintf(stderr, "\n[ERROR] Unknown file compression type (%d)\n", fc);
+                exit(1);
+                break;
             }
         }
+
         ~outputStruct()
         {
             flush();
-            switch (fc) {
-                case OUTFC::NONE:
-                    FCLOSE(fp);
-                    break;
-                case OUTFC::GZ:
-                    GZCLOSE(gzfp);
-                    break;
+            switch (fc)
+            {
+            case OUTFC::NONE:
+                FCLOSE(fp);
+                break;
+            case OUTFC::GZ:
+                GZCLOSE(gzfp);
+                break;
+            case OUTFC::BGZ:
+                BGZCLOSE(bgzfp);
+                break;
+            case OUTFC::BBGZ:
+                BGZCLOSE(bgzfp);
+                break;
+            default:
+                fprintf(stderr, "\n[ERROR] Unknown file compression type (%d)\n", fc);
+                exit(1);
+                break;
             }
             FREE(fn);
         }
+
         void flush()
         {
-            switch(fc) {
-                case OUTFC::NONE:
-                    fflush(fp);
-                    break;
-                case OUTFC::GZ:
-                    gzflush(gzfp, Z_SYNC_FLUSH);
-                    break;
+            switch (fc)
+            {
+            case OUTFC::NONE:
+                fflush(fp);
+                break;
+            case OUTFC::GZ:
+                gzflush(gzfp, Z_SYNC_FLUSH);
+                break;
+            case OUTFC::BGZ:
+                ASSERT(bgzf_flush(bgzfp) == 0);
+                break;
+            case OUTFC::BBGZ:
+                ASSERT(bgzf_flush(bgzfp) == 0);
+                break;
+            default:
+                fprintf(stderr, "\n[ERROR] Unknown file compression type (%d)\n", fc);
+                exit(1);
+                break;
             }
         }
+
+        void *get_fp()
+        {
+            switch (fc)
+            {
+            case OUTFC::NONE:
+                return fp;
+                break;
+            case OUTFC::GZ:
+                return gzfp;
+                break;
+            case OUTFC::BGZ:
+                return bgzfp;
+                break;
+            case OUTFC::BBGZ:
+                return bgzfp;
+                break;
+            default:
+                fprintf(stderr, "\n[ERROR] Unknown file compression type (%d)\n", fc);
+                exit(1);
+                break;
+            }
+        }
+
+        void write(const char *buf);
+        void write(const kstring_t *kbuf);
 
     } outputStruct;
 
@@ -130,34 +194,44 @@ namespace IO
 
         outFilesStruct(argStruct *args)
         {
-            if (args->printMatrix == 1)
+            if (args->printMatrix != 0)
             {
-                out_dm_fs = new outputStruct(args->out_fn, ".distance_matrix.csv", OUTFC::NONE);
-            }else if (args->printMatrix == 2){
-                out_dm_fs = new outputStruct(args->out_fn, ".distance_matrix.csv.gz", OUTFC::GZ);
+                out_dm_fs = new outputStruct(args->out_fn, ".distance_matrix.csv", OUTFC(args->printMatrix-1));
             }
 
-            if (args->doTest == 1)
+            if (args->doTest != 0)
             {
-                out_emtest_fs = new outputStruct(args->out_fn, ".emtest.csv", OUTFC::NONE);
+                out_emtest_fs = new outputStruct(args->out_fn, ".emtest.csv", OUTFC(args->doTest-1));
             }
 
             if (args->doEM == 1)
             {
-                if (args->printJointGenoCountDist > 0)
+                if (args->printJointGenoCountDist != 0)
                 {
-                    out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", OUTFC::NONE);
+                    out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", OUTFC(args->printJointGenoCountDist-1));
                 }
-                if (args->printJointGenoProbDist > 0)
+                if (args->printJointGenoProbDist != 0)
                 {
-                    out_jgpd_fs = new outputStruct(args->out_fn, ".joint_geno_prob_dist.csv", OUTFC::NONE);
+                    out_jgpd_fs = new outputStruct(args->out_fn, ".joint_geno_prob_dist.csv", OUTFC(args->printJointGenoProbDist-1));
+                }
+            }
+            if (args->doAMOVA == 2)
+            {
+                if (args->printJointGenoCountDist != 0)
+                {
+                    out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", OUTFC(args->printJointGenoCountDist-1));
+                }
+                if (args->printJointGenoProbDist != 0)
+                {
+                    // TODO
+                    ASSERT(0 == 1);
                 }
             }
             if (args->doAMOVA > 0)
             {
                 out_amova_fs = new outputStruct(args->out_fn, ".amova.csv", OUTFC::NONE);
             }
-            if (args->printDev > 0)
+            if (args->printDev == 1)
             {
                 out_dev_fs = new outputStruct(args->out_fn, ".dev.csv", OUTFC::NONE);
             }
@@ -238,7 +312,11 @@ namespace IO
         // void Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, argStruct *args, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
 
         void M_PWD(const char *TYPE, IO::outputStruct *out_dm_fs, int nIndCmb, double *M_PWD);
-    }
-}
 
-#endif
+    }
+
+}
+kstring_t *kbuf_init();
+void kbuf_destroy(kstring_t *kbuf);
+
+#endif // __IO__

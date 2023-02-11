@@ -60,6 +60,11 @@ struct paramStruct
     // validate that parameters make sense
     // e.g. nInd > 0
     void validate();
+
+    // verbose print
+    void vprint(const int verbose_threshold, const char *format, ...);
+    void vprint(const char *format, ...);
+
 };
 
 /// @brief paramStruct_init initialize the paramStruct
