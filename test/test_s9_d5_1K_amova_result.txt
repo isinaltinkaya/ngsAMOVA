@@ -1,2 +1,0 @@
-df_AG,ssd_AG,msd_AG,df_AIWG,ssd_AIWG,msd_AIWG,df_TOTAL,ssd_TOTAL,msd_TOTAL,coef_n,sigmasq_a,sigmasq_b,phi_a
-2,0.060623,0.030311,6,0.033740,0.005623,8,0.094362,0.011795,3.000000,0.008229,0.005623,0.594063
