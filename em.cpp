@@ -23,6 +23,7 @@ void* t_EM_2DSFS_GL3(void* p){
 /// @return 
 int EM_2DSFS_GL3(threadStruct* THREAD){
 
+	//TODO only pass pair's data to this function not the whole lngl, then free properly
 	double **lngls=THREAD->lngls;
 	pairStruct* pair=THREAD->pair;
 	const double tole = THREAD->args->tole;

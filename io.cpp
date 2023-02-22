@@ -272,6 +272,7 @@ int IO::readGzFile::readToBuffer(char *fn, char **buffer_p, size_t *buf_size_p)
 	}
 }
 
+
 int IO::readFile::getBufferSize(FILE *fp)
 {
 	ASSERT(fseek(fp, 0, SEEK_SET) == 0);

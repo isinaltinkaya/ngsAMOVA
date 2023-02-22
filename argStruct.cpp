@@ -145,29 +145,23 @@ argStruct *argStruct_get(int argc, char **argv)
 
 		// read block size as float and convert to int
 		// this is to allow for the use of scientific notation (e.g. 1e6)
-		else if (strcasecmp("-bs", arv) == 0)
+		else if ((strcasecmp("-bs", arv) == 0) || (strcasecmp("--blockSize", arv) == 0)){
 			args->blockSize = (int)atof(val);
-		else if (strcasecmp("--blockSize", arv) == 0)
-			args->blockSize = (int)atof(val);
+		}
 
-		else if (strcasecmp("-ws", arv) == 0)
+		else if ((strcasecmp("-ws", arv) == 0) || (strcasecmp("--windowSize", arv) == 0)){
 			args->windowSize = (int)atof(val);
-		else if (strcasecmp("--windowSize", arv) == 0)
-			args->windowSize = (int)atof(val);
+		}
 
-		else if (strcasecmp("-bSize", arv) == 0)
-			args->blockSize = (int)atof(val);
-		else if (strcasecmp("-nb", arv) == 0)
+		else if ((strcasecmp("-nb", arv) == 0) || (strcasecmp("--nBootstraps", arv) == 0)){
 			args->nBootstraps = (int)atof(val);
+		}
 
-		else if (strcasecmp("-f", arv) == 0)
+		else if ((strcasecmp("-f", arv) == 0) || (strcasecmp("--formula", arv) == 0))
 		{
 			args->formula = strdup(val);
 		}
-		else if (strcasecmp("--formula", arv) == 0)
-		{
-			args->formula = strdup(val);
-		}
+
 		else if (strcasecmp("--hasColNames", arv) == 0)
 			args->hasColNames = atoi(val);
 		else if (strcasecmp("-seed", arv) == 0)
@@ -427,10 +421,10 @@ argStruct *argStruct_get(int argc, char **argv)
 	if (args->nBootstraps > 0)
 	{
 
-		fprintf(stderr, "\n\t-> -nBootstraps %d is set, will perform %d bootstraps for AMOVA significance testing.\n", args->nBootstraps, args->nBootstraps);
+		fprintf(stderr, "\n\t-> --nBootstraps %d is set, will perform %d bootstraps for AMOVA significance testing.\n", args->nBootstraps, args->nBootstraps);
 		if (args->blockSize == 0)
 		{
-			fprintf(stderr, "\n[ERROR] -blockSize must be set to a positive integer when -nBootstraps is set.\n");
+			fprintf(stderr, "\n[ERROR] -blockSize must be set to a positive integer when --nBootstraps is set.\n");
 			exit(1);
 		}
 		else
@@ -452,14 +446,14 @@ argStruct *argStruct_get(int argc, char **argv)
 	}
 	else if (args->nBootstraps < 0)
 	{
-		fprintf(stderr, "\n[ERROR]\t-> -nBootstraps should be a positive integer or 0. You entered a negative value: %d.\n", args->nBootstraps);
+		fprintf(stderr, "\n[ERROR]\t-> --nBootstraps should be a positive integer or 0. You entered a negative value: %d.\n", args->nBootstraps);
 		exit(1);
 	}
 	else
 	{
 		if (args->blockSize != 0)
 		{
-			fprintf(stderr, "\n[ERROR] -blockSize is set to %d, but -nBootstraps is not set. Define both to perform block bootstrapping.\n", args->blockSize);
+			fprintf(stderr, "\n[ERROR] --blockSize is set to %d, but --nBootstraps is not set. Define both to perform block bootstrapping.\n", args->blockSize);
 			exit(1);
 		}
 	}

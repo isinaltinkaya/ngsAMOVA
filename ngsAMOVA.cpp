@@ -21,6 +21,7 @@
 #include "vcfUtils.h"
 #include "em.h"
 #include "amova.h"
+#include "bootstrap.h"
 #include "dev.h"
 
 using size_t = decltype(sizeof(int));
@@ -127,65 +128,6 @@ void spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, pairStruct **pai
 	}
 }
 
-void prepare_bootstrap_blocks(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, sampleStruct *sampleSt, metadataStruct *mS, formulaStruct *formulaSt, IO::outFilesStruct *outSt, blobStruct *blobSt)
-{
-
-	fprintf(stderr, "\n\n\n\n################ Bootstrap blocks");
-	// Bootstrap genomic blocks among individuals
-	// while keeping the order of blocks the same (based on AMOVA levels)
-	fprintf(stderr, "\nvcf: %d", vcfd->nSites);
-
-	if (mS->nLevels == 1)
-	{
-		// only one level; shuffle all individual blocks
-		for (int i = 0; i < mS->nIndMetadata; i++)
-		{
-
-			for (int contig = 0; contig < (int)blobSt->nContigs; contig++)
-			{
-				// loop through blocks and shuffle
-				for (int block = 0; block < blobSt->contigNBlocks[contig]; block++)
-				{
-					// int blockStart = blobSt->contigBlockStarts[contig][block];
-
-					// shuffle genomic blocks among all individuals in given level
-
-					// choose a random individual among the individual set in the shuffling level
-					// then set the block to the chosen individual's block at the same position
-					// iblock= block from an individual at this_block
-					int chosen_iblock = 1 + int(mS->nIndMetadata * (rand() / (RAND_MAX + 1.0)));
-					fprintf(stderr, "\n\n\n\n######## chosen_block: %d", chosen_iblock);
-
-					// distanceMatrixStruct *distanceMatrixStruct_read_csv(FILE *in_dm_fp, paramStruct *pars, argStruct *args, metadataStruct *metadataSt);
-
-					// to access the data
-					// if this block is not the last block in the contig
-					// 		loop: from this_blockStart to next_blockStart
-					// if this block is the last block in the contig
-					// 		loop: from this_blockStart to the end of the contig
-					for (int gti = 0; gti < 3; gti++)
-					{
-						double x = vcfd->lngl[0][3 * chosen_iblock + gti];
-						fprintf(stderr, "\n\n\n\n######## x: %f", x);
-					}
-				}
-			}
-		}
-	}
-	else
-	{
-
-		// more than one level; shuffle blocks within each level
-		for (int level = 0; level < mS->nLevels; level++)
-		{
-
-			for (int i = 0; i < mS->nIndMetadata; i++)
-			{
-				// int chosen_iblock= rand() % mS->hierArr[level]->nIndPerStrata[i];
-			}
-		}
-	}
-}
 
 // prepare distance matrix using original data
 void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS_orig, vcfData *vcfd, pairStruct **pairSt, formulaStruct *formulaSt, IO::outFilesStruct *outSt, blobStruct *blobSt, sampleStruct *sampleSt)
@@ -320,7 +262,7 @@ void input_VCF_doAMOVA(argStruct *args, paramStruct *pars, formulaStruct *formul
 
 	// [BEGIN] ----------------------- READ METADATA ------------------------- //
 	// If vcfd/BCF input, read metadata after vcfd
-	// so you can compare vcfd records with metadata when reading metadata
+	// so you can compare VCF records with metadata when reading metadata
 	ASSERT(args->in_mtd_fn != NULL);
 
 	FILE *in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
@@ -361,7 +303,6 @@ void input_VCF_doAMOVA(argStruct *args, paramStruct *pars, formulaStruct *formul
 		int b = 1;
 		while (b < pars->nAmovaRuns)
 		{
-
 			// fill dMS with bootstrapped distance matrices
 			fprintf(stderr, "\n\t-> Bootstrapping %d/%d", b, args->nBootstraps);
 
@@ -390,7 +331,7 @@ void input_VCF_doAMOVA(argStruct *args, paramStruct *pars, formulaStruct *formul
 	delete metadataSt;
 }
 
-// --------------------------- INPUT: vcfd/BCF --------------------------- //
+// --------------------------- INPUT: VCF/BCF --------------------------- //
 void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::outFilesStruct *outSt)
 {
 
@@ -537,7 +478,7 @@ int main(int argc, char **argv)
 	switch (pars->in_ft)
 	{
 
-	// --------------------------- INPUT: vcfd/BCF --------------------------- //
+	// --------------------------- INPUT: VCF/BCF --------------------------- //
 	case IN_VCF:
 	{
 		if (args->printDev == 1)

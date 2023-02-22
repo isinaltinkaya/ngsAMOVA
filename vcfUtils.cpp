@@ -536,9 +536,9 @@ void vcfData_destroy(vcfData *v)
 
 	if (v->lngl != NULL)
 	{
-		for (size_t s = 0; s < (size_t)v->nSites; s++)
+		for (size_t i = 0; i < v->_lngl; i++)
 		{
-			FREE(v->lngl[s]);
+			FREE(v->lngl[i]);
 		}
 		FREE(v->lngl);
 	}
@@ -630,9 +630,17 @@ vcfData *vcfData_init(argStruct *args, paramStruct *pars, sampleStruct *sampleSt
 	return vcfd;
 }
 
-// read vcfd sites AND store block pointers for block bootstrapping
-// if block block size for block bootstrapping is set
-// collect pointers to blocks while reading the sites
+/// @param vcfd		pointer to vcfData
+/// @param args		pointer to argStruct
+/// @param pars		pointer to paramStruct
+/// @param pairSt	pointer to *pairStruct
+/// @param blobSt	pointer to blobStruct
+/// @return			void
+///
+/// @details
+/// read vcfd sites AND store block pointers for block bootstrapping
+/// if block block size for block bootstrapping is set
+/// collect pointers to blocks while reading the sites
 void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairSt, blobStruct *blobSt)
 {
 	/*
@@ -723,7 +731,14 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 	fprintf(stderr, "\n\t-> Finished reading sites\n");
 }
 
-// not saving blob information for block bootstrapping
+/// @param vcfd		pointer to vcfData
+/// @param args		pointer to argStruct
+/// @param pars		pointer to paramStruct
+/// @param pairSt	pointer to *pairStruct
+/// @return			void
+///
+/// @details
+/// overload: not saving blob information for block bootstrapping
 void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairSt)
 {
 

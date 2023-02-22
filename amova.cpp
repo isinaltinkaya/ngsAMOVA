@@ -53,7 +53,6 @@ double calculate_SumOfSquares_Within(int lvl, AMOVA::amovaStruct *aS, distanceMa
 					// include only pairs that are in the same strata at this hierarchical level
 					if (mS->pairInStrataAtLevel(i1, i2, lvl, sti) == 1)
 					{
-
 						// the distance is already stored in squared form, so no need to square it again
 						sum += dMS->M[lut_indsToIdx[i1][i2]] / n;
 					}
@@ -245,17 +244,23 @@ int AMOVA::doAMOVA(distanceMatrixStruct *dMS, metadataStruct *mS, sampleStruct *
 		// Individual,Region,Population,Total
 		//
 
-		// lvl0 (i.e. reg) in TOTAL
+		aS->sigmasq_total = aS->sigmasq[0] + aS->sigmasq[1] + aS->sigmasq[2];
+
+		// lvl0 in TOTAL
+		// e.g. Region in Total
 		// Phi_CT
-		aS->phi[0] = aS->sigmasq[0] / (aS->sigmasq[0] + aS->sigmasq[1] + aS->sigmasq[2]);
+		aS->phi[0] = aS->sigmasq[0] / aS->sigmasq_total;
 
 		// lvl1 in lvl0
+		// e.g. Populations in Region
 		// Phi_SC
 		aS->phi[1] = aS->sigmasq[1] / (aS->sigmasq[1] + aS->sigmasq[2]);
 
-		// lvl1 (i.e. pop) in TOTAL
+
+		// lvl1 in TOTAL
+		// e.g. Population in Total
 		// Phi_ST
-		aS->phi[2] = (aS->sigmasq[0] + aS->sigmasq[1]) / (aS->sigmasq[0] + aS->sigmasq[1] + aS->sigmasq[2]);
+		aS->phi[2] = (aS->sigmasq[0] + aS->sigmasq[1]) / aS->sigmasq_total;
 	}
 	else
 	{

@@ -247,7 +247,6 @@ typedef struct hierStruct
 	int *nIndPerStrata = NULL;
 	size_t _nIndPerStrata = 1024;
 
-	// hierStruct(char* str, int totNumLevels)
 	hierStruct(char *str)
 	{
 		nStrata = 1;
@@ -789,6 +788,7 @@ typedef struct threadStruct
 		pars = pars_;
 		nSites = pars->nSites;
 	}
+
 
 } threadStruct;
 // void print_SFS_GT(const char *TYPE, IO::outputStruct *out_sfs_fs, paramStruct *pars, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);

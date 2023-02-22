@@ -210,7 +210,7 @@ typedef struct vcfData
 		else
 		{
 			ASSERT(0 == 1);
-		} // control should never reach here
+		}
 
 		for (size_t i = 0; i < _lngl; i++)
 		{

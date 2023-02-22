@@ -1,26 +1,48 @@
 #include "io.h"
 #include "dataStructs.h"
 
+//TODO is this the proper way to do this?
+/// @brief calculate buffer size for CSV output
+/// @param n_vals number of values
+/// @param max_digits maximum number of digits
+/// @return buffer size
+const int calculateBufferSizeCsv(const int n_vals, const int max_digits)
+{
+
+	// max_digits + 1 = 1 comma 
+	// result + 2 = 1 newline at the end + 1 null terminator
+	return ((n_vals * (max_digits + 1))+2);
+}
+
 void distanceMatrixStruct::print(IO::outputStruct *out_dm_fs)
 {
 	fprintf(stderr, "[INFO]\t-> Writing distance matrix to %s.\n", out_dm_fs->fn);
 
-	char buf_values[8192];
+	const int max_digits = DBL_MAX_DIG_TOPRINT;
+	const int max_buf_size = calculateBufferSizeCsv(nIndCmb, max_digits);
+	char buf_values[max_buf_size];
 	char *bufptr = buf_values;
 
 	for (int px = 0; px < nIndCmb; px++)
 	{
 		if (px != 0 && px != nIndCmb - 1)
 		{
-			bufptr += sprintf(bufptr, ",%.*f", (int)DBL_MAXDIG10, M[px]);
+			//TODO check snprintf maxsize
+			// bufptr += sprintf(bufptr, ",%.*f", (int)DBL_MAXDIG10, M[px]);
+			// bufptr += snprintf(bufptr, max_buf_size, ",%.*f", (int)DBL_MAXDIG10, M[px]);
+			bufptr += snprintf(bufptr, max_digits+1, ",%.*f", (int)DBL_MAXDIG10, M[px]);
 		}
 		else if (px == 0)
 		{
-			bufptr += sprintf(bufptr, "%.*f", (int)DBL_MAXDIG10, M[px]);
+			// bufptr += sprintf(bufptr, "%.*f", (int)DBL_MAXDIG10, M[px]);
+			// bufptr += snprintf(bufptr, max_buf_size, "%.*f", (int)DBL_MAXDIG10, M[px]);
+			bufptr += snprintf(bufptr, max_digits, "%.*f", (int)DBL_MAXDIG10, M[px]);
 		}
 		else if (px == nIndCmb - 1)
 		{
-			sprintf(bufptr, ",%.*f\n", (int)DBL_MAXDIG10, M[px]);
+			// sprintf(bufptr, ",%.*f\n", (int)DBL_MAXDIG10, M[px]);
+			// snprintf(bufptr, max_buf_size, ",%.*f\n", (int)DBL_MAXDIG10, M[px]);
+			snprintf(bufptr, max_digits+2, ",%.*f\n", (int)DBL_MAXDIG10, M[px]);
 		}
 		else
 		{
@@ -32,10 +54,12 @@ void distanceMatrixStruct::print(IO::outputStruct *out_dm_fs)
 	{
 	case OUTFC::NONE:
 		fprintf(out_dm_fs->fp, "%s", buf_values);
+		// fprintf(out_dm_fs->fp, "%s", bufptr);
 		break;
 	case OUTFC::GZ:
 		// gzwrite(out_dm_fs->gzfp, M, nIndCmb * sizeof(double));
 		gzprintf(out_dm_fs->gzfp, "%s", buf_values);
+		// gzprintf(out_dm_fs->gzfp, "%s", bufptr);
 		break;
 	default:
 		fprintf(stderr, "[ERROR]\t-> Unknown output file format.\n");

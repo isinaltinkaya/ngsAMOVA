@@ -26,11 +26,24 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
+/*
+ * Macro:[DBL_MAX_DIG_TOPRINT]
+ * 	maximum number of digits needed to print a double
+ * 
+ * 	longest number == smalles negative number
+ * 		-pow(2, DBL_MIN_EXP - DBL_MANT_DIG)
+ * 	-pow(2,-N) needs 3+N digits
+ * 		to represent (sign, decimal point, N digits)
+ * 		'-0.<N digits>'
+ * 
+ * @requires <float.h>
+ */
+#define DBL_MAX_DIG_TOPRINT 3 + DBL_MANT_DIG - DBL_MIN_EXP
 
 
 /*
  * Macro:[AT]
- * Injects the file and line info as string
+ * inject the file and line info as string
  */
 #define STRINGIFY(x) #x
 #define ASSTR(x) STRINGIFY(x)
@@ -38,7 +51,7 @@
 
 /*
  * Macro:[ASSERT]
- * shortcut to evaluate an expression, works the same way as the C-macro assert
+ * evaluate an expression, works the same way as the C-macro assert
  * except that DEBUG does not affect it (it is always active)
  * also prints the file and line info and exits the program
  * if the expression evaluates to false

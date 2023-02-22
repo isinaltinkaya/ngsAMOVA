@@ -65,6 +65,7 @@ namespace AMOVA
 
         double *ncoef = NULL;
         double *sigmasq = NULL; // variance component
+        double sigmasq_total = 0.0;
         double *phi = NULL;
 
         int nAmovaLevels = 0;
