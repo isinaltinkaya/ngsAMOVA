@@ -178,6 +178,11 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 		for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
 		{
 			int snSites = vcfd->JointGenoCountDistGT[pidx][9];
+			if (snSites==0)
+			{
+				fprintf(stderr,"\n[ERROR]\t-> No shared sites found for pair %d (snSites=%d). This is currently not allowed.\n",pidx,snSites);
+				exit(1);
+			}
 
 			if (args->do_square_distance == 1)
 			{
