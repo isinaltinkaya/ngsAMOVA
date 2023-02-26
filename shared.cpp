@@ -14,6 +14,8 @@
 #include "argStruct.h"
 #include "paramStruct.h"
 
+const char *OUTFC_LUT[] = {"No compression", "gzip", "bgzip", "binary bgzip"};
+
 //
 // 0 1 2
 // 00 01 02

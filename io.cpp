@@ -100,7 +100,7 @@ char *IO::setFileName(const char *fn, const char *suffix, const char *fc_ext)
 	// 	case OUTFC::GZ:
 	// 		fc_ext = ".gz";
 	// 		break;
-	// 	case OUTFC::BGZ:
+	// 	case OUTFC::BBGZ:
 	// 		fc_ext = ".bgz";
 	// 		break;
 	// 	default:
@@ -592,13 +592,6 @@ void IO::outputStruct::write(const char *buf)
 	case OUTFC::GZ:
 		gzprintf(gzfp, "%s", buf);
 		break;
-	case OUTFC::BGZ:
-		if (bgzf_write(bgzfp, buf, strlen(buf)) != (ssize_t)strlen(buf))
-		{
-			fprintf(stderr, "\n[ERROR:%d] Could not write %ld bytes\n", bgzfp->errcode, strlen(buf));
-			exit(1);
-		}
-		break;
 	case OUTFC::BBGZ:
 		if (bgzf_write(bgzfp, buf, strlen(buf)) != (ssize_t)strlen(buf))
 		{
@@ -618,13 +611,6 @@ void IO::outputStruct::write(const kstring_t *kbuf)
 		break;
 	case OUTFC::GZ:
 		gzprintf(gzfp, "%s", kbuf->s);
-		break;
-	case OUTFC::BGZ:
-		if (bgzf_write(bgzfp, kbuf->s, kbuf->l) != (ssize_t)kbuf->l)
-		{
-			fprintf(stderr, "\n[ERROR:%d] Could not write %ld bytes\n", bgzfp->errcode, kbuf->l);
-			exit(1);
-		}
 		break;
 	case OUTFC::BBGZ:
 		if (bgzf_write(bgzfp, kbuf->s, kbuf->l) != (ssize_t)kbuf->l)

@@ -90,7 +90,6 @@ struct argStruct;
 * @field ind2			ind2 id
 *
 *
-* @field doTest		test for convergence
 *
 *
 * @field mThreads		maximum number of threads defined by user
@@ -163,7 +162,6 @@ int minInd;
 int hasColNames;
 
 double tole;
-int doTest;
 
 int mThreads;
 int mEmIter;

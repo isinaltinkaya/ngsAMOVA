@@ -180,11 +180,8 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
 		exit(1);
 	}
 
-	// store 3 values per individual
-	vcfd->lngl[site_i] = (double *)malloc(pars->nInd * 3 * sizeof(double));
 
-	int *cmbArr;
-	cmbArr = (int *)malloc(pars->nIndCmb * sizeof(int));
+	int *cmbArr = (int *)malloc(pars->nIndCmb * sizeof(int));
 	for (int i = 0; i < pars->nIndCmb; i++)
 	{
 		cmbArr[i] = 0;
@@ -202,11 +199,7 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
 		for (int indi = 0; indi < pars->nInd; indi++)
 		{
 
-			for (int ix = 0; ix < 3; ix++)
-			{
-				// TODO
-				vcfd->lngl[site_i][(3 * indi) + ix] = NEG_INF;
-			}
+			int indi3 = indi * vcfd->nGT;
 
 			// TODO only checking the first for now
 			// what is the expectation in real cases?
@@ -280,9 +273,9 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
 					}
 				}
 
-				vcfd->lngl[site_i][(3 * indi) + 0] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a1)]);
-				vcfd->lngl[site_i][(3 * indi) + 1] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a2)]);
-				vcfd->lngl[site_i][(3 * indi) + 2] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a2, a2)]);
+				vcfd->lngl[site_i][indi3 + 0] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a1)]);
+				vcfd->lngl[site_i][indi3 + 1] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a2)]);
+				vcfd->lngl[site_i][indi3 + 2] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a2, a2)]);
 			}
 		}
 	}
@@ -293,7 +286,7 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
 		exit(1);
 	}
 
-	free(cmbArr);
+	FREE(cmbArr);
 	return 0;
 }
 
@@ -603,12 +596,6 @@ vcfData *vcfData_init(argStruct *args, paramStruct *pars, sampleStruct *sampleSt
 			vcfd->init_JointGenoCountDistGL(3);
 			vcfd->init_JointGenoProbDistGL(3);
 		}
-		else if (args->doEM == 2)
-		{
-			// vcfd->lngl_init(args->doEM);
-			// vcfd->init_JointGenoCountDistGL(10);
-			// vcfd->init_JointGenoProbDistGL(10);
-		}
 	}
 
 	if (args->doAMOVA == 2)
@@ -672,16 +659,18 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 			vcfd->lngl_expand(pars->nSites);
 		}
 
+		// lngl[i] = (double *)malloc(nInd * nGT * sizeof(double));
+		// vcfd->lngl[pars->nSites] = (double *)malloc(pars->nInd * vcfd->nGT * sizeof(double));
 		skip_site = site_read_GL(pars->nSites, vcfd, args, pars, pairSt);
 		if (skip_site == 1)
 		{
 			fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
 
 			pars->totSites++;
+			FREE(vcfd->lngl[pars->nSites]);
 
-			// next loop will skip this and use the same site_i
-			free(vcfd->lngl[pars->nSites]);
-			vcfd->lngl[pars->nSites] = NULL;
+			// skipping the site thus we will not increment pars->nSites
+			// so next loop will overwrite the same lngl but for next site
 
 			continue;
 		}
@@ -763,10 +752,8 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 			fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
 			pars->totSites++;
 
-			// TODO
 			//  next loop will skip this and use the same site_i
-			free(vcfd->lngl[pars->nSites]);
-			vcfd->lngl[pars->nSites] = NULL;
+			// FREE(vcfd->lngl[pars->nSites]);
 
 			continue;
 		}
@@ -774,8 +761,8 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 		pars->totSites++;
 	}
 
-	vcfd->nSites = pars->nSites;
-	vcfd->totSites = pars->totSites;
+	// vcfd->nSites = pars->nSites;
+	// vcfd->totSites = pars->totSites;
 
 	fprintf(stderr, "\n\t-> Finished reading sites\n");
 }
@@ -827,4 +814,199 @@ void readSites_GT(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 #endif
 
 	fprintf(stderr, "\n\t-> Finished reading sites\n");
+}
+
+void vcfData::set_nGT(const int nGT_)
+{
+	nGT = (size_t)nGT_;
+	nJointClasses = nGT_ * nGT_;
+}
+
+void vcfData::init_JointGenoCountDistGL(int nGT_)
+{
+	set_nGT(nGT_);
+	ASSERT(nJointClasses > 0);
+	ASSERT(nIndCmb > 0);
+	JointGenoCountDistGL = (double **)malloc(nIndCmb * sizeof(double *));
+	for (int i = 0; i < nIndCmb; i++)
+	{
+		JointGenoCountDistGL[i] = (double *)malloc((nJointClasses+1) * sizeof(double));
+		for (int j = 0; j < nJointClasses + 1; j++)
+		{
+			JointGenoCountDistGL[i][j] = 0.0;
+		}
+	}
+}
+
+void vcfData::init_JointGenoProbDistGL(int nGT_)
+{
+	set_nGT(nGT_);
+	ASSERT(nJointClasses > 0);
+	ASSERT(nIndCmb > 0);
+	JointGenoProbDistGL = (double **)malloc(nIndCmb * sizeof(double *));
+	for (int i = 0; i < nIndCmb; i++)
+	{
+		JointGenoProbDistGL[i] = (double *)malloc((nJointClasses+1) * sizeof(double));
+		for (int j = 0; j < nJointClasses + 1; j++)
+		{
+			JointGenoProbDistGL[i][j] = 0.0;
+		}
+	}
+}
+
+void vcfData::init_JointGenoCountDistGT(int nGT_)
+{
+	set_nGT(nGT_);
+	ASSERT(nJointClasses > 0);
+	ASSERT(nIndCmb > 0);
+	JointGenoCountDistGT = (int **)malloc(nIndCmb * sizeof(int *));
+	for (int i = 0; i < nIndCmb; i++)
+	{
+		JointGenoCountDistGT[i] = (int *)malloc((nJointClasses + 1) * sizeof(int));
+		for (int j = 0; j < nJointClasses + 1; j++)
+		{
+			JointGenoCountDistGT[i][j] = 0;
+		}
+	}
+}
+
+void vcfData::print_JointGenoCountDist(IO::outFilesStruct *outSt, argStruct *args)
+{
+	if (outSt->out_jgcd_fs != NULL)
+	{
+		kstring_t *kbuf = kbuf_init();
+
+		if (args->doAMOVA == 1)
+		{
+			for (int i = 0; i < nIndCmb; i++)
+			{
+				ksprintf(kbuf, "%i,", i);
+				for (int j = 0; j < nJointClasses+1; j++)
+				{
+					ksprintf(kbuf, "%f", JointGenoCountDistGL[i][j]);
+					if (j == nJointClasses)
+					{
+						ksprintf(kbuf, "\n");
+					}
+					else
+					{
+						ksprintf(kbuf, ",");
+					}
+				}
+			}
+		}
+		else if (args->doAMOVA == 2)
+		{
+			for (int i = 0; i < nIndCmb; i++)
+			{
+
+				ksprintf(kbuf, "%i,", i);
+				for (int j = 0; j < nJointClasses+1; j++)
+				{
+					ksprintf(kbuf, "%i", JointGenoCountDistGT[i][j]);
+					if (j == nJointClasses)
+					{
+						ksprintf(kbuf, "\n");
+					}
+					else
+					{
+						ksprintf(kbuf, ",");
+					}
+				}
+			}
+		}
+		outSt->out_jgcd_fs->write(kbuf);
+		kbuf_destroy(kbuf);
+	}
+}
+
+void vcfData::print_JointGenoProbDist(IO::outFilesStruct *outSt, argStruct *args)
+{
+	if (args->printJointGenoProbDist != 0)
+	{
+		kstring_t *kbuf = kbuf_init();
+		if (args->doAMOVA == 1)
+		{
+			for (int i = 0; i < nIndCmb; i++)
+			{
+
+				ksprintf(kbuf, "%i,", i);
+				for (int j = 0; j < nJointClasses+1; j++)
+				{
+					ksprintf(kbuf, "%f", JointGenoProbDistGL[i][j]);
+					if (j == nJointClasses)
+					{
+						ksprintf(kbuf, "\n");
+					}
+					else
+					{
+						ksprintf(kbuf, ",");
+					}
+				}
+			}
+		}
+		else if (args->doAMOVA == 2)
+		{
+			ASSERT(0 == 1);
+		}
+		outSt->out_jgpd_fs->write(kbuf);
+		kbuf_destroy(kbuf);
+	}
+}
+
+
+void vcfData::lngl_init(int doEM)
+{
+	lngl = (double **)malloc(_lngl * sizeof(double *));
+
+	// EM using 3 GL values
+	if (doEM == 1)
+	{
+		nGT = 3;
+	}
+	// EM using 10 GL values
+	else if (doEM == 2)
+	{
+		nGT = 10;
+	}
+	else
+	{
+		ASSERT(0 == 1);
+	}
+
+	for (size_t i = 0; i < _lngl; i++)
+	{
+		lngl[i] = (double *)malloc(nInd * nGT * sizeof(double));
+		for (int indi = 0; indi < nInd; indi++)
+		{
+			int indi3 = indi * nGT;
+			for(size_t j = 0; j < nGT; j++){
+				lngl[i][indi3 + j] = NEG_INF;
+			}
+		}
+	}
+}
+
+void vcfData::lngl_expand(int site_i)
+{
+	int prev_lngl=_lngl;
+	_lngl = _lngl * 2;
+	lngl = (double **)realloc(lngl, _lngl * sizeof(double *));
+	for (int i = prev_lngl; i < (int)_lngl; i++)
+	{
+		lngl[i] = (double *)malloc(nInd * nGT * sizeof(double));
+		for (int indi = 0; indi < nInd; indi++)
+		{
+			int indi3 = indi * nGT;
+			for(size_t j = 0; j < nGT; j++){
+				lngl[i][indi3 + j] = NEG_INF;
+			}
+		}
+	}
+}
+
+void vcfData::print(FILE *fp)
+{
+	fprintf(stderr, "\nNumber of samples: %i", nInd);
+	fprintf(stderr, "\nNumber of contigs: %d", nContigs);
 }

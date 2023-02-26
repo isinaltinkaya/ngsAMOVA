@@ -30,7 +30,7 @@ void spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, pairStruct **pai
 {
 
 	pthread_t pairThreads[pars->nIndCmb];
-	threadStruct *PTHREADS[pars->nIndCmb];
+	threadStruct **PTHREADS = new threadStruct*[pars->nIndCmb];
 
 	for (int i = 0; i < pars->nIndCmb; i++)
 	{
@@ -108,24 +108,32 @@ void spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, pairStruct **pai
 
 	for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
 	{
-
 		pairStruct *pair = PTHREADS[pidx]->pair;
 		ASSERT(pair->snSites > 0);
 
+		for(int g=0; g<vcfd->nJointClasses; g++)
+		{
+			vcfd->JointGenoCountDistGL[pidx][g] = pair->optim_jointGenoCountDist[g];
+			vcfd->JointGenoProbDistGL[pidx][g] = pair->optim_jointGenoProbDist[g];
+		}
+		vcfd->JointGenoCountDistGL[pidx][vcfd->nJointClasses] = pair->snSites;
+		vcfd->JointGenoProbDistGL[pidx][vcfd->nJointClasses] = pair->snSites;
+
 		if (args->do_square_distance == 1)
 		{
-			distMatrix->M[pidx] = (double)SQUARE((MATH::EST::Dij(pair->SFS)));
+			distMatrix->M[pidx] = (double)SQUARE((MATH::EST::Dij(vcfd->JointGenoProbDistGL[pidx])));
 		}
 		else
 		{
-			distMatrix->M[pidx] = (double)MATH::EST::Dij(pair->SFS);
+			distMatrix->M[pidx] = (double)MATH::EST::Dij(vcfd->JointGenoProbDistGL[pidx]);
 		}
-
-		vcfd->print_JointGenoProbDist(outSt, args);
-		vcfd->print_JointGenoCountDist(outSt, args);
-
 		delete PTHREADS[pidx];
 	}
+	vcfd->print_JointGenoProbDist(outSt, args);
+	vcfd->print_JointGenoCountDist(outSt, args);
+
+	delete[] PTHREADS;
+
 }
 
 
@@ -177,7 +185,7 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 		}
 		for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
 		{
-			int snSites = vcfd->JointGenoCountDistGT[pidx][9];
+			int snSites = vcfd->JointGenoCountDistGT[pidx][vcfd->nJointClasses];
 			if (snSites==0)
 			{
 				fprintf(stderr,"\n[ERROR]\t-> No shared sites found for pair %d (snSites=%d). This is currently not allowed.\n",pidx,snSites);
@@ -354,7 +362,8 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO:
 		// --------------------------- windowSize 0 --------------------------- //
 		fprintf(stderr, "\n[INFO]\t-> -windowSize 0; will not use sliding window\n");
 		// treat the whole genome as one window
-		args->windowSize = vcfd->nSites;
+		// args->windowSize = vcfd->nSites;
+		// fprintf(stderr, "\n[INFO]\t-> -windowSize %d; will use the whole genome as one window. Therefore -windowSize is set to the total number of sites in the VCF/BCF file (nSites: %d)\n", args->windowSize, vcfd->nSites);
 	}
 	else
 	{
@@ -377,7 +386,7 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO:
 	fprintf(stderr, "Total number of sites processed: %lu\n", pars->totSites);
 	fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", pars->totSites - pars->nSites);
 
-	outSt->flushAll();
+	// outSt->flushAll();
 
 	for (int i = 0; i < pars->nIndCmb; i++)
 	{
@@ -443,7 +452,7 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::
 
 		delete amv;
 
-		outSt->flushAll();
+		// outSt->flushAll();
 		delete metadataSt;
 
 		for (int i = 0; i < pars->nIndCmb; i++)

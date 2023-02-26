@@ -55,198 +55,21 @@ typedef struct vcfData
 	double **JointGenoProbDistGL = NULL;
 	int nJointClasses = 0;
 
-	void set_nGT(const int nGT_)
-	{
-		nGT = (size_t)nGT_;
-		nJointClasses = nGT_ * nGT_;
-	}
+	// given number of genotype categories (nGT_)
+	// set nGT to given nGT, set nJointClasses to nGT*nGT
+	void set_nGT(const int nGT_);
 
-	void init_JointGenoCountDistGL(int nGT_)
-	{
-		set_nGT(nGT_);
-		ASSERT(nJointClasses > 0);
-		ASSERT(nIndCmb > 0);
-		JointGenoCountDistGL = (double **)malloc(nIndCmb * sizeof(double *));
-		for (int i = 0; i < nIndCmb; i++)
-		{
-			JointGenoCountDistGL[i] = (double *)malloc((nJointClasses) * sizeof(double));
-			for (int j = 0; j < nJointClasses; j++)
-			{
-				JointGenoCountDistGL[i][j] = 0.0;
-			}
-		}
-	}
+	void init_JointGenoCountDistGL(int nGT_);
+	void init_JointGenoProbDistGL(int nGT_);
+	void init_JointGenoCountDistGT(int nGT_);
 
-	void init_JointGenoProbDistGL(int nGT_)
-	{
-		set_nGT(nGT_);
-		ASSERT(nJointClasses > 0);
-		ASSERT(nIndCmb > 0);
-		JointGenoProbDistGL = (double **)malloc(nIndCmb * sizeof(double *));
-		for (int i = 0; i < nIndCmb; i++)
-		{
-			JointGenoProbDistGL[i] = (double *)malloc((nJointClasses) * sizeof(double));
-			for (int j = 0; j < nJointClasses; j++)
-			{
-				JointGenoProbDistGL[i][j] = 0.0;
-			}
-		}
-	}
+	void print_JointGenoCountDist(IO::outFilesStruct *outSt, argStruct *args);
+	void print_JointGenoProbDist(IO::outFilesStruct *outSt, argStruct *args);
 
-	void init_JointGenoCountDistGT(int nGT_)
-	{
-		set_nGT(nGT_);
-		ASSERT(nJointClasses > 0);
-		ASSERT(nIndCmb > 0);
-		JointGenoCountDistGT = (int **)malloc(nIndCmb * sizeof(int *));
-		for (int i = 0; i < nIndCmb; i++)
-		{
-			JointGenoCountDistGT[i] = (int *)malloc((nJointClasses + 1) * sizeof(int));
-			for (int j = 0; j < nJointClasses + 1; j++)
-			{
-				JointGenoCountDistGT[i][j] = 0;
-			}
-		}
-	}
+	void lngl_init(int doEM);
+	void lngl_expand(int site_i);
 
-	void print_JointGenoCountDist(IO::outFilesStruct *outSt, argStruct *args)
-	{
-		if (outSt->out_jgcd_fs != NULL)
-		{
-			kstring_t *kbuf = kbuf_init();
-
-			if (args->doAMOVA == 1)
-			{
-				for (int i = 0; i < nIndCmb; i++)
-				{
-					ksprintf(kbuf, "%i,", i);
-					for (int j = 0; j < nJointClasses; j++)
-					{
-						ksprintf(kbuf, "%f,", JointGenoCountDistGL[i][j]);
-						if (j == nJointClasses)
-						{
-							ksprintf(kbuf, "\n");
-						}
-						else
-						{
-							ksprintf(kbuf, ",");
-						}
-					}
-				}
-			}
-			else if (args->doAMOVA == 2)
-			{
-				for (int i = 0; i < nIndCmb; i++)
-				{
-
-					ksprintf(kbuf, "%i,", i);
-					for (int j = 0; j < nJointClasses+1; j++)
-					{
-						ksprintf(kbuf, "%i", JointGenoCountDistGT[i][j]);
-						if (j == nJointClasses)
-						{
-							ksprintf(kbuf, "\n");
-						}
-						else
-						{
-							ksprintf(kbuf, ",");
-						}
-					}
-				}
-			}
-			outSt->out_jgcd_fs->write(kbuf);
-			kbuf_destroy(kbuf);
-		}
-	}
-
-	void print_JointGenoProbDist(IO::outFilesStruct *outSt, argStruct *args)
-	{
-		if (args->printJointGenoProbDist != 0)
-		{
-			kstring_t *kbuf = kbuf_init();
-			if (args->doAMOVA == 1)
-			{
-				for (int i = 0; i < nIndCmb; i++)
-				{
-
-					ksprintf(kbuf, "%i,", i);
-					for (int j = 0; j < nJointClasses; j++)
-					{
-						ksprintf(kbuf, "%f,", JointGenoProbDistGL[i][j]);
-						if (j == nJointClasses)
-						{
-							ksprintf(kbuf, "\n");
-						}
-						else
-						{
-							ksprintf(kbuf, ",");
-						}
-					}
-				}
-			}
-			else if (args->doAMOVA == 2)
-			{
-				ASSERT(0 == 1);
-			}
-			outSt->out_jgcd_fs->write(kbuf);
-			kbuf_destroy(kbuf);
-		}
-	}
-
-	void lngl_init(int doEM)
-	{
-		lngl = (double **)malloc(_lngl * sizeof(double *));
-
-		// EM using 3 GL values
-		if (doEM == 1)
-		{
-			nGT = 3;
-		}
-		// EM using 10 GL values
-		else if (doEM == 2)
-		{
-			nGT = 10;
-		}
-		else
-		{
-			ASSERT(0 == 1);
-		}
-
-		for (size_t i = 0; i < _lngl; i++)
-		{
-			lngl[i] = (double *)malloc(nInd * nGT * sizeof(double));
-			for (int indi = 0; indi < nInd; indi++)
-			{
-				int indi3 = indi * 3;
-				lngl[i][indi3] = NEG_INF;
-				lngl[i][indi3 + 1] = NEG_INF;
-				lngl[i][indi3 + 2] = NEG_INF;
-			}
-		}
-	}
-
-	void lngl_expand(int site_i)
-	{
-		_lngl = _lngl * 2;
-		lngl = (double **)realloc(lngl, _lngl * sizeof(double *));
-		for (int i = site_i; i < (int)_lngl; i++)
-		{
-			lngl[i] = (double *)malloc(nInd * 3 * sizeof(double));
-			for (int indi = 0; indi < nInd; indi++)
-			{
-				int indi3 = indi * 3;
-				lngl[site_i][indi3] = NEG_INF;
-				lngl[site_i][indi3 + 1] = NEG_INF;
-				lngl[site_i][indi3 + 2] = NEG_INF;
-			}
-		}
-	}
-
-	void print(FILE *fp)
-	{
-		fprintf(stderr, "\nNumber of samples: %i", nInd);
-		fprintf(stderr, "\nNumber of contigs: %d", nContigs);
-	}
+	void print(FILE *fp);
 
 } vcfData;
 
@@ -276,9 +99,7 @@ struct get_data
 
 	int size_e = 0;
 	int n = 0;
-
 	int n_missing_ind = 0;
-
 	int ploidy = 0;
 
 	T &operator[](unsigned i)
@@ -311,4 +132,3 @@ int GLtoGT_1_JointGenoDist(vcfData *vcf, paramStruct *pars, argStruct *args);
 int parse_VCF_GL(paramStruct *pars, argStruct *args, vcfFile *in_fp, bcf_hdr_t *hdr, bcf1_t *bcf, blobStruct *blobSt);
 
 #endif // __VCF_UTILS__
-

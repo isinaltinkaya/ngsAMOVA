@@ -22,7 +22,7 @@ void DEV_input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt,
 	fprintf(stderr, "Total number of sites processed: %lu\n", pars->totSites);
 	fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", pars->totSites - pars->nSites);
 
-	outSt->flushAll();
+	// outSt->flushAll();
 
 	for (int i = 0; i < pars->nIndCmb; i++)
 	{
@@ -82,7 +82,7 @@ int DEV_EM_2DSFS_GL3(threadStruct *THREAD)
 	// initial guess: 1/9 flat prior
 	for (int i = 0; i < 9; i++)
 	{
-		pair->SFS[i] = (double)1 / (double)9;
+		pair->optim_jointGenoProbDist[i] = (double)1 / (double)9;
 	}
 
 	do
@@ -122,7 +122,7 @@ int DEV_EM_2DSFS_GL3(threadStruct *THREAD)
 			{
 				for (int j = 0; j < 3; j++)
 				{
-					TMP[i][j] = pair->SFS[i * 3 + j] * exp(lngls[s][(3 * i1) + i] + lngls[s][(3 * i2) + j]);
+					TMP[i][j] = pair->optim_jointGenoProbDist[i * 3 + j] * exp(lngls[s][(3 * i1) + i] + lngls[s][(3 * i2) + j]);
 					sum += TMP[i][j];
 				}
 			}
@@ -142,14 +142,14 @@ int DEV_EM_2DSFS_GL3(threadStruct *THREAD)
 			for (int j = 0; j < 3; j++)
 			{
 				temp = ESFS[i][j] / (double)pair->snSites;
-				d += fabs(temp - pair->SFS[i * 3 + j]);
-				pair->SFS[i * 3 + j] = temp;
+				d += fabs(temp - pair->optim_jointGenoProbDist[i * 3 + j]);
+				pair->optim_jointGenoProbDist[i * 3 + j] = temp;
 			}
 		}
 
 		pair->n_em_iter++;
 
-		// IO::print::Array(stdout,pair->SFS, 3, 3, ',');
+		// IO::print::Array(stdout,pair->optim_jointGenoProbDist, 3, 3, ',');
 
 // Column 1 contains the individual pair's index in individual pairs array.
 // Column 2 contains the number of em iterations.
@@ -157,7 +157,7 @@ int DEV_EM_2DSFS_GL3(threadStruct *THREAD)
 // Column 4 contains the difference in likelihood from the previous iteration.
 #if 1
 		fprintf(stdout, "%d,%d,", pair->idx, pair->n_em_iter);
-		fprintf(stdout, "%.*f,", (int)DBL_MAXDIG10, (double)SQUARE(MATH::EST::Dij(pair->SFS)));
+		fprintf(stdout, "%.*f,", (int)DBL_MAXDIG10, (double)SQUARE(MATH::EST::Dij(pair->optim_jointGenoProbDist)));
 		fprintf(stdout, "%.*f", (int)DBL_MAXDIG10, log10(d));
 		fprintf(stdout, "\n");
 #endif
@@ -332,11 +332,11 @@ void DEV_spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, pairStruct *
 
 		if (args->do_square_distance == 1)
 		{
-			distMatrix->M[pidx] = (double)SQUARE((MATH::EST::Dij(pair->SFS)));
+			distMatrix->M[pidx] = (double)SQUARE((MATH::EST::Dij(pair->optim_jointGenoProbDist)));
 		}
 		else
 		{
-			distMatrix->M[pidx] = (double)MATH::EST::Dij(pair->SFS);
+			distMatrix->M[pidx] = (double)MATH::EST::Dij(pair->optim_jointGenoProbDist);
 		}
 
 		// IO::print::Sfs("gle", outSt->out_sfs_fs, pair, args, vcfd->hdr->samples[pars->lut_idxToInds[pidx][0]], vcfd->hdr->samples[pars->lut_idxToInds[pidx][1]]);

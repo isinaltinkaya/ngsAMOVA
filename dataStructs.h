@@ -15,7 +15,6 @@ struct distanceMatrixStruct;
 struct threadStruct;
 struct argStruct;
 struct paramStruct;
-struct jointGenoDistStruct;
 
 typedef struct formulaStruct
 {
@@ -91,12 +90,8 @@ typedef struct pairStruct
 	double d;
 	int n_em_iter;
 
-	// TODO should not always create below
-	//  double SFS[3][3]={{NEG_INF,NEG_INF,NEG_INF},
-	//  {NEG_INF,NEG_INF,NEG_INF},
-	//  {NEG_INF,NEG_INF,NEG_INF}};
-
-	double *SFS = NULL;
+	double *optim_jointGenoCountDist = NULL;
+	double *optim_jointGenoProbDist = NULL;
 
 	pairStruct(paramStruct *pars_, int pidx)
 	{
@@ -110,16 +105,15 @@ typedef struct pairStruct
 			sharedSites[i] = -1;
 		}
 
-		SFS = (double *)malloc(9 * sizeof(double));
-		for (int i = 0; i < 9; i++)
-		{
-			SFS[i] = NEG_INF;
-		}
+		optim_jointGenoCountDist = (double *)malloc(9 * sizeof(double));
+		optim_jointGenoProbDist = (double *)malloc(9 * sizeof(double));
+
 	}
 	~pairStruct()
 	{
 		FREE(sharedSites);
-		FREE(SFS);
+		FREE(optim_jointGenoCountDist);
+		FREE(optim_jointGenoProbDist);
 	}
 
 	void print(FILE *fp, bcf_hdr_t *hdr)
@@ -783,7 +777,6 @@ typedef struct threadStruct
 	{
 		pair = tPair;
 		lngls = lngl;
-
 		args = args_;
 		pars = pars_;
 		nSites = pars->nSites;

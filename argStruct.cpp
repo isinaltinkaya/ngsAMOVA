@@ -30,7 +30,6 @@ argStruct *argStruct_init()
 	args->mEmIter = 1e2;
 
 	args->tole = 1e-5;
-	args->doTest = 0;
 
 	args->doDist = -1;
 	args->do_square_distance = 1;
@@ -53,6 +52,7 @@ argStruct *argStruct_init()
 	return args;
 }
 
+//TODO check multiple of same argument
 /// @brief argStruct_get read command line arguments
 /// @param argc
 /// @param argv
@@ -134,8 +134,7 @@ argStruct *argStruct_get(int argc, char **argv)
 
 		else if (strcasecmp("--tole", arv) == 0)
 			args->tole = atof(val);
-		else if (strcasecmp("--doTest", arv) == 0)
-			args->doTest = atoi(val);
+
 
 		else if (strcasecmp("--gl2gt", arv) == 0)
 			args->gl2gt = atoi(val);
@@ -184,8 +183,6 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->do_square_distance = atoi(val);
 		else if (strcasecmp("-minInd", arv) == 0)
 			args->minInd = atoi(val);
-		else if (strcasecmp("-doTest", arv) == 0)
-			args->doTest = atoi(val);
 		else if (strcasecmp("-maxIter", arv) == 0)
 			args->mEmIter = atoi(val);
 		else if (strcasecmp("-maxEmIter", arv) == 0)
@@ -249,11 +246,6 @@ argStruct *argStruct_get(int argc, char **argv)
 		fprintf(stderr, "\n\t-> -out <output_prefix> not set; will use %s as a prefix for output files.\n", args->out_fn);
 	}
 
-	if (args->doAMOVA != 3 && args->doTest == 1)
-	{
-		fprintf(stderr, "\n[ERROR]\t-doTest 1 requires -doAMOVA 3.\n");
-		exit(1);
-	}
 
 	if (args->in_mtd_fn == NULL)
 	{
@@ -501,7 +493,7 @@ void argStruct_print(FILE *fp, argStruct *args)
 	fprintf(fp, "\n\t-> -in_vcf_fn %s", args->in_vcf_fn);
 
 	// TODO print based on analysis type, and to args file, collect all from args automatically
-	fprintf(fp, "\nngsAMOVA -doAMOVA %d -doTest %d -in %s -out %s -isSim %d -minInd %d -printMatrix %d -m %s -doDist %d -maxIter %d -nThreads %d", args->doAMOVA, args->doTest, args->in_vcf_fn, args->out_fn, args->isSim, args->minInd, args->printMatrix, args->in_mtd_fn, args->doDist, args->mEmIter, args->mThreads);
+	fprintf(fp, "\nngsAMOVA -doAMOVA %d -in %s -out %s -isSim %d -minInd %d -printMatrix %d -m %s -doDist %d -maxIter %d -nThreads %d", args->doAMOVA, args->in_vcf_fn, args->out_fn, args->isSim, args->minInd, args->printMatrix, args->in_mtd_fn, args->doDist, args->mEmIter, args->mThreads);
 	if (args->doEM != 0)
 	{
 		fprintf(fp, " -tole %e ", args->tole);

@@ -82,23 +82,21 @@ namespace IO
         BGZF *bgzfp = NULL;
         // int print_header = 0; //TODO
 
-        outputStruct(const char *fn_, const char *suffix, OUTFC fc_)
+        outputStruct(const char *fn_, const char *suffix, int fc_)
         {
-            fc = fc_;
-            fn = setFileName(fn_, suffix, FILE_EXTENSIONS[(OUTFC)fc]);
-            fprintf(stderr,"\n[INFO] Opening output file: %s\n", fn);
+            fc = OUTFC(fc_);
             switch (fc)
             {
             case OUTFC::NONE:
+                fn = setFileName(fn_, suffix, FILE_EXTENSIONS[fc]);
                 fp = openFileW(fn);
                 break;
             case OUTFC::GZ:
+                fn = setFileName(fn_, suffix, FILE_EXTENSIONS[fc]);
                 gzfp = openGzFileW(fn);
                 break;
-            case OUTFC::BGZ:
-                bgzfp = bgzf_open(fn, "w");
-                break;
             case OUTFC::BBGZ:
+                fn = setFileName(fn_, suffix, FILE_EXTENSIONS[fc]);
                 bgzfp = bgzf_open(fn, "wb");
                 break;
             default:
@@ -106,12 +104,16 @@ namespace IO
                 exit(1);
                 break;
             }
+            fprintf(stderr,"\n[INFO] Opening output file: %s with compression type: %d (%s)\n", fn, fc, OUTFC_LUT[(OUTFC)fc]);
 
         }
 
         ~outputStruct()
         {
-            flush();
+            // flush();
+            
+            fprintf(stderr,"\n[INFO] Closing output file: %s with compression type: %d (%s)\n", fn, fc, OUTFC_LUT[(OUTFC)fc]);
+
             switch (fc)
             {
             case OUTFC::NONE:
@@ -119,9 +121,6 @@ namespace IO
                 break;
             case OUTFC::GZ:
                 GZCLOSE(gzfp);
-                break;
-            case OUTFC::BGZ:
-                BGZCLOSE(bgzfp);
                 break;
             case OUTFC::BBGZ:
                 BGZCLOSE(bgzfp);
@@ -144,9 +143,6 @@ namespace IO
             case OUTFC::GZ:
                 gzflush(gzfp, Z_SYNC_FLUSH);
                 break;
-            case OUTFC::BGZ:
-                ASSERT(bgzf_flush(bgzfp) == 0);
-                break;
             case OUTFC::BBGZ:
                 ASSERT(bgzf_flush(bgzfp) == 0);
                 break;
@@ -167,9 +163,6 @@ namespace IO
             case OUTFC::GZ:
                 return gzfp;
                 break;
-            case OUTFC::BGZ:
-                return bgzfp;
-                break;
             case OUTFC::BBGZ:
                 return bgzfp;
                 break;
@@ -187,7 +180,6 @@ namespace IO
 
     typedef struct outFilesStruct
     {
-        outputStruct *out_emtest_fs = NULL;
         outputStruct *out_dm_fs = NULL;
         outputStruct *out_amova_fs = NULL;
         outputStruct *out_dev_fs = NULL;
@@ -198,37 +190,35 @@ namespace IO
         {
             if (args->printMatrix != 0)
             {
-                out_dm_fs = new outputStruct(args->out_fn, ".distance_matrix.csv", OUTFC(args->printMatrix-1));
-            }
-
-            if (args->doTest != 0)
-            {
-                out_emtest_fs = new outputStruct(args->out_fn, ".emtest.csv", OUTFC(args->doTest-1));
+                out_dm_fs = new outputStruct(args->out_fn, ".distance_matrix.csv", args->printMatrix-1);
             }
 
             if (args->doEM == 1)
             {
                 if (args->printJointGenoCountDist != 0)
                 {
-                    out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", OUTFC(args->printJointGenoCountDist-1));
+                    out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", args->printJointGenoCountDist-1);
                 }
                 if (args->printJointGenoProbDist != 0)
                 {
-                    out_jgpd_fs = new outputStruct(args->out_fn, ".joint_geno_prob_dist.csv", OUTFC(args->printJointGenoProbDist-1));
+                    out_jgpd_fs = new outputStruct(args->out_fn, ".joint_geno_prob_dist.csv", args->printJointGenoProbDist-1);
                 }
             }
+            
             if (args->doAMOVA == 2)
             {
                 if (args->printJointGenoCountDist != 0)
                 {
-                    out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", OUTFC(args->printJointGenoCountDist-1));
+                    out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", args->printJointGenoCountDist-1);
+                    
                 }
                 if (args->printJointGenoProbDist != 0)
                 {
-                    // TODO
-                    ASSERT(0 == 1);
+                    fprintf(stderr,"\n[ERROR] Joint genotype probability distribution output is not yet supported for -doAMOVA 2\n");
+                    exit(1);
                 }
             }
+
             if (args->doAMOVA > 0)
             {
                 out_amova_fs = new outputStruct(args->out_fn, ".amova.csv", OUTFC::NONE);
@@ -241,42 +231,37 @@ namespace IO
 
         ~outFilesStruct()
         {
-            flushAll();
-            delete out_emtest_fs;
-            delete out_dm_fs;
-            delete out_amova_fs;
-            delete out_dev_fs;
-            delete out_jgcd_fs;
-            delete out_jgpd_fs;
+            // flushAll();
+            DELETE(out_dm_fs);
+            DELETE(out_amova_fs);
+            DELETE(out_dev_fs);
+            DELETE(out_jgcd_fs);
+            DELETE(out_jgpd_fs);
         }
 
-        void flushAll()
-        {
-            if (out_emtest_fs != NULL)
-            {
-                out_emtest_fs->flush();
-            }
-            if (out_dm_fs != NULL)
-            {
-                out_dm_fs->flush();
-            }
-            if (out_jgcd_fs != NULL)
-            {
-                out_jgcd_fs->flush();
-            }
-            if (out_jgpd_fs != NULL)
-            {
-                out_jgpd_fs->flush();
-            }
-            if (out_amova_fs != NULL)
-            {
-                out_amova_fs->flush();
-            }
-            if (out_dev_fs != NULL)
-            {
-                out_dev_fs->flush();
-            }
-        }
+        // void flushAll()
+        // {
+        //     if (out_dm_fs != NULL)
+        //     {
+        //         out_dm_fs->flush();
+        //     }
+        //     if (out_jgcd_fs != NULL)
+        //     {
+        //         out_jgcd_fs->flush();
+        //     }
+        //     if (out_jgpd_fs != NULL)
+        //     {
+        //         out_jgpd_fs->flush();
+        //     }
+        //     if (out_amova_fs != NULL)
+        //     {
+        //         out_amova_fs->flush();
+        //     }
+        //     if (out_dev_fs != NULL)
+        //     {
+        //         out_dev_fs->flush();
+        //     }
+        // }
 
     } outFilesStruct;
 
