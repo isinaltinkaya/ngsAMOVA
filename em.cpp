@@ -122,7 +122,6 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 				tmp_jointGenoProb=ESFS[i][j]/(double)pair->snSites;
 				d += fabs(tmp_jointGenoProb - pair->optim_jointGenoProbDist[i*3+j]);
 				pair->optim_jointGenoProbDist[i*3+j]=tmp_jointGenoProb;
-
 			}
 		}
 

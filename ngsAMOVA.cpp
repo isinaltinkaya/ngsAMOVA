@@ -113,7 +113,8 @@ void spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, pairStruct **pai
 
 		for(int g=0; g<vcfd->nJointClasses; g++)
 		{
-			vcfd->JointGenoCountDistGL[pidx][g] = pair->optim_jointGenoCountDist[g];
+			// vcfd->JointGenoCountDistGL[pidx][g] = pair->optim_jointGenoCountDist[g];
+			vcfd->JointGenoCountDistGL[pidx][g] = pair->optim_jointGenoProbDist[g]*pair->snSites;
 			vcfd->JointGenoProbDistGL[pidx][g] = pair->optim_jointGenoProbDist[g];
 		}
 		vcfd->JointGenoCountDistGL[pidx][vcfd->nJointClasses] = pair->snSites;
