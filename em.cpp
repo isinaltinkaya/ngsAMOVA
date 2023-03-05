@@ -26,7 +26,7 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 	double **lngls=THREAD->lngls;
 	pairStruct* pair=THREAD->pair;
 	const double tole = THREAD->args->tole;
-	const int mEmIter=THREAD->args->mEmIter;
+	const int mEmIter=THREAD->args->maxEmIter;
 
 	const int i1=pair->pars->lut_idxToInds[pair->idx][0];
 	const int i2=pair->pars->lut_idxToInds[pair->idx][1];
@@ -35,6 +35,7 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 	double d=0.0;
 
 	double tmp_jointGenoProb=0.0;
+
 
 
 	// set initial guess: 1/9 flat prior
@@ -48,14 +49,50 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 			break;
 		}
 
-		double TMP[9];
-		for (int i=0; i<9; i++){
-			TMP[i]=0.0;
-		}
+		// double TMP[9];
+		// for (int i=0; i<9; i++){
+		// 	TMP[i]=0.0;
+		// }
 
-		double ESFS[9];
-		for (int i=0; i<9; i++){
-			ESFS[i]=0.0;
+		// double ESFS[9];
+		// for (int i=0; i<9; i++){
+		// 	ESFS[i]=0.0;
+		// }
+
+		// //loop through shared sites for pair
+		// for(size_t sn=0; sn<pair->snSites; sn++){
+		// 	size_t s=pair->sharedSites[sn];
+		// 	sum=0.0;
+
+		// 	// SFS * ind1 * ind2
+		// 	//lngls3 (anc,anc),(anc,der),(der,der)
+		// 	for(int i=0;i<9; i++){
+		// 		TMP[i] = pair->optim_jointGenoProbDist[i] * exp( lngls[s][(3*i1)+
+		// 		TMP[i] = pair->optim_jointGenoProbDist[i] * exp( lngls[s][(3*i1)+(i/3)] + lngls[s][(3*i2)+(i%3)]);
+		// 		sum += TMP[i];
+		// 	}
+
+
+		// 	for(int i=0; i<9; i++){
+		// 		ESFS[i] +=  TMP[i]/sum;
+		// 	}
+
+		// }
+
+		// d=0.0;
+		// for(int i=0;i<9;i++){
+		// 	tmp_jointGenoProb = ESFS[i]/(double)pair->snSites;
+		// 	d += fabs(tmp_jointGenoProb - pair->optim_jointGenoProbDist[i]);
+		// 	pair->optim_jointGenoProbDist[i]=tmp_jointGenoProb;
+		// 	pair->optim_jointGenoCountDist[i]=ESFS[i];
+		// }
+		// @@
+		double TMP[3][3];
+		double ESFS[3][3];
+		for(int i=0;i<3;i++){
+			for(int j=0;j<3;j++){
+				ESFS[i][j]=0.0;
+			}
 		}
 
 		//loop through shared sites for pair
@@ -65,25 +102,31 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 
 			// SFS * ind1 * ind2
 			//lngls3 (anc,anc),(anc,der),(der,der)
-			for(int i=0;i<9; i++){
-				TMP[i] = pair->optim_jointGenoProbDist[i] * exp( lngls[s][(3*i1)+(i/3)] + lngls[s][(3*i2)+(i%3)]);
-				sum += TMP[i];
+			for(int i=0;i<3;i++){
+				for(int j=0;j<3;j++){
+					TMP[i][j] = pair->optim_jointGenoProbDist[i*3+j] * exp( lngls[s][(3*i1)+i] + lngls[s][(3*i2)+j]);
+					sum += TMP[i][j];
+				}
 			}
 
-
-			for(int i=0; i<9; i++){
-				ESFS[i] +=  TMP[i]/sum;
+			for(int i=0;i<3;i++){
+				for(int j=0;j<3;j++){
+					ESFS[i][j] += TMP[i][j]/sum;
+				}
 			}
-
 		}
 
 		d=0.0;
-		for(int i=0;i<9;i++){
-			tmp_jointGenoProb = ESFS[i]/(double)pair->snSites;
-			d += fabs(tmp_jointGenoProb - pair->optim_jointGenoProbDist[i]);
-			pair->optim_jointGenoProbDist[i]=tmp_jointGenoProb;
-			pair->optim_jointGenoCountDist[i]=ESFS[i];
+		for(int i=0;i<3;i++){
+			for(int j=0;j<3;j++){
+				tmp_jointGenoProb=ESFS[i][j]/(double)pair->snSites;
+				d += fabs(tmp_jointGenoProb - pair->optim_jointGenoProbDist[i*3+j]);
+				pair->optim_jointGenoProbDist[i*3+j]=tmp_jointGenoProb;
+
+			}
 		}
+
+		// @@
 		pair->n_em_iter++;
 
 #if 0

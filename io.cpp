@@ -587,10 +587,10 @@ void IO::outputStruct::write(const char *buf)
 	switch (fc)
 	{
 	case OUTFC::NONE:
-		fprintf(fp, "%s", buf);
+		ASSERT(fprintf(fp, "%s", buf)>0);
 		break;
 	case OUTFC::GZ:
-		gzprintf(gzfp, "%s", buf);
+		ASSERT(gzprintf(gzfp, "%s", buf)>0);
 		break;
 	case OUTFC::BBGZ:
 		if (bgzf_write(bgzfp, buf, strlen(buf)) != (ssize_t)strlen(buf))
@@ -607,10 +607,11 @@ void IO::outputStruct::write(const kstring_t *kbuf)
 	switch (fc)
 	{
 	case OUTFC::NONE:
-		fprintf(fp, "%s", kbuf->s);
+		ASSERT(fprintf(fp, "%s", kbuf->s)>0);
 		break;
 	case OUTFC::GZ:
-		gzprintf(gzfp, "%s", kbuf->s);
+		fprintf(stderr,"%s",kbuf->s);
+		ASSERT(gzprintf(gzfp, "%s", kbuf->s)>0);
 		break;
 	case OUTFC::BBGZ:
 		if (bgzf_write(bgzfp, kbuf->s, kbuf->l) != (ssize_t)kbuf->l)
@@ -625,3 +626,84 @@ void IO::outputStruct::write(const kstring_t *kbuf)
 		break;
 	}
 }
+
+
+
+
+
+IO::outFilesStruct::outFilesStruct(argStruct *args){
+
+	if (args->printMatrix != 0)
+	{
+		out_dm_fs = new outputStruct(args->out_fn, ".distance_matrix.csv", args->printMatrix-1);
+	}
+
+	if (args->doEM == 1)
+	{
+		if (args->printJointGenoCountDist != 0)
+		{
+			out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", args->printJointGenoCountDist-1);
+		}
+		if (args->printJointGenoProbDist != 0)
+		{
+			out_jgpd_fs = new outputStruct(args->out_fn, ".joint_geno_prob_dist.csv", args->printJointGenoProbDist-1);
+		}
+	}
+	
+	if (args->doAMOVA == 2)
+	{
+		if (args->printJointGenoCountDist != 0)
+		{
+			out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", args->printJointGenoCountDist-1);
+			
+		}
+		if (args->printJointGenoProbDist != 0)
+		{
+			fprintf(stderr,"\n[ERROR] Joint genotype probability distribution output is not yet supported for -doAMOVA 2\n");
+			exit(1);
+		}
+	}
+
+	if (args->doAMOVA > 0)
+	{
+		out_amova_fs = new outputStruct(args->out_fn, ".amova.csv", 0);
+	}
+	if (args->printDev == 1)
+	{
+		out_dev_fs = new outputStruct(args->out_fn, ".dev.csv", 1);
+	}
+
+}
+
+IO::outFilesStruct::~outFilesStruct()
+{
+	// flushAll();
+	DELETE(out_dm_fs);
+	DELETE(out_amova_fs);
+	DELETE(out_dev_fs);
+	DELETE(out_jgcd_fs);
+	DELETE(out_jgpd_fs);
+}
+        // void flushAll()
+        // {
+        //     if (out_dm_fs != NULL)
+        //     {
+        //         out_dm_fs->flush();
+        //     }
+        //     if (out_jgcd_fs != NULL)
+        //     {
+        //         out_jgcd_fs->flush();
+        //     }
+        //     if (out_jgpd_fs != NULL)
+        //     {
+        //         out_jgpd_fs->flush();
+        //     }
+        //     if (out_amova_fs != NULL)
+        //     {
+        //         out_amova_fs->flush();
+        //     }
+        //     if (out_dev_fs != NULL)
+        //     {
+        //         out_dev_fs->flush();
+        //     }
+        // }

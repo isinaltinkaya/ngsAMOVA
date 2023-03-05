@@ -164,7 +164,7 @@ int hasColNames;
 double tole;
 
 int mThreads;
-int mEmIter;
+int maxEmIter;
 
 int seed;
 int nBootstraps;

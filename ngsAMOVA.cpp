@@ -150,7 +150,6 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 
 		if (args->blockSize == 0)
 		{
-
 			readSites_GL(vcfd, args, pars, pairSt);
 		}
 		else
@@ -183,6 +182,7 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 			// readSites_GT(vcfd,args, pars, pairSt, blobSt);
 			// blobStruct_destroy(blobSt);
 		}
+
 		for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
 		{
 			int snSites = vcfd->JointGenoCountDistGT[pidx][vcfd->nJointClasses];
@@ -200,8 +200,8 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 			{
 				dMS_orig->M[pidx] = (double)MATH::EST::Dij(vcfd->JointGenoCountDistGT[pidx], snSites);
 			}
-
 		}
+
 		vcfd->print_JointGenoCountDist(outSt, args);
 
 		break;
@@ -279,7 +279,7 @@ void input_VCF_doAMOVA(argStruct *args, paramStruct *pars, formulaStruct *formul
 	ASSERT(args->in_mtd_fn != NULL);
 
 	FILE *in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
-	metadataStruct *metadataSt = metadataStruct_get(in_mtd_fp, sampleSt, formulaSt, args->hasColNames, pars);
+	metadataStruct *metadataSt = metadataStruct_get(in_mtd_fp, sampleSt, formulaSt, args->hasColNames,pars);
 	FCLOSE(in_mtd_fp);
 	// [END] ----------------------- READ METADATA ------------------------- //
 
@@ -322,7 +322,7 @@ void input_VCF_doAMOVA(argStruct *args, paramStruct *pars, formulaStruct *formul
 			prepare_bootstrap_blocks(vcfd, pars, args, dMS[b], sampleSt, metadataSt, formulaSt, outSt, blobSt);
 
 			// // perform AMOVA using the bootstrapped dMS
-			ASSERT(AMOVA::doAMOVA(dMS[b], metadataSt, sampleSt, outSt->out_amova_fs->fp, pars->lut_indsToIdx) == 0);
+			// ASSERT(AMOVA::doAMOVA(dMS[b], metadataSt, sampleSt, outSt->out_amova_fs->fp, pars->lut_indsToIdx) == 0);
 
 			fprintf(stderr, "\n\t-> Finished running AMOVA for bootstrap %d/%d", b, args->nBootstraps);
 			b++;
@@ -330,16 +330,32 @@ void input_VCF_doAMOVA(argStruct *args, paramStruct *pars, formulaStruct *formul
 		blobStruct_destroy(blobSt);
 	}
 
+	AMOVA::amovaStruct **amv = new AMOVA::amovaStruct *[pars->nAmovaRuns];
+
 	for (int a = 0; a < pars->nAmovaRuns; a++)
 	{
-		ASSERT(AMOVA::doAMOVA(dMS[a], metadataSt, sampleSt, outSt->out_amova_fs->fp, pars->lut_indsToIdx) == 0);
+		amv[a] = AMOVA::doAmova(dMS[a], metadataSt, sampleSt, pars);
+		// ASSERT(AMOVA::doAMOVA(dMS[a], metadataSt, sampleSt, outSt->out_amova_fs->fp, pars->lut_indsToIdx) == 0);
+		if (a==0 && args->printAmovaTable == 1)
+		{
+			amv[a]->print_as_table(stdout, metadataSt);
+		}
+		if (a==0){
+			amv[a]->print_as_csv(outSt->out_amova_fs->fp, metadataSt);
+		}
+		//TODO print bootstrapped AMOVA tables and distance matrices too
 	}
+
+
 
 	for (int a = 0; a < pars->nAmovaRuns; a++)
 	{
 		delete dMS[a];
+		delete amv[a];
 	}
 	delete[] dMS;
+	delete[] amv;
+
 
 	delete metadataSt;
 }
@@ -347,7 +363,6 @@ void input_VCF_doAMOVA(argStruct *args, paramStruct *pars, formulaStruct *formul
 // --------------------------- INPUT: VCF/BCF --------------------------- //
 void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::outFilesStruct *outSt)
 {
-
 	sampleStruct *sampleSt = new sampleStruct();
 	vcfData *vcfd = vcfData_init(args, pars, sampleSt);
 	pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
@@ -368,6 +383,7 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO:
 	else
 	{
 		// --------------------------- windowSize > 0 --------------------------- //
+		ASSERT(0==1);
 	}
 
 	// if (args->doEM != 0 && args->printMatrix == 1)
@@ -409,15 +425,15 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::
 		exit(0);
 	}
 
-	if(args->verbose==2){
-
-	}
 	pars->vprint(1, "input_DM is running\n");
 
 	sampleStruct *sampleSt = new sampleStruct();
 
-	if (args->doAMOVA == 1)
+	if (args->doAMOVA == 0)
 	{
+		fprintf(stderr, "\n\t-> Nothing to do.\n");
+		exit(1);
+	}else{
 
 		// will run AMOVA; prepare for AMOVA
 
@@ -430,7 +446,7 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::
 		// 	sets pars->lut_idxToInds
 		ASSERT(args->in_mtd_fn != NULL);
 		FILE *in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
-		metadataStruct *metadataSt = metadataStruct_get(in_mtd_fp, sampleSt, formulaSt, args->hasColNames, pars);
+		metadataStruct *metadataSt = metadataStruct_get(in_mtd_fp, sampleSt, formulaSt, args->hasColNames,pars);
 		FCLOSE(in_mtd_fp);
 		// [END] ----------------------- READ METADATA ------------------------- //
 
@@ -442,7 +458,7 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::
 			pairSt[pidx] = new pairStruct(pars, pidx);
 		}
 
-		AMOVA::amovaStruct *amv = AMOVA::amovaStruct_doAmova(dMS, metadataSt, sampleSt, pars->lut_indsToIdx);
+		AMOVA::amovaStruct *amv = AMOVA::doAmova(dMS, metadataSt, sampleSt, pars);
 
 		if (args->printAmovaTable == 1)
 		{

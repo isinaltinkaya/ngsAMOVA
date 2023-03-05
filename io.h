@@ -92,6 +92,7 @@ namespace IO
                 fp = openFileW(fn);
                 break;
             case OUTFC::GZ:
+                NEVER();
                 fn = setFileName(fn_, suffix, FILE_EXTENSIONS[fc]);
                 gzfp = openGzFileW(fn);
                 break;
@@ -186,82 +187,9 @@ namespace IO
         outputStruct *out_jgcd_fs = NULL;
         outputStruct *out_jgpd_fs = NULL;
 
-        outFilesStruct(argStruct *args)
-        {
-            if (args->printMatrix != 0)
-            {
-                out_dm_fs = new outputStruct(args->out_fn, ".distance_matrix.csv", args->printMatrix-1);
-            }
+        outFilesStruct(argStruct *args);
 
-            if (args->doEM == 1)
-            {
-                if (args->printJointGenoCountDist != 0)
-                {
-                    out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", args->printJointGenoCountDist-1);
-                }
-                if (args->printJointGenoProbDist != 0)
-                {
-                    out_jgpd_fs = new outputStruct(args->out_fn, ".joint_geno_prob_dist.csv", args->printJointGenoProbDist-1);
-                }
-            }
-            
-            if (args->doAMOVA == 2)
-            {
-                if (args->printJointGenoCountDist != 0)
-                {
-                    out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", args->printJointGenoCountDist-1);
-                    
-                }
-                if (args->printJointGenoProbDist != 0)
-                {
-                    fprintf(stderr,"\n[ERROR] Joint genotype probability distribution output is not yet supported for -doAMOVA 2\n");
-                    exit(1);
-                }
-            }
-
-            if (args->doAMOVA > 0)
-            {
-                out_amova_fs = new outputStruct(args->out_fn, ".amova.csv", OUTFC::NONE);
-            }
-            if (args->printDev == 1)
-            {
-                out_dev_fs = new outputStruct(args->out_fn, ".dev.csv", OUTFC::NONE);
-            }
-        }
-
-        ~outFilesStruct()
-        {
-            // flushAll();
-            DELETE(out_dm_fs);
-            DELETE(out_amova_fs);
-            DELETE(out_dev_fs);
-            DELETE(out_jgcd_fs);
-            DELETE(out_jgpd_fs);
-        }
-
-        // void flushAll()
-        // {
-        //     if (out_dm_fs != NULL)
-        //     {
-        //         out_dm_fs->flush();
-        //     }
-        //     if (out_jgcd_fs != NULL)
-        //     {
-        //         out_jgcd_fs->flush();
-        //     }
-        //     if (out_jgpd_fs != NULL)
-        //     {
-        //         out_jgpd_fs->flush();
-        //     }
-        //     if (out_amova_fs != NULL)
-        //     {
-        //         out_amova_fs->flush();
-        //     }
-        //     if (out_dev_fs != NULL)
-        //     {
-        //         out_dev_fs->flush();
-        //     }
-        // }
+        ~outFilesStruct();
 
     } outFilesStruct;
 

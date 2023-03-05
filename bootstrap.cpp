@@ -20,7 +20,7 @@ int r_sample_ind(metadataStruct* mtd, const int r_lvl_idx)
 {
     if(r_lvl_idx==0 && mtd->nLevels==1)
     {
-	    return (int) (mtd->nIndMetadata * (rand() / (RAND_MAX + 1.0)));
+	    return (int) (mtd->nInd * (rand() / (RAND_MAX + 1.0)));
     }
     else
     {
@@ -68,10 +68,10 @@ void prepare_bootstrap_blocks(vcfData *vcfd, paramStruct *pars, argStruct *args,
 	{
         
         // r_iblock_dataset[nInd][nContigs][nBlocks]
-        int*** r_iblock_dataset = (int***)malloc(mS->nIndMetadata * sizeof(int**));
+        int*** r_iblock_dataset = (int***)malloc(mS->nInd * sizeof(int**));
 
         // i : artificial individual created by shuffling blocks
-        for (int i = 0; i < mS->nIndMetadata; i++)
+        for (int i = 0; i < mS->nInd; i++)
         {
             r_iblock_dataset[i] = (int**)malloc(blobSt->nContigs * sizeof(int*));
             for (int contig = 0; contig < (int)blobSt->nContigs; contig++)
@@ -134,7 +134,7 @@ void prepare_bootstrap_blocks(vcfData *vcfd, paramStruct *pars, argStruct *args,
 		for (int level = 0; level < mS->nLevels; level++)
 		{
 
-			for (int i = 0; i < mS->nIndMetadata; i++)
+			for (int i = 0; i < mS->nInd; i++)
 			{
 				// int chosen_iblock= rand() % mS->hierArr[level]->nIndPerStrata[i];
 			}

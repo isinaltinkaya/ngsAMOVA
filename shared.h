@@ -39,6 +39,7 @@
  * @requires <float.h>
  */
 #define DBL_MAX_DIG_TOPRINT 3 + DBL_MANT_DIG - DBL_MIN_EXP
+//TODO deprecated
 
 
 /*
@@ -48,6 +49,12 @@
 #define STRINGIFY(x) #x
 #define ASSTR(x) STRINGIFY(x)
 #define AT __FILE__ ":" ASSTR(__LINE__)
+
+
+
+#define NEVER() \
+	fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) Control should never reach this point; please report this to the developers.\n*******\n", __FILE__, __LINE__); \
+	exit(1); \
 
 /*
  * Macro:[ASSERT]
@@ -161,13 +168,20 @@
  * Macro:[MAXDIG_PER_HLEVEL]
  * Defines the maximum number of digits that can be used to
  * represent a single strata in a hierarchical level
- * e.g. MAX_DIGIT_PER_HLEVEL = 2
+ * e.g. MAXDIG_PER_HLEVEL= 2
  *      strata0 = 00 (min)
  * 		...
  *      strata99 = 99 (max)
  *      nStrata = 100
+ * 
+ * Macro:[MAXSIZE_HLEVEL]
+ * Defines the maximum number of strata allowed in a hierarchical level
+ * e.g. MAXDIG_PER_HLEVEL = 2
+ * 		MAXSIZE_HLEVEL = 100
  */
 #define MAXDIG_PER_HLEVEL 2
+#define MAXSIZE_HLEVEL 100
+
 
 /*
  * Macro:[DBL_MAXDIG10]
@@ -224,7 +238,6 @@ enum INFT
 {
 	IN_VCF,
 	IN_DM,
-	IN_JGD,
 	IN_JGPD,
 };
 

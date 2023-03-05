@@ -16,6 +16,10 @@ struct threadStruct;
 struct argStruct;
 struct paramStruct;
 
+int getDigitIndexAtLevel(const int nLevels,const int lvl, const int maxDigitsPerHLevel);
+int getDigitIndexAtLevel(const int nLevels, const int lvl);
+int calculateKeyAtLevel(const int lvl, const int strata_idx);
+
 typedef struct formulaStruct
 {
 	int nTokens;
@@ -61,6 +65,7 @@ typedef struct blobStruct
 	int *contigLengths;
 
 	// 2D array of contig block starts
+	// populated before reading data from vcf based on contig information in vcf header
 	// [Contig][BlockStart]
 	int **contigBlockStarts;
 
@@ -185,7 +190,7 @@ typedef struct sampleStruct
 		}
 
 		size_t size = strlen(sampleName) + 1;
-		sampleNames[sampleIdx] = (char *)malloc(size);
+		sampleNames[sampleIdx] = (char *)malloc(size * sizeof(char));
 		strncpy(sampleNames[sampleIdx], sampleName, size);
 	}
 
@@ -232,62 +237,103 @@ typedef struct hierStruct
 	// 		nStrata = 3
 	int nStrata = 0;
 
+	// level of the current hier struct
+	int level = 0;
+
 	// strata names
 	char **strataNames = NULL;
 	size_t _strataNames = 1;
 
-	char *strataArr = NULL;
 
+	// subStrataIdx - contains the indices of subStrata belonging to each strata at this level
+	// subStrataIdx[strata_idx][subStrata_idx] = subStrata_idx of subStrata belonging to strata_idx
+	//
+	// e.g. Region = {REG1, REG2}
+	// 		Population = {POP1, POP2, POP3}
+	// 			each population have a unique name that can exist only in one region
+	//		given:
+	//			POP1 is in REG1
+	//			POP2 is in REG1
+	//			POP3 is in REG2
+	// 		then; subStrataIdx[0] = {0,1}
+	// 			  == subStrataIdx[REG1] = {POP1, POP2}
+	// 			  subStrataIdx[1] = {2}
+	// 			  == subStrataIdx[REG2] = {POP3}
+	//		subStrataIdx[0][1] = 1 ( 1==second element in {POP1,POP2}==POP2's index in Populations set==1)
+	//		subStrataIdx[1][0] = 2 ( 0==first element in {POP3}==POP3's index in Populations set==2)
+	int **subStrataIdx = NULL;
+	size_t _subStrataIdx = MAXSIZE_HLEVEL;
+	int *nSubStrata = NULL;
+	size_t _nSubStrata = MAXSIZE_HLEVEL;
+
+	// hierArr[hier_lvl]->nIndPerStrata[strata_idx] = number of individuals in strata_idx at hier_lvl
 	int *nIndPerStrata = NULL;
-	size_t _nIndPerStrata = 1024;
+	size_t _nIndPerStrata = 512; // strata_idx initial size
 
-	hierStruct(char *str)
+	hierStruct(int lvl)
 	{
-		nStrata = 1;
-		size_t size = strlen(str) + 1;
+		level=lvl;
 		strataNames = (char **)malloc(_strataNames * sizeof(char *));
-		strataNames[0] = (char *)malloc(size);
-		strncpy(strataNames[0], str, size);
 
-		nIndPerStrata = new int[_nIndPerStrata]; // TODO
+		nIndPerStrata = (int *)malloc(_nIndPerStrata * sizeof(int));
 		for (size_t i = 0; i < _nIndPerStrata; i++)
 		{
 			nIndPerStrata[i] = 0;
 		}
 
-		// nMemberStrata = new int*[totNumLevels];
-		// for (size_t i = 0; i < totNumLevels; i++)
-		// {
-		// 	nMemberStrata[i] = NULL;
-		// }
+		subStrataIdx = (int **)malloc(_subStrataIdx * sizeof(int *));
+		for (size_t i = 0; i < _subStrataIdx; i++)
+		{
+			subStrataIdx[i] = (int *)malloc(_subStrataIdx * sizeof(int));
+			for (size_t j = 0; j < _subStrataIdx; j++)
+			{
+				subStrataIdx[i][j] = -1;
+			}
+		}
+
+		nSubStrata = (int *)malloc(_nSubStrata * sizeof(int));
+		for (size_t i = 0; i < _nSubStrata; i++)
+		{
+			nSubStrata[i] = 0;
+		}
+
+
 	}
 
 	~hierStruct()
 	{
+		for (size_t i = 0; i < _nSubStrata; i++)
+		{
+			FREE(subStrataIdx[i]);
+		}
+		FREE(nSubStrata);
+		FREE(subStrataIdx);
 		for (size_t i = 0; i < _strataNames; i++)
 		{
 			FREE(strataNames[i]);
 		}
 		FREE(strataNames);
+		FREE(nIndPerStrata);
 
-		delete[] nIndPerStrata;
 	}
+
 
 	void addStrata(char *str)
 	{
 
-		_strataNames = nStrata + 1;
+		nStrata++;
+		int strata_idx = nStrata - 1;
+
+		_strataNames = nStrata;
 
 		strataNames = (char **)realloc(strataNames, _strataNames * sizeof(char *));
 		ASSERT(strataNames != NULL);
 
-		strataNames[nStrata] = (char *)malloc(strlen(str) + 1);
-		ASSERT(strataNames[nStrata] != NULL);
+		strataNames[strata_idx] = (char *)malloc((strlen(str) + 1) * sizeof(char));
+		strncpy(strataNames[strata_idx], str, strlen(str) + 1);
 
-		strncpy(strataNames[nStrata], str, strlen(str) + 1);
-		nIndPerStrata[nStrata] = 1;
-
-		nStrata++;
+		// new strata is added, set the number of individuals for this strata to 0
+		nIndPerStrata[strata_idx] = 1;
 	}
 
 	int getStrataIndex(char *str)
@@ -314,6 +360,9 @@ typedef struct hierStruct
 typedef struct metadataStruct
 {
 
+	int nInd = 0;
+	int nIndCmb=0;
+
 	// number of hierarchical levels
 	// e.g. Individual, Region, Population, Subpopulation
 	// 		has 3 levels: {Individual, Region, Population}
@@ -324,11 +373,10 @@ typedef struct metadataStruct
 
 	// associate individual with the lowest level strata (key strata)
 	size_t *ind2stratakey = NULL;
-	size_t _ind2stratakey = 1024; // TODO
+	size_t _ind2stratakey = 1024;
 
-	int nIndMetadata = 0;
-
-	// size_t *strataKeys = NULL;
+	// pairToAssoc[pair_idx][hier_level][strata_idx] = 1 if pair belongs to strata_idx at hier_level
+	int ***pairToAssoc = NULL;
 
 	// hierStruct[hierarchyLevel] is a hierStruct instance
 	// exclude the lowest level (Individual)
@@ -340,6 +388,7 @@ typedef struct metadataStruct
 	{
 		nLevels = nLevels_;
 		_levelNames = nLevels + 1;
+
 
 		hierArr = new hierStruct *[nLevels];
 		for (int i = 0; i < nLevels; i++)
@@ -354,11 +403,13 @@ typedef struct metadataStruct
 			strncpy(levelNames[i], levelNames_[i], strlen(levelNames_[i]) + 1);
 		}
 
-		ind2stratakey = new size_t[_ind2stratakey]; // TODO nInd
+		ind2stratakey = (size_t *)malloc(_ind2stratakey * sizeof(size_t));
 
-		// maximum number of strata keys allowed
-		// MAXDIG_PER_HLEVEL = 2 (default) -> size_t[99]
-		// strataKeys = new size_t[pow(10,MAXDIG_PER_HLEVEL)-1];
+		for (size_t i = 0; i < _ind2stratakey; i++)
+		{
+			ind2stratakey[i] = 0;
+		}
+
 	};
 
 	~metadataStruct()
@@ -366,17 +417,63 @@ typedef struct metadataStruct
 		for (int i = 0; i < nLevels; i++)
 		{
 			delete hierArr[i];
+		}
+		for (size_t i=0; i<_levelNames; i++){
 			delete[] levelNames[i];
 		}
-		delete[] levelNames[nLevels]; // levelNames if of size nLevels+1
-		delete[] levelNames;
 		delete[] hierArr;
-		delete[] ind2stratakey;
+		delete[] levelNames;
+		FREE(ind2stratakey);
+		pairToAssoc_destroy();
 	};
 
-	void addHierStruct(size_t lvl_i, char *tok)
-	{
-		hierArr[lvl_i] = new hierStruct(tok);
+	// pairToAssoc[pair_idx][hier_level][strata_idx] = 1 if pair belongs to strata_idx at hier_level
+	void pairToAssoc_create(){
+		ASSERT(nIndCmb>0);
+		pairToAssoc = (int ***)malloc(nIndCmb * sizeof(int **));
+		for (int i = 0; i < nIndCmb; i++)
+		{
+			pairToAssoc[i] = (int **)malloc(nLevels * sizeof(int *));
+			for (int j = 0; j < nLevels; j++)
+			{
+				pairToAssoc[i][j] = (int *)malloc(hierArr[j]->nStrata * sizeof(int));
+				for (int k = 0; k < hierArr[j]->nStrata; k++)
+				{
+					pairToAssoc[i][j][k] = 0;
+				}
+			}
+		}
+	}
+	void pairToAssoc_destroy(){
+		for (int i = 0; i < nIndCmb; i++)
+		{
+			for (int j = 0; j < nLevels; j++)
+			{
+				FREE(pairToAssoc[i][j]);
+			}
+			FREE(pairToAssoc[i]);
+		}
+		FREE(pairToAssoc);
+	}
+
+	void resize(){
+		resize_ind2stratakey();
+		resize_nIndPerStrata();
+	}
+
+	/// @brief resize ind2stratakey array based on the number of individuals
+	void resize_ind2stratakey(){
+		ASSERT((int) _ind2stratakey > nInd); // default size should be enough; but check just in case
+		_ind2stratakey = nInd;
+		ind2stratakey = (size_t *)realloc(ind2stratakey, _ind2stratakey * sizeof(size_t));
+	}
+
+	void resize_nIndPerStrata(){
+		for (int i = 0; i < nLevels; i++)
+		{
+			ASSERT((int) hierArr[i]->_nIndPerStrata > hierArr[i]->nStrata); // check if the default size was enough
+			hierArr[i]->nIndPerStrata = (int *)realloc(hierArr[i]->nIndPerStrata, hierArr[i]->nStrata * sizeof(int));
+		}
 	}
 
 	// check if two individuals are in the same strata at a given level
@@ -400,21 +497,11 @@ typedef struct metadataStruct
 		}
 	}
 
-	/// @brief calculateKeyAtLevel - calculate the strata key value at a given strata index in a given level
-	/// @param lvl			- hierarchical level
-	/// @param strata_idx 	- strata index
-	/// @return integer value of the strata key
-	/// @example lvl=1, strata_idx=2 -> 1[02]00
-	int calculateKeyAtLevel(int lvl, int strata_idx)
-	{
-		return (int)(pow(10, MAXDIG_PER_HLEVEL * (lvl + 1)) + strata_idx);
-		// pow10[]
-	}
-
 	int pairInStrataAtLevel(int i1, int i2, int lvl, int strata_idx)
 	{
-		int digit_idx = nLevels - lvl - 1;
-		if ((strata_idx == getDigits(ind2stratakey[i1], digit_idx)) && (strata_idx == getDigits(ind2stratakey[i2], digit_idx)))
+		int dig = nLevels - lvl - 1;
+		
+		if ((strata_idx == getDigits(ind2stratakey[i1], dig)) && (strata_idx == getDigits(ind2stratakey[i2], dig)))
 		{
 			return 1;
 		}
@@ -457,8 +544,8 @@ typedef struct metadataStruct
 	void print_ind2stratakey(FILE *fp)
 	{
 		fprintf(fp, "\n\n------------------\n");
-		fprintf(stderr, "\n\n nIndMetadata: %d\n", nIndMetadata);
-		for (int i = 0; i < nIndMetadata; i++)
+		fprintf(stderr, "\n\n nInd: %d\n", nInd);
+		for (int i = 0; i < nInd; i++)
 		{
 			fprintf(fp, "ind=%d:stratakey=%ld\n", i, ind2stratakey[i]);
 		}
@@ -473,9 +560,9 @@ typedef struct metadataStruct
 			for (int sti = 0; sti < hierArr[lvl]->nStrata; sti++)
 			{
 
-				for (int i1 = 0; i1 < nIndMetadata - 1; i1++)
+				for (int i1 = 0; i1 < nInd - 1; i1++)
 				{
-					for (int i2 = i1 + 1; i2 < nIndMetadata; i2++)
+					for (int i2 = i1 + 1; i2 < nInd; i2++)
 					{
 						// include only pairs that are in the same strata at this hierarchical level
 						if (pairInStrataAtLevel(i1, i2, lvl, sti) == 1)
@@ -557,9 +644,9 @@ typedef struct metadataStruct
 			exit(1);
 		}
 
-		int dig_lvl = nLevels - lvl_i - 1;
+		int dig = getDigitIndexAtLevel(nLevels, lvl_i);
 
-		size_t ret = pow10[dig_lvl * MAXDIG_PER_HLEVEL] * lvl_strata_i;
+		size_t ret = pow10[dig] * lvl_strata_i;
 		ret = ret + key;
 
 		return ret;
@@ -620,14 +707,16 @@ typedef struct metadataStruct
 		}
 	}
 
-	int nMemberStrataAtStrataAtLevel(int strata_i, int lvl)
+
+	//TODO dep
+	int nMemberStrataInStrataAtLevel(int strata_i, int lvl)
 	{
 		// digits count from right side
 		//  hlvl0     hlvl1     hlvl2
 		//  digitlvl2 digitlvl1 digitlvl0
-		int diglvl = nLevels - 1 - lvl;
+		int dig = getDigitIndexAtLevel(nLevels, lvl);
 
-		ASSERT(diglvl > 0);
+		ASSERT(dig > 0);
 		size_t key_i = 0;
 
 		int found = 0;
@@ -635,13 +724,13 @@ typedef struct metadataStruct
 		int tmp[pow10[MAXDIG_PER_HLEVEL]];
 
 		// loop through existing keys (one key per individual)
-		for (int i = 0; i < nIndMetadata; i++)
+		for (int i = 0; i < nInd; i++)
 		{
 			key_i = ind2stratakey[i];
 
-			if (getDigits(key_i, diglvl) == strata_i)
+			if (getDigits(key_i, dig) == strata_i)
 			{
-				int new_subkey = extractSubkey(key_i, diglvl - 1);
+				int new_subkey = extractSubkey(key_i, dig - 1);
 
 				found = 0;
 				for (int j = 0; j < sum; j++)
@@ -691,6 +780,7 @@ typedef struct metadataStruct
 	//   1 member strata {subpop4} for reg2
 	//
 	// nMemberStrata[Number of hlevels lower than this hlevel]
+
 	int sumUniqStrataAtEachLevel(int lvl)
 	{
 		if (lvl == nLevels - 1)
@@ -709,16 +799,59 @@ typedef struct metadataStruct
 			for (int i = 0; i < hierArr[lvl_i]->nStrata; i++)
 			{
 
-				sum += nMemberStrataAtStrataAtLevel(i, lvl_i - 1);
+				sum += nMemberStrataInStrataAtLevel(i, lvl_i - 1);
 			}
 			return sum;
 		}
 		ASSERT(0 == 1);
 	}
 
+	/// @brief  addCurrentToParentStrata - add current strata index to parent's subStrata index list
+	/// @param cur_idx 					- current strata index
+	/// @details
+	/// 	e.g.	we have POPS = {POP1, POP2, POP3, POP4}
+	/// 			REG1 contains POP1, POP2, POP4; REG2 contains POP3
+	/// 	parentStrataIdx == subStrataIdx[REG1] = {POP1, POP2, POP4}
+	///		parentStrataIdx[2] = POP4 (index of the strata_idx=2 (POP4) in POPS)
+	void addCurrentToParentStrata(hierStruct *h, const int par_idx, const int cur_idx){
+		// first check if already exists
+		size_t i=0;
+		ASSERT(cur_idx!=-1);
+		while (i<h->_subStrataIdx){
+			if (h->subStrataIdx[par_idx][i]==-1) break;
+
+			if (h->subStrataIdx[par_idx][i]==cur_idx){
+				// found cur_idx in the list; then the association already exists; do nothing
+				return;
+			}
+			i++;
+		}
+		// if we cant find cur_idx in the list, then add it
+		h->subStrataIdx[par_idx][i]=cur_idx;
+		h->nSubStrata[par_idx]++;
+		return;
+	}
+
+	/// @brief  addSubStrataIdx - add current strata index to parent's subStrata index list
+	/// @param key 					- updated strata key
+	/// @param lvl 					- current strata level
+	/// @details	should be called after updating the strata key with setKeyDigitAtLevel()
+	void addSubStrataIdx(const int key, const int lvl){
+		// at the highest level, we have nothing to associate with == no parent
+		if(lvl==0) return; // no parent
+
+		
+		int par_lvl=lvl-1;
+		// adjust for counting digits from right to left
+		int par_idx=getDigits(key,nLevels-par_lvl-1);
+		int cur_idx=getDigits(key,nLevels-lvl-1);
+		
+		addCurrentToParentStrata(hierArr[par_lvl],par_idx,cur_idx);
+	}
+
 } metadataStruct;
 
-metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *SAMPLES, formulaStruct *FORMULA, int has_colnames, paramStruct *pars);
+metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *SAMPLES, formulaStruct *FORMULA, int has_colnames, paramStruct* pars);
 
 /**
  * @brief distanceMatrixStruct stores the distance matrix
@@ -785,5 +918,8 @@ typedef struct threadStruct
 
 } threadStruct;
 // void print_SFS_GT(const char *TYPE, IO::outputStruct *out_sfs_fs, paramStruct *pars, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
+
+
+
 
 #endif // __DATA_STRUCTS__

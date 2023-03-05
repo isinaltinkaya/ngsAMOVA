@@ -21,6 +21,7 @@ namespace AMOVA
     ///            - df[0] = highest level df :: number of regions - 1
     ///            - df[2] = lowest level df
     ///            - df[3] = total df :: nInd - 1
+    ///            size=nAmovaLevels
     ///
     /// @param ss - array of sum of squares within levels
     ///               e.g. Individual ~ Region/Population
@@ -230,6 +231,7 @@ namespace AMOVA
             //  type,label,value
             //  SSD,Among_region,0.1234
             //  fprintf(fp, "type,label,value\n");
+            ASSERT(fp!=NULL);
             fprintf(fp, "df,Total,%d\n", df[nAmovaLevels - 1]);
             fprintf(fp, "SSD,Total,%f\n", ssd[nAmovaLevels - 1]);
             fprintf(fp, "MSD,Total,%f\n", msd[nAmovaLevels - 1]);
@@ -282,13 +284,8 @@ namespace AMOVA
 
     } amovaStruct;
 
-    int doAMOVA(distanceMatrixStruct *dMS,
-                metadataStruct *MTD,
-                sampleStruct *SAMPLES, FILE *out_amova_ff, int **lut_indsToIdx);
 
-    amovaStruct *amovaStruct_doAmova(distanceMatrixStruct *dMS,
-                                     metadataStruct *MTD,
-                                     sampleStruct *SAMPLES, int **lut_indsToIdx);
+    amovaStruct *doAmova(distanceMatrixStruct *dMS,metadataStruct *MTD,sampleStruct *SAMPLES, paramStruct *pars);
 
 }
 

@@ -1,15 +1,17 @@
 #include "argStruct.h"
 #include "paramStruct.h"
 
+
 argStruct *argStruct_init()
 {
 
+	//malloc
+	// argStruct *args = (argStruct *)malloc(sizeof(argStruct));
 	argStruct *args = (argStruct *)calloc(1, sizeof(argStruct));
 
 	args->verbose = 0;
 
 	args->in_vcf_fn = NULL;
-	// args->in_sfs_fn = NULL;
 	args->in_dm_fn = NULL;
 	args->in_mtd_fn = NULL;
 	args->out_fn = NULL;
@@ -27,7 +29,7 @@ argStruct *argStruct_init()
 	args->doEM = 0;
 
 	args->mThreads = 0;
-	args->mEmIter = 1e2;
+	args->maxEmIter = 100;
 
 	args->tole = 1e-5;
 
@@ -68,15 +70,16 @@ argStruct *argStruct_get(int argc, char **argv)
 		char *arv = *argv;
 		char *val = *(++argv);
 
-		if ((strcasecmp("--input", arv) == 0) || (strcasecmp("-in", arv) == 0) || (strcasecmp("-i", arv) == 0))
+		if ((strcasecmp("--in_vcf", arv) == 0) || (strcasecmp("--input", arv) == 0) || (strcasecmp("-i", arv) == 0))
 		{
 			args->in_vcf_fn = strdup(val);
 		}
 		// else if ((strcasecmp("--inputJointGenoProbDist", arv) == 0) || (strcasecmp("--inputJGPD", arv) == 0) || (strcasecmp("-iJGPD", arv) == 0)){
 		// 	args->in_sfs_fn = strdup(val);
 		// }
-		else if (strcasecmp("-in_dm", arv) == 0)
+		else if ((strcasecmp("--in_dm", arv) == 0)){
 			args->in_dm_fn = strdup(val);
+		}
 		else if (strcasecmp("-m", arv) == 0)
 			args->in_mtd_fn = strdup(val);
 		else if ((strcasecmp("--output", arv) == 0) || (strcasecmp("-out", arv) == 0) || (strcasecmp("-o", arv) == 0))
@@ -130,7 +133,7 @@ argStruct *argStruct_get(int argc, char **argv)
 		else if (strcasecmp("--mThreads", arv) == 0)
 			args->mThreads = atoi(val);
 		else if (strcasecmp("--mEmIter", arv) == 0)
-			args->mEmIter = atoi(val);
+			args->maxEmIter = atoi(val);
 
 		else if (strcasecmp("--tole", arv) == 0)
 			args->tole = atof(val);
@@ -184,11 +187,11 @@ argStruct *argStruct_get(int argc, char **argv)
 		else if (strcasecmp("-minInd", arv) == 0)
 			args->minInd = atoi(val);
 		else if (strcasecmp("-maxIter", arv) == 0)
-			args->mEmIter = atoi(val);
+			args->maxEmIter = atoi(val);
 		else if (strcasecmp("-maxEmIter", arv) == 0)
-			args->mEmIter = atoi(val);
+			args->maxEmIter = atoi(val);
 		else if (strcasecmp("-mEmIter", arv) == 0)
-			args->mEmIter = atoi(val);
+			args->maxEmIter = atoi(val);
 		else if (strcasecmp("-P", arv) == 0)
 			args->mThreads = atoi(val);
 		else if (strcasecmp("-nThreads", arv) == 0)
@@ -297,12 +300,12 @@ argStruct *argStruct_get(int argc, char **argv)
 
 	if (args->in_vcf_fn == NULL && args->in_dm_fn == NULL)
 	{
-		fprintf(stderr, "\n[ERROR] Must supply either -in <VCF_file> or -in_dm <Distance_matrix_file>.\n");
+		fprintf(stderr, "\n[ERROR] Must supply either --in_vcf <VCF_file> or --in_dm <Distance_matrix_file>.\n");
 		exit(1);
 	}
 	else if (args->in_vcf_fn != NULL && args->in_dm_fn != NULL)
 	{
-		fprintf(stderr, "\n[ERROR] Cannot use -in %s with -in_dm %s.\n", args->in_vcf_fn, args->in_dm_fn);
+		fprintf(stderr, "\n[ERROR] Cannot use --in_vcf %s with --in_dm %s.\n", args->in_vcf_fn, args->in_dm_fn);
 		exit(1);
 	}
 
@@ -331,7 +334,7 @@ argStruct *argStruct_get(int argc, char **argv)
 			}
 			if (args->in_vcf_fn == NULL)
 			{
-				fprintf(stderr, "\n[ERROR] Must supply -in <input_file> for -doEM 1.\n");
+				fprintf(stderr, "\n[ERROR] Must supply -i <input_file> for -doEM 1.\n");
 				exit(1);
 			}
 
@@ -340,7 +343,7 @@ argStruct *argStruct_get(int argc, char **argv)
 
 		break;
 	}
-	case 1:
+	case 1: // doAMOVA 1
 	{
 
 		if (args->doEM == 0 && args->in_dm_fn == NULL)
@@ -351,12 +354,12 @@ argStruct *argStruct_get(int argc, char **argv)
 
 		if (args->in_dm_fn != NULL)
 		{
-			fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
+			fprintf(stderr, "\n-> --in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
 		}
 		else
 		{
 
-			fprintf(stderr, "\n[INFO]\t-> -doAMOVA 1; will use 10 genotype likelihoods from vcfd GL tag.\n");
+			fprintf(stderr, "\n[INFO]\t-> -doAMOVA 1; will use 10 genotype likelihoods from VCF file GL field.\n");
 		}
 		break;
 	}
@@ -364,13 +367,12 @@ argStruct *argStruct_get(int argc, char **argv)
 	{
 		if (args->in_dm_fn != NULL)
 		{
-			fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
+			fprintf(stderr, "\n-> --in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
 			args->doAMOVA = 1; // 1: use dm input or gle tag in vcf
 		}
 		else
 		{
-
-			fprintf(stderr, "\n[INFO]\t-> -doAMOVA 2; will use genotypes from vcfd GT tag.\n");
+			fprintf(stderr, "\n[INFO]\t-> -doAMOVA 2; will use genotypes from VCF file GT field.\n");
 		}
 
 		if (args->doEM != 0)
@@ -391,7 +393,7 @@ argStruct *argStruct_get(int argc, char **argv)
 
 		if (args->in_dm_fn != NULL)
 		{
-			fprintf(stderr, "\n-> -in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
+			fprintf(stderr, "\n-> --in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
 			args->doAMOVA = 1; // 1: use dm input or gle tag in vcf
 		}
 		else
@@ -493,11 +495,18 @@ void argStruct_print(FILE *fp, argStruct *args)
 	fprintf(fp, "\n\t-> -in_vcf_fn %s", args->in_vcf_fn);
 
 	// TODO print based on analysis type, and to args file, collect all from args automatically
-	fprintf(fp, "\nngsAMOVA -doAMOVA %d -in %s -out %s -isSim %d -minInd %d -printMatrix %d -m %s -doDist %d -maxIter %d -nThreads %d", args->doAMOVA, args->in_vcf_fn, args->out_fn, args->isSim, args->minInd, args->printMatrix, args->in_mtd_fn, args->doDist, args->mEmIter, args->mThreads);
+	fprintf(fp, "\nngsAMOVA -doAMOVA %d -i %s -out %s -isSim %d -minInd %d -printMatrix %d -m %s -doDist %d -nThreads %d", args->doAMOVA, args->in_vcf_fn, args->out_fn, args->isSim, args->minInd, args->printMatrix, args->in_mtd_fn, args->doDist, args->mThreads);
 	if (args->doEM != 0)
 	{
 		fprintf(fp, " -tole %e ", args->tole);
-		fprintf(fp, " -maxIter %d ", args->mEmIter);
+		fprintf(fp, " -doEM %d ", args->doEM);
+		fprintf(fp, " -maxIter %d ", args->maxEmIter);
+	}
+	if (args->nBootstraps>0)
+	{
+		fprintf(fp, " --nBootstraps %d ", args->nBootstraps);
+		fprintf(fp, " --blockSize %d ", args->blockSize);
+		fprintf(fp, " --seed %d ", args->seed);
 	}
 	fprintf(fp, "\n");
 }

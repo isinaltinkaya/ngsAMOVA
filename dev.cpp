@@ -70,7 +70,7 @@ int DEV_EM_2DSFS_GL3(threadStruct *THREAD)
 	double **lngls = THREAD->lngls;
 	pairStruct *pair = THREAD->pair;
 	const double tole = THREAD->args->tole;
-	const int mEmIter = THREAD->args->mEmIter;
+	const int mEmIter = THREAD->args->maxEmIter;
 
 	const int i1 = pair->pars->lut_idxToInds[pair->idx][0];
 	const int i2 = pair->pars->lut_idxToInds[pair->idx][1];

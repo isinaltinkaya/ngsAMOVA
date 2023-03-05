@@ -59,9 +59,9 @@ typedef struct vcfData
 	// set nGT to given nGT, set nJointClasses to nGT*nGT
 	void set_nGT(const int nGT_);
 
-	void init_JointGenoCountDistGL(int nGT_);
-	void init_JointGenoProbDistGL(int nGT_);
-	void init_JointGenoCountDistGT(int nGT_);
+	void init_JointGenoCountDistGL();
+	void init_JointGenoProbDistGL();
+	void init_JointGenoCountDistGT();
 
 	void print_JointGenoCountDist(IO::outFilesStruct *outSt, argStruct *args);
 	void print_JointGenoProbDist(IO::outFilesStruct *outSt, argStruct *args);
@@ -102,6 +102,8 @@ struct get_data
 	int n_missing_ind = 0;
 	int ploidy = 0;
 
+	int n_values=0;
+
 	T &operator[](unsigned i)
 	{
 		return data[i];
@@ -116,6 +118,8 @@ struct get_data
 	{
 		FREE(data);
 	}
+
+
 };
 
 void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairSt);
