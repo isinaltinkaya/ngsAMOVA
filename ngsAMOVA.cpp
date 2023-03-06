@@ -22,6 +22,7 @@
 #include "em.h"
 #include "amova.h"
 #include "bootstrap.h"
+#include "evaluation.h"
 #include "dev.h"
 
 using size_t = decltype(sizeof(int));
@@ -241,6 +242,9 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 	}
 	}
 
+	eval_distanceMatrixStruct(pars,dMS_orig);
+	
+
 	if (args->printMatrix != 0)
 	{
 		dMS_orig->print(outSt->out_dm_fs);
@@ -336,7 +340,7 @@ void input_VCF_doAMOVA(argStruct *args, paramStruct *pars, formulaStruct *formul
 	for (int a = 0; a < pars->nAmovaRuns; a++)
 	{
 		amv[a] = AMOVA::doAmova(dMS[a], metadataSt, sampleSt, pars);
-		// ASSERT(AMOVA::doAMOVA(dMS[a], metadataSt, sampleSt, outSt->out_amova_fs->fp, pars->lut_indsToIdx) == 0);
+		eval_amovaStruct(amv[a]);
 		if (a==0 && args->printAmovaTable == 1)
 		{
 			amv[a]->print_as_table(stdout, metadataSt);
@@ -460,6 +464,8 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::
 		}
 
 		AMOVA::amovaStruct *amv = AMOVA::doAmova(dMS, metadataSt, sampleSt, pars);
+
+		eval_amovaStruct(amv);
 
 		if (args->printAmovaTable == 1)
 		{

@@ -361,7 +361,12 @@ AMOVA::amovaStruct *AMOVA::doAmova(distanceMatrixStruct *dMS, metadataStruct *mS
 
 		// lvl0 (i.e. reg) in TOTAL
 		// Phi_CT
-		ASSERT(aS->sigmasq_total>0);
+		if(aS->sigmasq_total<=0)
+		{
+			fprintf(stderr, "\n[ERROR]\tTotal variance is %f (sigmasq_total is <= 0). Please check your analysis settings and make sure you have enough data.\n",aS->sigmasq_total);
+			exit(1);
+		}
+
 		aS->phi[0] = aS->sigmasq[0] / (aS->sigmasq_total);
 
 		// lvl1 in lvl0
