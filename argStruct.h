@@ -11,8 +11,13 @@ struct argStruct;
 * @typedef
 * @abstract argStruct - argument structure
 *
-* @field *in_vcf_fn		pointer to input file name
-* @field *in_mtd_fn	pointer to input Metadata file name
+* @field *in_vcf_fn		input VCF filename
+* @field *in_dm_fn		input distance matrix filename
+* @field *in_mtd_fn	    input metadata filename
+* @field *in_jgcd_fn	input joint genotype count distribution data filename
+* @field *in_jgpd_fn	input joint genotype probability distribution data filename
+* @field *in_blb_fn     input block bed filename
+*
 * @field *out_fn		pointer to output file prefix [angsdput]
 *
 * @field isSim			input is vcfgl simulation output
@@ -136,6 +141,8 @@ char *in_dm_fn;
 char *in_mtd_fn;
 char *in_jgcd_fn;
 char *in_jgpd_fn;
+char *in_blb_fn;
+
 char *out_fn;
 
 char *command;

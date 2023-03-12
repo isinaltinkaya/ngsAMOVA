@@ -25,118 +25,9 @@
 #include "evaluation.h"
 #include "dev.h"
 
+//TODO check size_t
 using size_t = decltype(sizeof(int));
 
-void spawnThreads_pairEM_GL(argStruct *args, paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, IO::outFilesStruct *outSt, distanceMatrixStruct *distMatrix)
-{
-
-	pthread_t pairThreads[pars->nIndCmb];
-	threadStruct **PTHREADS = new threadStruct*[pars->nIndCmb];
-
-	for (int i = 0; i < pars->nIndCmb; i++)
-	{
-		PTHREADS[i] = new threadStruct(pairSt[i], vcfd->lngl, args, pars);
-	}
-
-	int nJobs_sent = 0;
-
-	for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
-	{
-		if (args->mThreads > 1)
-		{
-			if (nJobs_sent == args->mThreads)
-			{
-				int t = 0;
-				while (nJobs_sent > 0)
-				{
-					t = pidx - nJobs_sent;
-
-					if (pthread_join(pairThreads[t], NULL) != 0)
-					{
-						fprintf(stderr, "\n[ERROR] Problem with joining thread.\n");
-						exit(1);
-					}
-					else
-					{
-						nJobs_sent--;
-					}
-				}
-			}
-			if (pthread_create(&pairThreads[pidx], NULL, t_EM_2DSFS_GL3, PTHREADS[pidx]) == 0)
-			{
-				nJobs_sent++;
-			}
-			else
-			{
-				fprintf(stderr, "\n[ERROR] Problem with spawning thread.\n");
-				exit(1);
-			}
-		}
-		else
-		{
-			pthread_t pairThread;
-			if (pthread_create(&pairThread, NULL, t_EM_2DSFS_GL3, PTHREADS[pidx]) == 0)
-			{
-				if (pthread_join(pairThread, NULL) != 0)
-				{
-					fprintf(stderr, "\n[ERROR] Problem with joining thread.\n");
-					exit(1);
-				}
-			}
-			else
-			{
-				fprintf(stderr, "\n[ERROR] Problem with spawning thread.\n");
-				exit(1);
-			}
-		}
-	}
-
-	// finished indPair loop
-	int t = 0;
-	while (nJobs_sent > 0)
-	{
-		t = pars->nIndCmb - nJobs_sent;
-		if (pthread_join(pairThreads[t], NULL) != 0)
-		{
-			fprintf(stderr, "\n[ERROR] Problem with joining thread.\n");
-			exit(1);
-		}
-		else
-		{
-			nJobs_sent--;
-		}
-	}
-
-	for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
-	{
-		pairStruct *pair = PTHREADS[pidx]->pair;
-		ASSERT(pair->snSites > 0);
-
-		for(int g=0; g<vcfd->nJointClasses; g++)
-		{
-			// vcfd->JointGenoCountDistGL[pidx][g] = pair->optim_jointGenoCountDist[g];
-			vcfd->JointGenoCountDistGL[pidx][g] = pair->optim_jointGenoProbDist[g]*pair->snSites;
-			vcfd->JointGenoProbDistGL[pidx][g] = pair->optim_jointGenoProbDist[g];
-		}
-		vcfd->JointGenoCountDistGL[pidx][vcfd->nJointClasses] = pair->snSites;
-		vcfd->JointGenoProbDistGL[pidx][vcfd->nJointClasses] = pair->snSites;
-
-		if (args->do_square_distance == 1)
-		{
-			distMatrix->M[pidx] = (double)SQUARE((MATH::EST::Dij(vcfd->JointGenoProbDistGL[pidx])));
-		}
-		else
-		{
-			distMatrix->M[pidx] = (double)MATH::EST::Dij(vcfd->JointGenoProbDistGL[pidx]);
-		}
-		delete PTHREADS[pidx];
-	}
-	vcfd->print_JointGenoProbDist(outSt, args);
-	vcfd->print_JointGenoCountDist(outSt, args);
-
-	delete[] PTHREADS;
-
-}
 
 
 // prepare distance matrix using original data
@@ -161,7 +52,7 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 			readSites_GL(vcfd, args, pars, pairSt, blobSt);
 		}
 
-		spawnThreads_pairEM_GL(args, pars, pairSt, vcfd, outSt, dMS_orig);
+		spawnThreads_pairEM(args, pars, pairSt, vcfd, outSt, dMS_orig);
 
 		break;
 	}
@@ -227,7 +118,7 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 
 			readSites_GL(vcfd, args, pars, pairSt);
 
-			spawnThreads_pairEM_GL(args, pars, pairSt, vcfd, outSt, dMS_orig);
+			spawnThreads_pairEM(args, pars, pairSt, vcfd, outSt, dMS_orig);
 		}
 
 		break;
@@ -251,46 +142,72 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 	}
 }
 
-void input_VCF_noAMOVA(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::outFilesStruct *outSt, sampleStruct *sampleSt, vcfData *vcfd, pairStruct **pairSt)
+
+
+// --------------------------- INPUT: VCF/BCF --------------------------- //
+void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::outFilesStruct *outSt)
 {
+	sampleStruct *sampleSt = new sampleStruct();
+	vcfData *vcfd = vcfData_init(args, pars, sampleSt);
+	pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
+
+	for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
+	{
+		pairSt[pidx] = new pairStruct(pars, pidx);
+	}
+
+	if (args->windowSize == 0)
+	{
+		// --------------------------- windowSize 0 --------------------------- //
+		fprintf(stderr, "\n[INFO]\t-> -windowSize 0; will not use sliding window\n");
+		// treat the whole genome as one window
+		// args->windowSize = vcfd->nSites;
+		// fprintf(stderr, "\n[INFO]\t-> -windowSize %d; will use the whole genome as one window. Therefore -windowSize is set to the total number of sites in the VCF/BCF file (nSites: %d)\n", args->windowSize, vcfd->nSites);
+	}
+	else
+	{
+		// --------------------------- windowSize > 0 --------------------------- //
+		ASSERT(0==1);
+	}
+
+	// if (args->doEM != 0 && args->printMatrix == 1)
+	// {
+	// }
+
 	// --------------------------- doAMOVA 0 --------------------------- //
 	// DO NOT run AMOVA
-	fprintf(stderr, "\n[INFO]\t-> -doAMOVA 0; will not run AMOVA\n");
-	fprintf(stderr, "\n\t-> Skipped running AMOVA\n");
-	pars->nAmovaRuns = 0;
-
-	if (args->doEM != 0)
-	{
-		distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
-		prepare_distanceMatrix(args, pars, dMS, vcfd, pairSt, formulaSt, outSt, NULL, sampleSt);
-		if (args->printMatrix != 0)
-		{
-			dMS->print(outSt->out_dm_fs);
+	if(args->doAMOVA == 0){
+		if(args->doEM != 0){
+			// do not run AMOVA, but do EM and get distance matrix
+			distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
+			prepare_distanceMatrix(args, pars, dMS, vcfd, pairSt, formulaSt, outSt, NULL, sampleSt);
+			if (args->printMatrix != 0)
+			{
+				dMS->print(outSt->out_dm_fs);
+			}
+			delete dMS;
+			return;
 		}
-		delete dMS;
-	}
-}
 
-void input_VCF_doAMOVA(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::outFilesStruct *outSt, sampleStruct *sampleSt, vcfData *vcfd, pairStruct **pairSt)
-{
+	}
+
 	// --------------------------- doAMOVA!=0 --------------------------- //
-	// will run AMOVA
-	//
-	// prepare for AMOVA
+	// DO run AMOVA
+
 
 	// [BEGIN] ----------------------- READ METADATA ------------------------- //
-	// If vcfd/BCF input, read metadata after vcfd
-	// so you can compare VCF records with metadata when reading metadata
-	ASSERT(args->in_mtd_fn != NULL);
-
+	// If VCF input, read metadata after VCF
+	// 		to compare VCF records with metadata when reading metadata
 	FILE *in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
 	metadataStruct *metadataSt = metadataStruct_get(in_mtd_fp, sampleSt, formulaSt, args->hasColNames,pars);
 	FCLOSE(in_mtd_fp);
 	// [END] ----------------------- READ METADATA ------------------------- //
 
 	pars->nAmovaRuns = 1;
-	if (args->nBootstraps > 0)
+
+	if (args->nBootstraps > 0) {
 		pars->nAmovaRuns += args->nBootstraps;
+	}
 
 	blobStruct *blobSt = NULL;
 
@@ -352,6 +269,10 @@ void input_VCF_doAMOVA(argStruct *args, paramStruct *pars, formulaStruct *formul
 	}
 
 
+	fprintf(stderr, "Total number of sites processed: %lu\n", pars->totSites);
+	fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", pars->totSites - pars->nSites);
+
+
 
 	for (int a = 0; a < pars->nAmovaRuns; a++)
 	{
@@ -363,51 +284,6 @@ void input_VCF_doAMOVA(argStruct *args, paramStruct *pars, formulaStruct *formul
 
 
 	delete metadataSt;
-}
-
-// --------------------------- INPUT: VCF/BCF --------------------------- //
-void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::outFilesStruct *outSt)
-{
-	sampleStruct *sampleSt = new sampleStruct();
-	vcfData *vcfd = vcfData_init(args, pars, sampleSt);
-	pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
-
-	for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
-	{
-		pairSt[pidx] = new pairStruct(pars, pidx);
-	}
-
-	if (args->windowSize == 0)
-	{
-		// --------------------------- windowSize 0 --------------------------- //
-		fprintf(stderr, "\n[INFO]\t-> -windowSize 0; will not use sliding window\n");
-		// treat the whole genome as one window
-		// args->windowSize = vcfd->nSites;
-		// fprintf(stderr, "\n[INFO]\t-> -windowSize %d; will use the whole genome as one window. Therefore -windowSize is set to the total number of sites in the VCF/BCF file (nSites: %d)\n", args->windowSize, vcfd->nSites);
-	}
-	else
-	{
-		// --------------------------- windowSize > 0 --------------------------- //
-		ASSERT(0==1);
-	}
-
-	// if (args->doEM != 0 && args->printMatrix == 1)
-	// {
-	// }
-
-	if (args->doAMOVA == 0)
-	{
-		input_VCF_noAMOVA(args, pars, formulaSt, outSt, sampleSt, vcfd, pairSt);
-	}
-	else
-	{
-		input_VCF_doAMOVA(args, pars, formulaSt, outSt, sampleSt, vcfd, pairSt);
-	}
-
-	fprintf(stderr, "Total number of sites processed: %lu\n", pars->totSites);
-	fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", pars->totSites - pars->nSites);
-
-	// outSt->flushAll();
 
 	for (int i = 0; i < pars->nIndCmb; i++)
 	{

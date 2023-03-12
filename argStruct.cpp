@@ -5,15 +5,17 @@
 argStruct *argStruct_init()
 {
 
-	//malloc
-	// argStruct *args = (argStruct *)malloc(sizeof(argStruct));
-	argStruct *args = (argStruct *)calloc(1, sizeof(argStruct));
+	argStruct *args = (argStruct *)malloc(sizeof(argStruct));
 
 	args->verbose = 0;
 
 	args->in_vcf_fn = NULL;
 	args->in_dm_fn = NULL;
 	args->in_mtd_fn = NULL;
+	args->in_jgcd_fn = NULL;
+	args->in_jgpd_fn = NULL;
+	args->in_blb_fn = NULL;
+
 	args->out_fn = NULL;
 
 	args->formula = NULL;
@@ -85,6 +87,10 @@ argStruct *argStruct_get(int argc, char **argv)
 		else if ((strcasecmp("--output", arv) == 0) || (strcasecmp("-out", arv) == 0) || (strcasecmp("-o", arv) == 0))
 		{
 			args->out_fn = strdup(val);
+		}
+
+		else if ( (strcasecmp("--block_bed", arv)==0) || (strcasecmp("-bf", arv)==0) ){
+			args->in_blb_fn = strdup(val);
 		}
 
 		else if (strcasecmp("-dev", arv) == 0)
@@ -476,10 +482,11 @@ argStruct *argStruct_get(int argc, char **argv)
 void argStruct_destroy(argStruct *args)
 {
 	FREE(args->in_vcf_fn);
-	FREE(args->in_jgcd_fn);
-	FREE(args->in_jgpd_fn);
 	FREE(args->in_dm_fn);
 	FREE(args->in_mtd_fn);
+	FREE(args->in_jgcd_fn);
+	FREE(args->in_jgpd_fn);
+	FREE(args->in_blb_fn);
 	FREE(args->out_fn);
 	FREE(args->formula);
 	FREE(args->keyCols);
@@ -494,7 +501,8 @@ void argStruct_print(FILE *fp, argStruct *args)
 	// fprintf(fp, "\nCommand: %s", args->command);//TODO
 	fprintf(fp, "\n\t-> -in_vcf_fn %s", args->in_vcf_fn);
 
-	// TODO print based on analysis type, and to args file, collect all from args automatically
+	//TODO use lut to store names and values and associatons (e.g. tole maxiter etc assoc with doEM)
+	//and if -formula is used, run formulaStruct_get()
 	fprintf(fp, "\nngsAMOVA -doAMOVA %d -i %s -out %s -isSim %d -minInd %d -printMatrix %d -m %s -doDist %d -nThreads %d", args->doAMOVA, args->in_vcf_fn, args->out_fn, args->isSim, args->minInd, args->printMatrix, args->in_mtd_fn, args->doDist, args->mThreads);
 	if (args->doEM != 0)
 	{

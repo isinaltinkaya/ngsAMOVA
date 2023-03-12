@@ -1,6 +1,123 @@
 #include "em.h"
 
-//TODO precalculate the flat prior 1/9 so we don't have to do it every time; const extern etc
+/// @brief spawnThreads_pairEM spawn threads for running EM algorithm for each individual pair 
+/// @param args 
+/// @param pars 
+/// @param pairSt 
+/// @param vcfd 
+/// @param outSt 
+/// @param distMatrix 
+void spawnThreads_pairEM(argStruct *args, paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, IO::outFilesStruct *outSt, distanceMatrixStruct *distMatrix)
+{
+
+	pthread_t pairThreads[pars->nIndCmb];
+	threadStruct **PTHREADS = new threadStruct*[pars->nIndCmb];
+
+	for (int i = 0; i < pars->nIndCmb; i++)
+	{
+		PTHREADS[i] = new threadStruct(pairSt[i], vcfd->lngl, args, pars);
+	}
+
+	int nJobs_sent = 0;
+
+	for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
+	{
+		if (args->mThreads > 1)
+		{
+			if (nJobs_sent == args->mThreads)
+			{
+				int t = 0;
+				while (nJobs_sent > 0)
+				{
+					t = pidx - nJobs_sent;
+
+					if (pthread_join(pairThreads[t], NULL) != 0)
+					{
+						fprintf(stderr, "\n[ERROR] Problem with joining thread.\n");
+						exit(1);
+					}
+					else
+					{
+						nJobs_sent--;
+					}
+				}
+			}
+			if (pthread_create(&pairThreads[pidx], NULL, t_EM_2DSFS_GL3, PTHREADS[pidx]) == 0)
+			{
+				nJobs_sent++;
+			}
+			else
+			{
+				fprintf(stderr, "\n[ERROR] Problem with spawning thread.\n");
+				exit(1);
+			}
+		}
+		else
+		{
+			pthread_t pairThread;
+			if (pthread_create(&pairThread, NULL, t_EM_2DSFS_GL3, PTHREADS[pidx]) == 0)
+			{
+				if (pthread_join(pairThread, NULL) != 0)
+				{
+					fprintf(stderr, "\n[ERROR] Problem with joining thread.\n");
+					exit(1);
+				}
+			}
+			else
+			{
+				fprintf(stderr, "\n[ERROR] Problem with spawning thread.\n");
+				exit(1);
+			}
+		}
+	}
+
+	// finished indPair loop
+	int t = 0;
+	while (nJobs_sent > 0)
+	{
+		t = pars->nIndCmb - nJobs_sent;
+		if (pthread_join(pairThreads[t], NULL) != 0)
+		{
+			fprintf(stderr, "\n[ERROR] Problem with joining thread.\n");
+			exit(1);
+		}
+		else
+		{
+			nJobs_sent--;
+		}
+	}
+
+	for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
+	{
+		pairStruct *pair = PTHREADS[pidx]->pair;
+		ASSERT(pair->snSites > 0);
+
+		for(int g=0; g<vcfd->nJointClasses; g++)
+		{
+			// vcfd->JointGenoCountDistGL[pidx][g] = pair->optim_jointGenoCountDist[g];
+			vcfd->JointGenoCountDistGL[pidx][g] = pair->optim_jointGenoProbDist[g]*pair->snSites;
+			vcfd->JointGenoProbDistGL[pidx][g] = pair->optim_jointGenoProbDist[g];
+		}
+		vcfd->JointGenoCountDistGL[pidx][vcfd->nJointClasses] = pair->snSites;
+		vcfd->JointGenoProbDistGL[pidx][vcfd->nJointClasses] = pair->snSites;
+
+		if (args->do_square_distance == 1)
+		{
+			distMatrix->M[pidx] = (double)SQUARE((MATH::EST::Dij(vcfd->JointGenoProbDistGL[pidx])));
+		}
+		else
+		{
+			distMatrix->M[pidx] = (double)MATH::EST::Dij(vcfd->JointGenoProbDistGL[pidx]);
+		}
+		delete PTHREADS[pidx];
+	}
+	vcfd->print_JointGenoProbDist(outSt, args);
+	vcfd->print_JointGenoCountDist(outSt, args);
+
+	delete[] PTHREADS;
+
+}
+
 
 /// @brief thread handler for EM_2DSFS_GL3
 /// @param p 
@@ -125,7 +242,6 @@ int EM_2DSFS_GL3(threadStruct* THREAD){
 			}
 		}
 
-		// @@
 		pair->n_em_iter++;
 
 #if 0
