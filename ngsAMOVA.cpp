@@ -252,6 +252,34 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO:
 		blobStruct_destroy(blobSt);
 	}
 
+	if(args->doDxy == 1){
+		kstring_t *kbuf = kbuf_init();
+
+		double dxy=0.0;
+		ksprintf(kbuf, "group1,group2,hier_level,dxy\n");
+
+		// estimate dxy for all pairs of strata in each hierarchical level
+		for(int lvl=0; lvl < metadataSt->nLevels; lvl++){
+
+			if(metadataSt->hierArr[lvl]->nStrata == 1) continue;
+
+			for (int g1=0; g1 < metadataSt->hierArr[lvl]->nStrata-1; g1++)
+			{
+				// get unique pairs of all strata in level
+				// for each pair, estimate dxy
+				for (int g2=g1+1; g2 < metadataSt->hierArr[lvl]->nStrata; g2++)
+				{
+					dxy=estimate_dxy(g1, g2, lvl, dMS[0], metadataSt, pars);
+					ksprintf(kbuf, "%s,%s,%d,%f\n", metadataSt->hierArr[lvl]->strataNames[g1], metadataSt->hierArr[lvl]->strataNames[g2], lvl+1, dxy); 
+				}
+			}
+
+		}
+		
+		outSt->out_dxy_fs->write(kbuf);
+		kbuf_destroy(kbuf);
+	}
+
 	AMOVA::amovaStruct **amv = new AMOVA::amovaStruct *[pars->nAmovaRuns];
 
 	for (int a = 0; a < pars->nAmovaRuns; a++)

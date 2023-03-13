@@ -672,7 +672,10 @@ IO::outFilesStruct::outFilesStruct(argStruct *args){
 	{
 		out_dev_fs = new outputStruct(args->out_fn, ".dev.csv", 1);
 	}
-
+	if(args->doDxy == 1)
+	{
+		out_dxy_fs = new outputStruct(args->out_fn, ".dxy.csv", args->doDxy-1);
+	}
 }
 
 IO::outFilesStruct::~outFilesStruct()
@@ -683,6 +686,7 @@ IO::outFilesStruct::~outFilesStruct()
 	DELETE(out_dev_fs);
 	DELETE(out_jgcd_fs);
 	DELETE(out_jgpd_fs);
+	DELETE(out_dxy_fs);
 }
         // void flushAll()
         // {

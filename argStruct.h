@@ -83,6 +83,17 @@ struct argStruct;
 * 						1 use 10 genotype likelihoods (GL)
 * 						2 use genotypes (GT) (NOTE: Only for benchmark purposes)
 *
+* @field doEM           [default=0]
+*                       [0] do NOT perform EM
+*                       [1] perform EM optimization with 3 GLs (MM,Mm,mm)
+*                               requires the ancestral and derived alleles to be specified
+*                       [2] perform EM optimization with 10 GLs
+*                       
+* @field doDxy          [default=0]
+*                       [0] do NOT perform Dxy
+*                       [1] perform Dxy for all pairs of groups in each hierarchical level
+*                               in the metadata file
+*
 * @field doDist		[0] use Sij similarity index
 * 						[1] use Dij (1-Sij) dissimilarity index
 * 						[2] use Fij F statistic [DEPRECATED]
@@ -153,6 +164,7 @@ int *keyCols;
 int blockSize;
 int doAMOVA;
 int doEM;
+int doDxy;
 
 int printAmovaTable;
 int printMatrix;

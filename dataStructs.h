@@ -666,23 +666,11 @@ typedef struct metadataStruct
 		return ret;
 	}
 
-	// TODO
-	/// @brief keyIsFromSameStrataGivenStrataLevel - check if key is from the same strata at level
-	/// @param key
-	/// @param strata_i
-	/// @param lvl
-	/// @return  1 if key is from the same strata at level, 0 otherwise
-	/// @example 12345 lvl=1 strata_i=23
-	///                calculateKeyAtLevel(strata_i=23,lvl=1) = 2300
-	/// 			   extractSubkey(key=12345,lvl=1) = 2345
-	/// 			   2299 < 2345 < 2400
-	///
-	int keyIsFromSameStrataGivenStrataLevel(size_t key, int strata_i, int lvl)
+	int indInStrata(int ind, int lvl, int strata_i)
 	{
-		int k_i = extractSubkey(key, lvl);
-		int ref_k = calculateKeyAtLevel(lvl, strata_i);
-		// assume MAXDIG_PER_HLEVEL = 2
-		if (ref_k - 1 < k_i && k_i < ref_k + 100)
+		size_t key = ind2stratakey[ind];
+		size_t ref_key = calculateKeyAtLevel(lvl, strata_i);
+		if (key == ref_key)
 		{
 			return 1;
 		}
@@ -692,20 +680,46 @@ typedef struct metadataStruct
 		}
 	}
 
-	int keyIsFromSameStrataAsKey(size_t key, size_t ref_key, int lvl)
-	{
-		int k_i = extractSubkey(key, lvl);
-		int ref_k = extractSubkey(ref_key, lvl);
-		// assume MAXDIG_PER_HLEVEL = 2
-		if (ref_k - 1 < k_i && k_i < ref_k + 100)
-		{
-			return 1;
-		}
-		else
-		{
-			return 0;
-		}
-	}
+	// // TODO
+	// /// @brief keyIsFromSameStrataGivenStrataLevel - check if key is from the same strata at level
+	// /// @param key
+	// /// @param strata_i
+	// /// @param lvl
+	// /// @return  1 if key is from the same strata at level, 0 otherwise
+	// /// @example 12345 lvl=1 strata_i=23
+	// ///                calculateKeyAtLevel(strata_i=23,lvl=1) = 2300
+	// /// 			   extractSubkey(key=12345,lvl=1) = 2345
+	// /// 			   2299 < 2345 < 2400
+	// ///
+	// int keyIsFromSameStrataGivenStrataLevel(size_t key, int strata_i, int lvl)
+	// {
+	// 	int k_i = extractSubkey(key, lvl);
+	// 	int ref_k = calculateKeyAtLevel(lvl, strata_i);
+	// 	// assume MAXDIG_PER_HLEVEL = 2
+	// 	if (ref_k - 1 < k_i && k_i < ref_k + 100)
+	// 	{
+	// 		return 1;
+	// 	}
+	// 	else
+	// 	{
+	// 		return 0;
+	// 	}
+	// }
+
+	// int keyIsFromSameStrataAsKey(size_t key, size_t ref_key, int lvl)
+	// {
+	// 	int k_i = extractSubkey(key, lvl);
+	// 	int ref_k = extractSubkey(ref_key, lvl);
+	// 	// assume MAXDIG_PER_HLEVEL = 2
+	// 	if (ref_k - 1 < k_i && k_i < ref_k + 100)
+	// 	{
+	// 		return 1;
+	// 	}
+	// 	else
+	// 	{
+	// 		return 0;
+	// 	}
+	// }
 
 
 	//TODO dep
@@ -920,6 +934,7 @@ typedef struct threadStruct
 // void print_SFS_GT(const char *TYPE, IO::outputStruct *out_sfs_fs, paramStruct *pars, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
 
 
+double estimate_dxy(const int idx1, const int idx2, const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars);
 
 
 #endif // __DATA_STRUCTS__

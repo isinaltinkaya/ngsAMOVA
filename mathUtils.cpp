@@ -701,3 +701,4 @@ double MATH::EST::Kin(int *M, int S)
 
 	return x;
 }
+

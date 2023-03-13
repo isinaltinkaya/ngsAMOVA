@@ -186,6 +186,7 @@ namespace IO
         outputStruct *out_dev_fs = NULL;
         outputStruct *out_jgcd_fs = NULL;
         outputStruct *out_jgpd_fs = NULL;
+        outputStruct *out_dxy_fs = NULL;
 
         outFilesStruct(argStruct *args);
 

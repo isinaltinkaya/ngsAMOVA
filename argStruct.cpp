@@ -29,6 +29,7 @@ argStruct *argStruct_init()
 
 	args->doAMOVA = 0;
 	args->doEM = 0;
+	args->doDxy = 0;
 
 	args->mThreads = 0;
 	args->maxEmIter = 100;
@@ -130,11 +131,15 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->doDist = atoi(val);
 		else if (strcasecmp("--do_square_distance", arv) == 0)
 			args->do_square_distance = atoi(val);
+		else if (strcasecmp("-sqDist", arv) == 0)
+			args->do_square_distance = atoi(val);
 
 		else if (strcasecmp("--doAMOVA", arv) == 0)
 			args->doAMOVA = atoi(val);
 		else if (strcasecmp("--doEM", arv) == 0)
 			args->doEM = atoi(val);
+		else if (strcasecmp("--doDxy", arv) == 0)
+			args->doDxy = atoi(val);
 
 		else if (strcasecmp("--mThreads", arv) == 0)
 			args->mThreads = atoi(val);
@@ -188,8 +193,6 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->printMatrix = atoi(val);
 		else if (strcasecmp("-doDist", arv) == 0)
 			args->doDist = atoi(val);
-		else if (strcasecmp("-sqDist", arv) == 0)
-			args->do_square_distance = atoi(val);
 		else if (strcasecmp("-minInd", arv) == 0)
 			args->minInd = atoi(val);
 		else if (strcasecmp("-maxIter", arv) == 0)

@@ -901,3 +901,65 @@ int calculateKeyAtLevel(const int lvl, const int strata_idx)
 	return (int)(pow(10, MAXDIG_PER_HLEVEL * (lvl + 1)) + strata_idx);
 	// pow10[]
 }
+
+
+/// @brief estimate_dxy - estimate dxy statistic for a pair of individuals
+/// @param idx1			- index of the first group at specified level
+/// @param idx2			- index of the second group at specified level
+/// @param lvl			- hierarchical level the group indices refer to
+/// @param dMS          - distance matrix struct
+/// @param mtd          - metadata struct
+/// @param pars         - parameter struct
+/// @return dxy         - dxy statistic
+double estimate_dxy(const int idx1, const int idx2, const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars)
+{
+
+	double dxy=0.0;
+
+	//TODO below
+	// // extract the strata id at level from key1 and key2
+	// const int strata1 = (key1 >> (lvl*8)) & 0xFF;
+	// const int strata2 = (key2 >> (lvl*8)) & 0xFF;
+
+	// lvl is 0-indexed and nLevels is count
+	if(lvl >= mtd->nLevels){
+		fprintf(stderr,"\n[ERROR][estimate_dxy] The level specified (%d) is greater than the number of levels (%d)\n",lvl+1,mtd->nLevels);
+		exit(1);
+	}
+
+	// get number of individuals belonging to strata1 (extracted from key1 based on lvl)
+	const int nInd1 = mtd->hierArr[lvl]->nIndPerStrata[idx1];
+	const int nInd2 = mtd->hierArr[lvl]->nIndPerStrata[idx2];
+
+	double nxny = (double) (nInd1 * nInd2);
+
+
+	
+	if(idx1 == idx2){
+		fprintf(stderr,"\n[ERROR][estimate_dxy] idx1:%d is equal to idx2:%d\n",idx1,idx2);
+		exit(1);
+	}
+
+	
+	// locate the individual pairs in the distance matrix where one individual is from group 1 and the other is from group 2
+	for(int i1=0; i1 < dMS->nInd-1; i1++){
+
+		// use i1s belonging to idx1
+		if(mtd->indInStrata(i1, lvl, idx1) != 1) continue;
+
+
+		for(int i2=i1+1; i2 < dMS->nInd; i2++){
+
+			// use i2s belonging to idx2
+			if(mtd->indInStrata(i2, lvl, idx2) != 1) continue;
+
+			pars->vprint(1,"Running estimate_dxy for i1:%d from group with index %d and i2:%d from group with index %d.",i1,idx1,i2,idx2);
+
+			dxy += dMS->M[pars->lut_indsToIdx[i1][i2]] ;
+		}
+	}
+	dxy = dxy / nxny;
+	return dxy;
+
+
+}
