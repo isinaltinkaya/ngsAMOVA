@@ -4,24 +4,31 @@
 #include "io.h"
 #include "dataStructs.h"
 
+const char *IO::FILE_EXTENSIONS[] = {"", ".gz", ".bgz"};
 
-const char* IO::FILE_EXTENSIONS[] = {"", ".gz", ".bgz"};
+void IO::requireFile(const char *fn)
+{
+	ASSERTM(fn != NULL, "File name is NULL");
+	ASSERTM(fn[0] != '\0', "File name is empty");
+	ASSERTM(strcmp(fn, "-") != 0, "File name is \"-\"");
+}
 
 /// @brief get file handle fp
-/// @param fname file name
+/// @param fn file name
 /// @param mode file open mode
 /// @return file *fp
-FILE *IO::getFile(const char *fname, const char *mode)
+FILE *IO::getFile(const char *fn, const char *mode)
 {
+	requireFile(fn);
 
 	FILE *fp = NULL;
 	if (strcmp(mode, "r") == 0)
 	{
-		fprintf(stderr, "\n\t-> Reading file: %s\n", fname);
+		fprintf(stderr, "\n\t-> Reading file: %s\n", fn);
 	}
-	if (NULL == (fp = fopen(fname, mode)))
+	if (NULL == (fp = fopen(fn, mode)))
 	{
-		fprintf(stderr, "[%s:%s()]\t->Error opening FILE handle for file:%s exiting\n", __FILE__, __FUNCTION__, fname);
+		fprintf(stderr, "[%s:%s()]\t->Error opening FILE handle for file:%s exiting\n", __FILE__, __FUNCTION__, fn);
 		exit(1);
 	}
 	return fp;
@@ -41,9 +48,9 @@ const char *IO::getFileExtension(const char *fn)
 	return dot + 1;
 }
 
-int IO::isGzFile(const char *fname)
+int IO::isGzFile(const char *fn)
 {
-	const char *ext = IO::getFileExtension(fname);
+	const char *ext = IO::getFileExtension(fn);
 	if (ext == NULL)
 	{
 		return -1;
@@ -55,16 +62,16 @@ int IO::isGzFile(const char *fname)
 	return 1;
 }
 
-gzFile IO::getGzFile(const char *fname, const char *mode)
+gzFile IO::getGzFile(const char *fn, const char *mode)
 {
 	gzFile fp = Z_NULL;
 	if (strcmp(mode, "r") == 0)
 	{
-		fprintf(stderr, "\n\t-> Reading file: %s\n", fname);
+		fprintf(stderr, "\n\t-> Reading file: %s\n", fn);
 	}
-	if (Z_NULL == (fp = gzopen(fname, mode)))
+	if (Z_NULL == (fp = gzopen(fn, mode)))
 	{
-		fprintf(stderr, "[%s:%s()]\t->Error opening FILE handle for file:%s exiting\n", __FILE__, __FUNCTION__, fname);
+		fprintf(stderr, "[%s:%s()]\t->Error opening FILE handle for file:%s exiting\n", __FILE__, __FUNCTION__, fn);
 		exit(1);
 	}
 	return fp;
@@ -85,7 +92,7 @@ char *IO::setFileName(const char *a, const char *b)
 
 /// @brief set file name from prefix and suffix
 /// @param fn 			file name
-/// @param suffix		identifier suffix to be added to file name 
+/// @param suffix		identifier suffix to be added to file name
 /// 						e.g. ".sfs" or ".sfs.gz"
 /// @param fc			file compression type to be added to file name
 /// @return filename
@@ -271,7 +278,6 @@ int IO::readGzFile::readToBuffer(char *fn, char **buffer_p, size_t *buf_size_p)
 		}
 	}
 }
-
 
 int IO::readFile::getBufferSize(FILE *fp)
 {
@@ -587,10 +593,10 @@ void IO::outputStruct::write(const char *buf)
 	switch (fc)
 	{
 	case OUTFC::NONE:
-		ASSERT(fprintf(fp, "%s", buf)>0);
+		ASSERT(fprintf(fp, "%s", buf) > 0);
 		break;
 	case OUTFC::GZ:
-		ASSERT(gzprintf(gzfp, "%s", buf)>0);
+		ASSERT(gzprintf(gzfp, "%s", buf) > 0);
 		break;
 	case OUTFC::BBGZ:
 		if (bgzf_write(bgzfp, buf, strlen(buf)) != (ssize_t)strlen(buf))
@@ -607,11 +613,11 @@ void IO::outputStruct::write(const kstring_t *kbuf)
 	switch (fc)
 	{
 	case OUTFC::NONE:
-		ASSERT(fprintf(fp, "%s", kbuf->s)>0);
+		ASSERT(fprintf(fp, "%s", kbuf->s) > 0);
 		break;
 	case OUTFC::GZ:
-		fprintf(stderr,"%s",kbuf->s);
-		ASSERT(gzprintf(gzfp, "%s", kbuf->s)>0);
+		fprintf(stderr, "%s", kbuf->s);
+		ASSERT(gzprintf(gzfp, "%s", kbuf->s) > 0);
 		break;
 	case OUTFC::BBGZ:
 		if (bgzf_write(bgzfp, kbuf->s, kbuf->l) != (ssize_t)kbuf->l)
@@ -627,39 +633,35 @@ void IO::outputStruct::write(const kstring_t *kbuf)
 	}
 }
 
-
-
-
-
-IO::outFilesStruct::outFilesStruct(argStruct *args){
+IO::outFilesStruct::outFilesStruct(argStruct *args)
+{
 
 	if (args->printMatrix != 0)
 	{
-		out_dm_fs = new outputStruct(args->out_fn, ".distance_matrix.csv", args->printMatrix-1);
+		out_dm_fs = new outputStruct(args->out_fn, ".distance_matrix.csv", args->printMatrix - 1);
 	}
 
 	if (args->doEM == 1)
 	{
 		if (args->printJointGenoCountDist != 0)
 		{
-			out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", args->printJointGenoCountDist-1);
+			out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", args->printJointGenoCountDist - 1);
 		}
 		if (args->printJointGenoProbDist != 0)
 		{
-			out_jgpd_fs = new outputStruct(args->out_fn, ".joint_geno_prob_dist.csv", args->printJointGenoProbDist-1);
+			out_jgpd_fs = new outputStruct(args->out_fn, ".joint_geno_prob_dist.csv", args->printJointGenoProbDist - 1);
 		}
 	}
-	
+
 	if (args->doAMOVA == 2)
 	{
 		if (args->printJointGenoCountDist != 0)
 		{
-			out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", args->printJointGenoCountDist-1);
-			
+			out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", args->printJointGenoCountDist - 1);
 		}
 		if (args->printJointGenoProbDist != 0)
 		{
-			fprintf(stderr,"\n[ERROR] Joint genotype probability distribution output is not yet supported for -doAMOVA 2\n");
+			fprintf(stderr, "\n[ERROR] Joint genotype probability distribution output is not yet supported for -doAMOVA 2\n");
 			exit(1);
 		}
 	}
@@ -672,9 +674,9 @@ IO::outFilesStruct::outFilesStruct(argStruct *args){
 	{
 		out_dev_fs = new outputStruct(args->out_fn, ".dev.csv", 1);
 	}
-	if(args->doDxy == 1)
+	if (args->doDxy == 1)
 	{
-		out_dxy_fs = new outputStruct(args->out_fn, ".dxy.csv", args->doDxy-1);
+		out_dxy_fs = new outputStruct(args->out_fn, ".dxy.csv", args->doDxy - 1);
 	}
 }
 
@@ -688,26 +690,88 @@ IO::outFilesStruct::~outFilesStruct()
 	DELETE(out_jgpd_fs);
 	DELETE(out_dxy_fs);
 }
-        // void flushAll()
-        // {
-        //     if (out_dm_fs != NULL)
-        //     {
-        //         out_dm_fs->flush();
-        //     }
-        //     if (out_jgcd_fs != NULL)
-        //     {
-        //         out_jgcd_fs->flush();
-        //     }
-        //     if (out_jgpd_fs != NULL)
-        //     {
-        //         out_jgpd_fs->flush();
-        //     }
-        //     if (out_amova_fs != NULL)
-        //     {
-        //         out_amova_fs->flush();
-        //     }
-        //     if (out_dev_fs != NULL)
-        //     {
-        //         out_dev_fs->flush();
-        //     }
-        // }
+// void flushAll()
+// {
+//     if (out_dm_fs != NULL)
+//     {
+//         out_dm_fs->flush();
+//     }
+//     if (out_jgcd_fs != NULL)
+//     {
+//         out_jgcd_fs->flush();
+//     }
+//     if (out_jgpd_fs != NULL)
+//     {
+//         out_jgpd_fs->flush();
+//     }
+//     if (out_amova_fs != NULL)
+//     {
+//         out_amova_fs->flush();
+//     }
+//     if (out_dev_fs != NULL)
+//     {
+//         out_dev_fs->flush();
+//     }
+// }
+
+void IO::vprint(const char *format, ...)
+{
+	if (CHAR_BITCHECK_ANY(VERBOSE) == 1)
+	{
+		char str[1024];
+
+		va_list args;
+		va_start(args, format);
+		vsprintf(str, format, args);
+		va_end(args);
+
+		fprintf(stderr, "\n[VERBOSE:%d]\t%s\n", LOG2_INT128_LUT[VERBOSE], str);
+	}
+}
+
+void IO::vprint(const int verbose_threshold, const char *format, ...)
+{
+	if (BITCHECK_ATLEAST(VERBOSE, verbose_threshold) == 1)
+	{
+		char str[1024];
+
+		va_list args;
+		va_start(args, format);
+		vsprintf(str, format, args);
+		va_end(args);
+
+		fprintf(stderr, "\n[VERBOSE:%d]\t%s\n", LOG2_INT128_LUT[VERBOSE], str);
+	}
+}
+
+void IO::vprint(FILE *fp, const int verbose_threshold, const char *format, ...)
+{
+	if (BITCHECK_ATLEAST(VERBOSE, verbose_threshold) == 1)
+	{
+		char str[1024];
+
+		va_list args;
+		va_start(args, format);
+		vsprintf(str, format, args);
+		va_end(args);
+
+		fprintf(fp, "\n[VERBOSE:%d]\t%s\n", LOG2_INT128_LUT[VERBOSE], str);
+	}
+}
+
+void IO::vvprint(FILE *fp, const int verbose_threshold, const char *format, ...)
+{
+	if (BITCHECK_ATLEAST(VERBOSE, verbose_threshold) == 1)
+	{
+
+		char str[1024];
+
+		va_list args;
+		va_start(args, format);
+		vsprintf(str, format, args);
+		va_end(args);
+
+		fprintf(fp, "\n[VERBOSE:%d]\t%s\n", LOG2_INT128_LUT[VERBOSE], str);
+		fprintf(stderr, "\n[VERBOSE:%d]\t%s\n", LOG2_INT128_LUT[VERBOSE], str);
+	}
+}

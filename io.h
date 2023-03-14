@@ -19,6 +19,30 @@ struct pairStruct;
 namespace IO
 {
 
+    /// @brief verbose print - print to stderr if verbose != 0
+    /// @example vprint("Hello %s", "World");
+    void vprint(const char *format, ...);
+
+    /// @brief (overload) verbose print with threshold
+    /// @param verbose_threshold threshold for printing the specified message
+    /// @example vprint(1, "Hello %s", "World"); // will print if verbose >= 1
+    void vprint(const int verbose_threshold, const char *format, ...);
+
+    /// @brief (overload) verbose print with threshold and file pointer
+    /// @param fp file pointer to print to
+    /// @param verbose_threshold threshold for printing the specified message
+    /// @example vprint(1, "Hello %s", "World"); // will print to fp if verbose >= 1
+    void vprint(FILE *fp, const int verbose_threshold, const char *format, ...);
+
+    /// @brief verbose print with threshold and file pointer, prints to both stderr and file
+    /// @param fp file pointer to print to
+    /// @param verbose_threshold threshold for printing the specified message
+    /// @example vprint(1, "Hello %s", "World"); // will print to both stderr and fp if verbose >= 1
+    void vvprint(FILE *fp, const int verbose_threshold, const char *format, ...);
+
+
+    void requireFile(const char *fn);
+
     extern const char* FILE_EXTENSIONS[];
 
     char *setFileName(const char *a, const char *b);

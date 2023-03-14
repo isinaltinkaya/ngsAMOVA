@@ -44,7 +44,6 @@ struct paramStruct
     int nIndCmb;
 
     int nAmovaRuns;
-    int verbose;
 
     // input file type from enum
     int in_ft;
@@ -61,9 +60,6 @@ struct paramStruct
     // e.g. nInd > 0
     void validate();
 
-    // verbose print
-    void vprint(const int verbose_threshold, const char *format, ...);
-    void vprint(const char *format, ...);
 
 };
 

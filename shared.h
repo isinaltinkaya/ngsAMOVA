@@ -17,6 +17,8 @@
 
 #include <math.h>
 
+#include "lookup.h"
+
 /* ========================================================================== */
 /* MACRO DEFINITIONS ======================================================== */
 /* ========================================================================== */
@@ -29,18 +31,17 @@
 /*
  * Macro:[DBL_MAX_DIG_TOPRINT]
  * 	maximum number of digits needed to print a double
- * 
+ *
  * 	longest number == smalles negative number
  * 		-pow(2, DBL_MIN_EXP - DBL_MANT_DIG)
  * 	-pow(2,-N) needs 3+N digits
  * 		to represent (sign, decimal point, N digits)
  * 		'-0.<N digits>'
- * 
+ *
  * @requires <float.h>
  */
 #define DBL_MAX_DIG_TOPRINT 3 + DBL_MANT_DIG - DBL_MIN_EXP
-//TODO deprecated
-
+// TODO deprecated
 
 /*
  * Macro:[AT]
@@ -50,11 +51,9 @@
 #define ASSTR(x) STRINGIFY(x)
 #define AT __FILE__ ":" ASSTR(__LINE__)
 
-
-
-#define NEVER() \
+#define NEVER()                                                                                                                                                 \
 	fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) Control should never reach this point; please report this to the developers.\n*******\n", __FILE__, __LINE__); \
-	exit(1); \
+	exit(1);
 
 /*
  * Macro:[ASSERT]
@@ -159,6 +158,72 @@
 		expr = Z_NULL;                                                                               \
 	}
 
+/* -> BIT MANIPULATION MACROS ------------------------------------------------*/
+
+/* Macro:[BITSET]
+ * set a specific bit in x
+ *
+ * @param x		the variable to set the bit in
+ * @param bit	the bit to set
+ * @return		x is modified in place
+ */
+#define BITSET(x, bit) ((x) |= (1 << (bit)))
+
+/* Macro:[BITTOGGLE]
+ * toggle a specific bit in x
+ *
+ * @param x		the variable to toggle the bit in
+ * @param bit	the bit to toggle
+ * @return		x is modified in place
+ */
+#define BITTOGGLE(x, bit) ((x) ^= (1 << (bit)))
+
+/* Macro:[BITCLEAR]
+ * clear a specific bit in x
+ *
+ * @param x		the variable to clear the bit in
+ * @param bit	the bit to clear
+ * @return		x is modified in place
+ */
+#define BITCLEAR(x, bit) ((x) &= ~(1 << (bit)))
+
+/* Macro:[BITCHECK]
+ * check if a specific bit is set in x
+ *
+ * @param x		the variable to check the bit in
+ * @param bit	the bit to check
+ * @return		1 if the bit is set, 0 otherwise
+ */
+#define BITCHECK(x, bit) !!((x) & (1 << (bit)))
+
+/* Macro:[CHAR_BITCHECK_ANY]
+ * check if any bit is set in a char
+ *
+ * @param x		the char to check
+ * @return		1 if any bit is set, 0 otherwise
+ */
+#define CHAR_BITCHECK_ANY(x) !!((x)&0xFF)
+
+/* Macro:[WHICH_BIT_SET]
+ * return the index of the first bit set in x
+ * -1 if no bit is set
+ *
+ * @param x		the variable to check
+ * @return		the index of the first bit set in x
+ * 				-1 if no bit is set
+ */
+#define WHICH_BIT_SET(x) (x == 0 ? -1 : (int)log2(x))
+
+/* Macro:[BITCHECK_ATLEAST]
+ * check if at any bit that is at least as significant as the specified bit is set
+ *
+ * @param x		the variable to check
+ * @param bit	the bit to check
+ * @return		1 if any bit that is at least as significant as the specified bit is set
+ * 				0 otherwise
+ */
+#define BITCHECK_ATLEAST(x, bit) !!((x >> (bit)) & 0xFF)
+
 /* LIMIT DEFINING MACROS -----------------------------------------------------*/
 
 // maximum number of tokens allowed in amova formula string
@@ -173,7 +238,7 @@
  * 		...
  *      strata99 = 99 (max)
  *      nStrata = 100
- * 
+ *
  * Macro:[MAXSIZE_HLEVEL]
  * Defines the maximum number of strata allowed in a hierarchical level
  * e.g. MAXDIG_PER_HLEVEL = 2
@@ -181,7 +246,6 @@
  */
 #define MAXDIG_PER_HLEVEL 2
 #define MAXSIZE_HLEVEL 100
-
 
 /*
  * Macro:[DBL_MAXDIG10]
@@ -211,16 +275,10 @@
 // 1/9
 #define FRAC_1_9 0.1111111111111111
 
-const int pow10[10] = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000};
-
-const int nChoose2[301] = {0, 0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66, 78, 91, 105, 120, 136, 153, 171, 190, 210, 231, 253, 276, 300, 325, 351, 378, 406, 435, 465, 496, 528, 561, 595, 630, 666, 703, 741, 780, 820, 861, 903, 946, 990, 1035, 1081, 1128, 1176, 1225, 1275, 1326, 1378, 1431, 1485, 1540, 1596, 1653, 1711, 1770, 1830, 1891, 1953, 2016, 2080, 2145, 2211, 2278, 2346, 2415, 2485, 2556, 2628, 2701, 2775, 2850, 2926, 3003, 3081, 3160, 3240, 3321, 3403, 3486, 3570, 3655, 3741, 3828, 3916, 4005, 4095, 4186, 4278, 4371, 4465, 4560, 4656, 4753, 4851, 4950, 5050, 5151, 5253, 5356, 5460, 5565, 5671, 5778, 5886, 5995, 6105, 6216, 6328, 6441, 6555, 6670, 6786, 6903, 7021, 7140, 7260, 7381, 7503, 7626, 7750, 7875, 8001, 8128, 8256, 8385, 8515, 8646, 8778, 8911, 9045, 9180, 9316, 9453, 9591, 9730, 9870, 10011, 10153, 10296, 10440, 10585, 10731, 10878, 11026, 11175, 11325, 11476, 11628, 11781, 11935, 12090, 12246, 12403, 12561, 12720, 12880, 13041, 13203, 13366, 13530, 13695, 13861, 14028, 14196, 14365, 14535, 14706, 14878, 15051, 15225, 15400, 15576, 15753, 15931, 16110, 16290, 16471, 16653, 16836, 17020, 17205, 17391, 17578, 17766, 17955, 18145, 18336, 18528, 18721, 18915, 19110, 19306, 19503, 19701, 19900, 20100, 20301, 20503, 20706, 20910, 21115, 21321, 21528, 21736, 21945, 22155, 22366, 22578, 22791, 23005, 23220, 23436, 23653, 23871, 24090, 24310, 24531, 24753, 24976, 25200, 25425, 25651, 25878, 26106, 26335, 26565, 26796, 27028, 27261, 27495, 27730, 27966, 28203, 28441, 28680, 28920, 29161, 29403, 29646, 29890, 30135, 30381, 30628, 30876, 31125, 31375, 31626, 31878, 32131, 32385, 32640, 32896, 33153, 33411, 33670, 33930, 34191, 34453, 34716, 34980, 35245, 35511, 35778, 36046, 36315, 36585, 36856, 37128, 37401, 37675, 37950, 38226, 38503, 38781, 39060, 39340, 39621, 39903, 40186, 40470, 40755, 41041, 41328, 41616, 41905, 42195, 42486, 42778, 43071, 43365, 43660, 43956, 44253, 44551, 44850};
-
-
 int find_n_given_nC2(int nC2_res);
 
 /* ========================================================================== */
 /* ENUMERATIONS ============================================================= */
-
 
 // output file compression types
 enum OUTFC
@@ -229,9 +287,6 @@ enum OUTFC
 	GZ,	  // gzip [1]
 	BBGZ, // bgzip (binary) [3]
 };
-
-// output file compression type lookup table
-extern const char* OUTFC_LUT[];
 
 // input file types
 enum INFT
@@ -242,6 +297,13 @@ enum INFT
 };
 
 /* ========================================================================== */
+
+// verbosity level external global variable
+// 0000 0000 -> 0 -> verbose off [default, set in argStruct.cpp]
+// 0000 0001 -> 1 -> verbose on with verbosity level 1
+// 0000 0010 -> 2 -> verbose on with verbosity level 2
+// ... and so on
+extern u_char VERBOSE;
 
 const double NEG_INF = -std::numeric_limits<double>::infinity();
 

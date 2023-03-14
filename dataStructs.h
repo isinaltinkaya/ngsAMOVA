@@ -603,11 +603,11 @@ typedef struct metadataStruct
 	int getDigits(int number, int idx, int n_digits)
 	{
 
-		int res = number % pow10[(n_digits * idx) + n_digits];
+		int res = number % POW10_LUT[(n_digits * idx) + n_digits];
 
 		if (idx > 0)
 		{
-			res = res / pow10[(n_digits * (idx - 1)) + n_digits];
+			res = res / POW10_LUT[(n_digits * (idx - 1)) + n_digits];
 		}
 
 		return res;
@@ -620,11 +620,11 @@ typedef struct metadataStruct
 	int getDigits(int number, int idx)
 	{
 
-		int res = number % pow10[(MAXDIG_PER_HLEVEL * idx) + 2];
+		int res = number % POW10_LUT[(MAXDIG_PER_HLEVEL * idx) + 2];
 
 		if (idx > 0)
 		{
-			res = res / pow10[(MAXDIG_PER_HLEVEL * (idx - 1)) + 2];
+			res = res / POW10_LUT[(MAXDIG_PER_HLEVEL * (idx - 1)) + 2];
 		}
 		return res;
 	}
@@ -646,7 +646,7 @@ typedef struct metadataStruct
 
 		int dig = getDigitIndexAtLevel(nLevels, lvl_i);
 
-		size_t ret = pow10[dig] * lvl_strata_i;
+		size_t ret = POW10_LUT[dig] * lvl_strata_i;
 		ret = ret + key;
 
 		return ret;
@@ -658,19 +658,21 @@ typedef struct metadataStruct
 	size_t extractSubkey(size_t key, int lvl)
 	{
 
-		size_t ret = key % pow10[(MAXDIG_PER_HLEVEL * (lvl) + 2)];
+		size_t ret = key % POW10_LUT[(MAXDIG_PER_HLEVEL * (lvl) + 2)];
 		// if(ret == 0){
 		// if 910023 % 10000 = 0, return 0 + 10000
-		ret = ret + pow10[(MAXDIG_PER_HLEVEL * (lvl) + 2)];
+		ret = ret + POW10_LUT[(MAXDIG_PER_HLEVEL * (lvl) + 2)];
 		// }
 		return ret;
 	}
 
 	int indInStrata(int ind, int lvl, int strata_i)
 	{
-		size_t key = ind2stratakey[ind];
+		size_t full_key = ind2stratakey[ind];
 		size_t ref_key = calculateKeyAtLevel(lvl, strata_i);
-		if (key == ref_key)
+		int dig = getDigitIndexAtLevel(nLevels, lvl);
+
+		if (getDigits(full_key, dig) == getDigits(ref_key, dig))
 		{
 			return 1;
 		}
@@ -735,7 +737,7 @@ typedef struct metadataStruct
 
 		int found = 0;
 		int sum = 0;
-		int tmp[pow10[MAXDIG_PER_HLEVEL]];
+		int tmp[POW10_LUT[MAXDIG_PER_HLEVEL]];
 
 		// loop through existing keys (one key per individual)
 		for (int i = 0; i < nInd; i++)

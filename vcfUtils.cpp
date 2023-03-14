@@ -44,10 +44,9 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
 	get_data<float> lgl;
 	lgl.n = bcf_get_format_float(vcfd->hdr, vcfd->bcf, "GL", &lgl.data, &lgl.size_e);
 
+	lgl.n_values = lgl.n / pars->nInd;
 
-	lgl.n_values= lgl.n / pars->nInd;
-	
-	if(lgl.n_values!=10)
+	if (lgl.n_values != 10)
 	{
 		fprintf(stderr, "\n[ERROR](File reading)\t%d GL values found; this is not yet supported.\n\n", lgl.n_values);
 		exit(1);
@@ -59,13 +58,11 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
 		exit(1);
 	}
 
-
 	int cmbArr[pars->nIndCmb];
 	for (int i = 0; i < pars->nIndCmb; i++)
 	{
 		cmbArr[i] = 0;
 	}
-
 
 	// TODO check why neccessary
 	if (bcf_is_snp(vcfd->bcf))
@@ -149,7 +146,7 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
 					}
 				}
 
-// fprintf(stderr,"\n---->site_i %d indi %d indi3 %d a1 %d a2 %d\n",site_i,indi,indi3,a1,a2);
+				// fprintf(stderr,"\n---->site_i %d indi %d indi3 %d a1 %d a2 %d\n",site_i,indi,indi3,a1,a2);
 				vcfd->lngl[site_i][indi3 + 0] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a1)]);
 				vcfd->lngl[site_i][indi3 + 1] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a2)]);
 				vcfd->lngl[site_i][indi3 + 2] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a2, a2)]);
@@ -279,7 +276,6 @@ int get_JointGenoDist_GT(vcfData *vcfd, paramStruct *pars, argStruct *args)
 		fprintf(stderr, "ERROR:\n\nploidy: %d not supported\n", gt.ploidy);
 		exit(1);
 	}
-
 
 	// TODO disable creating this for isSim==0
 	get_data<int32_t> dp;
@@ -453,7 +449,7 @@ vcfData *vcfData_init(argStruct *args, paramStruct *pars, sampleStruct *sampleSt
 
 	// -doEM 1 : use 3 GLs (anc/anc, anc/der, der/der)
 	// -doAMOVA 2 : use 3 GTs (anc/anc, anc/der, der/der)
-	if(args->doEM == 1 || args->doAMOVA == 2)
+	if (args->doEM == 1 || args->doAMOVA == 2)
 	{
 		vcfd->nGT = 3;
 		vcfd->nJointClasses = vcfd->nGT * vcfd->nGT;
@@ -464,7 +460,7 @@ vcfData *vcfData_init(argStruct *args, paramStruct *pars, sampleStruct *sampleSt
 
 	pars->nInd = bcf_hdr_nsamples(vcfd->hdr);
 	vcfd->nInd = pars->nInd;
-	pars->nIndCmb = nChoose2[pars->nInd];
+	pars->nIndCmb = NC2_LUT[pars->nInd];
 	vcfd->nIndCmb = pars->nIndCmb;
 
 	pars->init_LUTs();
@@ -496,7 +492,6 @@ vcfData *vcfData_init(argStruct *args, paramStruct *pars, sampleStruct *sampleSt
 	return vcfd;
 }
 
-
 /// @param vcfd		pointer to vcfData
 /// @param args		pointer to argStruct
 /// @param pars		pointer to paramStruct
@@ -509,7 +504,7 @@ vcfData *vcfData_init(argStruct *args, paramStruct *pars, sampleStruct *sampleSt
 /// if block block size for block bootstrapping is set
 /// collect pointers to blocks while reading the sites
 ///
-//TODO check inclusive ranges etc and bed intervals 0 based 1 based 
+// TODO check inclusive ranges etc and bed intervals 0 based 1 based
 void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairSt, blobStruct *blobSt)
 {
 	/*
@@ -531,10 +526,9 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 
 	int skip_site = 0;
 
-
-	// 
+	//
 	// before reading the data, prepare a template for blobStruct with expected intervals etc.
-	// 
+	//
 	// as we read the data, we update the actual blobStruct
 	while (bcf_read(vcfd->in_fp, vcfd->hdr, vcfd->bcf) == 0)
 	{
@@ -545,7 +539,6 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 			exit(1);
 		}
 
-
 		while (pars->nSites >= vcfd->_lngl)
 		{
 			vcfd->lngl_expand(pars->nSites);
@@ -553,9 +546,8 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 			// vcfd->lngl=(double **)realloc(vcfd->lngl,vcfd->_lngl*sizeof(double *));
 		}
 
-
 		// lngl[i] = (double *)malloc(nInd * nGT * sizeof(double));
-		if(vcfd->lngl[pars->nSites] == NULL)
+		if (vcfd->lngl[pars->nSites] == NULL)
 		{
 			vcfd->lngl[pars->nSites] = (double *)malloc(pars->nInd * vcfd->nGT * sizeof(double));
 		}
@@ -574,11 +566,9 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 			continue;
 		}
 
-
 		double *block_ptr = NULL;
 
 		contig_id = vcfd->bcf->rid;
-
 
 		// if in the first loop
 		if (prev_contig == -1)
@@ -593,41 +583,43 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 			{
 				// make sure we are in the first block and not exceed the end of the first block
 
-				int bi=prev_block+1;
-				while(vcfd->bcf->pos > blobSt->contigBlockStarts[contig_id][bi]){
-					fprintf(stderr,"\n[INFO]\tSite %ld is outside of block (start: %d, idx: %d, contig: %d). Skipping the block.\n",vcfd->bcf->pos,blobSt->contigBlockStarts[contig_id][bi],bi,contig_id);
+				int bi = prev_block + 1;
+				while (vcfd->bcf->pos > blobSt->contigBlockStarts[contig_id][bi])
+				{
+					fprintf(stderr, "\n[INFO]\tSite %ld is outside of block (start: %d, idx: %d, contig: %d). Skipping the block.\n", vcfd->bcf->pos, blobSt->contigBlockStarts[contig_id][bi], bi, contig_id);
 					bi++;
 				}
 				// if we skipped at least one block
-				if (bi != prev_block+1)
+				if (bi != prev_block + 1)
 				{
-					//TODO
-					// prev_block = bi;
-
-				}else{ // we did not skip any blocks; so we really are in the first block
-
+					// TODO
+					//  prev_block = bi;
+				}
+				else
+				{ // we did not skip any blocks; so we really are in the first block
 
 					// check if we already have a pointer to the first block
 					if (blobSt->contigBlockStartPtrs[contig_id][prev_block] == NULL)
 					{
 						// if not, set the pointer to the first block
 						blobSt->contigBlockStartPtrs[contig_id][prev_block] = block_ptr;
-					}else{
+					}
+					else
+					{
 						// this should never happen since we are in the first loop
 						NEVER();
 					}
-
 				}
-
-			}else{ // not yet inside the first block, skip sites until we are inside the first block
+			}
+			else
+			{ // not yet inside the first block, skip sites until we are inside the first block
 
 				// skip site
-				//TODO
-
+				// TODO
 			}
-
-		}else{ // not in the first loop
-
+		}
+		else
+		{ // not in the first loop
 
 			// contig is changed
 			if (contig_id != prev_contig)
@@ -638,9 +630,8 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 				prev_block = 0;
 
 				// check if the new contig has any blocks we are supposed to use
-				//TODO
+				// TODO
 				//
-
 
 				// check if we are in the first block of the new contig
 				if (vcfd->bcf->pos > blobSt->contigBlockStarts[contig_id][prev_block])
@@ -648,21 +639,22 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 
 					// make sure we are in the first block and not exceed the end of the first block
 
-					int bi=prev_block+1;
-					while(vcfd->bcf->pos > blobSt->contigBlockStarts[contig_id][bi]){
-						fprintf(stderr,"\n[INFO]\tSite %ld is outside of block (start: %d, idx: %d, contig: %d). Skipping the block.\n",vcfd->bcf->pos,blobSt->contigBlockStarts[contig_id][bi],bi,contig_id);
+					int bi = prev_block + 1;
+					while (vcfd->bcf->pos > blobSt->contigBlockStarts[contig_id][bi])
+					{
+						fprintf(stderr, "\n[INFO]\tSite %ld is outside of block (start: %d, idx: %d, contig: %d). Skipping the block.\n", vcfd->bcf->pos, blobSt->contigBlockStarts[contig_id][bi], bi, contig_id);
 						bi++;
 					}
 					// if we skipped at least one block
-					if (bi != prev_block+1)
+					if (bi != prev_block + 1)
 					{
-						//TODO
+						// TODO
 
 						// prev_block = bi;
 						blobSt->contigBlockStartPtrs[contig_id][prev_block] = block_ptr;
-
-
-					}else{ // we did not skip any blocks; so we really are in the first block
+					}
+					else
+					{ // we did not skip any blocks; so we really are in the first block
 
 						// check if we already have a pointer to the first block
 						if (blobSt->contigBlockStartPtrs[contig_id][prev_block] == NULL)
@@ -670,31 +662,29 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 							// if not, set the pointer to the first block
 							block_ptr = vcfd->lngl[pars->nSites];
 							blobSt->contigBlockStartPtrs[contig_id][prev_block] = block_ptr;
-						}else{
+						}
+						else
+						{
 							// this should never happen since we are in a new contig
 							NEVER();
 						}
 					}
-
-				}else{ // not yet inside the first block, skip sites until we are inside the first block
+				}
+				else
+				{ // not yet inside the first block, skip sites until we are inside the first block
 
 					// skip site
-					//TODO
-
+					// TODO
 				}
-
-			}else{ // not in the first loop and the contig is not changed
-
-			//TODO
-
 			}
+			else
+			{ // not in the first loop and the contig is not changed
 
+				// TODO
+			}
 		}
 
-
-
 		//  fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block prev_bi %d\n\n",vcfd->bcf->pos,ci,prev_bi);
-
 
 		// if (vcfd->bcf->pos > blobSt->contigBlockStarts[contig_id][prev_block])
 		// {
@@ -703,10 +693,9 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 		// 	prev_bi++;
 		// }
 
-			//TODO check if any block interval is empty
+		// TODO check if any block interval is empty
 
-			// populate the stack blobstruct as you read, then replace the blobstruct with the actual blobstruct after reading all sites
-
+		// populate the stack blobstruct as you read, then replace the blobstruct with the actual blobstruct after reading all sites
 
 		pars->nSites++;
 		pars->totSites++;
@@ -723,7 +712,6 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 
 	fprintf(stderr, "\n\t-> Finished reading sites\n");
 }
-
 
 /// @param vcfd		pointer to vcfData
 /// @param args		pointer to argStruct
@@ -746,13 +734,12 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 			exit(1);
 		}
 
-		
 		while (pars->nSites >= vcfd->_lngl)
 		{
 			vcfd->lngl_expand(pars->nSites);
 		}
 
-		if(vcfd->lngl[pars->nSites] == NULL)
+		if (vcfd->lngl[pars->nSites] == NULL)
 		{
 			vcfd->lngl[pars->nSites] = (double *)malloc(pars->nInd * vcfd->nGT * sizeof(double));
 		}
@@ -827,7 +814,6 @@ void readSites_GT(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 	fprintf(stderr, "\n\t-> Finished reading sites\n");
 }
 
-
 void vcfData::init_JointGenoCountDistGL()
 {
 	ASSERT(nJointClasses > 0);
@@ -835,7 +821,7 @@ void vcfData::init_JointGenoCountDistGL()
 	JointGenoCountDistGL = (double **)malloc(nIndCmb * sizeof(double *));
 	for (int i = 0; i < nIndCmb; i++)
 	{
-		JointGenoCountDistGL[i] = (double *)malloc((nJointClasses+1) * sizeof(double));
+		JointGenoCountDistGL[i] = (double *)malloc((nJointClasses + 1) * sizeof(double));
 		for (int j = 0; j < nJointClasses + 1; j++)
 		{
 			JointGenoCountDistGL[i][j] = 0.0;
@@ -850,7 +836,7 @@ void vcfData::init_JointGenoProbDistGL()
 	JointGenoProbDistGL = (double **)malloc(nIndCmb * sizeof(double *));
 	for (int i = 0; i < nIndCmb; i++)
 	{
-		JointGenoProbDistGL[i] = (double *)malloc((nJointClasses+1) * sizeof(double));
+		JointGenoProbDistGL[i] = (double *)malloc((nJointClasses + 1) * sizeof(double));
 		for (int j = 0; j < nJointClasses + 1; j++)
 		{
 			JointGenoProbDistGL[i][j] = 0.0;
@@ -884,7 +870,7 @@ void vcfData::print_JointGenoCountDist(IO::outFilesStruct *outSt, argStruct *arg
 			for (int i = 0; i < nIndCmb; i++)
 			{
 				ksprintf(kbuf, "%i,", i);
-				for (int j = 0; j < nJointClasses+1; j++)
+				for (int j = 0; j < nJointClasses + 1; j++)
 				{
 					ksprintf(kbuf, "%f", JointGenoCountDistGL[i][j]);
 					if (j == nJointClasses)
@@ -904,7 +890,7 @@ void vcfData::print_JointGenoCountDist(IO::outFilesStruct *outSt, argStruct *arg
 			{
 
 				ksprintf(kbuf, "%i,", i);
-				for (int j = 0; j < nJointClasses+1; j++)
+				for (int j = 0; j < nJointClasses + 1; j++)
 				{
 					ksprintf(kbuf, "%i", JointGenoCountDistGT[i][j]);
 					if (j == nJointClasses)
@@ -934,7 +920,7 @@ void vcfData::print_JointGenoProbDist(IO::outFilesStruct *outSt, argStruct *args
 			{
 
 				ksprintf(kbuf, "%i,", i);
-				for (int j = 0; j < nJointClasses+1; j++)
+				for (int j = 0; j < nJointClasses + 1; j++)
 				{
 					ksprintf(kbuf, "%f", JointGenoProbDistGL[i][j]);
 					if (j == nJointClasses)
@@ -957,11 +943,10 @@ void vcfData::print_JointGenoProbDist(IO::outFilesStruct *outSt, argStruct *args
 	}
 }
 
-
 void vcfData::lngl_init(int doEM)
 {
 	lngl = (double **)malloc(_lngl * sizeof(double *));
-	ASSERT(nInd>0);
+	ASSERT(nInd > 0);
 
 	// EM using 3 GL values
 	if (doEM == 1)
@@ -984,7 +969,8 @@ void vcfData::lngl_init(int doEM)
 		for (int indi = 0; indi < nInd; indi++)
 		{
 			int indi3 = indi * nGT;
-			for(size_t j = 0; j < nGT; j++){
+			for (size_t j = 0; j < nGT; j++)
+			{
 				lngl[i][indi3 + j] = NEG_INF;
 			}
 		}
@@ -993,7 +979,7 @@ void vcfData::lngl_init(int doEM)
 
 void vcfData::lngl_expand(int site_i)
 {
-	int prev_lngl=_lngl;
+	int prev_lngl = _lngl;
 	_lngl = _lngl * 2;
 	lngl = (double **)realloc(lngl, _lngl * sizeof(double *));
 	// lngl = (double **)realloc(lngl, _lngl * sizeof(*lngl));
@@ -1003,7 +989,8 @@ void vcfData::lngl_expand(int site_i)
 		for (int indi = 0; indi < nInd; indi++)
 		{
 			int indi3 = indi * nGT;
-			for(size_t j = 0; j < nGT; j++){
+			for (size_t j = 0; j < nGT; j++)
+			{
 				lngl[i][indi3 + j] = NEG_INF;
 			}
 		}

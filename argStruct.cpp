@@ -1,13 +1,13 @@
 #include "argStruct.h"
 #include "paramStruct.h"
 
+// default: 0 (verbose mode off)
+u_char VERBOSE = 0;
 
 argStruct *argStruct_init()
 {
 
 	argStruct *args = (argStruct *)malloc(sizeof(argStruct));
-
-	args->verbose = 0;
 
 	args->in_vcf_fn = NULL;
 	args->in_dm_fn = NULL;
@@ -57,7 +57,7 @@ argStruct *argStruct_init()
 	return args;
 }
 
-//TODO check multiple of same argument
+// TODO check multiple of same argument
 /// @brief argStruct_get read command line arguments
 /// @param argc
 /// @param argv
@@ -73,6 +73,9 @@ argStruct *argStruct_get(int argc, char **argv)
 		char *arv = *argv;
 		char *val = *(++argv);
 
+		if (val == NULL)
+			usage(stdout);
+
 		if ((strcasecmp("--in_vcf", arv) == 0) || (strcasecmp("--input", arv) == 0) || (strcasecmp("-i", arv) == 0))
 		{
 			args->in_vcf_fn = strdup(val);
@@ -80,7 +83,8 @@ argStruct *argStruct_get(int argc, char **argv)
 		// else if ((strcasecmp("--inputJointGenoProbDist", arv) == 0) || (strcasecmp("--inputJGPD", arv) == 0) || (strcasecmp("-iJGPD", arv) == 0)){
 		// 	args->in_sfs_fn = strdup(val);
 		// }
-		else if ((strcasecmp("--in_dm", arv) == 0)){
+		else if ((strcasecmp("--in_dm", arv) == 0))
+		{
 			args->in_dm_fn = strdup(val);
 		}
 		else if (strcasecmp("-m", arv) == 0)
@@ -90,7 +94,8 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->out_fn = strdup(val);
 		}
 
-		else if ( (strcasecmp("--block_bed", arv)==0) || (strcasecmp("-bf", arv)==0) ){
+		else if ((strcasecmp("--block_bed", arv) == 0) || (strcasecmp("-bf", arv) == 0))
+		{
 			args->in_blb_fn = strdup(val);
 		}
 
@@ -112,12 +117,24 @@ argStruct *argStruct_get(int argc, char **argv)
 
 		else if ((strcasecmp("--verbose", arv) == 0) || (strcasecmp("-v", arv) == 0))
 		{
-			if (val == NULL)
-				args->verbose = 1;
+			if (atoi(val) == 0)
+			{
+				// explicit verbose off
+				BITSET(VERBOSE, 0);
+			}
 			else if (isdigit(val[0]))
-				args->verbose = atoi(val);
+			{
+				BITSET(VERBOSE, atoi(val));
+			}
 			else
-				args->verbose = 1;
+			{
+				NEVER();
+			}
+
+			if (CHAR_BITCHECK_ANY(VERBOSE))
+			{
+				fprintf(stderr, "\n[INFO]\t-> Verbosity level is set to %d.\n", WHICH_BIT_SET(VERBOSE));
+			}
 		}
 
 		else if (strcasecmp("--isSim", arv) == 0)
@@ -149,7 +166,6 @@ argStruct *argStruct_get(int argc, char **argv)
 		else if (strcasecmp("--tole", arv) == 0)
 			args->tole = atof(val);
 
-
 		else if (strcasecmp("--gl2gt", arv) == 0)
 			args->gl2gt = atoi(val);
 
@@ -158,15 +174,18 @@ argStruct *argStruct_get(int argc, char **argv)
 
 		// read block size as float and convert to int
 		// this is to allow for the use of scientific notation (e.g. 1e6)
-		else if ((strcasecmp("-bs", arv) == 0) || (strcasecmp("--blockSize", arv) == 0)){
+		else if ((strcasecmp("-bs", arv) == 0) || (strcasecmp("--blockSize", arv) == 0))
+		{
 			args->blockSize = (int)atof(val);
 		}
 
-		else if ((strcasecmp("-ws", arv) == 0) || (strcasecmp("--windowSize", arv) == 0)){
+		else if ((strcasecmp("-ws", arv) == 0) || (strcasecmp("--windowSize", arv) == 0))
+		{
 			args->windowSize = (int)atof(val);
 		}
 
-		else if ((strcasecmp("-nb", arv) == 0) || (strcasecmp("--nBootstraps", arv) == 0)){
+		else if ((strcasecmp("-nb", arv) == 0) || (strcasecmp("--nBootstraps", arv) == 0))
+		{
 			args->nBootstraps = (int)atof(val);
 		}
 
@@ -175,6 +194,7 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->formula = strdup(val);
 		}
 
+		// TODO decide btw single - and --
 		else if (strcasecmp("--hasColNames", arv) == 0)
 			args->hasColNames = atoi(val);
 		else if (strcasecmp("-seed", arv) == 0)
@@ -189,8 +209,12 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->isSim = atoi(val);
 		else if (strcasecmp("-isTest", arv) == 0)
 			args->isTest = atoi(val);
+
 		else if (strcasecmp("-printMatrix", arv) == 0)
 			args->printMatrix = atoi(val);
+		else if (strcasecmp("--printMatrix", arv) == 0)
+			args->printMatrix = atoi(val);
+
 		else if (strcasecmp("-doDist", arv) == 0)
 			args->doDist = atoi(val);
 		else if (strcasecmp("-minInd", arv) == 0)
@@ -257,7 +281,6 @@ argStruct *argStruct_get(int argc, char **argv)
 		args->out_fn = strdup("amovaput");
 		fprintf(stderr, "\n\t-> -out <output_prefix> not set; will use %s as a prefix for output files.\n", args->out_fn);
 	}
-
 
 	if (args->in_mtd_fn == NULL)
 	{
@@ -504,8 +527,8 @@ void argStruct_print(FILE *fp, argStruct *args)
 	// fprintf(fp, "\nCommand: %s", args->command);//TODO
 	fprintf(fp, "\n\t-> -in_vcf_fn %s", args->in_vcf_fn);
 
-	//TODO use lut to store names and values and associatons (e.g. tole maxiter etc assoc with doEM)
-	//and if -formula is used, run formulaStruct_get()
+	// TODO use lut to store names and values and associatons (e.g. tole maxiter etc assoc with doEM)
+	// and if -formula is used, run formulaStruct_get()
 	fprintf(fp, "\nngsAMOVA -doAMOVA %d -i %s -out %s -isSim %d -minInd %d -printMatrix %d -m %s -doDist %d -nThreads %d", args->doAMOVA, args->in_vcf_fn, args->out_fn, args->isSim, args->minInd, args->printMatrix, args->in_mtd_fn, args->doDist, args->mThreads);
 	if (args->doEM != 0)
 	{
@@ -513,7 +536,7 @@ void argStruct_print(FILE *fp, argStruct *args)
 		fprintf(fp, " -doEM %d ", args->doEM);
 		fprintf(fp, " -maxIter %d ", args->maxEmIter);
 	}
-	if (args->nBootstraps>0)
+	if (args->nBootstraps > 0)
 	{
 		fprintf(fp, " --nBootstraps %d ", args->nBootstraps);
 		fprintf(fp, " --blockSize %d ", args->blockSize);

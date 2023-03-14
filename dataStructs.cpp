@@ -1,16 +1,16 @@
 #include "io.h"
 #include "dataStructs.h"
 
-//TODO is this the proper way to do this?
+// TODO is this the proper way to do this?
 /// @brief calculate buffer size for CSV output
 /// @param n_vals number of values
 /// @param max_digits maximum number of digits
 /// @return buffer size
 const int calculateBufferSizeCsv(const int n_vals, const int max_digits)
 {
-	// max_digits + 1 = 1 comma 
+	// max_digits + 1 = 1 comma
 	// result + 2 = 1 newline at the end + 1 null terminator
-	return ((n_vals * (max_digits + 1))+2);
+	return ((n_vals * (max_digits + 1)) + 2);
 }
 
 void distanceMatrixStruct::print(IO::outputStruct *out_dm_fs)
@@ -22,10 +22,10 @@ void distanceMatrixStruct::print(IO::outputStruct *out_dm_fs)
 	{
 		if (px != 0 && px != nIndCmb - 1)
 		{
-			//TODO check snprintf maxsize
-			// bufptr += sprintf(bufptr, ",%.*f", (int)DBL_MAXDIG10, M[px]);
-			// bufptr += snprintf(bufptr, max_buf_size, ",%.*f", (int)DBL_MAXDIG10, M[px]);
-			// bufptr += snprintf(bufptr, max_digits+1, ",%.*f", (int)DBL_MAXDIG10, M[px]);
+			// TODO check snprintf maxsize
+			//  bufptr += sprintf(bufptr, ",%.*f", (int)DBL_MAXDIG10, M[px]);
+			//  bufptr += snprintf(bufptr, max_buf_size, ",%.*f", (int)DBL_MAXDIG10, M[px]);
+			//  bufptr += snprintf(bufptr, max_digits+1, ",%.*f", (int)DBL_MAXDIG10, M[px]);
 			ksprintf(kbuf, ",");
 			ksprintf(kbuf, "%.*f", (int)DBL_MAXDIG10, M[px]);
 		}
@@ -52,7 +52,6 @@ void distanceMatrixStruct::print(IO::outputStruct *out_dm_fs)
 	}
 	out_dm_fs->write(kbuf);
 	kbuf_destroy(kbuf);
-
 }
 
 /// @brief read distance matrix file
@@ -191,7 +190,7 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 
 	if (FORMULA == NULL)
 	{
-		
+
 		if (has_colnames != 1)
 		{
 			fprintf(stderr, "\n[ERROR]\t If no formula is provided, the metadata file must have a header line with the column names.\n");
@@ -216,7 +215,7 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 
 		do
 		{
-			pars->vprint(1, "\n[INFO]\t-> Found hierarchical level: %s\n", hdrtok);
+			IO::vprint(1, "\n[INFO]\t-> Found hierarchical level: %s\n", hdrtok);
 			nLevels++;
 			levelNames[nLevels] = new char[strlen(hdrtok) + 1];
 			ASSERT(strncpy(levelNames[nLevels], hdrtok, strlen(hdrtok) + 1) != NULL);
@@ -265,7 +264,7 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 			{
 
 				// if input file type is vcf, find the index of the individual in the bcf header
-				//TODO check nInd+1 why
+				// TODO check nInd+1 why
 				for (sidx = 0; sidx < pars->nInd + 1; sidx++)
 				{
 
@@ -276,8 +275,8 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 					}
 					else if (strcmp(tok, sampleSt->sampleNames[sidx]) == 0)
 					{
-						pars->vprint(2, "Found sample (vcf_index=%d,id=%s) in the metadata file.", sidx, tok);
-						
+						IO::vprint(2, "Found sample (vcf_index=%d,id=%s) in the metadata file.", sidx, tok);
+
 						// break when found, so that sidx is now the index of the sample in the vcf file
 						break;
 					}
@@ -288,7 +287,6 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 				// loop through the hierarchical levels in the line
 				for (int lvl_i = 0; lvl_i < mS->nLevels; lvl_i++)
 				{
-
 
 					// first column after individual name is the highest hierarchical level
 					tok = strtok(NULL, METADATA_DELIMS);
@@ -304,7 +302,7 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 
 						key = mS->setKeyDigitAtLevel(key, lvl_i, strata_idx_i);
 						// add the strata to its parent's subStrataIdx
-						mS->addSubStrataIdx(key,lvl_i);
+						mS->addSubStrataIdx(key, lvl_i);
 
 						// EOL end of the first line
 						if (lvl_i == mS->nLevels - 1)
@@ -323,7 +321,7 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 						strata_idx_i = mS->hierArr[lvl_i]->getStrataIndex(tok);
 						key = mS->setKeyDigitAtLevel(key, lvl_i, strata_idx_i);
 						// add the strata to its parent's subStrataIdx
-						mS->addSubStrataIdx(key,lvl_i);
+						mS->addSubStrataIdx(key, lvl_i);
 						mS->ind2stratakey[sidx] = key;
 
 						// at the lowest level; end of the individual's line
@@ -340,7 +338,7 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 						strata_idx_i = mS->hierArr[lvl_i]->getStrataIndex(tok);
 						key = mS->setKeyDigitAtLevel(key, lvl_i, strata_idx_i);
 						// add the strata to its parent's subStrataIdx
-						mS->addSubStrataIdx(key,lvl_i);
+						mS->addSubStrataIdx(key, lvl_i);
 					}
 				}
 			}
@@ -368,7 +366,7 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 						ASSERT(strata_idx_i == 0);
 						key = mS->setKeyDigitAtLevel(key, lvl_i, strata_idx_i);
 						// add the strata to its parent's subStrataIdx
-						mS->addSubStrataIdx(key,lvl_i);
+						mS->addSubStrataIdx(key, lvl_i);
 
 						// EOL end of the first line
 						if (lvl_i == mS->nLevels - 1)
@@ -376,10 +374,10 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 							// EOL
 							// lowest level (excluding individual) in the first line
 							mS->ind2stratakey[sidx] = key;
-							sidx++;//TODO not in vcf
+							sidx++; // TODO not in vcf
 							continue;
-						// }else if(lvl_i != 0)
-						// {
+							// }else if(lvl_i != 0)
+							// {
 						}
 					}
 
@@ -392,11 +390,10 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 						strata_idx_i = mS->hierArr[lvl_i]->getStrataIndex(tok);
 						key = mS->setKeyDigitAtLevel(key, lvl_i, strata_idx_i);
 						// add the strata to its parent's subStrataIdx
-						mS->addSubStrataIdx(key,lvl_i);
+						mS->addSubStrataIdx(key, lvl_i);
 						mS->ind2stratakey[sidx] = key;
 
-						sidx++; //TODO
-
+						sidx++; // TODO
 					}
 					else
 					{
@@ -411,8 +408,7 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 						strata_idx_i = mS->hierArr[lvl_i]->getStrataIndex(tok);
 						key = mS->setKeyDigitAtLevel(key, lvl_i, strata_idx_i);
 						// add the strata to its parent's subStrataIdx
-						mS->addSubStrataIdx(key,lvl_i);
-
+						mS->addSubStrataIdx(key, lvl_i);
 					}
 				}
 			}
@@ -424,11 +420,11 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 		}
 		// mS->resize();
 
-		//TODO printtable
-		// mS->print(stderr);
+		// TODO printtable
+		//  mS->print(stderr);
 
-		//TODO improve with bitarray LUT, 1 if pair belongs to given strata 0 otherwise
-		// pairToAssoc[pair_idx][hier_level][strata_idx] = 1 
+		// TODO improve with bitarray LUT, 1 if pair belongs to given strata 0 otherwise
+		//  pairToAssoc[pair_idx][hier_level][strata_idx] = 1
 		for (size_t i = 0; i < (size_t)mS->nLevels + 1; i++)
 		{
 			delete[] levelNames[i];
@@ -436,9 +432,8 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 		delete[] levelNames;
 		delete[] mtd_buf;
 
-
 		pars->nInd = mS->nInd;
-		pars->nIndCmb = nChoose2[pars->nInd];
+		pars->nIndCmb = NC2_LUT[pars->nInd];
 		mS->nIndCmb = pars->nIndCmb;
 		if (pars->in_ft == IN_DM)
 		{
@@ -446,23 +441,24 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 			set_lut_indsToIdx_2way(pars->nInd, pars->nIndCmb, pars->lut_indsToIdx, pars->lut_idxToInds);
 		}
 
-		ASSERT(mS->nInd>0);
+		ASSERT(mS->nInd > 0);
 		mS->pairToAssoc_create();
-		for(int l=0; l < mS->nLevels; l++)
+		for (int l = 0; l < mS->nLevels; l++)
 		{
-			for (int gi=0; gi < mS->hierArr[l]->nStrata; gi++)
+			for (int gi = 0; gi < mS->hierArr[l]->nStrata; gi++)
 			{
-				for(int i1=0; i1 < pars->nInd-1; i1++){
-					for(int i2=i1+1; i2 < pars->nInd; i2++){
-						if (mS->pairInStrataAtLevel(i1, i2, l, gi) == 1){
+				for (int i1 = 0; i1 < pars->nInd - 1; i1++)
+				{
+					for (int i2 = i1 + 1; i2 < pars->nInd; i2++)
+					{
+						if (mS->pairInStrataAtLevel(i1, i2, l, gi) == 1)
+						{
 							mS->pairToAssoc[pars->lut_indsToIdx[i1][i2]][l][gi] = 1;
 						}
 					}
 				}
 			}
 		}
-
-		
 
 		return (mS);
 	}
@@ -844,24 +840,22 @@ blobStruct *blobStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *
 	return c;
 }
 
-
-
 // /// Warnings
 // ///
 // /// Warnings[IsRelatedToTypeX][IndexInTypeX] = "Warning string"
 // ///
 // /// Why do you get this warning = You used [IsRelatedToTypeX][IndexInTypeX]
 // /// e.g. Warnings[INFT][IN_VCF] = "You used VCF input file type"
-// const char* WARNINGS[][] = { 
+// const char* WARNINGS[][] = {
 // 	// INFT input file type
-// 	{ 
+// 	{
 // 		// IN_VCF	input file type is VCF
 // 		{"Assuming that the VCF file is sorted by position."},
 // 		// IN_DM	input file type is distance matrix
 // 		{"Assuming that the distance matrix is either an output from this program or a distance matrix with prepared with the same format as the output of this program."},
 // 		// IN_JGPD
 // 		{""}
-// 	} 
+// 	}
 // }
 
 /// @brief  getDigitIndexAtLevel - get the index of a digit from the right
@@ -871,24 +865,26 @@ blobStruct *blobStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *
 /// @return  					index of digit (from the right)
 /// @details  					Example: nLevels = 3, lvl = 1, maxDigitsPerHLevel = 2
 ///								[1]	[][] [][] [][]
-///								 ^ 	  ^    ^    ^   
+///								 ^ 	  ^    ^    ^
 ///								 ^	  ^	   ^	|______ the subkey for lvl 2 starts from here (lowest level, e.g. subpopulation)
 /// 							 ^	  ^	   |______ the subkey for lvl 1 starts from here (second highest level, e.g. population)
 ///								 ^    |______ the subkey for lvl 0 starts from here (highest level, e.g. region)
 ///								 |______ the key holder starts from here (holding the rest together)
 ///
-int getDigitIndexAtLevel(const int nLevels, const int lvl, const int maxDigitsPerHLevel){
+int getDigitIndexAtLevel(const int nLevels, const int lvl, const int maxDigitsPerHLevel)
+{
 
 	// convert to 0-indexed
-	int n = nLevels-1;
-	return (n-lvl) * maxDigitsPerHLevel;
+	int n = nLevels - 1;
+	return (n - lvl) * maxDigitsPerHLevel;
 }
 
 /// @brief   [overload] getDigitIndexAtLevel - get the index of a digit from the right
 /// @details function overload for default MAXDIG_PER_HLEVEL
-int getDigitIndexAtLevel(const int nLevels, const int lvl){
-	int n = nLevels-1;
-	return (n-lvl) * MAXDIG_PER_HLEVEL;
+int getDigitIndexAtLevel(const int nLevels, const int lvl)
+{
+	int n = nLevels - 1;
+	return (n - lvl) * MAXDIG_PER_HLEVEL;
 }
 
 /// @brief calculateKeyAtLevel - calculate the strata key value at a given strata index in a given level
@@ -899,9 +895,8 @@ int getDigitIndexAtLevel(const int nLevels, const int lvl){
 int calculateKeyAtLevel(const int lvl, const int strata_idx)
 {
 	return (int)(pow(10, MAXDIG_PER_HLEVEL * (lvl + 1)) + strata_idx);
-	// pow10[]
+	// POW10_LUT[]
 }
-
 
 /// @brief estimate_dxy - estimate dxy statistic for a pair of individuals
 /// @param idx1			- index of the first group at specified level
@@ -914,16 +909,17 @@ int calculateKeyAtLevel(const int lvl, const int strata_idx)
 double estimate_dxy(const int idx1, const int idx2, const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars)
 {
 
-	double dxy=0.0;
+	double dxy = 0.0;
 
-	//TODO below
-	// // extract the strata id at level from key1 and key2
-	// const int strata1 = (key1 >> (lvl*8)) & 0xFF;
-	// const int strata2 = (key2 >> (lvl*8)) & 0xFF;
+	// TODO below
+	//  // extract the strata id at level from key1 and key2
+	//  const int strata1 = (key1 >> (lvl*8)) & 0xFF;
+	//  const int strata2 = (key2 >> (lvl*8)) & 0xFF;
 
 	// lvl is 0-indexed and nLevels is count
-	if(lvl >= mtd->nLevels){
-		fprintf(stderr,"\n[ERROR][estimate_dxy] The level specified (%d) is greater than the number of levels (%d)\n",lvl+1,mtd->nLevels);
+	if (lvl >= mtd->nLevels)
+	{
+		fprintf(stderr, "\n[ERROR][estimate_dxy] The level specified (%d) is greater than the number of levels (%d)\n", lvl + 1, mtd->nLevels);
 		exit(1);
 	}
 
@@ -931,35 +927,37 @@ double estimate_dxy(const int idx1, const int idx2, const int lvl, distanceMatri
 	const int nInd1 = mtd->hierArr[lvl]->nIndPerStrata[idx1];
 	const int nInd2 = mtd->hierArr[lvl]->nIndPerStrata[idx2];
 
-	double nxny = (double) (nInd1 * nInd2);
+	IO::vprint(1, "Running estimate_dxy for strata %d (nInd:%d) and strata %d (nInd:%d) at level %d", idx1, nInd1, idx2, nInd2, lvl);
 
+	double nxny = (double)(nInd1 * nInd2);
 
-	
-	if(idx1 == idx2){
-		fprintf(stderr,"\n[ERROR][estimate_dxy] idx1:%d is equal to idx2:%d\n",idx1,idx2);
+	if (idx1 == idx2)
+	{
+		fprintf(stderr, "\n[ERROR][estimate_dxy] idx1:%d is equal to idx2:%d\n", idx1, idx2);
 		exit(1);
 	}
 
-	
 	// locate the individual pairs in the distance matrix where one individual is from group 1 and the other is from group 2
-	for(int i1=0; i1 < dMS->nInd-1; i1++){
+	for (int i1 = 0; i1 < dMS->nInd - 1; i1++)
+	{
 
 		// use i1s belonging to idx1
-		if(mtd->indInStrata(i1, lvl, idx1) != 1) continue;
+		if (mtd->indInStrata(i1, lvl, idx1) != 1)
+			continue;
 
-
-		for(int i2=i1+1; i2 < dMS->nInd; i2++){
+		for (int i2 = i1 + 1; i2 < dMS->nInd; i2++)
+		{
 
 			// use i2s belonging to idx2
-			if(mtd->indInStrata(i2, lvl, idx2) != 1) continue;
+			if (mtd->indInStrata(i2, lvl, idx2) != 1)
+				continue;
 
-			pars->vprint(1,"Running estimate_dxy for i1:%d from group with index %d and i2:%d from group with index %d.",i1,idx1,i2,idx2);
+			IO::vprint(2, "Running estimate_dxy for i1:%d from group with index %d and i2:%d from group with index %d at hierarchical level %d\n", i1, idx1, i2, idx2, lvl);
 
-			dxy += dMS->M[pars->lut_indsToIdx[i1][i2]] ;
+			// IO::vprint(3,"dxy was %f and adding %f",dxy,dMS->M[pars->lut_indsToIdx[i1][i2]]);
+			dxy += dMS->M[pars->lut_indsToIdx[i1][i2]];
 		}
 	}
 	dxy = dxy / nxny;
 	return dxy;
-
-
 }

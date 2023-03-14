@@ -7,6 +7,8 @@
 // TODO is this necessary?
 struct argStruct;
 
+extern u_char VERBOSE;
+
 /*
 * @typedef
 * @abstract argStruct - argument structure
@@ -145,7 +147,6 @@ struct argStruct;
 struct argStruct
 {
 
-int verbose;
 
 char *in_vcf_fn;
 char *in_dm_fn;

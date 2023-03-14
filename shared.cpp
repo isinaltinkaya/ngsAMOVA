@@ -14,7 +14,7 @@
 #include "argStruct.h"
 #include "paramStruct.h"
 
-const char *OUTFC_LUT[] = {"No compression", "gzip", "bgzip", "binary bgzip"};
+
 
 //
 // 0 1 2
@@ -40,13 +40,13 @@ using size_t = decltype(sizeof(int));
 int find_n_given_nC2(int nC2_res)
 {
 	int n = 0;
-	while (nChoose2[n] < nC2_res)
+	while (NC2_LUT[n] < nC2_res)
 	{
 		n++;
 	}
-	if (nChoose2[n] != nC2_res)
+	if (NC2_LUT[n] != nC2_res)
 	{
-		fprintf(stderr, "[%s:%s()]\t->Error: nC2_res:%d not found in nChoose2[]\n", __FILE__, __FUNCTION__, nC2_res);
+		fprintf(stderr, "[%s:%s()]\t->Error: nC2_res:%d not found in NC2_LUT[]\n", __FILE__, __FUNCTION__, nC2_res);
 		exit(1);
 	}
 	return n;

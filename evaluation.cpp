@@ -22,7 +22,6 @@ void eval_distanceMatrixStruct(paramStruct *pars, distanceMatrixStruct *dm)
     }
 }
 
-
 void eval_amovaStruct(AMOVA::amovaStruct *amv)
 {
 
@@ -31,7 +30,4 @@ void eval_amovaStruct(AMOVA::amovaStruct *amv)
     //     fprintf(stderr, "\n[ERROR]\tTotal variance is estimated to be %f (sigmasq_total is <= 0). Please check your analysis settings and make sure you have enough data.\n", amv->sigmasq_total);
     //     exit(1);
     // }
-
 }
-
-
