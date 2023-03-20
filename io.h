@@ -19,6 +19,11 @@ struct pairStruct;
 namespace IO
 {
 
+    /// @brief verbose - verbose indicator
+    /// @return int 1 if verbose level meets the threshold, 0 otherwise
+    /// @example if(verbose(2)) int x = 1; // will only execute if verbose >= 2
+    int verbose(const int verbose_threshold);
+
     /// @brief verbose print - print to stderr if verbose != 0
     /// @example vprint("Hello %s", "World");
     void vprint(const char *format, ...);
@@ -63,10 +68,12 @@ namespace IO
     {
         int SFS(FILE *in_sfs_fp, const char *delims, sampleStruct *SAMPLES);
 
-        char *getFirstLine(char *fn);
+        char *getFirstLine(const char *fn);
         char *getFirstLine(FILE *fp);
 
-        int readToBuffer(char *fn, char **buffer_p, size_t *buf_size_p);
+        char *readToBuffer(const char *fn);
+        char *readLinesToBuffer(const char *fn);
+        // char **readLinesToBuffer(const char* fn, int* n_rows, int* n_cols);
 
         int getBufferSize(FILE *fp);
         int getBufferSize(char *fn);
@@ -78,13 +85,11 @@ namespace IO
         char *getFirstLine(gzFile fp);
 
         int readToBuffer(char *fn, char **buffer_p, size_t *buf_size_p);
-        // int getBufferSize(gzFile *fp);
-        // int getBufferSize(char *fn);
     };
 
     namespace inspectFile
     {
-        int count_nColumns(char *line, const char *delims);
+        int count_nCols(const char *line, const char *delims);
         int count_nRows(char *fn, int HAS_COLNAMES);
         int count_nRows(FILE *fp, int HAS_COLNAMES);
     };
@@ -116,7 +121,7 @@ namespace IO
                 fp = openFileW(fn);
                 break;
             case OUTFC::GZ:
-                NEVER();
+                NEVER;
                 fn = setFileName(fn_, suffix, FILE_EXTENSIONS[fc]);
                 gzfp = openGzFileW(fn);
                 break;
@@ -212,11 +217,11 @@ namespace IO
         outputStruct *out_jgpd_fs = NULL;
         outputStruct *out_dxy_fs = NULL;
 
-        outFilesStruct(argStruct *args);
-
-        ~outFilesStruct();
-
     } outFilesStruct;
+
+    void outFilesStruct_set(argStruct *args, outFilesStruct *ofs);
+    void outFilesStruct_destroy(outFilesStruct *ofs);
+
 
     namespace print
     {
@@ -258,5 +263,7 @@ namespace IO
 }
 kstring_t *kbuf_init();
 void kbuf_destroy(kstring_t *kbuf);
+
+extern IO::outFilesStruct* outFiles;
 
 #endif // __IO__

@@ -1,0 +1,21 @@
+all:
+	$(RM) -rvf testwd;
+	mkdir -pv testwd;
+	echo "Test 1";
+	../ngsAMOVA -doEM 1 -doAMOVA 1 -i test_s9_d1_1K.vcf -printMatrix 1 -isSim 1 -minInd 2 -doDist 1 -maxIter 100 -tole 1e-10 --hascolnames 1 -m metadata_with_header_1lvl.tsv -out testwd/test_s9_d1_1K_mtd1;
+	bash -c "diff testwd/test_s9_d1_1K_mtd1.amova.csv reference/test_s9_d1_1K_mtd1.amova.csv";
+	echo "Test 2";
+	../ngsAMOVA -doEM 0 -doAMOVA 1 --in_dm testwd/test_s9_d1_1K_mtd1.distance_matrix.csv -isSim 1 -minInd 2 -doDist 1 -sqDist 0 --hascolnames 1 -m metadata_with_header_1lvl.tsv -out testwd/test_s9_d1_1K_mtd1_indm;
+	bash -c "diff testwd/test_s9_d1_1K_mtd1_indm.amova.csv reference/test_s9_d1_1K_mtd1.amova.csv";
+	echo "Test 3";
+	../ngsAMOVA -doEM 1 -doAMOVA 1 -i test_s9_d1_1K.vcf -isSim 1 -minInd 2 -doDist 1 -maxIter 100 -tole 1e-10  --hascolnames 1 -m metadata_with_header_2lvl.tsv -out testwd/test_s9_d1_1K_mtd2;
+	bash -c "diff testwd/test_s9_d1_1K_mtd2.amova.csv reference/test_s9_d1_1K_mtd2.amova.csv";
+	echo "Test 4";
+	../ngsAMOVA -doEM 0 -doAMOVA 1 --in_dm test_s9_d1_1K_mtd1_maxIter100_tole10.distance_matrix.csv -isSim 1 -minInd 2 -doDist 1 -nThreads 0 --hascolnames 1 -m metadata_with_header_1lvl.tsv  -sqDist 0 -out testwd/indm_test_s9_d1_1K_mtd1;
+	bash -c "diff testwd/indm_test_s9_d1_1K_mtd1.amova.csv testwd/test_s9_d1_1K_mtd1.amova.csv";
+	echo "Test 5";
+	../ngsAMOVA -doEM 0 -doAMOVA 2 -i test_s9_d1_1K.vcf -isSim 1 -minInd 2 -doDist 1 -m metadata_with_header_1lvl.tsv -out testwd/test_s9_d1_1K_mtd1_gt;
+	bash -c "diff testwd/test_s9_d1_1K_mtd1_gt.amova.csv reference/test_s9_d1_1K_mtd1_gt.amova.csv";
+	echo "Test 6";
+	../ngsAMOVA -doEM 1 -doAMOVA 1 -doDist 1 -maxIter 50 -tole 1e-5 -P 4 -i sim_demes_v2-model1-1-rep0-d2.bcf -m sim_demes_v2-model1_metadata_2lvl_with_header.tsv -o testwd/sim_demes_v2-model1-1-rep0-d2_maxIter50tole5;
+	bash -c "diff testwd/ reference/sim_demes_v2-model1-1-rep0-d2_maxIter50tole5.amova.csv";

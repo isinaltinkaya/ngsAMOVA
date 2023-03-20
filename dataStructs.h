@@ -20,27 +20,85 @@ int getDigitIndexAtLevel(const int nLevels,const int lvl, const int maxDigitsPer
 int getDigitIndexAtLevel(const int nLevels, const int lvl);
 int calculateKeyAtLevel(const int lvl, const int strata_idx);
 
+
+/// trim spaces from the beginning and end of a char* (inplace)
+/// @param str - char* to trim
+void trimSpaces(char *str);
+
 typedef struct formulaStruct
 {
-	int nTokens;
-	int nTokensFound = 0;
+	// @nTokens number of tokens in the formula
+	// e.g. formula: "Individual ~ Region/Population/Subpopulation"
+	// 		nTokens = 4
+	// 		corresponds to 3 hierarchical levels (Region, Population, Subpopulation)
+	// 		thus nTokens == nLevels + 1
+	int nTokens=0;
+
+	// the formula in the raw text form as it is in the argument
+	// e.g. "Individual ~ Region/Population/Subpopulation"
 	const char *formula = NULL;
+
+
+	// @formulaTokens
+	// array of tokens in the formula
+	// e.g. formula: "Individual ~ Region/Population/Subpopulation"
+	// 		formulaTokens = {"Individual","Region","Population","Subpopulation"}
 	char **formulaTokens;
-	size_t *formulaTokenIdx;
+
+
+	// @formulaTokenIdx[nTokens]
+	//
+	// maps index of the token in formula to index of the corresponding column in metadata file
+	// formulaTokenIdx[indexOfTokenInFormula] = indexOfTokenInMetadataFile
+	//
+	// e.g. metadata file header: "Individual,Population,Etc,Region,Subpopulation"
+	// 		formula: "Individual ~ Region/Population/Subpopulation"
+	// 		formulaTokenIdx = {0,3,1,2}
+	int *formulaTokenIdx;
+
 
 	void print(FILE *fp)
 	{
 		fprintf(fp, "\nFormula: %s", formula);
-		fprintf(fp, "\nTokens: %i", nTokens);
+		fprintf(fp, "\nTokens: %i\n", nTokens);
 		for (int i = 0; i < nTokens; i++)
 		{
-			fprintf(fp, "\n\t%i\t%s\n", i, formulaTokens[i]);
+			fprintf(fp, "\tToken %d (%s) corresponds to column %d in metadata.\n", i, formulaTokens[i], formulaTokenIdx[i]);
 		}
+		fprintf(fp, "\n");
 	}
+
+	/// match the given metadata token with formula tokens
+	/// @param mtd_tok 		- metadata token to match
+	/// @param mtd_col_idx	- index of the metadata column containing mtd_tok
+	/// @return int			- index if found any match, -1 otherwise
+	int setFormulaTokenIdx(const char* mtd_tok, const int mtd_col_idx)
+	{
+		for(int i=0; i<nTokens; i++)
+		{
+			if(strcmp(formulaTokens[i], mtd_tok) == 0)
+			{
+				formulaTokenIdx[i] = mtd_col_idx;
+				return i;
+			}
+		}
+		IO::vprint(1, "Ignoring the column \"%s\" in metadata file. Reason: Level \"%s\" from metadata header not found in formula (%s).", mtd_tok, mtd_tok, formula);
+		return -1;
+	}
+
+	// @brief shrink - shrink the size of the arrays defined with default max values to the actual size needed
+	void shrink()
+	{
+		formulaTokens = (char **)realloc(formulaTokens, nTokens * sizeof(char *));
+		formulaTokenIdx = (int *)realloc(formulaTokenIdx, nTokens * sizeof(int));
+	}
+
 
 } formulaStruct;
 
 formulaStruct *formulaStruct_get(const char *formula);
+void formulaStruct_validate(formulaStruct *fos, const int nLevels);
+void formulaStruct_destroy(formulaStruct *fos);
 
 /// @brief blobStruct - structure for storing blocks of contig data
 typedef struct blobStruct
@@ -444,6 +502,7 @@ typedef struct metadataStruct
 			}
 		}
 	}
+
 	void pairToAssoc_destroy(){
 		for (int i = 0; i < nIndCmb; i++)
 		{
@@ -867,9 +926,10 @@ typedef struct metadataStruct
 
 } metadataStruct;
 
-metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *SAMPLES, formulaStruct *FORMULA, int has_colnames, paramStruct* pars);
+metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *SAMPLES, formulaStruct *formula, int has_colnames, paramStruct* pars);
 
 /**
+metadataStruct *metadataStruct_get2(argStruct* args, sampleStruct *SAMPLES, formulaStruct *FORMULA, paramStruct* pars);
  * @brief distanceMatrixStruct stores the distance matrix
  *
  * @param nInd 		number of individuals
@@ -936,7 +996,184 @@ typedef struct threadStruct
 // void print_SFS_GT(const char *TYPE, IO::outputStruct *out_sfs_fs, paramStruct *pars, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
 
 
+
+typedef struct metadataStruct2
+{
+
+	int nInd = 0;
+	int nLevels = 0;
+
+
+	// Individual to Group Bitset Association
+	// --------------------------------------
+	//
+	// ind, region, population
+	// ind1, reg1, pop1
+	// ind2, reg1, pop1
+	// ind3, reg1, pop2
+	// ind4, reg2, pop3
+	//
+	// association:
+	// 		reg1, reg2, pop1, pop2, pop3
+	// ind1,1,    0,    1,    0,    0
+	// ind2,1,    0,    1,    0,    0
+	// ind3,1,    0,    0,    1,    0
+	// ind4,1,    1,    0,    0,    1
+
+	// groupKeys[nBits]
+	// access: groupKeys[bit] = group key for the group represented by 'bit'th bit
+	// reg1 = 10000
+	// reg2 = 01000
+	// pop1 = 10100 // member of reg1
+	// pop2 = 10010 // member of reg1
+	// pop3 = 01001 // member of reg2
+	uint64_t *groupKeys = NULL;
+
+	// indKeys[nInd]
+	// for ind3, which is from reg1 and pop2
+	// ind3's key = pop2's key
+	uint64_t *indKeys = NULL;
+
+	// nGroups[nLevels]
+	// access: nGroups[h_i] = number of groups at level h_i
+	int *nGroups = NULL;
+
+	// (lvl, g) -> lvlg_idx lut
+	// lvl = hierarchical level
+	// g = group index at level lvl
+	// e.g. {reg1,reg2,pop1,pop2,pop3}
+	// 		(0,1) -> 1 (lvl 0, group at index 1 in lvl 0)==reg2
+	// 		(1,2) -> 4 (lvl 1, group at index 2 in lvl 1)==pop3
+	// lvlgToIdx[lvl][g] = idx
+	// idxToLvlg[idx][0] = lvl
+	// idxToLvlg[idx][1] = g
+	int **lvlgToIdx = NULL;
+	int **idxToLvlg = NULL;
+	
+
+	// indNames[i] = name of individual i (char *)
+	char **indNames = NULL;
+
+	// groupNames[max_n_levels][max_n_groups_per_level][max_group_name_length]
+	// access: groupNames[0][0] = "group1"
+	char ***groupNames = NULL;
+
+	// names of levels in the hierarchy (e.g. region, population, subpopulation)
+	char **levelNames = NULL;
+	
+
+	// [nBits] total number of bits used in the construction of individual keys
+	// e.g. metadata table
+	// ind1, reg1, pop1, subpop1
+	// ind2, reg1, pop1, subpop1
+	// ind3, reg1, pop2, subpop2
+	// ind4, reg2, pop2, subpop3
+	// nBits = size of {reg1, reg2} + size of {pop1, pop2} + size of {subpop1, subpop2, subpop3} = 2 + 2 + 3 = 7
+	int nBits = 0;
+
+	void print_indKeys();
+	void print_groupKeys();
+	void printAll();
+
+	void resize();
+
+	int get_lvlgidx(int lvl, int g){
+		return(lvl * nGroups[lvl-1] + g);
+	}
+
+	int get_g_from_lvlgidx(int lvlgidx){
+		int lvl=1;
+		while(lvlgidx > nGroups[lvl]){
+			lvlgidx -= nGroups[lvl];
+			lvl++;
+		}
+		int g = lvlgidx;
+		return g;
+	}
+
+	int get_lvl_from_lvlgidx(int lvlgidx){
+		int lvl=1;
+		while(lvlgidx > nGroups[lvl]){
+			lvlgidx -= nGroups[lvl];
+			lvl++;
+		}
+		int g = lvlgidx;
+		return lvl;
+	}
+
+
+	char* get_groupName_from_lvlgidx(int lvlgidx){
+		int lvl=1;
+		while(lvlgidx > nGroups[lvl]){
+			lvlgidx -= nGroups[lvl];
+			lvl++;
+		}
+		int g = lvlgidx;
+		return groupNames[lvl][g];
+	}
+
+	
+	/// @param lvl:		hierarchical level of the group to add
+	/// @param g:	group index at level lvl of the group to add
+	/// @param name:	name of the group to add
+	void addGroup(int lvl, int g, char *name){
+
+
+		IO::vprint(2, "Found new group: %s at level %ld", name, lvl);
+
+		// add group name
+		groupNames[lvl][g] = (char *)malloc(sizeof(char) * (strlen(name) + 1));
+		ASSERT(strncpy(groupNames[lvl][g], name, strlen(name) + 1) != NULL);
+		nGroups[lvl]++;
+	}
+
+	/// @brief setGroupKey
+	/// @param bit_i
+	/// @param lvl 
+	/// @param prev_bit 
+	void setGroupKey(int bit_i, int lvl, int g, int prev_bit){
+		// if not the first group at this level (prev_bit != -1)
+		// prev_bit is the bit_i of the parent group
+		// carry the parent's key at groupKeys[prev_bit] to the child group at bit_i
+		if(prev_bit != -1){
+			ASSERT(groupKeys[prev_bit]>0);
+			groupKeys[bit_i] = groupKeys[prev_bit];
+		}
+
+		// set the bit assigned for representing this group
+		// if no parent, it starts from 0 as all keys are initialized to 0 during construction
+		// if parent, it starts from the parent's key as the parent's key is carried to the child
+		BITSET(groupKeys[bit_i], bit_i);
+
+	}
+
+	void setIndKey(int ind_i, int bit_i){
+		indKeys[ind_i]=groupKeys[bit_i];
+	}
+
+
+	void addLevel(const char* levelName, const int level_idx)
+	{
+		levelNames[level_idx] = (char *)malloc(strlen(levelName) + 1);
+		ASSERT(strncpy(levelNames[level_idx], levelName, strlen(levelName) + 1) != NULL);
+	}
+
+	metadataStruct2();
+	~metadataStruct2();
+	
+
+
+
+} metadataStruct2;
+
+metadataStruct2 *metadataStruct2_get(argStruct* args, paramStruct *pars, sampleStruct *sampleSt, formulaStruct *fos);
+
+
+
+
+
 double estimate_dxy(const int idx1, const int idx2, const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars);
+double estimate_dxy2(const int idx1, const int idx2, const int lvl, distanceMatrixStruct *dMS, metadataStruct2 *mtd, paramStruct *pars);
 
 
 #endif // __DATA_STRUCTS__

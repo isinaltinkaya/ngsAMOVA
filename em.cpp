@@ -7,7 +7,7 @@
 /// @param vcfd 
 /// @param outSt 
 /// @param distMatrix 
-void spawnThreads_pairEM(argStruct *args, paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, IO::outFilesStruct *outSt, distanceMatrixStruct *distMatrix)
+void spawnThreads_pairEM(argStruct *args, paramStruct *pars, pairStruct **pairSt, vcfData *vcfd,  distanceMatrixStruct *distMatrix)
 {
 
 	pthread_t pairThreads[pars->nIndCmb];
@@ -111,8 +111,8 @@ void spawnThreads_pairEM(argStruct *args, paramStruct *pars, pairStruct **pairSt
 		}
 		delete PTHREADS[pidx];
 	}
-	vcfd->print_JointGenoProbDist(outSt, args);
-	vcfd->print_JointGenoCountDist(outSt, args);
+	vcfd->print_JointGenoProbDist( args);
+	vcfd->print_JointGenoCountDist( args);
 
 	delete[] PTHREADS;
 

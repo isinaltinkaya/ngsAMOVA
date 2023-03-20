@@ -6,6 +6,8 @@
 
 const char *IO::FILE_EXTENSIONS[] = {"", ".gz", ".bgz"};
 
+IO::outFilesStruct* outFiles = new IO::outFilesStruct();
+
 void IO::requireFile(const char *fn)
 {
 	ASSERTM(fn != NULL, "File name is NULL");
@@ -172,42 +174,50 @@ gzFile IO::openGzFileW(const char *a, const char *b)
 }
 
 /// @brief getFirstLine get first line of a file
-/// @param fn file name
+/// @param fp pointer to file
 /// @return char* line
-char *IO::readFile::getFirstLine(char *fn)
+char *IO::readFile::getFirstLine(const char* fn)
 {
 	FILE *fp = IO::getFile(fn, "r");
 
 	size_t buf_size = FGETS_BUF_SIZE;
-	char *line = (char *)malloc(buf_size);
-
+	char *line = (char*) malloc(FGETS_BUF_SIZE * sizeof(char));
 	ASSERT(line != NULL);
+
+	char *full_line = (char*) malloc(1);
+	size_t full_line_size = 0;
+	full_line[0] = '\0';
 
 	while (fgets(line, buf_size, fp) != NULL)
 	{
 		// check if the line was fully read
-		size_t line_len = strlen(line);
-		if (line[line_len - 1] == '\n')
-		{
-			// line was fully read
+		if (line[strlen(line) - 1] == '\n')
+		{// line was fully read
+			full_line_size += strlen(line);
+			full_line = (char *)realloc(full_line, full_line_size +1);
+			ASSERT(full_line != NULL);
+			strcat(full_line, line);
 			break;
 		}
 		else
-		{
+		{// line was not fully read
 			fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
-			// line was not fully read
-			buf_size *= 2;
+			
+			full_line_size += strlen(line);
+			full_line = (char *)realloc(full_line, full_line_size +1);
+			ASSERT(full_line != NULL);
+			full_line[full_line_size - 1] = '\0';
+			strcat(full_line, line);
 
-			char *new_line = new char[buf_size];
-			new_line = (char *)realloc(line, buf_size);
-			ASSERT(new_line != NULL);
-			line = new_line;
+			buf_size *= 2;
+			line = (char *) realloc(line, buf_size * sizeof(char));
+			ASSERT(line != NULL);
 		}
 	}
-	fprintf(stderr, "\t-> First line of file: %s\n", line);
-	fclose(fp);
-	// TODO check this return
-	return line;
+
+	FREE(line);
+	FCLOSE(fp);
+	return full_line;
 }
 
 /// @brief getFirstLine get first line of a file
@@ -215,38 +225,87 @@ char *IO::readFile::getFirstLine(char *fn)
 /// @return char* line
 char *IO::readFile::getFirstLine(FILE *fp)
 {
-
+	// make sure you are at the beginning of the file
 	ASSERT(fseek(fp, 0, SEEK_SET) == 0);
-	size_t buf_size = FGETS_BUF_SIZE;
 
-	char *line = (char *)malloc(buf_size);
+	size_t buf_size = FGETS_BUF_SIZE;
+	char *line = (char*) malloc(FGETS_BUF_SIZE * sizeof(char));
 	ASSERT(line != NULL);
+
+	char *full_line = (char*) malloc(1);
+	size_t full_line_size = 0;
+	full_line[0] = '\0';
 
 	while (fgets(line, buf_size, fp) != NULL)
 	{
 		// check if the line was fully read
-		size_t line_len = strlen(line);
-		if (line[line_len - 1] == '\n')
-		{
-			// line was fully readu
+		if (line[strlen(line) - 1] == '\n')
+		{// line was fully read
+			full_line_size += strlen(line);
+			full_line = (char *)realloc(full_line, full_line_size +1);
+			ASSERT(full_line != NULL);
+			strcat(full_line, line);
 			break;
 		}
 		else
-		{
+		{// line was not fully read
 			fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
-			// line was not fully read
-			buf_size *= 2;
+			
+			full_line_size += strlen(line);
+			full_line = (char *)realloc(full_line, full_line_size +1);
+			ASSERT(full_line != NULL);
+			full_line[full_line_size - 1] = '\0';
+			strcat(full_line, line);
 
-			char *new_line = new char[buf_size];
-			new_line = (char *)realloc(line, buf_size);
-			// char *new_line = (char*) realloc(line, buf_size);
-			ASSERT(new_line != NULL);
-			line = new_line;
+			buf_size *= 2;
+			line = (char *) realloc(line, buf_size * sizeof(char));
+			ASSERT(line != NULL);
 		}
 	}
-	// fprintf(stderr, "\t-> First line of file: %s\n", line);
-	return line;
+
+	FREE(line);
+	return full_line;
 }
+
+char* IO::readFile::readToBuffer(const char* fn){
+	char* buffer = NULL;
+	size_t buf_size = 0;
+	FILE* fp = IO::getFile(fn, "r");
+
+	// seek to end of file
+	fseek(fp, 0, SEEK_END);
+	// offset to the end of the file == size of the file
+	buf_size = ftell(fp);
+	ASSERT(buf_size > 0);
+
+	buffer = (char*) malloc((buf_size + 1)*sizeof(char));
+	ASSERT(buffer != NULL);
+
+	// seek back to beginning of file
+	fseek(fp, 0, SEEK_SET);
+
+	fread(buffer, sizeof(char), buf_size, fp);
+	buffer[buf_size] = '\0';
+
+	FCLOSE(fp);
+	return buffer;
+}
+
+// char** IO::readFile::readLinesToBuffer(const char* fn, int* n_rows, int* n_cols){
+
+// 	char** buffer = NULL;
+// 	FILE* fp = IO::getFile(fn, "r");
+
+// 	// read file into buffer line by line and column by column
+// 	*n_rows = 0;
+// 	*n_cols = 0;
+// 	size_t buf_size = 0;
+
+
+
+// 	FCLOSE(fp);
+// 	return buffer;
+// }
 
 int IO::readGzFile::readToBuffer(char *fn, char **buffer_p, size_t *buf_size_p)
 {
@@ -337,87 +396,25 @@ int IO::readFile::getBufferSize(char *fn)
 	return buf_size;
 }
 
-char *IO::readGzFile::getFirstLine(char *fn)
-{
-	gzFile gzfp = gzopen(fn, "rb");
-	size_t buf_size = FGETS_BUF_SIZE;
-	char *line = (char *)malloc(buf_size);
-	ASSERT(line != NULL);
 
-	while (gzgets(gzfp, line, buf_size) != NULL)
-	{
-		// check if the line was fully read
-		size_t line_len = strlen(line);
-		if (line[line_len - 1] == '\n')
-		{
-			// line was fully read
-			break;
-		}
-		else
-		{
-			fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
-			// line was not fully read
-			buf_size *= 2;
 
-			char *new_line = new char[buf_size];
-			new_line = (char *)realloc(line, buf_size);
-			ASSERT(new_line != NULL);
-			line = new_line;
-		}
-	}
-	GZCLOSE(gzfp);
-	return line;
-}
-
-char *IO::readGzFile::getFirstLine(gzFile fp)
-{
-	ASSERT(fp != NULL);
-	ASSERT(gzseek(fp, 0, SEEK_SET) == 0);
-
-	size_t buf_size = FGETS_BUF_SIZE;
-	char *line = (char *)malloc(buf_size);
-	ASSERT(line != NULL);
-
-	while (gzgets(fp, line, buf_size) != NULL)
-	{
-		// check if the line was fully read
-		size_t line_len = strlen(line);
-		if (line[line_len - 1] == '\n')
-		{
-			// line was fully read
-			break;
-		}
-		else
-		{
-			fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
-			// line was not fully read
-			buf_size *= 2;
-
-			char *new_line = new char[buf_size];
-			new_line = (char *)realloc(line, buf_size);
-			ASSERT(new_line != NULL);
-			line = new_line;
-		}
-	}
-	return line;
-}
-
-/// @brief count_nColumns count number of columns in a line
+/// @brief count number of columns in a line
 /// @param line pointer to line char
 /// @param delims delimiters
 /// @return integer number of columns
-int IO::inspectFile::count_nColumns(char *line, const char *delims)
+int IO::inspectFile::count_nCols(const char* line, const char* delims)
 {
-
-	int count = 0;
-	const char *p = line;
-	while (*p)
-	{
-		if (*p == *delims)
-			count++;
-		p++;
-	}
-	return count + 1;
+	ASSERT(line != NULL);
+	ASSERT(delims != NULL);
+    
+    int count = 1;
+    const char* p = line;
+    while (*p != '\0')
+    {
+        if (strchr(delims, *p) != NULL) ++count;
+        ++p;
+    }
+    return count;
 }
 
 /// @brief count_nRows count number of rows in a file
@@ -482,59 +479,60 @@ int IO::inspectFile::count_nRows(FILE *fp, int HAS_COLNAMES)
 	return n;
 }
 
-/// @brief IO::validateFile::Metadata validate metadata file (input=BCF)
-/// @param in_mtd_fp pointer to metadata file
-/// @param nInds number of individuals
-/// @param keyCols key columns
-/// @param FORMULA formula
-/// @param delims delimiters
-/// @param HAS_COLNAMES 1 if file has header
-/// @return number of columns if successful, exits with error otherwise
-int IO::validateFile::Metadata(FILE *in_mtd_fp, int nInds, int *keyCols,
-							   formulaStruct *FORMULA, const char *delims, int HAS_COLNAMES)
-{
+// //TODO DEPRECATED?
+// /// @brief IO::validateFile::Metadata validate metadata file (input=BCF)
+// /// @param in_mtd_fp pointer to metadata file
+// /// @param nInds number of individuals
+// /// @param keyCols key columns
+// /// @param FORMULA formula
+// /// @param delims delimiters
+// /// @param HAS_COLNAMES 1 if file has header
+// /// @return number of columns if successful, exits with error otherwise
+// int IO::validateFile::Metadata(FILE *in_mtd_fp, int nInds, int *keyCols,
+// 							   formulaStruct *FORMULA, const char *delims, int HAS_COLNAMES)
+// {
 
-	ASSERT(fseek(in_mtd_fp, 0, SEEK_SET) == 0);
-	int nRows = IO::inspectFile::count_nRows(in_mtd_fp, HAS_COLNAMES);
-	if (nRows == -1)
-	{
-		fprintf(stderr, "\n[ERROR]\tCould not count number of rows in Metadata file.\n\n");
-		exit(1);
-	}
-	if (nRows == 0)
-	{
-		fprintf(stderr, "\n[ERROR]\tMetadata file is empty.\n\n");
-		exit(1);
-	}
-	if (nRows == 1)
-	{
-		fprintf(stderr, "\n[ERROR]\tMetadata file contains only one row.\n\n");
-		exit(1);
-	}
-	if (nRows != nInds)
-	{
-		fprintf(stderr, "\n[ERROR]\tNumber of rows in Metadata file (%d) does not match number of individuals (%d).\n\n", nRows, nInds);
-		exit(1);
-	}
+// 	ASSERT(fseek(in_mtd_fp, 0, SEEK_SET) == 0);
+// 	int nRows = IO::inspectFile::count_nRows(in_mtd_fp, HAS_COLNAMES);
+// 	if (nRows == -1)
+// 	{
+// 		fprintf(stderr, "\n[ERROR]\tCould not count number of rows in Metadata file.\n\n");
+// 		exit(1);
+// 	}
+// 	if (nRows == 0)
+// 	{
+// 		fprintf(stderr, "\n[ERROR]\tMetadata file is empty.\n\n");
+// 		exit(1);
+// 	}
+// 	if (nRows == 1)
+// 	{
+// 		fprintf(stderr, "\n[ERROR]\tMetadata file contains only one row.\n\n");
+// 		exit(1);
+// 	}
+// 	if (nRows != nInds)
+// 	{
+// 		fprintf(stderr, "\n[ERROR]\tNumber of rows in Metadata file (%d) does not match number of individuals (%d).\n\n", nRows, nInds);
+// 		exit(1);
+// 	}
 
-	// compare number of tokens in formulaStruct to number of columns in Metadata file
+// 	// compare number of tokens in formulaStruct to number of columns in Metadata file
 
-	char *firstLine = IO::readFile::getFirstLine(in_mtd_fp);
-	int nCols = IO::inspectFile::count_nColumns(firstLine, delims);
-	fprintf(stderr, "\n\t-> Number of columns in input Metadata file: %d\n", nCols);
+// 	char *firstLine = IO::readFile::getFirstLine(in_mtd_fp);
+// 	int nCols = IO::inspectFile::count_nCols(firstLine, delims);
+// 	fprintf(stderr, "\n\t-> Number of columns in input Metadata file: %d\n", nCols);
 
-	if (FORMULA != NULL)
-	{
-		if (nCols < FORMULA->nTokens)
-		{
-			fprintf(stderr, "\n[ERROR]\tNumber of columns in Metadata file (%d) is less than number of tokens in formula (%d).\n\n", nCols, FORMULA->nTokens);
-			exit(1);
-		}
-	}
+// 	if (FORMULA != NULL)
+// 	{
+// 		if (nCols < FORMULA->nTokens)
+// 		{
+// 			fprintf(stderr, "\n[ERROR]\tNumber of columns in Metadata file (%d) is less than number of tokens in formula (%d).\n\n", nCols, FORMULA->nTokens);
+// 			exit(1);
+// 		}
+// 	}
 
-	// int nCols = IO::inspectFile::count_nColumns(IO::inspectFile::getLine(ff, 1), "\t ");
-	return nCols;
-}
+// 	// int nCols = IO::inspectFile::count_nColumns(IO::inspectFile::getLine(ff, 1), "\t ");
+// 	return nCols;
+// }
 
 /// @brief read SFS file
 /// @param in_sfs_fp input sfs file ff
@@ -633,23 +631,22 @@ void IO::outputStruct::write(const kstring_t *kbuf)
 	}
 }
 
-IO::outFilesStruct::outFilesStruct(argStruct *args)
+void IO::outFilesStruct_set(argStruct *args, IO::outFilesStruct *ofs)
 {
-
 	if (args->printMatrix != 0)
 	{
-		out_dm_fs = new outputStruct(args->out_fn, ".distance_matrix.csv", args->printMatrix - 1);
+		ofs->out_dm_fs = new IO::outputStruct(args->out_fn, ".distance_matrix.csv", args->printMatrix - 1);
 	}
 
 	if (args->doEM == 1)
 	{
 		if (args->printJointGenoCountDist != 0)
 		{
-			out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", args->printJointGenoCountDist - 1);
+			ofs->out_jgcd_fs = new IO::outputStruct(args->out_fn, ".joint_geno_count_dist.csv", args->printJointGenoCountDist - 1);
 		}
 		if (args->printJointGenoProbDist != 0)
 		{
-			out_jgpd_fs = new outputStruct(args->out_fn, ".joint_geno_prob_dist.csv", args->printJointGenoProbDist - 1);
+			ofs->out_jgpd_fs = new IO::outputStruct(args->out_fn, ".joint_geno_prob_dist.csv", args->printJointGenoProbDist - 1);
 		}
 	}
 
@@ -657,7 +654,7 @@ IO::outFilesStruct::outFilesStruct(argStruct *args)
 	{
 		if (args->printJointGenoCountDist != 0)
 		{
-			out_jgcd_fs = new outputStruct(args->out_fn, ".joint_geno_count_dist.csv", args->printJointGenoCountDist - 1);
+			ofs->out_jgcd_fs = new IO::outputStruct(args->out_fn, ".joint_geno_count_dist.csv", args->printJointGenoCountDist - 1);
 		}
 		if (args->printJointGenoProbDist != 0)
 		{
@@ -668,28 +665,33 @@ IO::outFilesStruct::outFilesStruct(argStruct *args)
 
 	if (args->doAMOVA > 0)
 	{
-		out_amova_fs = new outputStruct(args->out_fn, ".amova.csv", 0);
+		ofs->out_amova_fs = new IO::outputStruct(args->out_fn, ".amova.csv", 0);
 	}
 	if (args->printDev == 1)
 	{
-		out_dev_fs = new outputStruct(args->out_fn, ".dev.csv", 1);
+		ofs->out_dev_fs = new IO::outputStruct(args->out_fn, ".dev.csv", 1);
 	}
 	if (args->doDxy == 1)
 	{
-		out_dxy_fs = new outputStruct(args->out_fn, ".dxy.csv", args->doDxy - 1);
+		ofs->out_dxy_fs = new IO::outputStruct(args->out_fn, ".dxy.csv", args->doDxy - 1);
 	}
 }
 
-IO::outFilesStruct::~outFilesStruct()
+
+void IO::outFilesStruct_destroy(IO::outFilesStruct *ofs)
 {
 	// flushAll();
-	DELETE(out_dm_fs);
-	DELETE(out_amova_fs);
-	DELETE(out_dev_fs);
-	DELETE(out_jgcd_fs);
-	DELETE(out_jgpd_fs);
-	DELETE(out_dxy_fs);
+	DELETE(ofs->out_dm_fs);
+	DELETE(ofs->out_amova_fs);
+	DELETE(ofs->out_dev_fs);
+	DELETE(ofs->out_jgcd_fs);
+	DELETE(ofs->out_jgpd_fs);
+	DELETE(ofs->out_dxy_fs);
+	DELETE(ofs);
+
 }
+
+
 // void flushAll()
 // {
 //     if (out_dm_fs != NULL)
@@ -714,8 +716,14 @@ IO::outFilesStruct::~outFilesStruct()
 //     }
 // }
 
+int IO::verbose(const int verbose_threshold)
+{
+	return BITCHECK_ATLEAST(VERBOSE, verbose_threshold);
+}
+
 void IO::vprint(const char *format, ...)
 {
+	// if at least one bit is set, verbose is on
 	if (CHAR_BITCHECK_ANY(VERBOSE) == 1)
 	{
 		char str[1024];
@@ -740,7 +748,7 @@ void IO::vprint(const int verbose_threshold, const char *format, ...)
 		vsprintf(str, format, args);
 		va_end(args);
 
-		fprintf(stderr, "\n[VERBOSE:%d]\t%s\n", LOG2_INT128_LUT[VERBOSE], str);
+		fprintf(stderr, "\n[VERBOSE>=%d]\t%s\n", verbose_threshold, str);
 	}
 }
 
@@ -755,7 +763,7 @@ void IO::vprint(FILE *fp, const int verbose_threshold, const char *format, ...)
 		vsprintf(str, format, args);
 		va_end(args);
 
-		fprintf(fp, "\n[VERBOSE:%d]\t%s\n", LOG2_INT128_LUT[VERBOSE], str);
+		fprintf(fp, "\n[VERBOSE>=%d]\t%s\n", verbose_threshold, str);
 	}
 }
 
@@ -771,7 +779,8 @@ void IO::vvprint(FILE *fp, const int verbose_threshold, const char *format, ...)
 		vsprintf(str, format, args);
 		va_end(args);
 
-		fprintf(fp, "\n[VERBOSE:%d]\t%s\n", LOG2_INT128_LUT[VERBOSE], str);
-		fprintf(stderr, "\n[VERBOSE:%d]\t%s\n", LOG2_INT128_LUT[VERBOSE], str);
+		fprintf(fp, "\n[VERBOSE>=%d]\t%s\n", verbose_threshold, str);
+		fprintf(stderr, "\n[VERBOSE>=%d]\t%s\n", verbose_threshold, str);
 	}
 }
+

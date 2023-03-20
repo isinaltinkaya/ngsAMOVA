@@ -74,3 +74,4 @@ char *get_time()
 	local_time = localtime(&current_time);
 	return (asctime(local_time));
 }
+

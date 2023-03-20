@@ -121,6 +121,7 @@ argStruct *argStruct_get(int argc, char **argv)
 			{
 				// explicit verbose off
 				BITSET(VERBOSE, 0);
+				fprintf(stderr,"[INFO]\t-> Verbosity level is set to %d.\n", WHICH_BIT_SET(VERBOSE));
 			}
 			else if (isdigit(val[0]))
 			{
@@ -128,7 +129,7 @@ argStruct *argStruct_get(int argc, char **argv)
 			}
 			else
 			{
-				NEVER();
+				NEVER;
 			}
 
 			if (CHAR_BITCHECK_ANY(VERBOSE))
@@ -501,6 +502,13 @@ argStruct *argStruct_get(int argc, char **argv)
 	{
 		fprintf(stderr, "\n[INFO]\t-> -windowSize %d; will use sliding windows of size %d\n", args->windowSize, args->windowSize);
 	}
+
+	// [dev mode] 
+#if 1==DEV
+	DEVPRINT("Development mode is on. Will print extra information.\n");
+	VERBOSE=0;
+	BITSET(VERBOSE, 7); // max: 7
+#endif
 
 	return args;
 }

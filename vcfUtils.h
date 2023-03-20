@@ -63,8 +63,8 @@ typedef struct vcfData
 	void init_JointGenoProbDistGL();
 	void init_JointGenoCountDistGT();
 
-	void print_JointGenoCountDist(IO::outFilesStruct *outSt, argStruct *args);
-	void print_JointGenoProbDist(IO::outFilesStruct *outSt, argStruct *args);
+	void print_JointGenoCountDist( argStruct *args);
+	void print_JointGenoProbDist( argStruct *args);
 
 	void lngl_init(int doEM);
 	void lngl_expand(int site_i);

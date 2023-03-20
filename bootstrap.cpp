@@ -35,7 +35,7 @@ int r_sample_ind(metadataStruct* mtd, const int r_lvl_idx)
 /// @param pairStruct pointer to pair of samples
 /// @param outFilesStruct pointer to output files
 // void bootstrap()
-void prepare_bootstrap_blocks(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, sampleStruct *sampleSt, metadataStruct *mS, formulaStruct *formulaSt, IO::outFilesStruct *outSt, blobStruct *blobSt)
+void prepare_bootstrap_blocks(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, sampleStruct *sampleSt, metadataStruct *mS, formulaStruct *formulaSt,  blobStruct *blobSt)
 {
 
 		// for (int sti = 0; sti < mS->hierArr[lvl]->nStrata; sti++)

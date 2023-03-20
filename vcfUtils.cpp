@@ -607,7 +607,7 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 					else
 					{
 						// this should never happen since we are in the first loop
-						NEVER();
+						NEVER;
 					}
 				}
 			}
@@ -666,7 +666,7 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 						else
 						{
 							// this should never happen since we are in a new contig
-							NEVER();
+							NEVER;
 						}
 					}
 				}
@@ -859,9 +859,9 @@ void vcfData::init_JointGenoCountDistGT()
 	}
 }
 
-void vcfData::print_JointGenoCountDist(IO::outFilesStruct *outSt, argStruct *args)
+void vcfData::print_JointGenoCountDist( argStruct *args)
 {
-	if (outSt->out_jgcd_fs != NULL)
+	if (outFiles->out_jgcd_fs != NULL)
 	{
 		kstring_t *kbuf = kbuf_init();
 
@@ -904,12 +904,12 @@ void vcfData::print_JointGenoCountDist(IO::outFilesStruct *outSt, argStruct *arg
 				}
 			}
 		}
-		outSt->out_jgcd_fs->write(kbuf);
+		outFiles->out_jgcd_fs->write(kbuf);
 		kbuf_destroy(kbuf);
 	}
 }
 
-void vcfData::print_JointGenoProbDist(IO::outFilesStruct *outSt, argStruct *args)
+void vcfData::print_JointGenoProbDist( argStruct *args)
 {
 	if (args->printJointGenoProbDist != 0)
 	{
@@ -938,7 +938,7 @@ void vcfData::print_JointGenoProbDist(IO::outFilesStruct *outSt, argStruct *args
 		{
 			ASSERT(0 == 1);
 		}
-		outSt->out_jgpd_fs->write(kbuf);
+		outFiles->out_jgpd_fs->write(kbuf);
 		kbuf_destroy(kbuf);
 	}
 }

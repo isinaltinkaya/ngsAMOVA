@@ -23,13 +23,15 @@
 #include "amova.h"
 #include "bootstrap.h"
 #include "evaluation.h"
+
 #include "dev.h"
 
 // TODO check size_t
 using size_t = decltype(sizeof(int));
+// IO::outFilesStruct *outFiles = new IO::outFilesStruct;
 
 // prepare distance matrix using original data
-void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS_orig, vcfData *vcfd, pairStruct **pairSt, formulaStruct *formulaSt, IO::outFilesStruct *outSt, blobStruct *blobSt, sampleStruct *sampleSt)
+void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS_orig, vcfData *vcfd, pairStruct **pairSt, formulaStruct *formulaSt,  blobStruct *blobSt, sampleStruct *sampleSt)
 {
 
 	switch (args->doAMOVA)
@@ -50,7 +52,7 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 			readSites_GL(vcfd, args, pars, pairSt, blobSt);
 		}
 
-		spawnThreads_pairEM(args, pars, pairSt, vcfd, outSt, dMS_orig);
+		spawnThreads_pairEM(args, pars, pairSt, vcfd, dMS_orig);
 
 		break;
 	}
@@ -93,7 +95,7 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 			}
 		}
 
-		vcfd->print_JointGenoCountDist(outSt, args);
+		vcfd->print_JointGenoCountDist( args);
 
 		break;
 	}
@@ -116,7 +118,7 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 
 			readSites_GL(vcfd, args, pars, pairSt);
 
-			spawnThreads_pairEM(args, pars, pairSt, vcfd, outSt, dMS_orig);
+			spawnThreads_pairEM(args, pars, pairSt, vcfd, dMS_orig);
 		}
 
 		break;
@@ -135,12 +137,12 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 
 	if (args->printMatrix != 0)
 	{
-		dMS_orig->print(outSt->out_dm_fs);
+		dMS_orig->print(outFiles->out_dm_fs);
 	}
 }
 
 // --------------------------- INPUT: VCF/BCF --------------------------- //
-void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::outFilesStruct *outSt)
+void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 {
 	sampleStruct *sampleSt = new sampleStruct();
 	vcfData *vcfd = vcfData_init(args, pars, sampleSt);
@@ -177,15 +179,21 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO:
 		{
 			// do not run AMOVA, but do EM and get distance matrix
 			distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
-			prepare_distanceMatrix(args, pars, dMS, vcfd, pairSt, formulaSt, outSt, NULL, sampleSt);
+			prepare_distanceMatrix(args, pars, dMS, vcfd, pairSt, formulaSt, NULL, sampleSt);
 			if (args->printMatrix != 0)
 			{
-				dMS->print(outSt->out_dm_fs);
+				dMS->print(outFiles->out_dm_fs);
 			}
 			delete dMS;
 			return;
 		}
 	}
+
+	/////////// TEST ZONE
+	// metadataStruct2 *mtd2= metadataStruct2_get(args, pars, sampleSt, formulaSt);
+
+	// exit(0);
+	/////////// TEST ZONE
 
 	// --------------------------- doAMOVA!=0 --------------------------- //
 	// DO run AMOVA
@@ -223,7 +231,7 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO:
 
 	// dMS[0] is the original distance matrix (not bootstrapped)
 
-	prepare_distanceMatrix(args, pars, dMS[0], vcfd, pairSt, formulaSt, outSt, blobSt, sampleSt);
+	prepare_distanceMatrix(args, pars, dMS[0], vcfd, pairSt, formulaSt, blobSt, sampleSt);
 
 	if (args->nBootstraps > 0)
 	{
@@ -237,10 +245,10 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO:
 			// fill dMS with bootstrapped distance matrices
 			fprintf(stderr, "\n\t-> Bootstrapping %d/%d", b, args->nBootstraps);
 
-			prepare_bootstrap_blocks(vcfd, pars, args, dMS[b], sampleSt, metadataSt, formulaSt, outSt, blobSt);
+			prepare_bootstrap_blocks(vcfd, pars, args, dMS[b], sampleSt, metadataSt, formulaSt, blobSt);
 
 			// // perform AMOVA using the bootstrapped dMS
-			// ASSERT(AMOVA::doAMOVA(dMS[b], metadataSt, sampleSt, outSt->out_amova_fs->fp, pars->lut_indsToIdx) == 0);
+			// ASSERT(AMOVA::doAMOVA(dMS[b], metadataSt, sampleSt, outFiles->out_amova_fs->fp, pars->lut_indsToIdx) == 0);
 
 			fprintf(stderr, "\n\t-> Finished running AMOVA for bootstrap %d/%d", b, args->nBootstraps);
 			b++;
@@ -248,37 +256,69 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO:
 		blobStruct_destroy(blobSt);
 	}
 
-	if (args->doDxy == 1)
-	{
-		kstring_t *kbuf = kbuf_init();
+	// if (args->doDxy == 1)
+	// {
+	// 	kstring_t *kbuf = kbuf_init();
 
-		double dxy = 0.0;
-		ksprintf(kbuf, "group1,group2,hier_level,dxy\n");
+	// 	double dxy = 0.0;
+	// 	ksprintf(kbuf, "group1,group2,hier_level,dxy\n");
 
-		// estimate dxy for all pairs of strata in each hierarchical level
-		for (int lvl = 0; lvl < metadataSt->nLevels; lvl++)
-		{
+	// 	// get all pairs of groups at each hierarchical level
+	// 	for (int lvl=0; lvl < mtd2->nLevels; lvl++)
+	// 	{
+	// 		if (mtd2->nGroups[lvl] == 1)
+	// 			continue;
 
-			if (metadataSt->hierArr[lvl]->nStrata == 1)
-				continue;
+	// 		if (mtd2->nGroups[lvl] == 2){
+	// 			int lvlg1=mtd2->get_lvlgidx(lvl, 0);
+	// 			int lvlg2=mtd2->get_lvlgidx(lvl, 1);
+	// 			dxy = estimate_dxy2(lvlg1, lvlg2, lvl, dMS[0], mtd2, pars);
+	// 			continue;
+	// 		}
+			
+	// 		// for (int g1=0; g1 < mtd2->nGroups[lvl]-1; g1++)
+	// 		// {
+	// 		// 	// get unique pairs of all groups in level
+	// 		// 	// for each pair, estimate dxy
+	// 		// 	for (int g2=g1+1; g2 < mtd2->nGroups[lvl]; g2++)
+	// 		// 	{
+	// 		// 		int lvlg1=mtd2->get_lvlgidx(lvl, g1);
+	// 		// 		int lvlg2=mtd2->get_lvlgidx(lvl, g2);
 
-			for (int g1 = 0; g1 < metadataSt->hierArr[lvl]->nStrata - 1; g1++)
-			{
-				// get unique pairs of all strata in level
-				// for each pair, estimate dxy
-				for (int g2 = g1 + 1; g2 < metadataSt->hierArr[lvl]->nStrata; g2++)
-				{
-					dxy = estimate_dxy(g1, g2, lvl, dMS[0], metadataSt, pars);
-					// ksprintf(kbuf, "%s,%s,%d,%f\n", metadataSt->hierArr[lvl]->strataNames[g1], metadataSt->hierArr[lvl]->strataNames[g2], lvl+1, dxy);
-					ksprintf(kbuf, "%s,%s,%d", metadataSt->hierArr[lvl]->strataNames[g1], metadataSt->hierArr[lvl]->strataNames[g2], lvl + 1);
-					ksprintf(kbuf, ",%.*f\n", (int)DBL_MAXDIG10, dxy);
-				}
-			}
-		}
+	// 		// 		// int lvlg1= lvl * mtd2->nGroups[lvl-1] + g1;
+	// 		// 		// int lvlg2= lvl * mtd2->nGroups[lvl-1] + g2;
+	// 		// 		dxy = estimate_dxy2(lvlg1, lvlg2, lvl, dMS[0], mtd2, pars);
+	// 		// 		ksprintf(kbuf, "%s,%s,%d,%f\n", mtd2->groupNames[lvl][g1], mtd2->groupNames[lvl][g2], lvl, dxy);
+	// 		// 	}
+	// 		// }
+	// 	}
 
-		outSt->out_dxy_fs->write(kbuf);
-		kbuf_destroy(kbuf);
-	}
+
+
+	// 	// // estimate dxy for all pairs of strata in each hierarchical level
+	// 	// for (int lvl = 0; lvl < metadataSt->nLevels; lvl++)
+	// 	// {
+
+	// 	// 	if (metadataSt->hierArr[lvl]->nStrata == 1)
+	// 	// 		continue;
+
+	// 	// 	for (int g1 = 0; g1 < metadataSt->hierArr[lvl]->nStrata - 1; g1++)
+	// 	// 	{
+	// 	// 		// get unique pairs of all strata in level
+	// 	// 		// for each pair, estimate dxy
+	// 	// 		for (int g2 = g1 + 1; g2 < metadataSt->hierArr[lvl]->nStrata; g2++)
+	// 	// 		{
+	// 	// 			dxy = estimate_dxy(g1, g2, lvl, dMS[0], metadataSt, pars);
+	// 	// 			// ksprintf(kbuf, "%s,%s,%d,%f\n", metadataSt->hierArr[lvl]->strataNames[g1], metadataSt->hierArr[lvl]->strataNames[g2], lvl+1, dxy);
+	// 	// 			ksprintf(kbuf, "%s,%s,%d", metadataSt->hierArr[lvl]->strataNames[g1], metadataSt->hierArr[lvl]->strataNames[g2], lvl + 1);
+	// 	// 			ksprintf(kbuf, ",%.*f\n", (int)DBL_MAXDIG10, dxy);
+	// 	// 		}
+	// 	// 	}
+	// 	// }
+
+	// 	outFiles->out_dxy_fs->write(kbuf);
+	// 	kbuf_destroy(kbuf);
+	// }
 
 	AMOVA::amovaStruct **amv = new AMOVA::amovaStruct *[pars->nAmovaRuns];
 
@@ -292,7 +332,7 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO:
 		}
 		if (a == 0)
 		{
-			amv[a]->print_as_csv(outSt->out_amova_fs->fp, metadataSt);
+			amv[a]->print_as_csv(outFiles->out_amova_fs->fp, metadataSt);
 		}
 		// TODO print bootstrapped AMOVA tables and distance matrices too
 	}
@@ -322,7 +362,7 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO:
 }
 
 // --------------------------- INPUT: DISTANCE MATRIX --------------------------- //
-void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::outFilesStruct *outSt)
+void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 {
 
 	if (args->blockSize != 0)
@@ -374,11 +414,11 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt, IO::
 		{
 			amv->print_as_table(stdout, metadataSt);
 		}
-		amv->print_as_csv(outSt->out_amova_fs->fp, metadataSt);
+		amv->print_as_csv(outFiles->out_amova_fs->fp, metadataSt);
 
 		delete amv;
 
-		// outSt->flushAll();
+		// outFiles->flushAll();
 		delete metadataSt;
 
 		for (int i = 0; i < pars->nIndCmb; i++)
@@ -400,9 +440,11 @@ int main(int argc, char **argv)
 	if (argc == 1)
 		usage(stderr);
 
+
 	argStruct *args = argStruct_get(--argc, ++argv);
 	paramStruct *pars = paramStruct_init(args);
-	IO::outFilesStruct *outSt = new IO::outFilesStruct(args);
+	IO::outFilesStruct_set(args, outFiles);
+	
 
 	char *DATETIME = pars->DATETIME;
 	DATETIME = get_time();
@@ -423,18 +465,19 @@ int main(int argc, char **argv)
 	{
 		if (args->printDev == 1)
 		{
-			DEV_input_VCF(args, pars, formulaSt, outSt);
+			//TODO
+			// DEV_input_VCF(args, pars, formulaSt);
 			break;
 		}
 
-		input_VCF(args, pars, formulaSt, outSt);
+		input_VCF(args, pars, formulaSt);
 		break;
 	}
 
 	// ---------------------------- INPUT: DISTANCE MATRIX ---------------------------- //
 	case IN_DM:
 	{
-		input_DM(args, pars, formulaSt, outSt);
+		input_DM(args, pars, formulaSt);
 		break;
 	}
 
@@ -447,9 +490,9 @@ int main(int argc, char **argv)
 	}
 	}
 
-	delete outSt;
 	argStruct_destroy(args);
 	paramStruct_destroy(pars);
+	IO::outFilesStruct_destroy(outFiles);
 
 	return 0;
 }

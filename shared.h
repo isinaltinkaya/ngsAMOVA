@@ -19,6 +19,9 @@
 
 #include "lookup.h"
 
+
+#include "dev.h"
+
 /* ========================================================================== */
 /* MACRO DEFINITIONS ======================================================== */
 /* ========================================================================== */
@@ -43,6 +46,8 @@
 #define DBL_MAX_DIG_TOPRINT 3 + DBL_MANT_DIG - DBL_MIN_EXP
 // TODO deprecated
 
+
+
 /*
  * Macro:[AT]
  * inject the file and line info as string
@@ -51,7 +56,11 @@
 #define ASSTR(x) STRINGIFY(x)
 #define AT __FILE__ ":" ASSTR(__LINE__)
 
-#define NEVER()                                                                                                                                                 \
+/*
+ * Macro:[NEVER]
+ * indicates that a point in the code should never be reached
+ */
+#define NEVER \
 	fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) Control should never reach this point; please report this to the developers.\n*******\n", __FILE__, __LINE__); \
 	exit(1);
 
@@ -224,6 +233,18 @@
  */
 #define BITCHECK_ATLEAST(x, bit) !!((x >> (bit)) & 0xFF)
 
+
+
+
+
+
+
+
+
+
+
+
+
 /* LIMIT DEFINING MACROS -----------------------------------------------------*/
 
 // maximum number of tokens allowed in amova formula string
@@ -269,6 +290,11 @@
 #define METADATA_DELIMS "\t ,\n"
 
 #define MAX_N_AMOVA_LEVELS 5
+#define MAX_N_HIER_LEVELS 5
+#define MAX_N_GROUPS_PER_LEVEL 5
+#define MAX_N_INDIVIDUALS 500
+#define MAX_NAME_LENGTH 100
+
 
 /* CONSTANTS -----------------------------------------------------------------*/
 
@@ -312,5 +338,8 @@ int extractDigits(int num, int digits);
 char *get_time();
 
 void usage(FILE *fp);
+
+
+
 
 #endif

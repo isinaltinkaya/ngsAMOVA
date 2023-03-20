@@ -1,6 +1,148 @@
 #include "io.h"
 #include "dataStructs.h"
 
+
+
+metadataStruct2::metadataStruct2()
+{
+	//todo use real nind from pars instead; even if dm input we still know nind
+	indKeys = (uint64_t *)malloc(MAX_N_INDIVIDUALS * sizeof(uint64_t));
+	groupKeys = (uint64_t *)malloc(MAX_N_HIER_LEVELS * sizeof(uint64_t));
+
+	nGroups = (int *)malloc(MAX_N_HIER_LEVELS * sizeof(int));
+
+	indNames = (char **)malloc(MAX_N_INDIVIDUALS * sizeof(char *));
+	groupNames = (char ***)malloc(MAX_N_HIER_LEVELS * sizeof(char **));
+	levelNames = (char **)malloc(MAX_N_HIER_LEVELS * sizeof(char *));
+
+	lvlgToIdx = (int **) malloc(MAX_N_HIER_LEVELS * sizeof(int *));
+	for (size_t lvl = 0; lvl < MAX_N_HIER_LEVELS; lvl++)
+	{
+		lvlgToIdx[lvl] = (int *) malloc(MAX_N_GROUPS_PER_LEVEL * sizeof(int));
+
+		for (size_t g = 0; g < MAX_N_GROUPS_PER_LEVEL; g++)
+		{
+			lvlgToIdx[lvl][g] = -1;
+		}
+
+		groupNames[lvl] = (char **)malloc(MAX_N_GROUPS_PER_LEVEL * sizeof(char *));
+		nGroups[lvl] = 0;
+		groupKeys[lvl] = 0;
+	}
+
+	idxToLvlg = (int **) malloc(MAX_N_HIER_LEVELS * MAX_N_GROUPS_PER_LEVEL * sizeof(int *));
+	for (size_t i=0; i<MAX_N_HIER_LEVELS * MAX_N_GROUPS_PER_LEVEL; i++)
+	{
+		idxToLvlg[i] = (int *) malloc(2 * sizeof(int));
+		idxToLvlg[i][0] = -1;
+		idxToLvlg[i][1] = -1;
+	}
+
+}
+
+metadataStruct2::~metadataStruct2()
+{
+	FREE(indKeys);
+	FREE(groupKeys);
+	for(size_t ind = 0; ind < nInd; ind++)
+	{
+		FREE(indNames[ind]);
+	}
+	FREE(indNames);
+	FREE(nGroups);
+	for(size_t lvl = 0; lvl < nLevels; lvl++)
+	{
+		for(size_t g = 0; g < nGroups[lvl]; g++)
+		{
+			FREE(groupNames[lvl][g]);
+		}
+		FREE(groupNames[lvl]);
+		FREE(levelNames[lvl]);
+	}
+	FREE(groupNames);
+	FREE(levelNames);
+
+	for (size_t lvl = 0; lvl < nLevels; lvl++)
+	{
+		FREE(lvlgToIdx[lvl]);
+	}
+	FREE(lvlgToIdx);
+
+	for (size_t i=0; i<nLevels * nGroups[0]; i++)
+	{
+		FREE(idxToLvlg[i]);
+	}
+	FREE(idxToLvlg);
+
+
+}
+
+void metadataStruct2::printAll()
+{
+	print_indKeys();
+	print_groupKeys();
+}
+
+void metadataStruct2::resize()
+{
+	indNames = (char **)realloc(indNames, nInd * sizeof(char *));
+	indKeys = (uint64_t *)realloc(indKeys, nInd * sizeof(uint64_t));
+
+	groupKeys = (uint64_t *)realloc(groupKeys, nLevels * sizeof(uint64_t));
+	groupNames = (char ***)realloc(groupNames, nLevels * sizeof(char **));
+
+	nGroups = (int*)realloc(nGroups, nLevels * sizeof(int));
+	levelNames = (char **)realloc(levelNames, nLevels * sizeof(char *));
+
+	idxToLvlg = (int **) realloc (idxToLvlg, nBits * sizeof(int *));
+	lvlgToIdx = (int **) realloc (lvlgToIdx, nLevels * sizeof(int *));
+
+	for (size_t lvl = 0; lvl < nLevels; lvl++)
+	{
+		lvlgToIdx[lvl] = (int *) realloc (lvlgToIdx[lvl], nGroups[lvl] * sizeof(int));
+		groupNames[lvl] = (char **)realloc(groupNames[lvl], nGroups[lvl] * sizeof(char *));
+	}
+
+	groupKeys = (uint64_t *)realloc(groupKeys, nBits * sizeof(uint64_t));
+}
+
+void metadataStruct2::print_indKeys()
+{
+	// print all individual keys
+	for (size_t ind = 0; ind < nInd; ind++)
+	{
+		// DEVRUN(fprintf(stderr,"Individual %s key: %ld", indNames[ind], indKeys[ind]));
+		IO::vprint(2, "Individual %s key: %ld", indNames[ind], indKeys[ind]);
+		for(int b=0; b < nBits;  b++)
+		{
+			BITCHECK(indKeys[ind], b) ? fprintf(stderr,"1") : fprintf(stderr,"0");
+			if(b==nBits-1) fprintf(stderr,"\n");
+		}
+	}
+}
+
+void metadataStruct2::print_groupKeys()
+{
+	fprintf(stderr,"[INFO]\t-> Printing group keys, nLevels: %ld, nBits: %ld\n", nLevels, nBits);
+	
+	int bit=0;
+
+	// loop through all the groups in all levels
+    for (int b=0; b<nBits; b++){
+
+		int lvl=idxToLvlg[b][0];
+		int g=idxToLvlg[b][1];
+		IO::vprint(2, "Group idx:%d name:%s have key val:%ld lvl:%d groupIdxAtLvl:%d 0b:", b, groupNames[lvl][g], groupKeys[b],lvl,g);
+		// loop through all the bits used in keys
+		for (int bit=0; bit<nBits; bit++){
+
+			BITCHECK(groupKeys[b], bit) ? fprintf(stderr,"1") : fprintf(stderr,"0");
+			if(b==nBits-1) fprintf(stderr,"\n");
+
+		}
+	}
+}
+
 // TODO is this the proper way to do this?
 /// @brief calculate buffer size for CSV output
 /// @param n_vals number of values
@@ -47,7 +189,7 @@ void distanceMatrixStruct::print(IO::outputStruct *out_dm_fs)
 		}
 		else
 		{
-			NEVER();
+			NEVER;
 		}
 	}
 	out_dm_fs->write(kbuf);
@@ -201,7 +343,7 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 		fprintf(stderr, "\n[INFO]\t-> Formula is not set, will assume that columns are ordered based on hierarchical structure and will use all columns.\n");
 
 		// names of levels in the hierarchy (e.g. region, population, subpopulation)
-		char **levelNames = new char *[MAX_N_AMOVA_LEVELS];
+		char **levelNames = new char *[MAX_N_HIER_LEVELS];
 
 		// skip first line
 		ASSERT(fgets(mtd_buf, FGETS_BUF_SIZE, in_mtd_fp) != NULL);
@@ -222,9 +364,9 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 			hdrtok = strtok(NULL, METADATA_DELIMS);
 		} while (hdrtok != NULL);
 
-		if (nLevels > MAX_N_AMOVA_LEVELS)
+		if (nLevels > MAX_N_HIER_LEVELS)
 		{
-			fprintf(stderr, "\n[ERROR]\t-> Number of levels in metadata file (%ld) exceeds the maximum number of levels allowed (%d).\n", nLevels, MAX_N_AMOVA_LEVELS);
+			fprintf(stderr, "\n[ERROR]\t-> Number of levels in metadata file (%ld) exceeds the maximum number of levels allowed (%d).\n", nLevels, MAX_N_HIER_LEVELS);
 			exit(1);
 		}
 
@@ -275,7 +417,7 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 					}
 					else if (strcmp(tok, sampleSt->sampleNames[sidx]) == 0)
 					{
-						IO::vprint(2, "Found sample (vcf_index=%d,id=%s) in the metadata file.", sidx, tok);
+						// IO::vprint(2, "Found sample (vcf_index=%d,id=%s) in the metadata file.", sidx, tok);
 
 						// break when found, so that sidx is now the index of the sample in the vcf file
 						break;
@@ -468,7 +610,292 @@ metadataStruct *metadataStruct_get(FILE *in_mtd_fp, sampleStruct *sampleSt,
 		ASSERT(0 == 1);
 	}
 
-	NEVER();
+	NEVER;
+}
+
+
+void formulaStruct_validate(formulaStruct *fos, const int nLevels){
+
+	// validate that all tokens in formula has a corresponding column index in metadata
+	for(int i=0; i<fos->nTokens; i++){
+		if(fos->formulaTokenIdx[i] == -1){
+			fprintf(stderr, "\n[ERROR]\tFormula token \"%s\" does not have a corresponding column in metadata.\n", fos->formulaTokens[i]);
+			exit(1);
+		}
+		
+	}
+	ASSERT(fos->nTokens == nLevels+1);
+
+	if (nLevels > MAX_N_HIER_LEVELS)
+	{
+		fprintf(stderr, "\n[ERROR]\tNumber of levels (%d) exceeds the maximum number of levels allowed (%d).\n", nLevels, MAX_N_HIER_LEVELS);
+		exit(1);
+	}
+
+	// all is ok, shrink and ready to go
+	fos->shrink();
+
+}
+
+metadataStruct2 *metadataStruct2_get(argStruct* args, paramStruct *pars, sampleStruct *sampleSt, formulaStruct *fos)
+{
+
+	metadataStruct2 *mtd = new metadataStruct2();
+
+	FILE *in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
+
+	char *mtd_buf = (char*) malloc(FGETS_BUF_SIZE * sizeof(char));
+	ASSERT(fgets(mtd_buf, FGETS_BUF_SIZE, in_mtd_fp) != NULL);
+
+	// check if the line was fully read
+	if (mtd_buf[strlen(mtd_buf) - 1] != '\n'){
+		fprintf(stderr, "\n[ERROR]\tLine in metadata file is too long. Maximum line length is %d. Please increase FGETS_BUF_SIZE.\n", FGETS_BUF_SIZE);
+		exit(1);
+	}
+
+	// number of hierarchical levels, local copy of mtd->nLevels for validation
+	int nLevels= 0;
+
+	int hdr_col_idx=-1; // 0-based for indexing
+
+	// split the header into tokens
+	char *hdrtok = strtok(mtd_buf, METADATA_DELIMS);
+	while(hdrtok != NULL){
+
+		++hdr_col_idx;
+
+		// if token from metadata file is found in formula
+		int col_lvl_i=fos->setFormulaTokenIdx(hdrtok, hdr_col_idx);
+		if(col_lvl_i>-1){
+			IO::vprint(0, "\nFound hierarchical level: %s\n", hdrtok);
+			mtd->addLevel(hdrtok, col_lvl_i); // use before nLevels++ to get 0-based indexing
+			++nLevels;
+		}
+		hdrtok = strtok(NULL, METADATA_DELIMS);
+	}
+
+	// exclude the left-hand-side of the formula (i.e. Individual column) from the number of hierarchical levels count
+	nLevels--; 
+	
+	ASSERT(nLevels>0);
+
+	if(IO::verbose(2)){
+		fos->print(stderr);
+	}
+
+	mtd->nLevels = nLevels;
+	formulaStruct_validate(fos, nLevels);
+
+	ASSERT(nLevels == mtd->nLevels);
+
+
+	int nRows=0;
+	int nCols=0;
+	int nInd=0;
+
+	int col_i=0;
+
+
+	// associate the individuals to the index of groups at each level
+						// indToGroupIdx[nInd][idx]=mtd->nGroups[idx]-1;
+	int **indToGroupIdx = (int**) malloc(pars->nInd * sizeof(int*));
+	for(int i=0; i<pars->nInd; i++){
+		indToGroupIdx[i] = (int*) malloc(nLevels * sizeof(int));
+		for(int j=0; j<nLevels; j++){
+			indToGroupIdx[i][j] = -1;
+		}
+	}
+
+
+	int nBits_needed=0;
+
+	// loop through the rest of the file, one line per individual
+	while(fgets(mtd_buf, FGETS_BUF_SIZE, in_mtd_fp) != NULL){
+
+		// check if the line was fully read
+		if (mtd_buf[strlen(mtd_buf) - 1] != '\n'){
+			fprintf(stderr, "\n[ERROR]\tLine in metadata file is too long. Maximum line length is %d. Please increase FGETS_BUF_SIZE.\n", FGETS_BUF_SIZE);
+			exit(1);
+		}
+
+		++nRows;
+
+		col_i=0;
+
+		// split by delimiters
+		char* col = strtok(mtd_buf, METADATA_DELIMS);
+
+
+		while(col != NULL){ // loop through cols
+	
+			// individual column (left hand side of formula)
+			if( col_i == fos->formulaTokenIdx[0] ){
+
+
+
+		// TODO use associative array from vcf_ind_indexes to metadata_ind_indexes instead
+		// if(pars->in_ft==IN_VCF)
+		// {
+		// 	for (sidx=0; sidx < pars->nInd; sidx++)
+		// 	{
+		// 		if(sidx==pars->nInd-1)
+		// 		{
+		// 			fprintf(stderr, "\n[ERROR]\t-> Individual %s is not in the VCF file.\n", tok);
+		// 			exit(1);
+		// 		}else if(strcmp(tok, indNames[sidx])==0)
+		// 		{
+		// 			// found the individual in the VCF file, break to keep its index in sidx
+		// 			break;
+					
+		// 		}
+		// 	}
+		// }
+
+
+				// check if individual id is already in indNames
+				for (size_t ind=0; ind < nInd; ind++){
+					if ((mtd->indNames[ind]!=NULL) && (strcmp(mtd->indNames[ind], col) == 0)){
+						fprintf(stderr, "\n[ERROR]\t-> Individual %s is duplicated in the metadata file.\n", col);
+						exit(1);
+					}
+				}
+				mtd->indNames[nInd] = (char *)malloc((strlen(col) + 1) * sizeof(char));
+				mtd->indNames[nInd] = strncpy(mtd->indNames[nInd], col, strlen(col) + 1);
+				IO::vprint(2, "Found individual with name:%s sidx:%d", mtd->indNames[nInd], nInd);
+			}else{
+				// loop through the rest of the tokens, i.e. the hierarchical levels in order high->low
+				// e.g. Region, Population, Subpopulation
+				for (int tok_i=1; tok_i < fos->nTokens; tok_i++)
+				{
+					// if the column index matches the formula token index
+					if (col_i == fos->formulaTokenIdx[tok_i])
+					{
+
+						// hierarchical level index, excluding the individual column
+						int idx = tok_i-1; 
+
+						// index of the group at level, e.g. {pop1, pop2, pop3} -> pop2 grp_i == 1
+						int grp_i=-1;
+
+						// check if group name is already in groupNames
+						if(mtd->nGroups[idx]>0){
+							for (size_t grp=0; grp < mtd->nGroups[idx]; grp++){
+								if ((mtd->groupNames[idx][grp]!=NULL) && (strcmp(mtd->groupNames[idx][grp], col) == 0)){
+									// DEVPRINT("Found group with name:%s idx:%d", mtd->groupNames[idx][grp], grp);
+									++nBits_needed;
+									grp_i = grp;
+									break;
+								}
+							}
+						}
+
+						// if(grp_i == -1){
+						// 	mtd->groupNames[idx][mtd->nGroups[idx]] = (char *)malloc((strlen(col) + 1) * sizeof(char));
+						// 	mtd->groupNames[idx][mtd->nGroups[idx]] = strncpy(mtd->groupNames[idx][mtd->nGroups[idx]], col, strlen(col) + 1);
+						// 	mtd->nGroups[idx]++;
+						// 	grp_i+=mtd->nGroups[idx];
+						// }
+						if(grp_i == -1){
+							mtd->addGroup(idx,mtd->nGroups[idx], col);
+							grp_i+=mtd->nGroups[idx];
+						}
+
+						indToGroupIdx[nInd][idx]=grp_i;
+						break;
+					}
+				}
+			}
+
+			++col_i;
+			col = strtok(NULL, METADATA_DELIMS);
+		} // column in row loop (hierarchical levels for one individual)
+
+		++nInd;
+	} // row loop (individuals)
+
+
+	// carries the previous bit from the parent group to the child group
+	int prev_bit = -1;
+	int bit_i = -1;
+	int grp_i = -1;
+
+	// for(int ind_i=0; ind_i < pars->nInd; ind_i++){
+
+	// 	for(int lvl_i=0; lvl_i<nLevels; lvl_i++){
+	// 		grp_i = indToGroupIdx[ind_i][lvl_i];
+	// 		IO::vprint(2, "indToGroupIdx[%d][%d]=%d", ind_i, lvl_i, grp_i);
+	// 	}
+	// }
+
+	// print indToGroupIdx
+	for(int ind_i=0; ind_i < pars->nInd; ind_i++){
+
+
+		prev_bit = -1; // resets for each individual
+
+		int nGroups_rollingSum=0;
+
+
+		for(int lvl_i=0; lvl_i<nLevels; lvl_i++){
+
+
+			grp_i = indToGroupIdx[ind_i][lvl_i];
+
+			IO::vprint(2, "indToGroupIdx[%d][%d]=%d", ind_i, lvl_i, grp_i);
+
+			bit_i = nGroups_rollingSum + grp_i;
+
+		
+			mtd->lvlgToIdx[lvl_i][grp_i] = bit_i;
+			mtd->idxToLvlg[bit_i][0]=lvl_i;
+			mtd->idxToLvlg[bit_i][1]=grp_i;
+			
+
+			mtd->setGroupKey(bit_i,lvl_i,grp_i,prev_bit);
+
+
+			nGroups_rollingSum+=mtd->nGroups[lvl_i];
+			prev_bit = bit_i;
+		} // levels loop
+
+
+		// we can directly use lowest assoc level to assoc with individual
+
+
+		mtd->setIndKey(ind_i, indToGroupIdx[ind_i][nLevels-1]);
+	} //individuals loop
+
+
+
+	ASSERT(nRows == pars->nInd);
+
+
+	//TODO using nGroups determine the bit location of each group and set the bits
+			
+	fprintf(stderr, "\n[INFO]\t-> Number of levels in metadata file: %ld\n", nLevels);
+
+
+
+		//TODO set keys carry membership pop1 should set reg1 bit too
+
+	mtd->nBits=nBits_needed;
+	mtd->nInd=nInd;
+
+	mtd->print_groupKeys();
+	exit(0);
+	mtd->print_indKeys();
+	// exit(0);
+
+
+
+FCLOSE(in_mtd_fp);
+
+
+	// resize the data structures based on the actual size needed
+	mtd->resize();
+
+	return (mtd);
+
 }
 
 // IO::print::Array
@@ -614,6 +1041,39 @@ void usage(FILE *fp)
 	exit(0);
 }
 
+void trimSpaces(char* str) {
+    int len = strlen(str);
+
+    // remove leading spaces
+    int start = 0;
+    while (isspace(str[start]) && start < len) {
+        start++;
+    }
+
+    // remove trailing spaces
+    int end = len - 1;
+    while (isspace(str[end]) && end >= start) {
+        end--;
+    }
+
+    // move characters to the beginning of the array
+    int i;
+    for (i = start; i <= end; i++) {
+        str[i - start] = str[i];
+    }
+
+    // add null terminator
+    str[end - start + 1] = '\0';
+}
+
+void formulaStruct_destroy(formulaStruct *fos)
+{
+	// FREE(fos->formula);
+	FREE(fos->formulaTokens);
+	FREE(fos->formulaTokenIdx);
+	FREE(fos);
+}
+
 /// @brief formulaStruct_get initialize the formulaStruct
 /// @param formula formula string
 /// @return pointer to formulaStruct
@@ -622,17 +1082,19 @@ formulaStruct *formulaStruct_get(const char *formula)
 {
 
 	formulaStruct *fos = new formulaStruct;
-
-	// formulaStruct *fos = (formulaStruct *)calloc(1, sizeof(formulaStruct));
-
-	fos->formulaTokens = (char **)malloc(MAX_FORMULA_TOKENS * sizeof(char *));
 	fos->nTokens = 0;
-
 	fos->formula = strdup(formula);
+	fos->formulaTokens = (char **)malloc(MAX_FORMULA_TOKENS * sizeof(char *));
+	fos->formulaTokenIdx = (int*)malloc(MAX_FORMULA_TOKENS * sizeof(int));
+
+	for(int i = 0; i < MAX_FORMULA_TOKENS; ++i)
+	{
+		fos->formulaTokenIdx[i] = -1;
+		fos->formulaTokens[i] = NULL;
+	}
 
 	// pointer to the first character of formula string
 	const char *p = formula;
-
 	int nTilde = 0;
 
 	// skip until ~ tilde or end of string
@@ -645,9 +1107,9 @@ formulaStruct *formulaStruct_get(const char *formula)
 		}
 		if (*p == '~')
 		{
-			nTilde++;
+			++nTilde;
 		}
-		p++;
+		++p;
 	}
 
 	if (*p == '\0')
@@ -656,45 +1118,67 @@ formulaStruct *formulaStruct_get(const char *formula)
 		exit(1);
 	}
 
-	fos->formulaTokens[fos->nTokens] = strndup(formula, p - formula);
-	// fprintf(stderr, "\n\n\n-------\nntokens: %d\n", fos->nTokens);
-	fos->nTokens++;
-	p++;
+	char *token = strndup(formula, p - formula);
+	trimSpaces(token); // trim the leading and trailing spaces
 
-	while (*p != '\0')
+
+	if (strlen(token) > 0) { // only add non-empty tokens
+        fos->formulaTokens[fos->nTokens] = token;
+        fos->nTokens++;
+    }
+
+    p++;
+
+    while (*p != '\0') {
+        const char *start = p;
+
+        while (*p != '\0' && *p != '/' && *p != '~') {
+            p++;
+        }
+
+        if (*p == '\0') { // end of string
+            char *token = strndup(start, p - start);
+            trimSpaces(token);
+            if (strlen(token) > 0) {
+                fos->formulaTokens[fos->nTokens] = token;
+                fos->nTokens++;
+            }
+            break;
+        }
+
+        if (*p == '/') {
+            char *token = strndup(start, p - start);
+            trimSpaces(token);
+            if (strlen(token) > 0) {
+                fos->formulaTokens[fos->nTokens] = token;
+                fos->nTokens++;
+            }
+            p++;
+        } else { // *p == '~'
+            nTilde++;
+            if (nTilde > 1) {
+                fprintf(stderr, "\n[ERROR]\tformula %s is not valid: Found more than one '~'. \n", formula);
+                exit(1);
+            }
+            char *token = strndup(start, p - start);
+            trimSpaces(token);
+            if (strlen(token) > 0) {
+                fos->formulaTokens[fos->nTokens] = token;
+                fos->nTokens++;
+            }
+            p++;
+        }
+    }
+
+	if (fos->nTokens == 0)
 	{
-		// start of current token
-		const char *start = p;
-
-		// skip until '/' is encountered or end of string
-		while (*p != '\0' && *p != '/')
-		{
-			p++;
-		}
-		// end of string
-		if (*p == '\0')
-		{
-			fos->formulaTokens[fos->nTokens] = strndup(start, p - start);
-			fos->nTokens++;
-			break;
-		}
-		if (*p == '~')
-		{
-			nTilde++;
-			ASSERT(nTilde != 1); // should never happen
-			if (nTilde > 1)
-			{
-				fprintf(stderr, "\n[ERROR]\tformula %s is not valid: Found more than one '~'. \n", formula);
-			}
-		}
-		// or it was a '/'
-		fos->formulaTokens[fos->nTokens] = strndup(start, p - start);
-
-		fos->nTokens++;
-		p++;
+		fprintf(stderr, "\n[ERROR]\tformula %s is not valid: No tokens found.\n", fos->formula);
+		exit(1);
+	}else if (fos->nTokens == 1)
+	{
+		fprintf(stderr, "\n[ERROR]\tformula %s is not valid: Only one token found.\n", fos->formula);
+		exit(1);
 	}
-
-	// int *keyCols = (int *)malloc(fos->nTokens * sizeof(int));
 
 	return fos;
 }
@@ -960,4 +1444,78 @@ double estimate_dxy(const int idx1, const int idx2, const int lvl, distanceMatri
 	}
 	dxy = dxy / nxny;
 	return dxy;
+}
+
+double estimate_dxy2(const int idx1, const int idx2, const int lvl, distanceMatrixStruct *dMS, metadataStruct2 *mtd, paramStruct *pars)
+{
+
+
+	if (idx1 == idx2)
+	{
+		fprintf(stderr, "\n[ERROR][estimate_dxy] idx1:%d is equal to idx2:%d\n", idx1, idx2);
+		exit(1);
+	}
+
+	double dxy = 0.0;
+
+	// lvl is 0-indexed and nLevels is count
+	if (lvl >= mtd->nLevels)
+	{
+		fprintf(stderr, "\n[ERROR][estimate_dxy] The level specified (%d) is greater than the number of levels (%d)\n", lvl + 1, mtd->nLevels);
+		exit(1);
+	}
+
+
+	// count number of individuals with bit set at the same position as group key
+	int nInd1=0;
+	int nInd2=0;
+	for(int i=0; i<mtd->nInd; i++)
+	{
+		IO::vprint(2, "Checking individual with name:%s idx:%d key:%lu against group with name:%s idx:%d key:%lu at level %d", mtd->indNames[i], i, mtd->indKeys[i], mtd->get_groupName_from_lvlgidx(idx1), idx1,mtd->groupKeys[idx1], lvl);
+		//TODO access group names with glvl_idx too;maybe a lut
+		
+		PRINT_BITKEY(mtd->indKeys[i],mtd->nBits);
+		PRINT_BITKEY(mtd->groupKeys[idx1],mtd->nBits);
+
+
+		if(!(mtd->indKeys[i] & mtd->groupKeys[idx1])){
+			nInd1++;
+			IO::vprint(0, "Individual with name:%s idx:%d key:%lu belongs to group with name:%s idx:%d key:%lu at level %d", mtd->indNames[i], i, mtd->indKeys[i], mtd->get_groupName_from_lvlgidx(idx1),idx1, mtd->groupKeys[idx1], lvl);
+		}
+
+		// if(!!(mtd->indKeys[i] & mtd->groupKeys[idx2])){
+		// 	nInd2++;
+		// 	// IO::vprint(4, "Individual with name:%s idx:%d key:%lu belongs to group with name:%s idx:%d key:%lu at level %d", mtd->indNames[i], i, mtd->indKeys[i], mtd->groupNames[idx2], idx2, mtd->groupKeys[idx2], lvl);
+		// }
+	}
+	fprintf(stderr,"\n\nnInd1:%d nInd2:%d\n\n",nInd1,nInd2);
+	// exit(0);
+
+	IO::vprint(1, "Running estimate_dxy for strata %d (nInd:%d) and strata %d (nInd:%d) at level %d", idx1, nInd1, idx2, nInd2, lvl);
+
+	double nxny = (double)(nInd1 * nInd2);
+
+	// // locate the individual pairs in the distance matrix where one individual is from group 1 and the other is from group 2
+	// for (int i1 = 0; i1 < dMS->nInd - 1; i1++)
+	// {
+
+	// 	// use i1s belonging to idx1
+	// 	if (mtd->indInStrata(i1, lvl, idx1) != 1)
+	// 		continue;
+
+	// 	for (int i2 = i1 + 1; i2 < dMS->nInd; i2++)
+	// 	{
+
+	// 		// use i2s belonging to idx2
+	// 		if (mtd->indInStrata(i2, lvl, idx2) != 1)
+	// 			continue;
+
+	// 		IO::vprint(2, "Running estimate_dxy for i1:%d from group with index %d and i2:%d from group with index %d at hierarchical level %d\n", i1, idx1, i2, idx2, lvl);
+
+	// 		// IO::vprint(3,"dxy was %f and adding %f",dxy,dMS->M[pars->lut_indsToIdx[i1][i2]]);
+	// 		dxy += dMS->M[pars->lut_indsToIdx[i1][i2]];
+	// 	}
+	// }
+	// dxy = dxy / nxny;
+	// return dxy;
 }
