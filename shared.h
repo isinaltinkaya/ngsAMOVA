@@ -214,14 +214,20 @@
 #define CHAR_BITCHECK_ANY(x) !!((x)&0xFF)
 
 /* Macro:[WHICH_BIT_SET]
- * return the index of the first bit set in x
- * -1 if no bit is set
  *
  * @param x		the variable to check
  * @return		the index of the first bit set in x
  * 				-1 if no bit is set
  */
 #define WHICH_BIT_SET(x) (x == 0 ? -1 : (int)log2(x))
+
+/* Macro:[WHICH_BIT_SET1]
+ *
+ * @param x		the variable to check
+ * @return		the 1-based index of the first bit set in x
+ * 				-1 if no bit is set
+ */
+#define WHICH_BIT_SET1(x) (x == 0 ? -1 : (int)log2(x) + 1)
 
 /* Macro:[BITCHECK_ATLEAST]
  * check if at any bit that is at least as significant as the specified bit is set
@@ -240,15 +246,14 @@
 
 
 
-
-
-
-
-
 /* LIMIT DEFINING MACROS -----------------------------------------------------*/
 
 // maximum number of tokens allowed in amova formula string
-#define MAX_FORMULA_TOKENS 10
+#define MAX_N_FORMULA_TOKENS 10
+
+
+// maximum number of characters allowed in amova formula string
+#define MAX_FORMULA_LEN 300
 
 /*
  * Macro:[MAXDIG_PER_HLEVEL]
@@ -281,9 +286,6 @@
  */
 #define DBL_MAXDIG10 (2 + (DBL_MANT_DIG * 30103UL) / 100000UL)
 
-#define FREAD_BUF_SIZE 4096
-
-#define FGETS_BUF_SIZE 4096
 
 #define DELIMS "\t ,\n"
 
@@ -292,9 +294,15 @@
 #define MAX_N_AMOVA_LEVELS 5
 #define MAX_N_HIER_LEVELS 5
 #define MAX_N_GROUPS_PER_LEVEL 5
-#define MAX_N_INDIVIDUALS 500
+#define MAX_N_INDIVIDUALS 200
 #define MAX_NAME_LENGTH 100
 
+
+// for growing buffer memory
+#define N_INDIVIDUALS_BUF 100
+
+#define FREAD_BUF_SIZE 4096
+#define FGETS_BUF_SIZE 4096
 
 /* CONSTANTS -----------------------------------------------------------------*/
 
@@ -311,7 +319,7 @@ enum OUTFC
 {
 	NONE, // no compression [0]
 	GZ,	  // gzip [1]
-	BBGZ, // bgzip (binary) [3]
+	BBGZ, // bgzip (binary) [2]
 };
 
 // input file types
@@ -319,16 +327,30 @@ enum INFT
 {
 	IN_VCF,
 	IN_DM,
-	IN_JGPD,
+	IN_JGCD,
 };
+
+// TODO maybe use
+// #define IN_VCF 0
+// #define IN_DM (1<<1)
+// #define IN_JGPD (1<<2)
+// // then if(pars->inFileType & IN_VCF) ...
 
 /* ========================================================================== */
 
+
+// print generic usage information
+void print_help(FILE *fp);
+
+/// print formula usage information; to be used in formula specific errors
+void print_help_formula(FILE *fp);
+
 // verbosity level external global variable
-// 0000 0000 -> 0 -> verbose off [default, set in argStruct.cpp]
-// 0000 0001 -> 1 -> verbose on with verbosity level 1
-// 0000 0010 -> 2 -> verbose on with verbosity level 2
-// ... and so on
+// -v 0 or none -> 0000 0000 -> 0 -> verbose off [default, set in argStruct.cpp]
+// -v 1 -> 0000 0001 -> 1 -> set the first bit, 0-indexed (1-1=0) verbose on with level 1
+// -v 2 -> 0000 0010 -> 2 -> set the second bit, 0-indexed (2-1=1) verbose on with level 2
+// ... and so on, up to -v 8 
+// -v 8 -> 1000 0000 -> 128 -> set the 8th bit, 0-indexed (8-1=7) verbose on with level 8
 extern u_char VERBOSE;
 
 const double NEG_INF = -std::numeric_limits<double>::infinity();
@@ -337,7 +359,6 @@ int extractDigits(int num, int digits);
 
 char *get_time();
 
-void usage(FILE *fp);
 
 
 

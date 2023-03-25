@@ -1,5 +1,6 @@
 #include "argStruct.h"
 #include "paramStruct.h"
+#include "io.h"
 
 // default: 0 (verbose mode off)
 u_char VERBOSE = 0;
@@ -20,7 +21,6 @@ argStruct *argStruct_init()
 
 	args->formula = NULL;
 	args->keyCols = NULL;
-	args->hasColNames = 1;
 
 	args->command = NULL;
 	args->blockSize = 0;
@@ -73,8 +73,10 @@ argStruct *argStruct_get(int argc, char **argv)
 		char *arv = *argv;
 		char *val = *(++argv);
 
-		if (val == NULL)
-			usage(stdout);
+		if (val == NULL){
+			print_help(stdout);
+			exit(0);
+		}
 
 		if ((strcasecmp("--in_vcf", arv) == 0) || (strcasecmp("--input", arv) == 0) || (strcasecmp("-i", arv) == 0))
 		{
@@ -119,23 +121,18 @@ argStruct *argStruct_get(int argc, char **argv)
 		{
 			if (atoi(val) == 0)
 			{
-				// explicit verbose off
-				BITSET(VERBOSE, 0);
-				fprintf(stderr,"[INFO]\t-> Verbosity level is set to %d.\n", WHICH_BIT_SET(VERBOSE));
+				// explicit verbose off, use the default value 0
+				fprintf(stderr,"[INFO]\t-> Verbosity disabled explicitly. Will not print any information.\n");
 			}
 			else if (isdigit(val[0]))
 			{
-				BITSET(VERBOSE, atoi(val));
+				BITSET(VERBOSE, (atoi(val)-1));
 			}
 			else
 			{
 				NEVER;
 			}
-
-			if (CHAR_BITCHECK_ANY(VERBOSE))
-			{
-				fprintf(stderr, "\n[INFO]\t-> Verbosity level is set to %d.\n", WHICH_BIT_SET(VERBOSE));
-			}
+			fprintf(stderr, "\n[INFO]\t-> Verbosity level is set to %d.\n", WHICH_BIT_SET1(VERBOSE));
 		}
 
 		else if (strcasecmp("--isSim", arv) == 0)
@@ -196,8 +193,6 @@ argStruct *argStruct_get(int argc, char **argv)
 		}
 
 		// TODO decide btw single - and --
-		else if (strcasecmp("--hasColNames", arv) == 0)
-			args->hasColNames = atoi(val);
 		else if (strcasecmp("-seed", arv) == 0)
 			args->seed = atoi(val);
 		else if (strcasecmp("-doAMOVA", arv) == 0)
@@ -235,7 +230,7 @@ argStruct *argStruct_get(int argc, char **argv)
 		else if (strcasecmp("-h", arv) == 0 || strcasecmp("--help", arv) == 0)
 		{
 			free(args);
-			usage(stdout);
+			print_help(stdout);
 			exit(0);
 		}
 		else
@@ -300,10 +295,6 @@ argStruct *argStruct_get(int argc, char **argv)
 		else
 		{
 			fprintf(stderr, "\nAMOVA formula is defined as %s; will use the formula to define hierarchical structure in Metadata file %s.\n", args->formula, args->in_mtd_fn);
-			if (args->hasColNames == 0)
-			{
-				fprintf(stderr, "\n[ERROR]\tAMOVA formula is defined but -hasColnames is set to 0. Metadata file must have column names if formula is defined.\n");
-			}
 		}
 	}
 
@@ -338,7 +329,7 @@ argStruct *argStruct_get(int argc, char **argv)
 	}
 	else if (args->in_vcf_fn != NULL && args->in_dm_fn != NULL)
 	{
-		fprintf(stderr, "\n[ERROR] Cannot use --in_vcf %s with --in_dm %s.\n", args->in_vcf_fn, args->in_dm_fn);
+		fprintf(stderr, "\n[ERROR] Cannot use --in_vcf %s and --in_dm %s at the same time.\n", args->in_vcf_fn, args->in_dm_fn);
 		exit(1);
 	}
 
@@ -506,9 +497,12 @@ argStruct *argStruct_get(int argc, char **argv)
 	// [dev mode] 
 #if 1==DEV
 	DEVPRINT("Development mode is on. Will print extra information.\n");
-	VERBOSE=0;
 	BITSET(VERBOSE, 7); // max: 7
 #endif
+
+	if(args->doAMOVA>0){
+		IO::requireFile(args->formula, "--formula/-f");
+	}
 
 	return args;
 }

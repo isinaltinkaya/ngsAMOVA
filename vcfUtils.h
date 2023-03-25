@@ -7,7 +7,6 @@
 
 #include <htslib/kstring.h>
 
-struct sampleStruct;
 struct blobStruct;
 struct formulaStruct;
 struct pairStruct;
@@ -43,8 +42,8 @@ typedef struct vcfData
 	 * 		corresponding to (0,0), (0,1), (1,1)
 	 */
 	double **lngl = NULL;
-	size_t _lngl = 1024;
-	size_t nGT = 0;
+	size_t _lngl = 4096;
+	int nGT = 0;
 
 	/*
 	 * [nIndCmb][9+1]
@@ -55,9 +54,25 @@ typedef struct vcfData
 	double **JointGenoProbDistGL = NULL;
 	int nJointClasses = 0;
 
+
+
+	char **indNames = NULL; // individual names in bcf order
+
+
+	void addIndNames()
+	{
+		indNames = (char **)malloc(nInd * sizeof(char *));
+		for (size_t i = 0; i < (size_t)nInd; i++)
+		{
+			indNames[i] = NULL;
+			indNames[i] = strdup(hdr->samples[i]);
+		}
+		
+	}
+
 	// given number of genotype categories (nGT_)
 	// set nGT to given nGT, set nJointClasses to nGT*nGT
-	void set_nGT(const int nGT_);
+	// void set_nGT(const int nGT_);
 
 	void init_JointGenoCountDistGL();
 	void init_JointGenoProbDistGL();
@@ -67,13 +82,13 @@ typedef struct vcfData
 	void print_JointGenoProbDist( argStruct *args);
 
 	void lngl_init(int doEM);
-	void lngl_expand(int site_i);
+	void lngl_expand();
 
 	void print(FILE *fp);
 
 } vcfData;
 
-vcfData *vcfData_init(argStruct *args, paramStruct *pars, sampleStruct *sampleSt);
+vcfData *vcfData_init(argStruct *args, paramStruct *pars);
 void vcfData_destroy(vcfData *v);
 
 /*

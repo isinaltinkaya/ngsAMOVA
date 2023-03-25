@@ -285,7 +285,7 @@ namespace AMOVA
     } amovaStruct;
 
 
-    amovaStruct *doAmova(distanceMatrixStruct *dMS,metadataStruct *MTD,sampleStruct *SAMPLES, paramStruct *pars);
+    amovaStruct *doAmova(distanceMatrixStruct *dMS,metadataStruct *MTD, paramStruct *pars);
 
 }
 

@@ -23,11 +23,7 @@ void gl_log10(int base, double errate, double *like);
 
 int nCk(int n, int k);
 int nCk_idx(int nInd, int i1, int i2);
-/* [Look-Up Table]
- * Prepare individual pair - pair index lookup tables
- *
- */
-void set_lut_indsToIdx_2way(int nInd, int nIndCmb, int **lut_indsToIdx, int **lut_idxToInds);
+
 
 /*
  * rand()

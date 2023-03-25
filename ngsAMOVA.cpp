@@ -31,7 +31,7 @@ using size_t = decltype(sizeof(int));
 // IO::outFilesStruct *outFiles = new IO::outFilesStruct;
 
 // prepare distance matrix using original data
-void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS_orig, vcfData *vcfd, pairStruct **pairSt, formulaStruct *formulaSt,  blobStruct *blobSt, sampleStruct *sampleSt)
+void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS_orig, vcfData *vcfd, pairStruct **pairSt, formulaStruct *formulaSt,  blobStruct *blobSt)
 {
 
 	switch (args->doAMOVA)
@@ -48,8 +48,9 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 		else
 		{
 
-			blobSt = blobStruct_init(vcfd->nContigs, args->blockSize, vcfd->hdr);
-			readSites_GL(vcfd, args, pars, pairSt, blobSt);
+			NEVER;
+			// blobSt = blobStruct_init(vcfd->nContigs, args->blockSize, vcfd->hdr);
+			// readSites_GL(vcfd, args, pars, pairSt, blobSt);
 		}
 
 		spawnThreads_pairEM(args, pars, pairSt, vcfd, dMS_orig);
@@ -144,13 +145,19 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 // --------------------------- INPUT: VCF/BCF --------------------------- //
 void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 {
-	sampleStruct *sampleSt = new sampleStruct();
-	vcfData *vcfd = vcfData_init(args, pars, sampleSt);
+
+	vcfData *vcfd = vcfData_init(args, pars);
+	ASSERT(pars->nIndCmb>0);
 	pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
 
-	for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
+
+	for (int i1=0; i1<vcfd->nInd-1; i1++)
 	{
-		pairSt[pidx] = new pairStruct(pars, pidx);
+		for (int i2=i1+1; i2<vcfd->nInd; i2++)
+		{
+			int pidx = nCk_idx(vcfd->nInd, i1, i2);
+			pairSt[pidx] = new pairStruct(pars, pidx, i1, i2);
+		}
 	}
 
 	if (args->windowSize == 0)
@@ -167,47 +174,35 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		ASSERT(0 == 1);
 	}
 
-	// if (args->doEM != 0 && args->printMatrix == 1)
-	// {
-	// }
 
 	// --------------------------- doAMOVA 0 --------------------------- //
 	// DO NOT run AMOVA
-	if (args->doAMOVA == 0)
+	if (args->doAMOVA == 0 && args->doEM == 1)
 	{
-		if (args->doEM != 0)
+		// do not run AMOVA, but do EM and get distance matrix
+		distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
+		prepare_distanceMatrix(args, pars, dMS, vcfd, pairSt, formulaSt, NULL);
+		if (args->printMatrix != 0)
 		{
-			// do not run AMOVA, but do EM and get distance matrix
-			distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
-			prepare_distanceMatrix(args, pars, dMS, vcfd, pairSt, formulaSt, NULL, sampleSt);
-			if (args->printMatrix != 0)
-			{
-				dMS->print(outFiles->out_dm_fs);
-			}
-			delete dMS;
-			return;
+			dMS->print(outFiles->out_dm_fs);
 		}
+		delete dMS;
+
+
+		for (int i = 0; i < pars->nIndCmb; i++)
+		{
+			delete pairSt[i];
+		}
+		delete[] pairSt;
+
+		vcfData_destroy(vcfd);
+		return;
 	}
 
-	/////////// TEST ZONE
-	// metadataStruct2 *mtd2= metadataStruct2_get(args, pars, sampleSt, formulaSt);
+	metadataStruct *metadataSt= metadataStruct_get(args, pars, formulaSt);
 
-	// exit(0);
-	/////////// TEST ZONE
-
-	// --------------------------- doAMOVA!=0 --------------------------- //
-	// DO run AMOVA
-
-	// [BEGIN] ----------------------- READ METADATA ------------------------- //
-	// If VCF input, read metadata after VCF
-	// 		to compare VCF records with metadata when reading metadata
-	FILE *in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
-	metadataStruct *metadataSt = metadataStruct_get(in_mtd_fp, sampleSt, formulaSt, args->hasColNames, pars);
-	FCLOSE(in_mtd_fp);
-	// [END] ----------------------- READ METADATA ------------------------- //
 
 	pars->nAmovaRuns = 1;
-
 	if (args->nBootstraps > 0)
 	{
 		pars->nAmovaRuns += args->nBootstraps;
@@ -231,7 +226,7 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 
 	// dMS[0] is the original distance matrix (not bootstrapped)
 
-	prepare_distanceMatrix(args, pars, dMS[0], vcfd, pairSt, formulaSt, blobSt, sampleSt);
+	prepare_distanceMatrix(args, pars, dMS[0], vcfd, pairSt, formulaSt, blobSt);
 
 	if (args->nBootstraps > 0)
 	{
@@ -245,10 +240,9 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 			// fill dMS with bootstrapped distance matrices
 			fprintf(stderr, "\n\t-> Bootstrapping %d/%d", b, args->nBootstraps);
 
-			prepare_bootstrap_blocks(vcfd, pars, args, dMS[b], sampleSt, metadataSt, formulaSt, blobSt);
+			prepare_bootstrap_blocks(vcfd, pars, args, dMS[b], metadataSt, formulaSt, blobSt);
 
 			// // perform AMOVA using the bootstrapped dMS
-			// ASSERT(AMOVA::doAMOVA(dMS[b], metadataSt, sampleSt, outFiles->out_amova_fs->fp, pars->lut_indsToIdx) == 0);
 
 			fprintf(stderr, "\n\t-> Finished running AMOVA for bootstrap %d/%d", b, args->nBootstraps);
 			b++;
@@ -324,7 +318,7 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 
 	for (int a = 0; a < pars->nAmovaRuns; a++)
 	{
-		amv[a] = AMOVA::doAmova(dMS[a], metadataSt, sampleSt, pars);
+		amv[a] = AMOVA::doAmova(dMS[a], metadataSt, pars);
 		eval_amovaStruct(amv[a]);
 		if (a == 0 && args->printAmovaTable == 1)
 		{
@@ -334,7 +328,6 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		{
 			amv[a]->print_as_csv(outFiles->out_amova_fs->fp, metadataSt);
 		}
-		// TODO print bootstrapped AMOVA tables and distance matrices too
 	}
 
 	fprintf(stderr, "Total number of sites processed: %lu\n", pars->totSites);
@@ -355,8 +348,6 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		delete pairSt[i];
 	}
 	delete[] pairSt;
-	delete formulaSt;
-	delete sampleSt;
 
 	vcfData_destroy(vcfd);
 }
@@ -373,126 +364,119 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 
 	IO::vprint(1, "input_DM is running\n");
 
-	sampleStruct *sampleSt = new sampleStruct();
 
 	if (args->doAMOVA == 0)
 	{
 		fprintf(stderr, "\n\t-> Nothing to do.\n");
-		exit(1);
+		return;
 	}
-	else
+
+
+
+	distanceMatrixStruct *dMS = distanceMatrixStruct_read_csv(pars, args);
+
+	metadataStruct *metadataSt= metadataStruct_get(args, pars, formulaSt);
+
+	pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
+	// for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
+	// {
+	// 	pairSt[pidx] = new pairStruct(pars, pidx);
+	// }
+	for (int i1=0; i1<pars->nInd-1; i1++)
 	{
-
-		// will run AMOVA; prepare for AMOVA
-
-		// [BEGIN] ----------------------- READ METADATA ------------------------- //
-		//
-		// Metadata reading
-		// 	sets pars->nInd
-		// 	sets pars->nIndCmb
-		// 	sets pars->lut_indsToIdx
-		// 	sets pars->lut_idxToInds
-		ASSERT(args->in_mtd_fn != NULL);
-		FILE *in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
-		metadataStruct *metadataSt = metadataStruct_get(in_mtd_fp, sampleSt, formulaSt, args->hasColNames, pars);
-		FCLOSE(in_mtd_fp);
-		// [END] ----------------------- READ METADATA ------------------------- //
-
-		distanceMatrixStruct *dMS = distanceMatrixStruct_read_csv(pars, args, metadataSt);
-
-		pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
-		for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
+		for (int i2=i1+1; i2<pars->nInd; i2++)
 		{
-			pairSt[pidx] = new pairStruct(pars, pidx);
+			int pidx = nCk_idx(pars->nInd, i1, i2);
+			pairSt[pidx] = new pairStruct(pars, pidx, i1, i2);
 		}
-
-		AMOVA::amovaStruct *amv = AMOVA::doAmova(dMS, metadataSt, sampleSt, pars);
-
-		eval_amovaStruct(amv);
-
-		if (args->printAmovaTable == 1)
-		{
-			amv->print_as_table(stdout, metadataSt);
-		}
-		amv->print_as_csv(outFiles->out_amova_fs->fp, metadataSt);
-
-		delete amv;
-
-		// outFiles->flushAll();
-		delete metadataSt;
-
-		for (int i = 0; i < pars->nIndCmb; i++)
-		{
-			delete pairSt[i];
-		}
-		delete[] pairSt;
-
-		delete dMS;
 	}
 
-	delete formulaSt;
-	delete sampleSt;
+	AMOVA::amovaStruct *amv = AMOVA::doAmova(dMS, metadataSt, pars);
+
+	eval_amovaStruct(amv);
+
+	if (args->printAmovaTable == 1)
+	{
+		amv->print_as_table(stdout, metadataSt);
+	}
+	amv->print_as_csv(outFiles->out_amova_fs->fp, metadataSt);
+
+	delete amv;
+
+	// outFiles->flushAll();
+	delete metadataSt;
+
+	for (int i = 0; i < pars->nIndCmb; i++)
+	{
+		delete pairSt[i];
+	}
+	delete[] pairSt;
+
+	delete dMS;
+
 }
 
 int main(int argc, char **argv)
 {
 
-	if (argc == 1)
-		usage(stderr);
-
+	if (argc == 1){
+		print_help(stderr);
+		exit(0);
+	}
 
 	argStruct *args = argStruct_get(--argc, ++argv);
 	paramStruct *pars = paramStruct_init(args);
 	IO::outFilesStruct_set(args, outFiles);
 	
-
 	char *DATETIME = pars->DATETIME;
 	DATETIME = get_time();
 	fprintf(stderr, "\n%s", DATETIME);
 
 	argStruct_print(stderr, args);
 
-	formulaStruct *formulaSt = NULL;
-	if (args->formula != NULL)
-		formulaSt = formulaStruct_get(args->formula);
+	formulaStruct *formulaSt = formulaStruct_get(args->formula);
+	formulaSt->print(stderr);
 
-	// SWITCH: input file type
+	// TODO put formulaStruct into pars
+	// TODO use bitsetting to represent file types VCF/BCF, DM, etc.
+
+
+
+	// == OBTAIN THE DISTANCE MATRIX ==
+
+	// determine the method to obtain the distance matrix
 	switch (pars->in_ft)
 	{
 
-	// --------------------------- INPUT: VCF/BCF --------------------------- //
-	case IN_VCF:
-	{
-		if (args->printDev == 1)
-		{
-			//TODO
-			// DEV_input_VCF(args, pars, formulaSt);
+		// --------------------------- INPUT: VCF/BCF --------------------------- //
+		case IN_VCF:
+			input_VCF(args, pars, formulaSt);
 			break;
-		}
 
-		input_VCF(args, pars, formulaSt);
-		break;
+		// ---------------------------- INPUT: DISTANCE MATRIX ---------------------------- //
+		case IN_DM:
+			input_DM(args, pars, formulaSt);
+			break;
+		
+		// ---------------------------- INPUT: JGCD ---------------------------- //
+		case IN_JGCD:
+			// input_JGCD(args, pars, formulaSt);
+			break;
+
+		// ---------------------------- INPUT: UNRECOGNIZED ---------------------------- //
+		default:
+			fprintf(stderr, "\n[ERROR]\t-> Input file type not recognized\n");
+			exit(1);
 	}
 
-	// ---------------------------- INPUT: DISTANCE MATRIX ---------------------------- //
-	case IN_DM:
-	{
-		input_DM(args, pars, formulaSt);
-		break;
-	}
 
-	// ---------------------------- INPUT: UNRECOGNIZED ---------------------------- //
-	default:
-	{
-		fprintf(stderr, "\n[ERROR]\t-> Input file type not recognized\n");
-		exit(1);
-		break;
-	}
-	}
-
+	// == CLEANUP ==
+	formulaStruct_destroy(formulaSt);
 	argStruct_destroy(args);
 	paramStruct_destroy(pars);
 	IO::outFilesStruct_destroy(outFiles);
 
 	return 0;
 }
+
+

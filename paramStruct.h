@@ -16,8 +16,6 @@ struct argStruct;
  * @field nInd					number of individuals
  * @field pos					position
  *
- * @field lut_indsToIdx		lookup table for mapping two individuals
- * 								to their pair index
  * @field nIndCmb				number of unique pairwise individual combinations
  *
  * @field major					major allele
@@ -38,8 +36,6 @@ struct paramStruct
 
     int nInd;
 
-    int **lut_indsToIdx;
-    int **lut_idxToInds;
 
     int nIndCmb;
 

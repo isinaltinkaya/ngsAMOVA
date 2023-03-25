@@ -8,6 +8,51 @@ const char *IO::FILE_EXTENSIONS[] = {"", ".gz", ".bgz"};
 
 IO::outFilesStruct* outFiles = new IO::outFilesStruct();
 
+// TODO exit with error function to handle printing [ERROR] etc
+/// also write the error message to a "filename.err" file
+// and give directions to what to do next
+
+void IO::requireFile(const char *fn, const char *required, const char *requiredFor)
+{
+	if(fn==NULL)
+	{
+		fprintf(stderr,"\n[ERROR]\t-%s is required for %s, but found NULL.", required, requiredFor);
+		exit(1);
+	}
+
+	if (fn[0] == '\0')
+	{
+		fprintf(stderr, "\n[ERROR]\t-%s is required for %s, but found empty string.", required, requiredFor);
+		exit(1);
+	}
+
+	if (strcmp(fn, "-") == 0)
+	{
+		fprintf(stderr, "\n[ERROR]\t-%s is required for %s, but found \"-\".", required, requiredFor);
+		exit(1);
+	}
+}
+
+void IO::requireFile(const char *fn, const char *required)
+{
+	if(fn==NULL)
+	{
+		fprintf(stderr,"\n[ERROR]\t-%s is required, but found NULL.", required);
+		exit(1);
+	}
+
+	if (fn[0] == '\0')
+	{
+		fprintf(stderr, "\n[ERROR]\t-%s is required, but found empty string.", required);
+		exit(1);
+	}
+
+	if (strcmp(fn, "-") == 0)
+	{
+		fprintf(stderr, "\n[ERROR]\t-%s is required, but found \"-\".", required);
+		exit(1);
+	}
+}
 void IO::requireFile(const char *fn)
 {
 	ASSERTM(fn != NULL, "File name is NULL");
@@ -535,11 +580,9 @@ int IO::inspectFile::count_nRows(FILE *fp, int HAS_COLNAMES)
 // }
 
 /// @brief read SFS file
-/// @param in_sfs_fp input sfs file ff
+/// @param in_sfs_fp input sfs file pointer
 /// @param delims delimiters
-/// @param sampleSt sampleStruct samples
-/// @return ???
-int IO::readFile::SFS(FILE *in_sfs_fp, const char *delims, sampleStruct *sampleSt)
+int IO::readFile::SFS(FILE *in_sfs_fp, const char *delims)
 {
 
 	char sfs_buf[FGETS_BUF_SIZE];
@@ -718,7 +761,10 @@ void IO::outFilesStruct_destroy(IO::outFilesStruct *ofs)
 
 int IO::verbose(const int verbose_threshold)
 {
-	return BITCHECK_ATLEAST(VERBOSE, verbose_threshold);
+	if(verbose_threshold==0){
+		return 1; // if checking against 0 (i.e. no verbose needed) return 1
+	}
+	return BITCHECK_ATLEAST(VERBOSE, verbose_threshold-1);
 }
 
 void IO::vprint(const char *format, ...)
@@ -733,13 +779,23 @@ void IO::vprint(const char *format, ...)
 		vsprintf(str, format, args);
 		va_end(args);
 
-		fprintf(stderr, "\n[VERBOSE:%d]\t%s\n", LOG2_INT128_LUT[VERBOSE], str);
+		fprintf(stderr, "\n[INFO][VERBOSE>=1]\t%s\n", str);
 	}
 }
 
 void IO::vprint(const int verbose_threshold, const char *format, ...)
 {
-	if (BITCHECK_ATLEAST(VERBOSE, verbose_threshold) == 1)
+	if (verbose_threshold==0){
+		char str[1024];
+
+		va_list args;
+		va_start(args, format);
+		vsprintf(str, format, args);
+		va_end(args);
+
+		fprintf(stderr, "\n[INFO]\t%s\n", str);
+	}
+	if (BITCHECK_ATLEAST(VERBOSE, (verbose_threshold-1)) == 1)
 	{
 		char str[1024];
 
@@ -748,13 +804,13 @@ void IO::vprint(const int verbose_threshold, const char *format, ...)
 		vsprintf(str, format, args);
 		va_end(args);
 
-		fprintf(stderr, "\n[VERBOSE>=%d]\t%s\n", verbose_threshold, str);
+		fprintf(stderr, "\n[INFO][VERBOSE>=%d]\t%s\n", verbose_threshold, str);
 	}
 }
 
 void IO::vprint(FILE *fp, const int verbose_threshold, const char *format, ...)
 {
-	if (BITCHECK_ATLEAST(VERBOSE, verbose_threshold) == 1)
+	if (BITCHECK_ATLEAST(VERBOSE, (verbose_threshold-1)) == 1)
 	{
 		char str[1024];
 
@@ -763,13 +819,13 @@ void IO::vprint(FILE *fp, const int verbose_threshold, const char *format, ...)
 		vsprintf(str, format, args);
 		va_end(args);
 
-		fprintf(fp, "\n[VERBOSE>=%d]\t%s\n", verbose_threshold, str);
+		fprintf(fp, "\n[INFO][VERBOSE>=%d]\t%s\n", verbose_threshold, str);
 	}
 }
 
 void IO::vvprint(FILE *fp, const int verbose_threshold, const char *format, ...)
 {
-	if (BITCHECK_ATLEAST(VERBOSE, verbose_threshold) == 1)
+	if (BITCHECK_ATLEAST(VERBOSE, (verbose_threshold-1) ) == 1)
 	{
 
 		char str[1024];
@@ -779,8 +835,8 @@ void IO::vvprint(FILE *fp, const int verbose_threshold, const char *format, ...)
 		vsprintf(str, format, args);
 		va_end(args);
 
-		fprintf(fp, "\n[VERBOSE>=%d]\t%s\n", verbose_threshold, str);
-		fprintf(stderr, "\n[VERBOSE>=%d]\t%s\n", verbose_threshold, str);
+		fprintf(fp, "\n[INFO][VERBOSE>=%d]\t%s\n", verbose_threshold, str);
+		fprintf(stderr, "\n[INFO][VERBOSE>=%d]\t%s\n", verbose_threshold, str);
 	}
 }
 

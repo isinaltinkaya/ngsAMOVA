@@ -64,27 +64,6 @@ int nCk_idx(int nInd, int i1, int i2)
 	}
 }
 
-/// @brief prepare LUT for pair indices
-/// @param nInd number of individuals
-/// @return 2 LUTs
-/// 		1. lut_indsToIdx - lookup table for individual pair to pair's index
-/// 				- lut_indsToIdx[i1][i2] = index of pair (i1,i2)
-/// 		2. lut_idxToInds - lookup table for pair's index to individual pair
-/// 				- lut_idxToInds[idx][0] = i1
-/// 				- lut_idxToInds[idx][1] = i2
-void set_lut_indsToIdx_2way(int nInd, int nIndCmb, int **lut_indsToIdx, int **lut_idxToInds)
-{
-	for (int i1 = 0; i1 < nInd - 1; i1++)
-	{
-		for (int i2 = i1 + 1; i2 < nInd; i2++)
-		{
-			int idx = nCk_idx(nInd, i1, i2);
-			lut_indsToIdx[i1][i2] = idx;
-			lut_idxToInds[idx][0] = i1;
-			lut_idxToInds[idx][1] = i2;
-		}
-	}
-}
 
 // for (int i1 = 0; i1 < nInd - 1; i1++)
 // {

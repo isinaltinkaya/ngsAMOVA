@@ -11,6 +11,6 @@ const int NC2_LUT[301] = {0, 0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66, 78, 91,
 
 
 
-//TODO
-// int INDS2IDX_LUT[300][300]{ { 0 } };
-// int IDX2INDS_LUT[300];
+//TODO maybe precalculate
+// extern int idxToInds_LUT[300][2];
+// extern int indsToIdx_LUT[300][300];

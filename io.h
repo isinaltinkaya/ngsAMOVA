@@ -7,7 +7,6 @@
 
 #include "argStruct.h"
 
-struct sampleStruct;
 struct formulaStruct;
 struct pairStruct;
 
@@ -19,27 +18,37 @@ struct pairStruct;
 namespace IO
 {
 
-    /// @brief verbose - verbose indicator
-    /// @return int 1 if verbose level meets the threshold, 0 otherwise
-    /// @example if(verbose(2)) int x = 1; // will only execute if verbose >= 2
+    /// @brief verbose - check if verbose level meets the threshold
+    ///
+    /// @param verbose_threshold - threshold to check against the verbose arg value
+    /// @return 1 if verbose level meets the threshold, 0 otherwise
+    ///
+    /// @example 
+    /// if `-v 3` is used; (sets the bit at index 2 (3-1==2)
+    /// verbose(2) will check if a bit with index 1 (2-1==1) or higher is set
+    /// if(verbose(2)) will run;
+    ///
+    /// if `-v 1` is used; (sets the bit at index 0 (1-1==0)
+    /// verbose(2) will check if a bit with index 1 (2-1==1) or higher is set
+    /// if(verbose(2)) will not run;
     int verbose(const int verbose_threshold);
 
-    /// @brief verbose print - print to stderr if verbose != 0
+    /// @brief vprint - verbose print: print to stderr if verbose > 0
     /// @example vprint("Hello %s", "World");
     void vprint(const char *format, ...);
 
-    /// @brief (overload) verbose print with threshold
+    /// @brief <o> verbose print with threshold
     /// @param verbose_threshold threshold for printing the specified message
     /// @example vprint(1, "Hello %s", "World"); // will print if verbose >= 1
     void vprint(const int verbose_threshold, const char *format, ...);
 
-    /// @brief (overload) verbose print with threshold and file pointer
+    /// @brief <o> verbose print with threshold and file pointer
     /// @param fp file pointer to print to
     /// @param verbose_threshold threshold for printing the specified message
     /// @example vprint(1, "Hello %s", "World"); // will print to fp if verbose >= 1
     void vprint(FILE *fp, const int verbose_threshold, const char *format, ...);
 
-    /// @brief verbose print with threshold and file pointer, prints to both stderr and file
+    /// @brief <o> verbose print with threshold and file pointer, prints to both stderr and file
     /// @param fp file pointer to print to
     /// @param verbose_threshold threshold for printing the specified message
     /// @example vprint(1, "Hello %s", "World"); // will print to both stderr and fp if verbose >= 1
@@ -47,6 +56,8 @@ namespace IO
 
 
     void requireFile(const char *fn);
+    void requireFile(const char *fn, const char *required);
+    void requireFile(const char *fn, const char *required, const char *requiredFor);
 
     extern const char* FILE_EXTENSIONS[];
 
@@ -66,7 +77,7 @@ namespace IO
 
     namespace readFile
     {
-        int SFS(FILE *in_sfs_fp, const char *delims, sampleStruct *SAMPLES);
+        int SFS(FILE *in_sfs_fp, const char *delims);
 
         char *getFirstLine(const char *fn);
         char *getFirstLine(FILE *fp);
@@ -109,7 +120,6 @@ namespace IO
         FILE *fp = NULL;
         gzFile gzfp = NULL;
         BGZF *bgzfp = NULL;
-        // int print_header = 0; //TODO
 
         outputStruct(const char *fn_, const char *suffix, int fc_)
         {
