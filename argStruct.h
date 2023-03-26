@@ -19,6 +19,7 @@ extern u_char VERBOSE;
 * @field *in_jgcd_fn	input joint genotype count distribution data filename
 * @field *in_jgpd_fn	input joint genotype probability distribution data filename
 * @field *in_blb_fn     input block bed filename
+* @field *in_dxy_fn     input dxy filename
 *
 * @field *out_fn		pointer to output file prefix [angsdput]
 *
@@ -140,7 +141,11 @@ extern u_char VERBOSE;
 *
 * @field printJointGenoDist    [default = 0]
 *                              [0] do NOT print 
-*                              [VALUE] joint genotype distributions of pairs of individuals
+*                              [VALUE] print joint genotype distributions of pairs of individuals
+*
+* @field printDxy               [default = 0]
+*                              [0] do NOT print
+*                              [VALUE] print pairwise Dxy values
 * 
 * 
 * printing options
@@ -161,6 +166,7 @@ char *in_mtd_fn;
 char *in_jgcd_fn;
 char *in_jgpd_fn;
 char *in_blb_fn;
+char *in_dxy_fn;
 
 char *out_fn;
 
@@ -179,6 +185,8 @@ int printAmovaTable;
 int printMatrix;
 int printJointGenoCountDist;
 int printJointGenoProbDist;
+int printDxy;
+
 int printDev;
 
 int isSim;

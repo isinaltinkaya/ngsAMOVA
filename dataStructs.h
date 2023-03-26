@@ -353,7 +353,7 @@ typedef struct distanceMatrixStruct
 } distanceMatrixStruct;
 
 // read distance matrix from distance matrix csv file
-distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct *args);
+distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *args);
 
 // prepare distance matrix using genotype likelihoods and EM algorithm
 distanceMatrixStruct *distanceMatrixStruct_get(formulaStruct *FORMULA, paramStruct *pars, argStruct *args);
@@ -659,14 +659,6 @@ typedef struct metadataStruct
 
 metadataStruct *metadataStruct_get(argStruct* args, paramStruct *pars, formulaStruct *fos);
 void metadataStruct_destroy(metadataStruct *mtd);
-
-
-
-
-
-
-double estimate_dxy(const int idx1, const int idx2, const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars);
-double estimate_dxy2(const int idx1, const int idx2, const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars);
 
 
 #endif // __DATA_STRUCTS__

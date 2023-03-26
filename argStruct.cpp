@@ -17,6 +17,7 @@ argStruct *argStruct_init()
 	args->in_jgcd_fn = NULL;
 	args->in_jgpd_fn = NULL;
 	args->in_blb_fn = NULL;
+	args->in_dxy_fn = NULL;
 
 	args->out_fn = NULL;
 
@@ -50,6 +51,7 @@ argStruct *argStruct_init()
 	args->printAmovaTable = 0;
 	args->printJointGenoCountDist = 0;
 	args->printJointGenoProbDist = 0;
+	args->printDxy = 0;
 
 	args->seed = -1;
 	args->nBootstraps = 0;
@@ -91,6 +93,10 @@ argStruct *argStruct_get(int argc, char **argv)
 		{
 			args->in_dm_fn = strdup(val);
 		}
+		else if ((strcasecmp("--in_dxy", arv) == 0))
+		{
+			args->in_dxy_fn = strdup(val);
+		}
 		else if (strcasecmp("-m", arv) == 0)
 			args->in_mtd_fn = strdup(val);
 		else if ((strcasecmp("--output", arv) == 0) || (strcasecmp("-out", arv) == 0) || (strcasecmp("-o", arv) == 0))
@@ -117,6 +123,10 @@ argStruct *argStruct_get(int argc, char **argv)
 		else if ((strcasecmp("--printAmovaTable", arv) == 0) || (strcasecmp("--printAT", arv) == 0) || (strcasecmp("-pAT", arv) == 0))
 		{
 			args->printAmovaTable = atoi(val);
+		}
+		else if ((strcasecmp("--printDxy",arv) == 0) || (strcasecmp("-pDxy", arv) == 0))
+		{
+			args->printDxy = atoi(val);
 		}
 
 		else if ((strcasecmp("--verbose", arv) == 0) || (strcasecmp("-v", arv) == 0))
@@ -514,8 +524,15 @@ argStruct *argStruct_get(int argc, char **argv)
 		IO::requireFile(args->formula, "--formula/-f");
 	}
 
+	if(args->doDxy==0 && args->printDxy == 1)
+	{
+		fprintf(stderr, "\n[ERROR]\t-> --printDxy 1 requires --doDxy 1.\n");
+		exit(1);
+	}
+
 	return args;
 }
+
 
 void argStruct_destroy(argStruct *args)
 {
@@ -525,6 +542,7 @@ void argStruct_destroy(argStruct *args)
 	FREE(args->in_jgcd_fn);
 	FREE(args->in_jgpd_fn);
 	FREE(args->in_blb_fn);
+	FREE(args->in_dxy_fn);
 	FREE(args->out_fn);
 	FREE(args->formula);
 	FREE(args->keyCols);

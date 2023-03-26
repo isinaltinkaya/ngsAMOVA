@@ -586,8 +586,7 @@ void distanceMatrixStruct::print(IO::outputStruct *out_dm_fs)
 /// @param in_dm_fp input distance matrix file
 /// @param pars paramStruct parameters
 /// @return distance matrix double*
-// distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct *args, metadataStruct *metadataSt)
-distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct *args)
+distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *args)
 {
 
 	int dm_vals_size = 1225;
@@ -643,6 +642,7 @@ distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct
 		// 	}
 		// }
 		// gzclose(fp);
+		//TODO
 	}
 	else
 	{

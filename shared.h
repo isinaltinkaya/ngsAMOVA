@@ -337,6 +337,7 @@ enum INFT
 	IN_VCF,
 	IN_DM,
 	IN_JGCD,
+	IN_DXY,
 };
 
 // TODO maybe use

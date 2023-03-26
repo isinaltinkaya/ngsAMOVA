@@ -251,10 +251,24 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		blobStruct_destroy(blobSt);
 	}
 
+	dxyStruct *dxySt = NULL;
 	if (args->doDxy>0)
 	{
-		doDxy(args, pars, dMS[0], metadataSt);
+		if(args->in_dxy_fn==NULL)
+		{
+			//TODO: implement this as an independent function that does not require to go through amova stuff
+			// pars->in_ft=IN_DXY;
+
+			dxySt = dxyStruct_get(args,pars,dMS[0],metadataSt);
+		}else{
+
+			dxySt = dxyStruct_read(args,pars,dMS[0],metadataSt);
+		}
 	}
+	if(dxySt!=NULL){
+		dxySt->print_struct();
+	}
+
 
 	AMOVA::amovaStruct **amv = new AMOVA::amovaStruct *[pars->nAmovaRuns];
 
@@ -284,6 +298,8 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 	delete[] amv;
 
 	delete metadataSt;
+
+	delete dxySt;
 
 	for (int i = 0; i < pars->nIndCmb; i++)
 	{
@@ -315,7 +331,7 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 
 
 
-	distanceMatrixStruct *dMS = distanceMatrixStruct_read_csv(pars, args);
+	distanceMatrixStruct *dMS = distanceMatrixStruct_read(pars, args);
 
 	metadataStruct *metadataSt= metadataStruct_get(args, pars, formulaSt);
 

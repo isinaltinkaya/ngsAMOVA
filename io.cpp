@@ -626,7 +626,7 @@ kstring_t *kbuf_init()
 void kbuf_destroy(kstring_t *kbuf)
 {
 	FREE(kbuf->s);
-	delete kbuf;
+	DELETE(kbuf);
 }
 
 void IO::outputStruct::write(const char *buf)
@@ -714,9 +714,9 @@ void IO::outFilesStruct_set(argStruct *args, IO::outFilesStruct *ofs)
 	{
 		ofs->out_dev_fs = new IO::outputStruct(args->out_fn, ".dev.csv", 1);
 	}
-	if (args->doDxy == 1)
+	if (args->printDxy == 1)
 	{
-		ofs->out_dxy_fs = new IO::outputStruct(args->out_fn, ".dxy.csv", args->doDxy - 1);
+		ofs->out_dxy_fs = new IO::outputStruct(args->out_fn, ".dxy.csv", args->printDxy - 1);
 	}
 }
 
