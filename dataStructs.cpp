@@ -9,8 +9,6 @@ metadataStruct::metadataStruct(int nInd)
 	indKeys = (uint64_t *)malloc(nInd * sizeof(uint64_t));
 	indNames = (char **)malloc(nInd * sizeof(char *));
 
-
-	groupKeys = (uint64_t *)malloc(MAX_N_HIER_LEVELS * sizeof(uint64_t));
 	nGroups = (int *)malloc(MAX_N_HIER_LEVELS * sizeof(int));
 	groupNames = (char ***)malloc(MAX_N_HIER_LEVELS * sizeof(char **));
 	levelNames = (char **)malloc(MAX_N_HIER_LEVELS * sizeof(char *));
@@ -20,6 +18,13 @@ metadataStruct::metadataStruct(int nInd)
 	nIndPerStrata = NULL;
 
 	lvlStartPos = (int *)malloc(MAX_N_HIER_LEVELS * sizeof(int));
+
+	for (int i=0; i<nInd; i++)
+	{
+		indNames[i] = NULL;
+		indKeys[i] = 0;
+	}
+
 
 	for (size_t lvl = 0; lvl < MAX_N_HIER_LEVELS; lvl++)
 	{
@@ -37,12 +42,16 @@ metadataStruct::metadataStruct(int nInd)
 		}
 
 		nGroups[lvl] = 0;
-		groupKeys[lvl] = 0;
 		lvlStartPos[lvl] = -1;
 		levelNames[lvl] = NULL;
 	}
 
 	idxToLvlg = (int **) malloc(MAX_N_HIER_LEVELS * MAX_N_GROUPS_PER_LEVEL * sizeof(int *));
+	groupKeys = (uint64_t *)malloc(MAX_N_BITS * sizeof(uint64_t));
+	for (size_t i=0; i<MAX_N_BITS; i++)
+	{
+		groupKeys[i] = 0;
+	}
 	for (size_t i=0; i<MAX_N_HIER_LEVELS * MAX_N_GROUPS_PER_LEVEL; i++)
 	{
 		idxToLvlg[i] = (int *) malloc(2 * sizeof(int));
@@ -365,6 +374,9 @@ metadataStruct *metadataStruct_get(argStruct* args, paramStruct *pars, formulaSt
 		FREE(indToGroupIdx[i]);
 	}
 	FREE(indToGroupIdx);
+
+	//TODO
+	ASSERT(nBits_needed < 64);
 
 	return (mtd);
 }

@@ -16,19 +16,19 @@ void IO::requireFile(const char *fn, const char *required, const char *requiredF
 {
 	if(fn==NULL)
 	{
-		fprintf(stderr,"\n[ERROR]\t-%s is required for %s, but found NULL.", required, requiredFor);
+		fprintf(stderr,"\n[ERROR]\t-%s is required for %s.\n", required, requiredFor);
 		exit(1);
 	}
 
 	if (fn[0] == '\0')
 	{
-		fprintf(stderr, "\n[ERROR]\t-%s is required for %s, but found empty string.", required, requiredFor);
+		fprintf(stderr, "\n[ERROR]\t-%s is required for %s, but found empty string.\n", required, requiredFor);
 		exit(1);
 	}
 
 	if (strcmp(fn, "-") == 0)
 	{
-		fprintf(stderr, "\n[ERROR]\t-%s is required for %s, but found \"-\".", required, requiredFor);
+		fprintf(stderr, "\n[ERROR]\t-%s is required for %s, but found \"-\".\n", required, requiredFor);
 		exit(1);
 	}
 }
@@ -37,19 +37,19 @@ void IO::requireFile(const char *fn, const char *required)
 {
 	if(fn==NULL)
 	{
-		fprintf(stderr,"\n[ERROR]\t-%s is required, but found NULL.", required);
+		fprintf(stderr,"\n[ERROR]\t-%s is required, but found NULL.\n", required);
 		exit(1);
 	}
 
 	if (fn[0] == '\0')
 	{
-		fprintf(stderr, "\n[ERROR]\t-%s is required, but found empty string.", required);
+		fprintf(stderr, "\n[ERROR]\t-%s is required, but found empty string.\n", required);
 		exit(1);
 	}
 
 	if (strcmp(fn, "-") == 0)
 	{
-		fprintf(stderr, "\n[ERROR]\t-%s is required, but found \"-\".", required);
+		fprintf(stderr, "\n[ERROR]\t-%s is required, but found \"-\".\n", required);
 		exit(1);
 	}
 }

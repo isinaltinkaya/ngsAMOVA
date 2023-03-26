@@ -497,7 +497,7 @@ argStruct *argStruct_get(int argc, char **argv)
 	// [dev mode] 
 #if 1==DEV
 	DEVPRINT("Development mode is on. Will print extra information.\n");
-	BITSET(VERBOSE, 7); // max: 7
+	// BITSET(VERBOSE, 7); // max: 7
 #endif
 
 	if(args->doAMOVA>0){

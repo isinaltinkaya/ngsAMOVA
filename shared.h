@@ -176,7 +176,13 @@
  * @param bit	the bit to set
  * @return		x is modified in place
  */
-#define BITSET(x, bit) ((x) |= (1 << (bit)))
+// #define BITSET(x, bit) ((x) |= (1ULL << (bit)))
+ #define BITSET(x, bit) \
+         if ((bit) < 0 || (bit) >= 64) { \
+             fprintf(stderr, "Invalid bit number: %d\n", (bit)); \
+             exit(1); \
+         } \
+         (x) |= (1ULL << (bit)); \
 
 /* Macro:[BITTOGGLE]
  * toggle a specific bit in x
@@ -185,7 +191,7 @@
  * @param bit	the bit to toggle
  * @return		x is modified in place
  */
-#define BITTOGGLE(x, bit) ((x) ^= (1 << (bit)))
+#define BITTOGGLE(x, bit) ((x) ^= (1ULL << (bit)))
 
 /* Macro:[BITCLEAR]
  * clear a specific bit in x
@@ -194,7 +200,7 @@
  * @param bit	the bit to clear
  * @return		x is modified in place
  */
-#define BITCLEAR(x, bit) ((x) &= ~(1 << (bit)))
+#define BITCLEAR(x, bit) ((x) &= ~(1ULL << (bit)))
 
 /* Macro:[BITCHECK]
  * check if a specific bit is set in x
@@ -203,7 +209,7 @@
  * @param bit	the bit to check
  * @return		1 if the bit is set, 0 otherwise
  */
-#define BITCHECK(x, bit) !!((x) & (1 << (bit)))
+#define BITCHECK(x, bit) !!((x) & (1ULL << (bit)))
 
 /* Macro:[CHAR_BITCHECK_ANY]
  * check if any bit is set in a char
@@ -252,8 +258,18 @@
 #define MAX_N_FORMULA_TOKENS 10
 
 
+
+
 // maximum number of characters allowed in amova formula string
 #define MAX_FORMULA_LEN 300
+
+#define MAX_N_AMOVA_LEVELS 5
+#define MAX_N_HIER_LEVELS 5
+#define MAX_N_GROUPS_PER_LEVEL 5
+#define MAX_N_INDIVIDUALS 200
+#define MAX_NAME_LENGTH 100
+
+#define MAX_N_BITS 63
 
 /*
  * Macro:[MAXDIG_PER_HLEVEL]
@@ -290,13 +306,6 @@
 #define DELIMS "\t ,\n"
 
 #define METADATA_DELIMS "\t ,\n"
-
-#define MAX_N_AMOVA_LEVELS 5
-#define MAX_N_HIER_LEVELS 5
-#define MAX_N_GROUPS_PER_LEVEL 5
-#define MAX_N_INDIVIDUALS 200
-#define MAX_NAME_LENGTH 100
-
 
 // for growing buffer memory
 #define N_INDIVIDUALS_BUF 100

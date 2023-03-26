@@ -17,5 +17,5 @@ all:
 	../ngsAMOVA -doEM 0 -doAMOVA 2 -i test_s9_d1_1K.vcf -isSim 1 -minInd 2 -doDist 1 -m metadata_with_header_1lvl.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1_gt;
 	bash -c "diff testwd/test_s9_d1_1K_mtd1_gt.amova.csv reference/test_s9_d1_1K_mtd1_gt.amova.csv";
 	echo "Test 6";
-	#../ngsAMOVA -doEM 1 -doAMOVA 1 -doDist 1 -maxIter 50 -tole 1e-5 -P 4 -i sim_demes_v2-model1-1-rep0-d2.bcf -m sim_demes_v2-model1_metadata_2lvl_with_header.tsv -f "Individual~Region/Population" -o testwd/sim_demes_v2-model1-1-rep0-d2_maxIter50tole5;
-	#bash -c "diff testwd/ reference/sim_demes_v2-model1-1-rep0-d2_maxIter50tole5.amova.csv";
+	../ngsAMOVA -doEM 1 -doAMOVA 1 -doDist 1 -maxIter 50 -tole 1e-5 -P 4 -i sim_demes_v2-model1-1-rep0-d2.bcf -m sim_demes_v2-model1_metadata_2lvl_with_header.tsv -f "Individual~Region/Population" -o testwd/sim_demes_v2-model1-1-rep0-d2_maxIter50tole5;
+	bash -c "diff testwd/ reference/sim_demes_v2-model1-1-rep0-d2_maxIter50tole5.amova.csv";

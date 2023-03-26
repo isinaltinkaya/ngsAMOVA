@@ -41,3 +41,6 @@ wd/*
 test/testwd/
 
 *code-workspace*
+
+
+git_message.txt

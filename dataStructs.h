@@ -549,15 +549,13 @@ typedef struct metadataStruct
 		// carry the parent's key at groupKeys[prev_bit] to the child group at bit_i
 
 
-
 		if(prev_bit != -1){
 
-			// int parent_lvl = lvl-1;
-			// int parent_g = idxToLvlg[prev_bit][1];
 			ASSERT(groupKeys[prev_bit]>0);
 			groupKeys[bit_i] = groupKeys[prev_bit];
 			// DEVPRINT("group %s at level %d group_idx_in_level %d has a parent %s at level %d group_idx_in_level %d. the parent's key is set to %ld. the group has a key of %ld before setting it", groupNames[lvl][g], lvl, g, groupNames[parent_lvl][parent_g], parent_lvl, parent_g , groupKeys[prev_bit], groupKeys[bit_i]);
 		}else{
+			groupKeys[bit_i] = 0;
 			// DEVPRINT("group %s at level %d group_idx_in_level %d without parent. the group has a key of %ld before setting it", groupNames[lvl][g], lvl, g, groupKeys[bit_i]);
 		}
 
