@@ -95,6 +95,13 @@ extern u_char VERBOSE;
 *                       [0] do NOT perform Dxy
 *                       [1] perform Dxy for all pairs of groups in each hierarchical level
 *                               in the metadata file
+*                       ["str"] perform Dxy for all pairs of groups in hierarchical level "str" in the metadata file
+*                               e.g. "Regions" will perform Dxy for all pairs of groups in the "Regions"
+*                       ["str1,str2,str3"] perform Dxy for all pairs of groups in the given group list {str1,str2,str3}
+*                               e.g. "pop1,pop2,pop3" will perform Dxy for pop1-pop2, pop1-pop3, pop2-pop3.
+*
+* @field doDxyStr       [default=""] Stores the string given to doDxy, if any
+*                       [""] do NOT perform Dxy OR perform Dxy using numeric argument
 *
 * @field doDist		[0] use Sij similarity index
 * 						[1] use Dij (1-Sij) dissimilarity index
@@ -166,6 +173,7 @@ int blockSize;
 int doAMOVA;
 int doEM;
 int doDxy;
+char* doDxyStr;
 
 int printAmovaTable;
 int printMatrix;
@@ -202,5 +210,8 @@ argStruct *argStruct_init();
 argStruct *argStruct_get(int argc, char **argv);
 void argStruct_destroy(argStruct *arg);
 void argStruct_print(FILE *fp, argStruct *arg);
+
+
+
 
 #endif // __ARG_STRUCT__

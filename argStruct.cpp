@@ -5,6 +5,7 @@
 // default: 0 (verbose mode off)
 u_char VERBOSE = 0;
 
+
 argStruct *argStruct_init()
 {
 
@@ -30,6 +31,7 @@ argStruct *argStruct_init()
 	args->doAMOVA = 0;
 	args->doEM = 0;
 	args->doDxy = 0;
+	args->doDxyStr = NULL;
 
 	args->mThreads = 0;
 	args->maxEmIter = 100;
@@ -124,7 +126,7 @@ argStruct *argStruct_get(int argc, char **argv)
 				// explicit verbose off, use the default value 0
 				fprintf(stderr,"[INFO]\t-> Verbosity disabled explicitly. Will not print any information.\n");
 			}
-			else if (isdigit(val[0]))
+			else if (strIsNumeric(val))
 			{
 				BITSET(VERBOSE, (atoi(val)-1));
 			}
@@ -153,8 +155,16 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->doAMOVA = atoi(val);
 		else if (strcasecmp("--doEM", arv) == 0)
 			args->doEM = atoi(val);
+
 		else if (strcasecmp("--doDxy", arv) == 0)
-			args->doDxy = atoi(val);
+		{
+    		if (strIsNumeric(val)){
+				args->doDxy = atoi(val);
+			}else{
+				args->doDxy = 999; // indicates that a string is provided
+				args->doDxyStr = strdup(val);
+			}
+		}
 
 		else if (strcasecmp("--mThreads", arv) == 0)
 			args->mThreads = atoi(val);
@@ -518,6 +528,7 @@ void argStruct_destroy(argStruct *args)
 	FREE(args->out_fn);
 	FREE(args->formula);
 	FREE(args->keyCols);
+	FREE(args->doDxyStr);
 	FREE(args);
 }
 

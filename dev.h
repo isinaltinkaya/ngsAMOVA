@@ -11,6 +11,16 @@
 #define PRINT_CHAR_BITS(a) \
     printf("\n\n[DEV][PRINT_CHAR_BITS]\t%s:%d: var:%s, val:%d, 0b:%d%d%d%d%d%d%d%d\n\n", __FILE__, __LINE__, #a, a, !!((a << 0) & 0x80), !!((a << 1) & 0x80), !!((a << 2) & 0x80), !!((a << 3) & 0x80), !!((a << 4) & 0x80), !!((a << 5) & 0x80), !!((a << 6) & 0x80), !!((a << 7) & 0x80));
 
+
+
+
+/*
+ * Macro:[PRINT_BITKEY]
+ * @param a - variable to print
+ * @param nBits - number of bits to print
+ * prints the binary representation of a variable 
+ * @note in LSb order for little endian systems
+ */
 #define PRINT_BITKEY(a, nBits) \
 	fprintf(stderr, "\nBitkey of var:%s, val:%ld, nBits:%d, 0b:", #a, a, nBits); \
 	for(int i = 0; i < nBits; i++) \

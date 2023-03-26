@@ -363,8 +363,6 @@ metadataStruct *metadataStruct_get(argStruct* args, paramStruct *pars, formulaSt
 	ASSERT(nRows == mtd->nInd);
 	ASSERT(pars->nInd == mtd->nInd);
 
-	mtd->print_groupKeys();
-	mtd->print_indKeys();
 
 	mtd->getNIndPerStrata();
 
@@ -388,37 +386,6 @@ void metadataStruct::printAll()
 }
 
 // void metadataStruct::resize()
-// {
-// 	// // number of hierarchical levels (excluding the lowest level i.e. individuals)
-// 	// int nHierLevels = nLevels - 1;
-// 	// indNames = (char **)realloc(indNames, nInd * sizeof(char *));
-// 	// indKeys = (uint64_t *)realloc(indKeys, nInd * sizeof(uint64_t));
-
-// 	// groupKeys = (uint64_t *)realloc(groupKeys, nHierLevels * sizeof(uint64_t));
-// 	// groupNames = (char ***)realloc(groupNames, nHierLevels * sizeof(char **));
-
-// 	// nGroups = (int*)realloc(nGroups, nHierLevels * sizeof(int));
-
-// 	// levelNames = (char **)realloc(levelNames, nLevels * sizeof(char *));
-
-// 	// idxToLvlg = (int **) realloc (idxToLvlg, nBits * sizeof(int *));
-// 	// lvlgToIdx = (int **) realloc (lvlgToIdx, nLevels * sizeof(int *));
-
-// 	// for (size_t lvl = 0; lvl < nLevels; lvl++)
-// 	// {
-// 	// 	lvlgToIdx[lvl] = (int *) realloc (lvlgToIdx[lvl], nGroups[lvl] * sizeof(int));
-// 	// 	if(lvl != nLevels-1){//nHierLevels
-// 	// 		groupNames[lvl] = (char **)realloc(groupNames[lvl], nGroups[lvl] * sizeof(char *));
-// 	// 	}
-// 	// }
-// 	// for (size_t lvl = 0; lvl < nHierLevels; lvl++)
-// 	// {
-// 	// 	groupNames[lvl] = (char **)realloc(groupNames[lvl], nGroups[lvl] * sizeof(char *));
-// 	// }
-// 	// groupKeys = (uint64_t *)realloc(groupKeys, nBits * sizeof(uint64_t));
-
-// 	getNIndPerStrata();
-// }
 
 void metadataStruct::addLevelName(const char* levelName, const int level_idx)
 {
@@ -426,19 +393,55 @@ void metadataStruct::addLevelName(const char* levelName, const int level_idx)
 	levelNames[level_idx] = strdup(levelName);
 }
 
+int metadataStruct::indsFromGroup(int ind1, int ind2, int globGrpIdx){
 
-int metadataStruct::countIndsInGroup(int lvl, int localGrpIdx){
-	int globGrpIdx=lvlgToIdx[lvl][localGrpIdx];
+	ASSERT(ind1 != ind2);
+
+	int lvl=idxToLvlg[globGrpIdx][0];
+
+	int pos=MAX_N_BITS-lvlStartPos[lvl];
+	uint64_t i1=get_indKey(ind1);
+	uint64_t i2=get_indKey(ind2);
+
+	if(i1 == i2){
+		return 1;
+	}
+
+	i1=i1<<pos;
+	i2=i2<<pos;
+
+	// xor the keys to check if they are the same after discarding the bits lower than the level at interest
+	if((i1^i2)){
+		return 0;
+	}
+	return 1;
+}
+
+
+int metadataStruct::countIndsInGroup(int globIdx){
 	int n=0;
 	for(int i=0; i<nInd; i++){
-		// check if the individual's key is set at the globGrpIdx location
-		n+=BITCHECK(groupKeys[lvlgToIdx[nLevels-1][indKeys[i]]],globGrpIdx);
+		// check if the individual's key is set at the globIdx location
+		// n+=BITCHECK(groupKeys[lvlgToIdx[nLevels-1][indKeys[i]]],globIdx);
+		n+=BITCHECK(get_indKey(i),globIdx);
+	}
+	return n;
+}
+
+int metadataStruct::countIndsInGroup(int lvl, int localGrpIdx){
+	int globIdx=lvlgToIdx[lvl][localGrpIdx];
+	int n=0;
+	for(int i=0; i<nInd; i++){
+		// check if the individual's key is set at the globIdx location
+		// n+=BITCHECK(groupKeys[lvlgToIdx[nLevels-1][indKeys[i]]],globIdx);
+		n+=BITCHECK(get_indKey(i),globIdx);
 	}
 	return n;
 }
 
 int metadataStruct::indFromGroup(int ind_i, int lvl_i, int localGrpIdx){
-	return BITCHECK(groupKeys[lvlgToIdx[nLevels-1][indKeys[ind_i]]], lvlgToIdx[lvl_i][localGrpIdx]);
+	int globIdx=lvlgToIdx[lvl_i][localGrpIdx];
+	return BITCHECK(get_indKey(ind_i),globIdx);
 }
 
 void metadataStruct::getNIndPerStrata()
@@ -472,9 +475,21 @@ int metadataStruct::countNSubgroupAtLevel(int plvl, int pg, int lvl){
 	return n;
 }
 
+int metadataStruct::whichLevel1(const char* levelName){
+	// nLevels+1 bc levelNames[0]="Individual" so it has nLevels+1 elements
+	for(int i=0; i<nLevels+1; i++){
+		if(strcmp(levelName, levelNames[i])==0){
+			return i;
+		}
+	}
+	fprintf(stderr,"\n[ERROR][whichLevel1]\tCould not find level %s in the metadata file\n", levelName);
+	exit(1);
+}
+
 
 void metadataStruct::print_indKeys()
 {
+	
 	// print all individual keys
 	for (size_t ind = 0; ind < (size_t) nInd; ind++)
 	{
@@ -482,35 +497,35 @@ void metadataStruct::print_indKeys()
 		char *p = str;
 
 		int localGrpIdx=indKeys[ind];
-		int globGrpIdx=lvlgToIdx[nLevels-1][localGrpIdx];
+		int globIdx=lvlgToIdx[nLevels-1][localGrpIdx];
 
 		for (int bit=nBits-1; bit>-1; bit--)
 		{
-			p += sprintf(p, "%d", BITCHECK(groupKeys[globGrpIdx], bit));
+			p += sprintf(p, "%d", BITCHECK(groupKeys[globIdx], bit));
 		}
-		IO::vprint(2, "Individual %s is associated with the lowest-level-group at level %d with index %d, the associated group is named %s and has a key value %ld and 0b: %s", indNames[ind], nLevels-1,indKeys[ind], groupNames[nLevels-1][localGrpIdx], groupKeys[nLevels-1], str);
+		IO::vprint(0,"Individual %s is associated with the lowest-level-group at level %d with index %d, the associated group is named %s and has a key value %ld and 0b: %s", indNames[ind], nLevels-1,indKeys[ind], groupNames[nLevels-1][localGrpIdx], groupKeys[nLevels-1], str);
 	}
 }
 
 void metadataStruct::print_groupKeys()
 {
-	fprintf(stderr,"[INFO]\t-> Printing group keys, nLevels: %d, nBits: %d\n", nLevels, nBits);
+	IO::vprint(0,"-> Printing group keys, nLevels: %d, nBits: %d\n", nLevels, nBits);
 	
 
 	// loop through all the groups in all levels
-    for (int globGrpIdx=0; globGrpIdx<nBits; globGrpIdx++){
+    for (int globIdx=0; globIdx<nBits; globIdx++){
 
-		int lvl=idxToLvlg[globGrpIdx][0];
-		int g=idxToLvlg[globGrpIdx][1];
+		int lvl=idxToLvlg[globIdx][0];
+		int g=idxToLvlg[globIdx][1];
 
 		char str[65];
 		char *p = str;
 		// loop through all the bits used in keys
 		for (int bit=nBits-1; bit>-1; bit--)
 		{
-			p += sprintf(p, "%d", BITCHECK(groupKeys[globGrpIdx], bit));
+			p += sprintf(p, "%d", BITCHECK(groupKeys[globIdx], bit));
 		}
-		IO::vprint(2, "Group idx:%d name:%s have key val:%ld lvl:%d groupIdxAtLvl:%d 0b:%s", globGrpIdx, groupNames[lvl][g], groupKeys[globGrpIdx],lvl,g,str);
+		IO::vprint(0, "Group idx:%d name:%s have key val:%ld lvl:%d groupIdxAtLvl:%d 0b:%s", globIdx, groupNames[lvl][g], groupKeys[globIdx],lvl,g,str);
 	}
 }
 
@@ -1129,199 +1144,72 @@ blobStruct *blobStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *
 	return c;
 }
 
-// /// Warnings
-// ///
-// /// Warnings[IsRelatedToTypeX][IndexInTypeX] = "Warning string"
-// ///
-// /// Why do you get this warning = You used [IsRelatedToTypeX][IndexInTypeX]
-// /// e.g. Warnings[INFT][IN_VCF] = "You used VCF input file type"
-// const char* WARNINGS[][] = {
-// 	// INFT input file type
-// 	{
-// 		// IN_VCF	input file type is VCF
-// 		{"Assuming that the VCF file is sorted by position."},
-// 		// IN_DM	input file type is distance matrix
-// 		{"Assuming that the distance matrix is either an output from this program or a distance matrix with prepared with the same format as the output of this program."},
-// 		// IN_JGPD
-// 		{""}
-// 	}
+
+// /// @brief estimate_dxy - estimate dxy statistic for a pair of individuals
+// /// @param idx1			- index of the first group at specified level
+// /// @param idx2			- index of the second group at specified level
+// /// @param lvl			- hierarchical level the group indices refer to
+// /// @param dMS          - distance matrix struct
+// /// @param mtd          - metadata struct
+// /// @param pars         - parameter struct
+// /// @return dxy         - dxy statistic
+// double estimate_dxy(const int idx1, const int idx2, const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars)
+// {
+
+// 	double dxy = 0.0;
+
+// 	// // TODO below
+// 	// //  // extract the strata id at level from key1 and key2
+// 	// //  const int strata1 = (key1 >> (lvl*8)) & 0xFF;
+// 	// //  const int strata2 = (key2 >> (lvl*8)) & 0xFF;
+
+// 	// // lvl is 0-indexed and nLevels is count
+// 	// if (lvl >= mtd->nLevels)
+// 	// {
+// 	// 	fprintf(stderr, "\n[ERROR][estimate_dxy] The level specified (%d) is greater than the number of levels (%d)\n", lvl + 1, mtd->nLevels);
+// 	// 	exit(1);
+// 	// }
+
+// 	// // get number of individuals belonging to strata1 (extracted from key1 based on lvl)
+// 	// const int nInd1 = mtd->hierArr[lvl]->nIndPerStrata[idx1];
+// 	// const int nInd2 = mtd->hierArr[lvl]->nIndPerStrata[idx2];
+
+// 	// IO::vprint(1, "Running estimate_dxy for strata %d (nInd:%d) and strata %d (nInd:%d) at level %d", idx1, nInd1, idx2, nInd2, lvl);
+
+// 	// double nxny = (double)(nInd1 * nInd2);
+
+// 	// if (idx1 == idx2)
+// 	// {
+// 	// 	fprintf(stderr, "\n[ERROR][estimate_dxy] idx1:%d is equal to idx2:%d\n", idx1, idx2);
+// 	// 	exit(1);
+// 	// }
+
+// 	// // locate the individual pairs in the distance matrix where one individual is from group 1 and the other is from group 2
+// 	// for (int i1 = 0; i1 < dMS->nInd - 1; i1++)
+// 	// {
+
+// 	// 	// use i1s belonging to idx1
+// 	// 	if (mtd->indInStrata(i1, lvl, idx1) != 1)
+// 	// 		continue;
+
+// 	// 	for (int i2 = i1 + 1; i2 < dMS->nInd; i2++)
+// 	// 	{
+
+// 	// 		// use i2s belonging to idx2
+// 	// 		if (mtd->indInStrata(i2, lvl, idx2) != 1)
+// 	// 			continue;
+
+// 	// 		IO::vprint(2, "Running estimate_dxy for i1:%d from group with index %d and i2:%d from group with index %d at hierarchical level %d\n", i1, idx1, i2, idx2, lvl);
+
+// 	// 		// IO::vprint(3,"dxy was %f and adding %f",dxy,dMS->M[pars->lut_indsToIdx[i1][i2]]);
+// 	// 		dxy += dMS->M[pars->lut_indsToIdx[i1][i2]];
+// 	// 	}
+// 	// }
+// 	// dxy = dxy / nxny;
+// 	// return dxy;
+// 	return dxy;
 // }
 
-/// @brief  getDigitIndexAtLevel - get the index of a digit from the right
-/// @param nLevels  			total number of levels
-/// @param lvl  				0-indexed level
-/// @param maxDigitsPerHLevel  	maximum number of digits allowed in key construction per hierarchical level
-/// @return  					index of digit (from the right)
-/// @details  					Example: nLevels = 3, lvl = 1, maxDigitsPerHLevel = 2
-///								[1]	[][] [][] [][]
-///								 ^ 	  ^    ^    ^
-///								 ^	  ^	   ^	|______ the subkey for lvl 2 starts from here (lowest level, e.g. subpopulation)
-/// 							 ^	  ^	   |______ the subkey for lvl 1 starts from here (second highest level, e.g. population)
-///								 ^    |______ the subkey for lvl 0 starts from here (highest level, e.g. region)
-///								 |______ the key holder starts from here (holding the rest together)
-///
-int getDigitIndexAtLevel(const int nLevels, const int lvl, const int maxDigitsPerHLevel)
-{
-
-	// convert to 0-indexed
-	int n = nLevels - 1;
-	return (n - lvl) * maxDigitsPerHLevel;
-}
-
-/// @brief   [overload] getDigitIndexAtLevel - get the index of a digit from the right
-/// @details function overload for default MAXDIG_PER_HLEVEL
-int getDigitIndexAtLevel(const int nLevels, const int lvl)
-{
-	int n = nLevels - 1;
-	return (n - lvl) * MAXDIG_PER_HLEVEL;
-}
-
-/// @brief calculateKeyAtLevel - calculate the strata key value at a given strata index in a given level
-/// @param lvl			- hierarchical level
-/// @param strata_idx 	- strata index
-/// @return integer value of the strata key
-/// @example lvl=1, strata_idx=2 -> 1[02]00
-int calculateKeyAtLevel(const int lvl, const int strata_idx)
-{
-	return (int)(pow(10, MAXDIG_PER_HLEVEL * (lvl + 1)) + strata_idx);
-	// POW10_LUT[]
-}
-
-/// @brief estimate_dxy - estimate dxy statistic for a pair of individuals
-/// @param idx1			- index of the first group at specified level
-/// @param idx2			- index of the second group at specified level
-/// @param lvl			- hierarchical level the group indices refer to
-/// @param dMS          - distance matrix struct
-/// @param mtd          - metadata struct
-/// @param pars         - parameter struct
-/// @return dxy         - dxy statistic
-double estimate_dxy(const int idx1, const int idx2, const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars)
-{
-
-	double dxy = 0.0;
-
-	// // TODO below
-	// //  // extract the strata id at level from key1 and key2
-	// //  const int strata1 = (key1 >> (lvl*8)) & 0xFF;
-	// //  const int strata2 = (key2 >> (lvl*8)) & 0xFF;
-
-	// // lvl is 0-indexed and nLevels is count
-	// if (lvl >= mtd->nLevels)
-	// {
-	// 	fprintf(stderr, "\n[ERROR][estimate_dxy] The level specified (%d) is greater than the number of levels (%d)\n", lvl + 1, mtd->nLevels);
-	// 	exit(1);
-	// }
-
-	// // get number of individuals belonging to strata1 (extracted from key1 based on lvl)
-	// const int nInd1 = mtd->hierArr[lvl]->nIndPerStrata[idx1];
-	// const int nInd2 = mtd->hierArr[lvl]->nIndPerStrata[idx2];
-
-	// IO::vprint(1, "Running estimate_dxy for strata %d (nInd:%d) and strata %d (nInd:%d) at level %d", idx1, nInd1, idx2, nInd2, lvl);
-
-	// double nxny = (double)(nInd1 * nInd2);
-
-	// if (idx1 == idx2)
-	// {
-	// 	fprintf(stderr, "\n[ERROR][estimate_dxy] idx1:%d is equal to idx2:%d\n", idx1, idx2);
-	// 	exit(1);
-	// }
-
-	// // locate the individual pairs in the distance matrix where one individual is from group 1 and the other is from group 2
-	// for (int i1 = 0; i1 < dMS->nInd - 1; i1++)
-	// {
-
-	// 	// use i1s belonging to idx1
-	// 	if (mtd->indInStrata(i1, lvl, idx1) != 1)
-	// 		continue;
-
-	// 	for (int i2 = i1 + 1; i2 < dMS->nInd; i2++)
-	// 	{
-
-	// 		// use i2s belonging to idx2
-	// 		if (mtd->indInStrata(i2, lvl, idx2) != 1)
-	// 			continue;
-
-	// 		IO::vprint(2, "Running estimate_dxy for i1:%d from group with index %d and i2:%d from group with index %d at hierarchical level %d\n", i1, idx1, i2, idx2, lvl);
-
-	// 		// IO::vprint(3,"dxy was %f and adding %f",dxy,dMS->M[pars->lut_indsToIdx[i1][i2]]);
-	// 		dxy += dMS->M[pars->lut_indsToIdx[i1][i2]];
-	// 	}
-	// }
-	// dxy = dxy / nxny;
-	// return dxy;
-	return dxy;
-}
-
-double estimate_dxy2(const int idx1, const int idx2, const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars)
-{
-
-	double dxy = 0.0;
-
-	// if (idx1 == idx2)
-	// {
-	// 	fprintf(stderr, "\n[ERROR][estimate_dxy] idx1:%d is equal to idx2:%d\n", idx1, idx2);
-	// 	exit(1);
-	// }
 
 
-	// // lvl is 0-indexed and nLevels is count
-	// if (lvl >= mtd->nLevels)
-	// {
-	// 	fprintf(stderr, "\n[ERROR][estimate_dxy] The level specified (%d) is greater than the number of levels (%d)\n", lvl + 1, mtd->nLevels);
-	// 	exit(1);
-	// }
-
-
-	// // count number of individuals with bit set at the same position as group key
-	// int nInd1=0;
-	// int nInd2=0;
-	// for(int i=0; i<mtd->nInd; i++)
-	// {
-	// 	IO::vprint(2, "Checking individual with name:%s idx:%d key:%lu against group with name:%s idx:%d key:%lu at level %d", mtd->indNames[i], i, mtd->indKeys[i], mtd->get_groupName_from_lvlgidx(idx1), idx1,mtd->groupKeys[idx1], lvl);
-		
-	// 	PRINT_BITKEY(mtd->indKeys[i],mtd->nBits);
-	// 	PRINT_BITKEY(mtd->groupKeys[idx1],mtd->nBits);
-
-
-	// 	if(!(mtd->indKeys[i] & mtd->groupKeys[idx1])){
-	// 		nInd1++;
-	// 		IO::vprint(0, "Individual with name:%s idx:%d key:%lu belongs to group with name:%s idx:%d key:%lu at level %d", mtd->indNames[i], i, mtd->indKeys[i], mtd->get_groupName_from_lvlgidx(idx1),idx1, mtd->groupKeys[idx1], lvl);
-	// 	}
-
-	// 	// if(!!(mtd->indKeys[i] & mtd->groupKeys[idx2])){
-	// 	// 	nInd2++;
-	// 	// 	// IO::vprint(4, "Individual with name:%s idx:%d key:%lu belongs to group with name:%s idx:%d key:%lu at level %d", mtd->indNames[i], i, mtd->indKeys[i], mtd->groupNames[idx2], idx2, mtd->groupKeys[idx2], lvl);
-	// 	// }
-	// }
-	// fprintf(stderr,"\n\nnInd1:%d nInd2:%d\n\n",nInd1,nInd2);
-	// // exit(0);
-
-	// IO::vprint(1, "Running estimate_dxy for strata %d (nInd:%d) and strata %d (nInd:%d) at level %d", idx1, nInd1, idx2, nInd2, lvl);
-
-	// double nxny = (double)(nInd1 * nInd2);
-
-	// // // locate the individual pairs in the distance matrix where one individual is from group 1 and the other is from group 2
-	// // for (int i1 = 0; i1 < dMS->nInd - 1; i1++)
-	// // {
-
-	// // 	// use i1s belonging to idx1
-	// // 	if (mtd->indInStrata(i1, lvl, idx1) != 1)
-	// // 		continue;
-
-	// // 	for (int i2 = i1 + 1; i2 < dMS->nInd; i2++)
-	// // 	{
-
-	// // 		// use i2s belonging to idx2
-	// // 		if (mtd->indInStrata(i2, lvl, idx2) != 1)
-	// // 			continue;
-
-	// // 		IO::vprint(2, "Running estimate_dxy for i1:%d from group with index %d and i2:%d from group with index %d at hierarchical level %d\n", i1, idx1, i2, idx2, lvl);
-
-	// // 		// IO::vprint(3,"dxy was %f and adding %f",dxy,dMS->M[pars->lut_indsToIdx[i1][i2]]);
-	// // 		dxy += dMS->M[pars->lut_indsToIdx[i1][i2]];
-	// // 	}
-	// // }
-	// // dxy = dxy / nxny;
-	return dxy;
-}
 

@@ -35,8 +35,6 @@ struct paramStruct
     size_t totSites;
 
     int nInd;
-
-
     int nIndCmb;
 
     int nAmovaRuns;
@@ -45,6 +43,8 @@ struct paramStruct
     int in_ft;
 
     char *DATETIME;
+
+
 
     // PRINT FUNCTIONS
     void printParams(FILE *fp);

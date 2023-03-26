@@ -269,7 +269,7 @@
 #define MAX_N_INDIVIDUALS 200
 #define MAX_NAME_LENGTH 100
 
-#define MAX_N_BITS 63
+#define MAX_N_BITS 64
 
 /*
  * Macro:[MAXDIG_PER_HLEVEL]
@@ -347,6 +347,12 @@ enum INFT
 
 /* ========================================================================== */
 
+
+
+/// @brief strIsNumeric - check if string is numeric
+/// @param val          - string to be checked
+/// @return             - 1 if string is numeric, 0 otherwise
+int strIsNumeric(const char* val);
 
 // print generic usage information
 void print_help(FILE *fp);

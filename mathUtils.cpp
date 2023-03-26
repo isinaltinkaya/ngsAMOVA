@@ -54,6 +54,7 @@ int nCk(int n, int k)
  */
 int nCk_idx(int nInd, int i1, int i2)
 {
+	ASSERT(i1 < nInd && i2 < nInd); // safeguard for wrong order of arguments
 	if (i2 > i1)
 	{
 		return (nCk(nInd, 2) - nCk((nInd - i1), 2)) + (i2 - i1) - 1;

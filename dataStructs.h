@@ -15,9 +15,6 @@ struct threadStruct;
 struct argStruct;
 struct paramStruct;
 
-int getDigitIndexAtLevel(const int nLevels,const int lvl, const int maxDigitsPerHLevel);
-int getDigitIndexAtLevel(const int nLevels, const int lvl);
-int calculateKeyAtLevel(const int lvl, const int strata_idx);
 
 
 /// trim spaces from the beginning and end of a char* (inplace)
@@ -356,7 +353,6 @@ typedef struct distanceMatrixStruct
 } distanceMatrixStruct;
 
 // read distance matrix from distance matrix csv file
-// distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct *args, metadataStruct *metadataSt);
 distanceMatrixStruct *distanceMatrixStruct_read_csv(paramStruct *pars, argStruct *args);
 
 // prepare distance matrix using genotype likelihoods and EM algorithm
@@ -400,8 +396,6 @@ typedef struct metadataStruct
 
 	// number of hierarchical levels excluding the lowest level (i.e. individual)
 	int nLevels = 0;
-
-
 
 ///TODO
 	int* nStrataPerLevel = NULL;
@@ -463,7 +457,9 @@ typedef struct metadataStruct
 	// access: groupNames[0][0] = "group1"
 	char ***groupNames = NULL;
 
-	// names of levels in the hierarchy (e.g. region, population, subpopulation)
+	// levelNames[nLevels+1] = {individual, level1, level2, ..., level_n}
+	// names of levels in the hierarchy (e.g. region, population, subpopulation, individual)
+	// NOTE: levelNames[0] = "individual", therefore the indexing is shifted by +1
 	char **levelNames = NULL;
 	
 	// lvlStartPos[lvl] = index of the first bit in the group key corresponding to the group at level lvl
@@ -487,6 +483,10 @@ typedef struct metadataStruct
 
 	void resize();
 
+	uint64_t get_indKey(int ind_i){
+		ASSERT(ind_i<nInd);
+		return groupKeys[lvlgToIdx[nLevels-1][indKeys[ind_i]]];
+	}
 
 	int get_lvlgidx(int lvl, int g){
 		return(lvl * nGroups[lvl-1] + g);
@@ -573,17 +573,60 @@ typedef struct metadataStruct
 	void addLevelName(const char* levelName, const int level_idx);
 
 
+	// discard the bits lower than the level at interest
+	// e.g.  (lvl3 \isSubsetOf lvl2 \isSubsetOf lvl1)
+	// 
+	// number of groups at level 1: 4 == |{reg1,reg2,reg3,reg4}|
+	// number of groups at level 2: 3 == |{pop1,pop2,pop3}|
+	// number of groups at level 3: 5 == |{subpop1,subpop2,subpop3,subpop4,subpop5}|
+	//
+	// assume pop3 is a subset of reg1
+	// lvlStartPos={0,4,7}
+	// 
+	// if we are checking if ind4 belongs to pop3, which is a group at level 2(1based)
+	// we discard the bits representing the groups at level 3(1based)
+	// 
+	// pop3 key:
+	// 1000 0010 0000 0000 0000 0000 0000 0000
+	// ^	^  ^
+	// |	|  |_ 7 == lvlStartPos for level 3(1based)
+	// |    |_ 4 == lvlStartPos for level 2(1based)
+	// |_ 0 == lvlStartPos for level 1(1based)
+	// 
+	//
+	// assume ind4 key: (ind4 is from subpop5, subpop5 is from pop3, pop3 is from reg1)
+	// 1000 0010 0001 0000 0000 0000 0000 0000
+	// ^	^  ^==============================
+	//			we can discard these bits starting from the 7th bit
+	// 
+	
+	/// @brief indsFromGroup - check if both of the given individuals belong to a given group
+	/// @param ind1 
+	/// @param ind2 
+	/// @param globGrpIdx 
+	/// @return 
+	int indsFromGroup(int ind1, int ind2, int globGrpIdx);
+
+
+	//TODO
+	// int indPairFromGroup(int pair_idx, int globGrpIdx);
+
 	/// @brief countIndsInGroup - count the number of individuals in a given group
 	/// @param lvl  - hierarchical level of the group
 	/// @param localGrpIdx - group index at level lvl (local to the level)
 	/// @return  - number of individuals in the group
 	int countIndsInGroup(int lvl, int localGrpIdx);
 
+	/// @brief countIndsInGroup - count the number of individuals in a given group
+	/// @param globIdx - group index (global, == its bit)
+	/// @return  - number of individuals in the group
+	int countIndsInGroup(int globIdx);
+
 	/// @brief indFromGroup - check if a given individual belongs to a given group
 	/// @param ind_i 
 	/// @param lvl_i 
 	/// @param localGrpIdx 
-	/// @return 
+	/// @return 1 if the individual belongs to the group, 0 otherwise
 	int indFromGroup(int ind_i, int lvl_i, int localGrpIdx);
 
 
@@ -605,6 +648,12 @@ typedef struct metadataStruct
 	/// @param lvl 
 	/// @return 
 	int countNSubgroupAtLevel(int plvl, int pg, int lvl);
+
+
+	/// @brief whichLevel - get the 1-based level index of a given level name
+	/// @param levelName  - name of the level
+	/// @return index of the level, throw an error if the level name is not found
+	int whichLevel1(const char* levelName);
 
 } metadataStruct;
 

@@ -23,6 +23,7 @@
 #include "amova.h"
 #include "bootstrap.h"
 #include "evaluation.h"
+#include "dxy.h"
 
 #include "dev.h"
 
@@ -250,69 +251,10 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		blobStruct_destroy(blobSt);
 	}
 
-	// if (args->doDxy == 1)
-	// {
-	// 	kstring_t *kbuf = kbuf_init();
-
-	// 	double dxy = 0.0;
-	// 	ksprintf(kbuf, "group1,group2,hier_level,dxy\n");
-
-	// 	// get all pairs of groups at each hierarchical level
-	// 	for (int lvl=0; lvl < mtd2->nLevels; lvl++)
-	// 	{
-	// 		if (mtd2->nGroups[lvl] == 1)
-	// 			continue;
-
-	// 		if (mtd2->nGroups[lvl] == 2){
-	// 			int lvlg1=mtd2->get_lvlgidx(lvl, 0);
-	// 			int lvlg2=mtd2->get_lvlgidx(lvl, 1);
-	// 			dxy = estimate_dxy2(lvlg1, lvlg2, lvl, dMS[0], mtd2, pars);
-	// 			continue;
-	// 		}
-			
-	// 		// for (int g1=0; g1 < mtd2->nGroups[lvl]-1; g1++)
-	// 		// {
-	// 		// 	// get unique pairs of all groups in level
-	// 		// 	// for each pair, estimate dxy
-	// 		// 	for (int g2=g1+1; g2 < mtd2->nGroups[lvl]; g2++)
-	// 		// 	{
-	// 		// 		int lvlg1=mtd2->get_lvlgidx(lvl, g1);
-	// 		// 		int lvlg2=mtd2->get_lvlgidx(lvl, g2);
-
-	// 		// 		// int lvlg1= lvl * mtd2->nGroups[lvl-1] + g1;
-	// 		// 		// int lvlg2= lvl * mtd2->nGroups[lvl-1] + g2;
-	// 		// 		dxy = estimate_dxy2(lvlg1, lvlg2, lvl, dMS[0], mtd2, pars);
-	// 		// 		ksprintf(kbuf, "%s,%s,%d,%f\n", mtd2->groupNames[lvl][g1], mtd2->groupNames[lvl][g2], lvl, dxy);
-	// 		// 	}
-	// 		// }
-	// 	}
-
-
-
-	// 	// // estimate dxy for all pairs of strata in each hierarchical level
-	// 	// for (int lvl = 0; lvl < metadataSt->nLevels; lvl++)
-	// 	// {
-
-	// 	// 	if (metadataSt->hierArr[lvl]->nStrata == 1)
-	// 	// 		continue;
-
-	// 	// 	for (int g1 = 0; g1 < metadataSt->hierArr[lvl]->nStrata - 1; g1++)
-	// 	// 	{
-	// 	// 		// get unique pairs of all strata in level
-	// 	// 		// for each pair, estimate dxy
-	// 	// 		for (int g2 = g1 + 1; g2 < metadataSt->hierArr[lvl]->nStrata; g2++)
-	// 	// 		{
-	// 	// 			dxy = estimate_dxy(g1, g2, lvl, dMS[0], metadataSt, pars);
-	// 	// 			// ksprintf(kbuf, "%s,%s,%d,%f\n", metadataSt->hierArr[lvl]->strataNames[g1], metadataSt->hierArr[lvl]->strataNames[g2], lvl+1, dxy);
-	// 	// 			ksprintf(kbuf, "%s,%s,%d", metadataSt->hierArr[lvl]->strataNames[g1], metadataSt->hierArr[lvl]->strataNames[g2], lvl + 1);
-	// 	// 			ksprintf(kbuf, ",%.*f\n", (int)DBL_MAXDIG10, dxy);
-	// 	// 		}
-	// 	// 	}
-	// 	// }
-
-	// 	outFiles->out_dxy_fs->write(kbuf);
-	// 	kbuf_destroy(kbuf);
-	// }
+	if (args->doDxy>0)
+	{
+		doDxy(args, pars, dMS[0], metadataSt);
+	}
 
 	AMOVA::amovaStruct **amv = new AMOVA::amovaStruct *[pars->nAmovaRuns];
 
