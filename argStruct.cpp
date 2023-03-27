@@ -33,6 +33,7 @@ argStruct *argStruct_init()
 	args->doEM = 0;
 	args->doDxy = 0;
 	args->doDxyStr = NULL;
+	args->doNJ = 0;
 
 	args->mThreads = 0;
 	args->maxEmIter = 100;
@@ -176,6 +177,10 @@ argStruct *argStruct_get(int argc, char **argv)
 			}
 		}
 
+		else if ((strcasecmp("--doNeighborJoining", arv)==0) || (strcasecmp("--doNJ", arv)==0)){
+			args->doNJ = atoi(val);
+		}
+
 		else if (strcasecmp("--mThreads", arv) == 0)
 			args->mThreads = atoi(val);
 		else if (strcasecmp("--mEmIter", arv) == 0)
@@ -260,6 +265,7 @@ argStruct *argStruct_get(int argc, char **argv)
 		}
 		++argv;
 	}
+
 	// TODO add 'requires' arg dependency checker
 
 	if (args->isSim > 1 || args->isSim < 0)

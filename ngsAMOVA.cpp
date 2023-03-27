@@ -24,6 +24,7 @@
 #include "bootstrap.h"
 #include "evaluation.h"
 #include "dxy.h"
+#include "neighborJoining.h"
 
 #include "dev.h"
 
@@ -258,15 +259,20 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		{
 			//TODO: implement this as an independent function that does not require to go through amova stuff
 			// pars->in_ft=IN_DXY;
-
 			dxySt = dxyStruct_get(args,pars,dMS[0],metadataSt);
 		}else{
-
 			dxySt = dxyStruct_read(args,pars,dMS[0],metadataSt);
 		}
 	}
-	if(dxySt!=NULL){
-		dxySt->print_struct();
+
+
+	
+
+	njStruct *njSt = NULL;
+	if (args->doNJ>0 && dxySt!=NULL)
+	{
+		njSt = njStruct_get(args,pars,dxySt);
+
 	}
 
 

@@ -1,257 +1,135 @@
 #include "dataStructs.h"
 #include "dxy.h"
 
+dxyStruct::dxyStruct(const int printDxy)
+{
+    dxyArr = (double *)malloc(_dxyArr * sizeof(double));
+    groupNames1 = (char **)malloc(_dxyArr * sizeof(char *));
+    groupNames2 = (char **)malloc(_dxyArr * sizeof(char *));
+    levelNames = (char **)malloc(_dxyArr * sizeof(char *));
 
-void dxyStruct::estimate_dxy_2groups(const int local_idx1, const int local_idx2, const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars)
+    for (size_t i = 0; i < _dxyArr; i++)
+    {
+        dxyArr[i] = -1;
+        groupNames1[i] = NULL;
+        groupNames2[i] = NULL;
+        levelNames[i] = NULL;
+    }
+}
+
+dxyStruct::~dxyStruct()
+{
+    for (size_t i = 0; i < _dxyArr; i++)
+    {
+        FREE(groupNames1[i]);
+        FREE(groupNames2[i]);
+        FREE(levelNames[i]);
+    }
+    FREE(groupNames1);
+    FREE(groupNames2);
+    FREE(levelNames);
+    FREE(dxyArr);
+}
+
+void dxyStruct::expand()
+{
+    _dxyArr = _dxyArr * 2;
+    dxyArr = (double *)realloc(dxyArr, _dxyArr * sizeof(double));
+    groupNames1 = (char **)realloc(groupNames1, _dxyArr * sizeof(char *));
+    groupNames2 = (char **)realloc(groupNames2, _dxyArr * sizeof(char *));
+    levelNames = (char **)realloc(levelNames, _dxyArr * sizeof(char *));
+    for (size_t i = _dxyArr / 2; i < _dxyArr; i++)
+    {
+        dxyArr[i] = -1;
+        groupNames1[i] = NULL;
+        groupNames2[i] = NULL;
+        levelNames[i] = NULL;
+    }
+}
+
+int dxyStruct::estimate_dxy_2groups(const int local_idx1, const int local_idx2, const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars)
 {
 
-	double dxy = 0.0;
+    double dxy = 0.0;
 
-	if (local_idx1 == local_idx2)
-	{
-		fprintf(stderr, "\n[ERROR][estimate_dxy] idx1:%d is equal to idx2:%d\n", local_idx1, local_idx2);
-		exit(1);
-	}
+    if (local_idx1 == local_idx2)
+    {
+        fprintf(stderr, "\n[ERROR][estimate_dxy] idx1:%d is equal to idx2:%d\n", local_idx1, local_idx2);
+        exit(1);
+    }
 
+    // lvl is 0-indexed and nLevels is count
+    if (lvl >= mtd->nLevels)
+    {
+        fprintf(stderr, "\n[ERROR][estimate_dxy_2groups] The level specified (%d) is greater than the number of levels (%d)\n", lvl + 1, mtd->nLevels);
+        exit(1);
+    }
 
-	// lvl is 0-indexed and nLevels is count
-	if (lvl >= mtd->nLevels)
-	{
-		fprintf(stderr, "\n[ERROR][estimate_dxy_2groups] The level specified (%d) is greater than the number of levels (%d)\n", lvl + 1, mtd->nLevels);
-		exit(1);
-	}
+    int nInd1 = mtd->countIndsInGroup(lvl, local_idx1);
+    int nInd2 = mtd->countIndsInGroup(lvl, local_idx2);
+    double nxny = (double)(nInd1 * nInd2);
+    ASSERT(nxny>0);
+    ASSERT(dMS->nInd>0);
 
-
-    int nInd1=mtd->countIndsInGroup(lvl, local_idx1);
-    int nInd2=mtd->countIndsInGroup(lvl, local_idx2);
-
-
-	double nxny = (double)(nInd1 * nInd2);
-
-
-
-    
-	// only use the individual pairs in the distance matrix where one individual is from group 1 and the other is from group 2
-	for (int i1 = 0; i1 < dMS->nInd - 1; i1++)
-	{
-
+    // only use the individual pairs in the distance matrix where one individual is from group 1 and the other is from group 2
+    for (int i1 = 0; i1 < dMS->nInd - 1; i1++)
+    {
         for (int i2 = i1 + 1; i2 < dMS->nInd; i2++)
         {
-            if ( ( (mtd->indFromGroup(i1, lvl, local_idx1)) && (mtd->indFromGroup(i2, lvl, local_idx2)) ) || ( (mtd->indFromGroup(i1, lvl, local_idx2)) && (mtd->indFromGroup(i2, lvl, local_idx1)) ) ){
-
-
+            if (((mtd->indFromGroup(i1, lvl, local_idx1)) && (mtd->indFromGroup(i2, lvl, local_idx2))) || ((mtd->indFromGroup(i1, lvl, local_idx2)) && (mtd->indFromGroup(i2, lvl, local_idx1))))
+            {
                 dxy += dMS->M[nCk_idx(dMS->nInd, i1, i2)];
             }
         }
+    }
+    dxy = dxy / nxny;
 
+    dxyArr[nDxy] = dxy;
+    groupNames1[nDxy] = strdup(mtd->groupNames[lvl][local_idx1]);
+    groupNames2[nDxy] = strdup(mtd->groupNames[lvl][local_idx2]);
+    levelNames[nDxy] = strdup(mtd->levelNames[lvl+1]); // +1 since [0] is "Individual"
+    nDxy++;
 
-
-	}
-	dxy = dxy / nxny;
-
-
-
-
-    ksprintf(kbuf, "%s,%s,%s", mtd->groupNames[lvl][local_idx1], mtd->groupNames[lvl][local_idx2], mtd->levelNames[lvl+1]);
-    ksprintf(kbuf, ",%.*f\n", (int)DBL_MAXDIG10, dxy);
-
-    return;
+    return 1;
 }
 
-void dxyStruct::estimate_dxy_allGroupsAtLevel(const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars)
+int dxyStruct::estimate_dxy_allGroupsAtLevel(const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars)
 {
+    int n_vals = 0;
     int nGroups = mtd->nGroups[lvl];
     for (int g1 = 0; g1 < nGroups - 1; g1++)
     {
         for (int g2 = g1 + 1; g2 < nGroups; g2++)
         {
-            estimate_dxy_2groups(g1, g2, lvl, dMS, mtd, pars);
+            n_vals += estimate_dxy_2groups(g1, g2, lvl, dMS, mtd, pars);
         }
     }
-    return;
+    return n_vals;
 }
 
-
-void dxyStruct::estimate_dxy_allLevels(distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars)
+int dxyStruct::estimate_dxy_allLevels(distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars)
 {
+    int n_vals = 0;
     for (int lvl = 0; lvl < mtd->nLevels; lvl++)
     {
-		if (mtd->nGroups[lvl] == 1) continue;
-        estimate_dxy_allGroupsAtLevel(lvl, dMS, mtd, pars);
+        if (mtd->nGroups[lvl] == 1){
+            continue;
+        }
+
+        n_vals += estimate_dxy_allGroupsAtLevel(lvl, dMS, mtd, pars);
     }
-    return;
-}
-
-
-
-
-// void doDxy(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd)
-// {
-
-//     kstring_t *kbuf = kbuf_init();
-// 	ksprintf(kbuf, "group1_id,group2_id,hierarchical_level,dxy\n");
-
-
-//     // if non-numeric argument provided
-//     if (args->doDxy == 999)
-//     {
-//         ASSERT(args->doDxyStr!=NULL);
-
-//         // check if the argument value is a list of group names == check if it has a comma
-//         if (strchr(args->doDxyStr, ',') != NULL)
-//         {
-//             char** dxyGroups=NULL;
-//             int nDxyGroups=0;
-
-//             // split the string into a list of group names
-//             char *dxyGroup = strtok(args->doDxyStr, ",");
-
-//             int group_exists=0;
-//             while (dxyGroup != NULL)
-//             {
-//                 group_exists=0;
-//                 // check if group name is valid (==exists in the metadata file)
-//                 for(int i=0; i<mtd->nLevels; i++){
-//                     for(int j=0; j<mtd->nGroups[i]; j++){
-//                         if(strcmp(dxyGroup, mtd->groupNames[i][j])==0){
-//                             dxyGroups = (char**) realloc(dxyGroups, (nDxyGroups+1)*sizeof(char*));
-//                             dxyGroups[nDxyGroups] = strdup(dxyGroup);
-//                             nDxyGroups++;
-//                             group_exists=1;
-//                         }
-//                     }
-//                 }
-
-//                 if(group_exists==0){
-//                     fprintf(stderr, "\n[ERROR][doDxy]\tGroup name %s defined in --doDxy %s does not exist in the metadata file.\n", dxyGroup, args->doDxyStr);
-//                     exit(1);
-//                 }
-
-//                 // if yes, estimate dxy between all unique group combinations in the list
-//                 // if no, throw an error
-//                 dxyGroup = strtok(NULL, ",");
-//             }
-
-//             // estimate dxy between all unique group combinations in the list
-//             for(int i=0; i<nDxyGroups-1; i++){
-//                 for(int j=i+1; j<nDxyGroups; j++){
-
-//                     int g1=-1, g2=-1, lvl=-1, lvl2=-1;
-//                     for(int k=0; k<mtd->nLevels; k++){
-//                         for(int l=0; l<mtd->nGroups[k]; l++){
-//                             if(strcmp(dxyGroups[i], mtd->groupNames[k][l])==0){
-//                                 g1=l;
-//                                 lvl=k;
-//                             }
-//                             if(strcmp(dxyGroups[j], mtd->groupNames[k][l])==0){
-//                                 g2=l;
-//                                 lvl2=k;
-//                             }
-//                         }
-//                     }
-//                     if(lvl!=lvl2){
-//                         fprintf(stderr, "\n[ERROR][doDxy]\tGroup names %s and %s defined in --doDxy %s are not at the same hierarchical level.\n", dxyGroups[i], dxyGroups[j], args->doDxyStr);
-//                         exit(1);
-//                     }
-//                     estimate_dxy_2groups(g1, g2, lvl, dMS, mtd, pars, kbuf);
-//                 }
-//             }
-
-//             for(int i=0; i<nDxyGroups; i++){
-//                 FREE(dxyGroups[i]);
-//             }
-//             FREE(dxyGroups);
-//         }
-//         else
-//         { // a single string was provided for --doDxy; assuming it is a hierarchical level name
-
-//             // whichLevel1: returns 0 if level name is "Individual"
-//             //      since it has individual, the rest of the indices for the levels are shifted by +1
-//             int lvl1b=mtd->whichLevel1(args->doDxyStr);
-//             if(lvl1b==0){
-//                 fprintf(stderr, "\n[ERROR][doDxy]\tLevel name %s defined in --doDxy %s is %s, which is not a valid hierarchical level.\n", args->doDxyStr, args->doDxyStr, mtd->levelNames[0]);
-//                 exit(1);
-//             }
-//             estimate_dxy_allGroupsAtLevel(lvl1b-1, dMS, mtd, pars, kbuf);
-//         }
-//     }
-
-//     // if numeric argument provided
-//     if (args->doDxy==1)
-//     {
-//         estimate_dxy_allLevels(dMS, mtd, pars, kbuf);
-//     }
-
-//     outFiles->out_dxy_fs->write(kbuf);
-//     kbuf_destroy(kbuf);
-//     return;
-// }
-
-
-
-dxyStruct::dxyStruct(const int printDxy){
-
-    kbuf=NULL;
-    if(printDxy>0){
-        kbuf=kbuf_init();
-    }
-
-    dxy = (double*) malloc( _dxy * sizeof(double) );
-    groupNames1 = (char**) malloc( _dxy * sizeof(char*) );
-    groupNames2 = (char**) malloc( _dxy * sizeof(char*) );
-    levelNames = (char**) malloc( _dxy * sizeof(char*) );
-
-    for(size_t i=0; i<_dxy; i++){
-        dxy[i] = -1;
-        groupNames1[i] = NULL;
-        groupNames2[i] = NULL;
-        levelNames[i] = NULL;
-    }
-
-}
-
-
-dxyStruct::~dxyStruct(){
-    
-    if(kbuf!=NULL) kbuf_destroy(kbuf);
-
-    for(size_t i=0; i<_dxy; i++){
-        FREE(groupNames1[i]);
-        FREE(groupNames2[i]);
-        FREE(levelNames[i]);
-    }
-
-    FREE(groupNames1);
-    FREE(groupNames2);
-    FREE(levelNames);
-    FREE(dxy);
-
-}
-
-void dxyStruct::expand(){
-    _dxy = _dxy * 2;
-    dxy = (double*) realloc(dxy, _dxy * sizeof(double) );
-    groupNames1 = (char**) realloc(groupNames1, _dxy * sizeof(char*) );
-    groupNames2 = (char**) realloc(groupNames2, _dxy * sizeof(char*) );
-    levelNames = (char**) realloc(levelNames, _dxy * sizeof(char*) );
-    for(size_t i=_dxy/2; i<_dxy; i++){
-        dxy[i] = -1;
-        groupNames1[i] = NULL;
-        groupNames2[i] = NULL;
-        levelNames[i] = NULL;
-    }
-
+    return n_vals;
 }
 
 // dxy file format: comma-separated list of pairwise dxy values
 // group1Name,group2Name,levelID,dxyValue
-dxyStruct *dxyStruct_read(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd){ 
+dxyStruct *dxyStruct_read(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd)
+{
 
     dxyStruct *dxyS = new dxyStruct(args->printDxy);
 
-
     // number of lines in dxy file == number of pairwise dxy values
-	int n_vals = 0;
+    int n_vals = 0;
 
     int buf_size = IO::readFile::getBufferSize(args->in_dxy_fn);
     char *line = (char *)malloc(buf_size);
@@ -261,18 +139,18 @@ dxyStruct *dxyStruct_read(argStruct *args, paramStruct *pars, distanceMatrixStru
 
     FILE *in_dxy_fp = fopen(args->in_dxy_fn, "r");
 
-    //skip the first line (header)
+    // skip the first line (header)
     fgets(dxy_buf, buf_size, in_dxy_fp);
 
-    int col=0;
+    int col = 0;
     while (fgets(dxy_buf, buf_size, in_dxy_fp))
     {
-        
-        col=0;
+
+        col = 0;
         char *tok = strtok(dxy_buf, ",");
         while (tok != NULL)
         {
-            while (n_vals >= (int) dxyS->_dxy)
+            while (n_vals >= (int)dxyS->_dxyArr)
             {
                 dxyS->expand();
             }
@@ -293,22 +171,20 @@ dxyStruct *dxyStruct_read(argStruct *args, paramStruct *pars, distanceMatrixStru
                 break;
             case 3:
                 // dxyValue
-                dxyS->dxy[n_vals] = atof(tok);
+                dxyS->dxyArr[n_vals] = atof(tok);
                 break;
             default:
                 fprintf(stderr, "\n[ERROR][dxyStruct_read]\tToo many columns in dxy file %s.\n", args->in_dxy_fn);
                 exit(1);
             }
 
-
             tok = strtok(NULL, ",");
-            col++;
+            ++col;
         }
-        n_vals++;
+        ++n_vals;
     }
 
     dxyS->nDxy = n_vals;
-
 
     FREE(line);
     FCLOSE(in_dxy_fp);
@@ -320,63 +196,73 @@ void dxyStruct::print_struct()
 {
     fprintf(stderr, "\n[INFO]\t-> Printing the dxyStruct.\n");
     fprintf(stderr, "\t-> nDxy: %d\n", nDxy);
-    for(int i=0; i<nDxy; i++){
+    for (int i = 0; i < nDxy; i++)
+    {
         fprintf(stderr, "\t-> groupNames1[%d]: %s\n", i, groupNames1[i]);
         fprintf(stderr, "\t-> groupNames2[%d]: %s\n", i, groupNames2[i]);
         fprintf(stderr, "\t-> levelNames[%d]: %s\n", i, levelNames[i]);
-        fprintf(stderr, "\t-> dxy[%d]: %f\n", i, dxy[i]);
+        fprintf(stderr, "\t-> dxy[%d]: %f\n", i, dxyArr[i]);
     }
-
 }
-
 
 void dxyStruct::print(IO::outputStruct *out_dxy_fs)
 {
-    ASSERT(kbuf!=NULL);
-	fprintf(stderr, "\n[INFO]\t-> Writing the dxy results to %s.\n", out_dxy_fs->fn);
-	out_dxy_fs->write(kbuf);
+    fprintf(stderr, "\n[INFO]\t-> Writing the dxy results to %s.\n", out_dxy_fs->fn);
+    kstring_t *kbuf = kbuf_init();
+    ksprintf(kbuf, "group1_id,group2_id,hierarchical_level,dxy\n");
+
+    ASSERT(nDxy > 0);
+    for (int i = 0; i < nDxy; i++)
+    {
+        ksprintf(kbuf, "%s,%s,%s", groupNames1[i], groupNames2[i], levelNames[i]);
+        ksprintf(kbuf, ",%.*f\n", (int)DBL_MAXDIG10, dxyArr[i]);
+    }
+    out_dxy_fs->write(kbuf);
+    kbuf_destroy(kbuf);
 }
 
-dxyStruct *dxyStruct_get(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd){
+dxyStruct *dxyStruct_get(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd)
+{
 
     dxyStruct *dxyS = new dxyStruct(args->printDxy);
 
-    if(args->printDxy > 0){
-        ksprintf(dxyS->kbuf, "group1_id,group2_id,hierarchical_level,dxy\n");
-    }
-
+    int n_vals = 0;
 
     // if non-numeric argument provided
     if (args->doDxy == 999)
     {
-        ASSERT(args->doDxyStr!=NULL);
+        ASSERT(args->doDxyStr != NULL);
 
         // check if the argument value is a list of group names == check if it has a comma
         if (strchr(args->doDxyStr, ',') != NULL)
         {
-            char** dxyGroups=NULL;
-            int nDxyGroups=0;
+            char **dxyGroups = (char**) malloc(1 * sizeof(char *));
+            int nDxyGroups = 0;
 
             // split the string into a list of group names
             char *dxyGroup = strtok(args->doDxyStr, ",");
 
-            int group_exists=0;
+            int group_exists = 0;
             while (dxyGroup != NULL)
             {
-                group_exists=0;
+                group_exists = 0;
                 // check if group name is valid (==exists in the metadata file)
-                for(int i=0; i<mtd->nLevels; i++){
-                    for(int j=0; j<mtd->nGroups[i]; j++){
-                        if(strcmp(dxyGroup, mtd->groupNames[i][j])==0){
-                            dxyGroups = (char**) realloc(dxyGroups, (nDxyGroups+1)*sizeof(char*));
+                for (int i = 0; i < mtd->nLevels; i++)
+                {
+                    for (int j = 0; j < mtd->nGroups[i]; j++)
+                    {
+                        if (strcmp(dxyGroup, mtd->groupNames[i][j]) == 0)
+                        {
+                            dxyGroups = (char **)realloc(dxyGroups, (nDxyGroups + 1) * sizeof(char *));
                             dxyGroups[nDxyGroups] = strdup(dxyGroup);
                             nDxyGroups++;
-                            group_exists=1;
+                            group_exists = 1;
                         }
                     }
                 }
 
-                if(group_exists==0){
+                if (group_exists == 0)
+                {
                     fprintf(stderr, "\n[ERROR][doDxy]\tGroup name %s defined in --doDxy %s does not exist in the metadata file.\n", dxyGroup, args->doDxyStr);
                     exit(1);
                 }
@@ -387,31 +273,40 @@ dxyStruct *dxyStruct_get(argStruct *args, paramStruct *pars, distanceMatrixStruc
             }
 
             // estimate dxy between all unique group combinations in the list
-            for(int i=0; i<nDxyGroups-1; i++){
-                for(int j=i+1; j<nDxyGroups; j++){
+            for (int i = 0; i < nDxyGroups - 1; i++)
+            {
+                for (int j = i + 1; j < nDxyGroups; j++)
+                {
 
-                    int g1=-1, g2=-1, lvl=-1, lvl2=-1;
-                    for(int k=0; k<mtd->nLevels; k++){
-                        for(int l=0; l<mtd->nGroups[k]; l++){
-                            if(strcmp(dxyGroups[i], mtd->groupNames[k][l])==0){
-                                g1=l;
-                                lvl=k;
+                    int g1 = -1, g2 = -1, lvl = -1, lvl2 = -1;
+                    for (int k = 0; k < mtd->nLevels; k++)
+                    {
+                        for (int l = 0; l < mtd->nGroups[k]; l++)
+                        {
+                            if (strcmp(dxyGroups[i], mtd->groupNames[k][l]) == 0)
+                            {
+                                g1 = l;
+                                lvl = k;
                             }
-                            if(strcmp(dxyGroups[j], mtd->groupNames[k][l])==0){
-                                g2=l;
-                                lvl2=k;
+                            if (strcmp(dxyGroups[j], mtd->groupNames[k][l]) == 0)
+                            {
+                                g2 = l;
+                                lvl2 = k;
                             }
                         }
                     }
-                    if(lvl!=lvl2){
+                    if (lvl != lvl2)
+                    {
                         fprintf(stderr, "\n[ERROR][doDxy]\tGroup names %s and %s defined in --doDxy %s are not at the same hierarchical level.\n", dxyGroups[i], dxyGroups[j], args->doDxyStr);
                         exit(1);
                     }
                     dxyS->estimate_dxy_2groups(g1, g2, lvl, dMS, mtd, pars);
+                    ++n_vals;
                 }
             }
 
-            for(int i=0; i<nDxyGroups; i++){
+            for (int i = 0; i < nDxyGroups; i++)
+            {
                 FREE(dxyGroups[i]);
             }
             FREE(dxyGroups);
@@ -421,26 +316,28 @@ dxyStruct *dxyStruct_get(argStruct *args, paramStruct *pars, distanceMatrixStruc
 
             // whichLevel1: returns 0 if level name is "Individual"
             //      since it has individual, the rest of the indices for the levels are shifted by +1
-            int lvl1b=mtd->whichLevel1(args->doDxyStr);
-            if(lvl1b==0){
+            int lvl1b = mtd->whichLevel1(args->doDxyStr);
+            if (lvl1b == 0)
+            {
                 fprintf(stderr, "\n[ERROR][doDxy]\tLevel name %s defined in --doDxy %s is %s, which is not a valid hierarchical level.\n", args->doDxyStr, args->doDxyStr, mtd->levelNames[0]);
                 exit(1);
             }
-            dxyS->estimate_dxy_allGroupsAtLevel(lvl1b-1, dMS, mtd, pars);
+            n_vals += dxyS->estimate_dxy_allGroupsAtLevel(lvl1b - 1, dMS, mtd, pars);
         }
     }
 
     // if numeric argument provided
-    if (args->doDxy==1)
+    if (args->doDxy == 1)
     {
-        dxyS->estimate_dxy_allLevels(dMS, mtd, pars);
+        n_vals += dxyS->estimate_dxy_allLevels(dMS, mtd, pars);
     }
+    ASSERT(dxyS->nDxy == n_vals);
 
-    if(args->printDxy > 0){
+    if (args->printDxy > 0)
+    {
         dxyS->print(outFiles->out_dxy_fs);
     }
 
+    dxyS->print_struct();
     return dxyS;
 }
-
-

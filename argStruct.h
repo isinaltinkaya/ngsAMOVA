@@ -104,6 +104,10 @@ extern u_char VERBOSE;
 * @field doDxyStr       [default=""] Stores the string given to doDxy, if any
 *                       [""] do NOT perform Dxy OR perform Dxy using numeric argument
 *
+* @field doNJ           [default=0]
+*                       [0] do NOT perform neighbor joining
+*                       [1] perform neighbor joining
+*
 * @field doDist		[0] use Sij similarity index
 * 						[1] use Dij (1-Sij) dissimilarity index
 * 						[2] use Fij F statistic [DEPRECATED]
@@ -180,6 +184,7 @@ int doAMOVA;
 int doEM;
 int doDxy;
 char* doDxyStr;
+int doNJ;
 
 int printAmovaTable;
 int printMatrix;
