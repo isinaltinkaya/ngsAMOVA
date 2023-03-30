@@ -18,4 +18,7 @@ all:
 	bash -c "diff testwd/test_s9_d1_1K_mtd1_gt.amova.csv reference/test_s9_d1_1K_mtd1_gt.amova.csv";
 	echo "Test 6";
 	../ngsAMOVA -doEM 1 -doAMOVA 1 -doDist 1 -maxIter 50 -tole 1e-5 -P 4 -i sim_demes_v2-model1-1-rep0-d2.bcf -m sim_demes_v2-model1_metadata_2lvl_with_header.tsv -f "Individual~Region/Population" -o testwd/sim_demes_v2-model1-1-rep0-d2_maxIter50tole5;
-	bash -c "diff testwd/ reference/sim_demes_v2-model1-1-rep0-d2_maxIter50tole5.amova.csv";
+	bash -c "diff testwd/sim_demes_v2-model1-1-rep0-d2_maxIter50tole5.amova.csv reference/sim_demes_v2-model1-1-rep0-d2_maxIter50tole5.amova.csv";
+	printf "\n[TEST 7]: Neighbor Joining\n";
+	../ngsAMOVA -doAMOVA 2 -doDist 1 -i test_s9_d1_1K.vcf -m metadata_with_header_2lvl.tsv -f "Individual~Region/Population" --doNJ 1 -o testwd/test_s9_d1_1K_mtd2_nj;
+	bash -c "diff testwd/test_s9_d1_1K_mtd2_nj.nj.csv reference/test_s9_d1_1K_mtd2_nj.nj.csv";

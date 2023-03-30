@@ -66,6 +66,7 @@ int nCk_idx(int nInd, int i1, int i2)
 }
 
 
+
 // for (int i1 = 0; i1 < nInd - 1; i1++)
 // {
 // 	for (int i2 = i1 + 1; i2 < nInd; i2++)

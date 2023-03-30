@@ -106,7 +106,8 @@ extern u_char VERBOSE;
 *
 * @field doNJ           [default=0]
 *                       [0] do NOT perform neighbor joining
-*                       [1] perform neighbor joining
+*                       [1] perform neighbor joining using individuals as nodes
+*                       [2] perform neighbor joining using groups as nodes
 *
 * @field doDist		[0] use Sij similarity index
 * 						[1] use Dij (1-Sij) dissimilarity index

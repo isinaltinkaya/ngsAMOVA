@@ -30,7 +30,6 @@
 
 // TODO check size_t
 using size_t = decltype(sizeof(int));
-// IO::outFilesStruct *outFiles = new IO::outFilesStruct;
 
 // prepare distance matrix using original data
 void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS_orig, vcfData *vcfd, pairStruct **pairSt, formulaStruct *formulaSt,  blobStruct *blobSt)
@@ -182,7 +181,7 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 	if (args->doAMOVA == 0 && args->doEM == 1)
 	{
 		// do not run AMOVA, but do EM and get distance matrix
-		distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
+		distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance, NULL);
 		prepare_distanceMatrix(args, pars, dMS, vcfd, pairSt, formulaSt, NULL);
 		if (args->printMatrix != 0)
 		{
@@ -216,7 +215,7 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 
 	for (int r = 0; r < pars->nAmovaRuns; r++)
 	{
-		dMS[r] = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance);
+		dMS[r] = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance, metadataSt->indNames);
 	}
 
 	if (args->blockSize != 0)
@@ -265,14 +264,31 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		}
 	}
 
+	//TODO print in csv format 
+	// for (int i1=0; i1<metadataSt->nInd-1; i1++)
+	// {
+	// 	for (int i2=i1+1; i2<metadataSt->nInd; i2++)
+	// 	{
+	// 		int pidx = nCk_idx(metadataSt->nInd, i1, i2);
+	// 		fprintf(stdout,"%d,%d,%d,", i1,i2,pidx);
+	// 		fprintf(stdout,"%.*f\n",(int)DBL_MAXDIG10, dMS[0]->M[pidx]);
+	// 	}
+	// }
 
 	
 
 	njStruct *njSt = NULL;
-	if (args->doNJ>0 && dxySt!=NULL)
+	if (args->doNJ==1)
 	{
+		ASSERT(dMS[0]!=NULL);
+		njSt = njStruct_get(args,pars,dMS[0]);
+    	njSt->print(outFiles->out_nj_fs);
+	}
+	else if (args->doNJ==2)
+	{
+		ASSERT(dxySt!=NULL);
 		njSt = njStruct_get(args,pars,dxySt);
-
+		njSt->print(outFiles->out_nj_fs);
 	}
 
 
@@ -305,7 +321,8 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 
 	delete metadataSt;
 
-	delete dxySt;
+	DELETE(njSt);
+	DELETE(dxySt);
 
 	for (int i = 0; i < pars->nIndCmb; i++)
 	{
@@ -367,7 +384,31 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 
 	delete amv;
 
-	// outFiles->flushAll();
+	dxyStruct *dxySt = NULL;
+	if (args->doDxy>0)
+	{
+		if(args->in_dxy_fn==NULL)
+		{
+			dxySt = dxyStruct_get(args,pars,dMS,metadataSt);
+		}else{
+			dxySt = dxyStruct_read(args,pars,dMS,metadataSt);
+		}
+	}
+
+	njStruct *njSt = NULL;
+	if (args->doNJ==1)
+	{
+		ASSERT(dMS!=NULL);
+		njSt = njStruct_get(args,pars,dMS);
+    	njSt->print(outFiles->out_nj_fs);
+	}
+	else if (args->doNJ==2)
+	{
+		ASSERT(dxySt!=NULL);
+		njSt = njStruct_get(args,pars,dxySt);
+		njSt->print(outFiles->out_nj_fs);
+	}
+
 	delete metadataSt;
 
 	for (int i = 0; i < pars->nIndCmb; i++)
@@ -375,6 +416,9 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		delete pairSt[i];
 	}
 	delete[] pairSt;
+
+	DELETE(dxySt);
+	DELETE(njSt);
 
 	delete dMS;
 

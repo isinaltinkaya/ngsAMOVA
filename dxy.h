@@ -5,18 +5,7 @@
 #include "dataStructs.h"
 #include "io.h"
 
-
-
-
-
-
-
-/// @brief estimate_dxy_2groups - estimate pairwise dxy between two groups
-// double estimate_dxy_2groups(const int glob_idx1, const int glob_idx2, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars);
-
-
-// Dxy analysis entry point  
-void doDxy(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd);
+// TODO dxystruct is also a distancematrixstruct template
 
 
 /// @brief dxyStruct - structure for dxy analysis results
@@ -28,24 +17,23 @@ void doDxy(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS, metada
 /// @field groupNames2 - array of group names for group 2 corresponding to dxy values
 /// @field levelNames - array of level names corresponding to dxy values
 ///
-/// @details 
+/// @details
 /// dxy[i] is the dxy value between groupNames1[i] and groupNames2[i] (at levelNames[i])
 ///
 typedef struct dxyStruct
 {
 
     // number of dxy values
-    int nDxy=0;
-    
-    size_t _dxyArr=100; // initial value for malloc; will be increased if needed
+    int nDxy = 0;
 
-    double* dxyArr;
-    char** groupNames1;
-    char** groupNames2;
-    char** levelNames;
+    size_t _dxyArr = 100; // initial value for malloc; will be increased if needed
 
+    double *dxyArr;
+    char **groupNames1;
+    char **groupNames2;
+    char **levelNames;
 
-	void print(IO::outputStruct *out_dxy_fs);
+    void print(IO::outputStruct *out_dxy_fs);
     void print_struct();
     void expand();
 
@@ -63,8 +51,6 @@ typedef struct dxyStruct
     /// @brief estimate_dxy_allLevels - estimate pairwise dxy between all groups at all levels
     /// @return number of dxy values estimated (==number of pairs of groups)
     int estimate_dxy_allLevels(distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars);
-
-
 
 } dxyStruct;
 

@@ -185,170 +185,99 @@ typedef struct pairStruct
 } pairStruct;
 
 
-// TODO calculate associations once and store in a LUT
-/// @brief hierStruct store the hierarchical structure of the metadata
-// typedef struct hierStruct
-// {
-
-// 	// number of unique stratas at this level
-// 	// e.g. Population = {POP1, POP2, POP3}
-// 	// 		nStrata = 3
-// 	int nStrata = 0;
-
-// 	// level of the current hier struct
-// 	int level = 0;
-
-// 	// strata names
-// 	char **strataNames = NULL;
-// 	size_t _strataNames = 1;
-
-
-// 	// subStrataIdx - contains the indices of subStrata belonging to each strata at this level
-// 	// subStrataIdx[strata_idx][subStrata_idx] = subStrata_idx of subStrata belonging to strata_idx
-// 	//
-// 	// e.g. Region = {REG1, REG2}
-// 	// 		Population = {POP1, POP2, POP3}
-// 	// 			each population have a unique name that can exist only in one region
-// 	//		given:
-// 	//			POP1 is in REG1
-// 	//			POP2 is in REG1
-// 	//			POP3 is in REG2
-// 	// 		then; subStrataIdx[0] = {0,1}
-// 	// 			  == subStrataIdx[REG1] = {POP1, POP2}
-// 	// 			  subStrataIdx[1] = {2}
-// 	// 			  == subStrataIdx[REG2] = {POP3}
-// 	//		subStrataIdx[0][1] = 1 ( 1==second element in {POP1,POP2}==POP2's index in Populations set==1)
-// 	//		subStrataIdx[1][0] = 2 ( 0==first element in {POP3}==POP3's index in Populations set==2)
-// 	int **subStrataIdx = NULL;
-// 	size_t _subStrataIdx = MAXSIZE_HLEVEL;
-// 	int *nSubStrata = NULL;
-// 	size_t _nSubStrata = MAXSIZE_HLEVEL;
-
-// 	// hierArr[hier_lvl]->nIndPerStrata[strata_idx] = number of individuals in strata_idx at hier_lvl
-// 	int *nIndPerStrata = NULL;
-// 	size_t _nIndPerStrata = 512; // strata_idx initial size
-
-// 	hierStruct(int lvl)
-// 	{
-// 		level=lvl;
-// 		strataNames = (char **)malloc(_strataNames * sizeof(char *));
-
-// 		nIndPerStrata = (int *)malloc(_nIndPerStrata * sizeof(int));
-// 		for (size_t i = 0; i < _nIndPerStrata; i++)
-// 		{
-// 			nIndPerStrata[i] = 0;
-// 		}
-
-// 		subStrataIdx = (int **)malloc(_subStrataIdx * sizeof(int *));
-// 		for (size_t i = 0; i < _subStrataIdx; i++)
-// 		{
-// 			subStrataIdx[i] = (int *)malloc(_subStrataIdx * sizeof(int));
-// 			for (size_t j = 0; j < _subStrataIdx; j++)
-// 			{
-// 				subStrataIdx[i][j] = -1;
-// 			}
-// 		}
-
-// 		nSubStrata = (int *)malloc(_nSubStrata * sizeof(int));
-// 		for (size_t i = 0; i < _nSubStrata; i++)
-// 		{
-// 			nSubStrata[i] = 0;
-// 		}
-
-
-// 	}
-
-// 	~hierStruct()
-// 	{
-// 		for (size_t i = 0; i < _nSubStrata; i++)
-// 		{
-// 			FREE(subStrataIdx[i]);
-// 		}
-// 		FREE(nSubStrata);
-// 		FREE(subStrataIdx);
-// 		for (size_t i = 0; i < _strataNames; i++)
-// 		{
-// 			FREE(strataNames[i]);
-// 		}
-// 		FREE(strataNames);
-// 		FREE(nIndPerStrata);
-
-// 	}
-
-
-// 	void addStrata(char *str)
-// 	{
-
-// 		nStrata++;
-// 		int strata_idx = nStrata - 1;
-
-// 		_strataNames = nStrata;
-
-// 		strataNames = (char **)realloc(strataNames, _strataNames * sizeof(char *));
-// 		ASSERT(strataNames != NULL);
-
-// 		strataNames[strata_idx] = (char *)malloc((strlen(str) + 1) * sizeof(char));
-// 		strncpy(strataNames[strata_idx], str, strlen(str) + 1);
-
-// 		// new strata is added, set the number of individuals for this strata to 0
-// 		nIndPerStrata[strata_idx] = 1;
-// 	}
-
-// 	int getStrataIndex(char *str)
-// 	{
-// 		int idx = 0;
-// 		// check the current records
-// 		while (idx < nStrata)
-// 		{
-// 			if (strcmp(str, strataNames[idx]) == 0)
-// 			{
-// 				nIndPerStrata[idx]++;
-// 				return idx;
-// 			}
-// 			idx++;
-// 		}
-
-// 		// if not found
-// 		addStrata(str);
-// 		return idx;
-// 	}
-
-// } hierStruct;
-
-
 /**
  * @brief distanceMatrixStruct stores the distance matrix
  *
- * @param nInd 		number of individuals
- * @param nIndCmb	number of individual combinations
- * @param isSquared 1 if the distance matrix is squared, 0 otherwise
+ * @param M 			distance matrix
+ * @param itemLabels 	labels of the items in the distance matrix
+ * @param nInd 			number of individuals
+ * @param nIndCmb		number of individual combinations
+ * @param isSquared 	1 if the distance matrix is squared, 0 otherwise
  *
  */
 typedef struct distanceMatrixStruct
 {
 	double *M = NULL;
 
+	// idx2inds[pair_index][0] = index of the first individual in the pair
+	// idx2inds[pair_index][1] = index of the second individual in the pair
+    int** idx2inds=NULL;
+
+	// inds2idx[i1][i2] = index of the pair (i1,i2) in the distance matrix
+    int** inds2idx=NULL;
+
+	char** itemLabels = NULL;
+
 	int nInd = 0;
 	int nIndCmb = 0;
 	int isSquared = -1;
 
-	distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquared_)
+	distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquared_, char **itemLabels_)
 	{
 		nIndCmb = nIndCmb_;
 		nInd = nInd_;
 		M = new double[nIndCmb];
 		for (int i = 0; i < nIndCmb; i++)
 		{
-			M[i] = 0;
+			M[i] = 0.0;
 		}
 		isSquared = isSquared_;
+
+		if(itemLabels_!=NULL){
+			itemLabels = (char **)malloc(nInd * sizeof(char *));
+			for (int i = 0; i < nInd; i++)
+			{
+				itemLabels[i] = strdup(itemLabels_[i]);
+			}
+		}
+
+
+		inds2idx=(int**)malloc(nInd*sizeof(int*));
+		for(int i=0; i<nInd; i++){
+			inds2idx[i]=(int*)malloc(nInd*sizeof(int));
+		}
+
+		idx2inds=(int**)malloc(nIndCmb*sizeof(int*));
+		int pair_idx=0;
+		for(int i1=0; i1<nInd-1; i1++){
+			for(int i2=i1+1; i2<nInd; i2++){
+				idx2inds[pair_idx]=(int*)malloc(2*sizeof(int));
+				inds2idx[i1][i2] = pair_idx;
+				inds2idx[i2][i1] = pair_idx;
+				idx2inds[pair_idx][0] = i1;
+				idx2inds[pair_idx][1] = i2;
+				pair_idx++;
+			}
+		}
+
 	};
 	~distanceMatrixStruct()
 	{
 		delete[] M;
-	}
+
+		if(itemLabels!=NULL){
+			for (int i = 0; i < nInd; i++)
+			{
+				FREE(itemLabels[i]);
+			}
+			FREE(itemLabels);
+		}
+
+		for(int i=0; i<nInd; i++){
+			FREE(inds2idx[i]);
+		}
+		FREE(inds2idx);
+
+		for(int i=0; i<nIndCmb; i++){
+			FREE(idx2inds[i]);
+		}
+		FREE(idx2inds);
+		
+	};
 
 	void print(IO::outputStruct *out_dm_fs);
+
+
 
 } distanceMatrixStruct;
 

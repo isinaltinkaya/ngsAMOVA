@@ -19,7 +19,6 @@
 
 #include "lookup.h"
 
-
 #include "dev.h"
 
 /* ========================================================================== */
@@ -30,6 +29,7 @@
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
 
 /*
  * Macro:[DBL_MAX_DIG_TOPRINT]
@@ -46,8 +46,6 @@
 #define DBL_MAX_DIG_TOPRINT 3 + DBL_MANT_DIG - DBL_MIN_EXP
 // TODO deprecated
 
-
-
 /*
  * Macro:[AT]
  * inject the file and line info as string
@@ -60,7 +58,7 @@
  * Macro:[NEVER]
  * indicates that a point in the code should never be reached
  */
-#define NEVER \
+#define NEVER                                                                                                                                                   \
 	fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) Control should never reach this point; please report this to the developers.\n*******\n", __FILE__, __LINE__); \
 	exit(1);
 
@@ -177,12 +175,13 @@
  * @return		x is modified in place
  */
 // #define BITSET(x, bit) ((x) |= (1ULL << (bit)))
- #define BITSET(x, bit) \
-         if ((bit) < 0 || (bit) >= 64) { \
-             fprintf(stderr, "Invalid bit number: %d\n", (bit)); \
-             exit(1); \
-         } \
-         (x) |= (1ULL << (bit)); \
+#define BITSET(x, bit)                                      \
+	if ((bit) < 0 || (bit) >= 64)                           \
+	{                                                       \
+		fprintf(stderr, "Invalid bit number: %d\n", (bit)); \
+		exit(1);                                            \
+	}                                                       \
+	(x) |= (1ULL << (bit));
 
 /* Macro:[BITTOGGLE]
  * toggle a specific bit in x
@@ -245,20 +244,10 @@
  */
 #define BITCHECK_ATLEAST(x, bit) !!((x >> (bit)) & 0xFF)
 
-
-
-
-
-
-
-
 /* LIMIT DEFINING MACROS -----------------------------------------------------*/
 
 // maximum number of tokens allowed in amova formula string
 #define MAX_N_FORMULA_TOKENS 10
-
-
-
 
 // maximum number of characters allowed in amova formula string
 #define MAX_FORMULA_LEN 300
@@ -301,7 +290,6 @@
  *
  */
 #define DBL_MAXDIG10 (2 + (DBL_MANT_DIG * 30103UL) / 100000UL)
-
 
 #define DELIMS "\t ,\n"
 
@@ -348,12 +336,10 @@ enum INFT
 
 /* ========================================================================== */
 
-
-
 /// @brief strIsNumeric - check if string is numeric
 /// @param val          - string to be checked
 /// @return             - 1 if string is numeric, 0 otherwise
-int strIsNumeric(const char* val);
+int strIsNumeric(const char *val);
 
 // print generic usage information
 void print_help(FILE *fp);
@@ -365,7 +351,7 @@ void print_help_formula(FILE *fp);
 // -v 0 or none -> 0000 0000 -> 0 -> verbose off [default, set in argStruct.cpp]
 // -v 1 -> 0000 0001 -> 1 -> set the first bit, 0-indexed (1-1=0) verbose on with level 1
 // -v 2 -> 0000 0010 -> 2 -> set the second bit, 0-indexed (2-1=1) verbose on with level 2
-// ... and so on, up to -v 8 
+// ... and so on, up to -v 8
 // -v 8 -> 1000 0000 -> 128 -> set the 8th bit, 0-indexed (8-1=7) verbose on with level 8
 extern u_char VERBOSE;
 
@@ -374,9 +360,5 @@ const double NEG_INF = -std::numeric_limits<double>::infinity();
 int extractDigits(int num, int digits);
 
 char *get_time();
-
-
-
-
 
 #endif

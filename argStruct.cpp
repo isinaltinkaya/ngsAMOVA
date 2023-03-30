@@ -536,6 +536,21 @@ argStruct *argStruct_get(int argc, char **argv)
 		exit(1);
 	}
 
+	// doNJ 1 requires a distance matrix from -in_dm or -doDist
+	// doNJ 2 requires a dxy distance matrix from -in_dxy or -doDxy
+	if (args->doNJ == 1 && args->doDist == 0 && args->in_dm_fn == NULL)
+	{
+		fprintf(stderr, "\n[ERROR]\t-> --doNJ %i requires --doDist 1 or --in_dm <file>.\n", args->doNJ);
+		exit(1);
+	}
+	if (args->doNJ == 2 && args->doDxy == 0 && args->in_dxy_fn == NULL)
+	{
+		fprintf(stderr, "\n[ERROR]\t-> --doNJ %i requires --doDxy 1 or --in_dxy <file>.\n", args->doNJ);
+		exit(1);
+	}
+
+
+
 	return args;
 }
 

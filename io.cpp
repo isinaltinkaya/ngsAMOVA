@@ -718,6 +718,10 @@ void IO::outFilesStruct_set(argStruct *args, IO::outFilesStruct *ofs)
 	{
 		ofs->out_dxy_fs = new IO::outputStruct(args->out_fn, ".dxy.csv", args->printDxy - 1);
 	}
+	if (args->doNJ > 0)
+	{
+		ofs->out_nj_fs = new IO::outputStruct(args->out_fn, ".nj.csv", 0);
+	}
 }
 
 
@@ -730,6 +734,7 @@ void IO::outFilesStruct_destroy(IO::outFilesStruct *ofs)
 	DELETE(ofs->out_jgcd_fs);
 	DELETE(ofs->out_jgpd_fs);
 	DELETE(ofs->out_dxy_fs);
+	DELETE(ofs->out_nj_fs);
 	DELETE(ofs);
 
 }

@@ -53,9 +53,7 @@ double calculate_SumOfSquares_Within(int lvl, AMOVA::amovaStruct *aS, distanceMa
 
 					if (mS->indFromGroup(i1, lvl, g) && mS->indFromGroup(i2, lvl, g))
 					{
-						int pair_idx=nCk_idx(dMS->nInd, i1,i2);
-						// sum += dMS->M[indsToIdx_LUT[i1][i2]] / n;
-						sum += dMS->M[pair_idx]/n;
+						sum += dMS->M[dMS->inds2idx[i1][i2]]/n;
 					}
 				}
 			}

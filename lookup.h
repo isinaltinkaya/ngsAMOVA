@@ -11,7 +11,10 @@ extern const char* OUTFC_LUT[];
 
 extern const int POW10_LUT[];
 
+// n choose 2 lookup table
+// NC2_LUT[n] = n choose 2
 extern const int NC2_LUT[];
+
 
 //lut_indsToIdx		lookup table for mapping two individuals to their pair index
 // extern int **lut_indsToIdx;
@@ -21,3 +24,4 @@ extern const int NC2_LUT[];
 // extern int **lut_idxToInds;
 // extern int **idxToInds_LUT[];
 // extern int **IDX2INDS_LUT;
+
