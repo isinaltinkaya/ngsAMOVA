@@ -330,8 +330,10 @@ argStruct *argStruct_get(int argc, char **argv)
 	}
 	else
 	{
-		fprintf(stderr, "\n[ERROR]\t-doDist %d is not available.\n", args->doDist);
-		exit(1);
+		if(args->in_dm_fn==NULL){
+			fprintf(stderr, "\n[ERROR]\t-doDist %d is not available.\n", args->doDist);
+			exit(1);
+		}
 	}
 
 	if (args->do_square_distance == 1)
@@ -347,6 +349,12 @@ argStruct *argStruct_get(int argc, char **argv)
 		fprintf(stderr, "\n[ERROR]\t-do_square_distance %d is not available.\n", args->do_square_distance);
 		exit(1);
 	}
+
+//TODO handle this better
+	if(args->in_dm_fn!=NULL){
+		args->do_square_distance = 0;
+	}
+
 
 	if (args->in_vcf_fn == NULL && args->in_dm_fn == NULL)
 	{
@@ -370,12 +378,7 @@ argStruct *argStruct_get(int argc, char **argv)
 	{
 		fprintf(stderr, "\n\t-> -doAMOVA is set to 0, will not perform AMOVA.\n");
 
-		if (args->doEM == 0)
-		{
-			fprintf(stderr, "\n\t-> Nothing to do.\n");
-			exit(1);
-		}
-		else if (args->doEM == 1)
+		if (args->doEM == 1)
 		{
 			if (args->in_dm_fn != NULL)
 			{

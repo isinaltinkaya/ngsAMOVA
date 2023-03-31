@@ -212,71 +212,12 @@ typedef struct distanceMatrixStruct
 	int nIndCmb = 0;
 	int isSquared = -1;
 
-	distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquared_, char **itemLabels_)
-	{
-		nIndCmb = nIndCmb_;
-		nInd = nInd_;
-		M = new double[nIndCmb];
-		for (int i = 0; i < nIndCmb; i++)
-		{
-			M[i] = 0.0;
-		}
-		isSquared = isSquared_;
-
-		if(itemLabels_!=NULL){
-			itemLabels = (char **)malloc(nInd * sizeof(char *));
-			for (int i = 0; i < nInd; i++)
-			{
-				itemLabels[i] = strdup(itemLabels_[i]);
-			}
-		}
-
-
-		inds2idx=(int**)malloc(nInd*sizeof(int*));
-		for(int i=0; i<nInd; i++){
-			inds2idx[i]=(int*)malloc(nInd*sizeof(int));
-		}
-
-		idx2inds=(int**)malloc(nIndCmb*sizeof(int*));
-		int pair_idx=0;
-		for(int i1=0; i1<nInd-1; i1++){
-			for(int i2=i1+1; i2<nInd; i2++){
-				idx2inds[pair_idx]=(int*)malloc(2*sizeof(int));
-				inds2idx[i1][i2] = pair_idx;
-				inds2idx[i2][i1] = pair_idx;
-				idx2inds[pair_idx][0] = i1;
-				idx2inds[pair_idx][1] = i2;
-				pair_idx++;
-			}
-		}
-
-	};
-	~distanceMatrixStruct()
-	{
-		delete[] M;
-
-		if(itemLabels!=NULL){
-			for (int i = 0; i < nInd; i++)
-			{
-				FREE(itemLabels[i]);
-			}
-			FREE(itemLabels);
-		}
-
-		for(int i=0; i<nInd; i++){
-			FREE(inds2idx[i]);
-		}
-		FREE(inds2idx);
-
-		for(int i=0; i<nIndCmb; i++){
-			FREE(idx2inds[i]);
-		}
-		FREE(idx2inds);
-		
-	};
+	distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquared_, char **itemLabels_);
+	~distanceMatrixStruct();
 
 	void print(IO::outputStruct *out_dm_fs);
 
+	void set_item_labels(char** indNames);
 
 
 } distanceMatrixStruct;

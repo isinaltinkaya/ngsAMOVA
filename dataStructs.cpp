@@ -541,6 +541,17 @@ const int calculateBufferSizeCsv(const int n_vals, const int max_digits)
 	return ((n_vals * (max_digits + 1)) + 2);
 }
 
+void distanceMatrixStruct::set_item_labels(char** itemLabelArr){
+	
+	ASSERT(itemLabelArr!=NULL);
+	itemLabels = (char **)malloc(nInd * sizeof(char *));
+	for (int i = 0; i < nInd; i++)
+	{
+		itemLabels[i] = strdup(itemLabelArr[i]);
+	}
+
+}
+
 void distanceMatrixStruct::print(IO::outputStruct *out_dm_fs)
 {
 	fprintf(stderr, "[INFO]\t-> Writing distance matrix to %s.\n", out_dm_fs->fn);
@@ -582,6 +593,70 @@ void distanceMatrixStruct::print(IO::outputStruct *out_dm_fs)
 	kbuf_destroy(kbuf);
 }
 
+
+distanceMatrixStruct::distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquared_, char **itemLabels_)
+{
+	nIndCmb = nIndCmb_;
+	nInd = nInd_;
+	M = new double[nIndCmb];
+	for (int i = 0; i < nIndCmb; i++)
+	{
+		M[i] = 0.0;
+	}
+	isSquared = isSquared_;
+
+	if(itemLabels_!=NULL){
+		itemLabels = (char **)malloc(nInd * sizeof(char *));
+		for (int i = 0; i < nInd; i++)
+		{
+			itemLabels[i] = strdup(itemLabels_[i]);
+		}
+	}
+
+
+	inds2idx=(int**)malloc(nInd*sizeof(int*));
+	for(int i=0; i<nInd; i++){
+		inds2idx[i]=(int*)malloc(nInd*sizeof(int));
+	}
+
+	idx2inds=(int**)malloc(nIndCmb*sizeof(int*));
+	int pair_idx=0;
+	for(int i1=0; i1<nInd-1; i1++){
+		for(int i2=i1+1; i2<nInd; i2++){
+			idx2inds[pair_idx]=(int*)malloc(2*sizeof(int));
+			inds2idx[i1][i2] = pair_idx;
+			inds2idx[i2][i1] = pair_idx;
+			idx2inds[pair_idx][0] = i1;
+			idx2inds[pair_idx][1] = i2;
+			pair_idx++;
+		}
+	}
+
+}
+distanceMatrixStruct::~distanceMatrixStruct()
+{
+	delete[] M;
+
+	if(itemLabels!=NULL){
+		for (int i = 0; i < nInd; i++)
+		{
+			FREE(itemLabels[i]);
+		}
+		FREE(itemLabels);
+	}
+
+	for(int i=0; i<nInd; i++){
+		FREE(inds2idx[i]);
+	}
+	FREE(inds2idx);
+
+	for(int i=0; i<nIndCmb; i++){
+		FREE(idx2inds[i]);
+	}
+	FREE(idx2inds);
+	
+}
+
 /// @brief read distance matrix file
 /// @param in_dm_fp input distance matrix file
 /// @param pars paramStruct parameters
@@ -620,28 +695,6 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *ar
 		FREE(line);
 		FREE(tok);
 
-		// while (gzgets(fp, line, buf_size) != NULL)
-		// {
-		// 	// check if the line was fully read
-		// 	size_t line_len = strlen(line);
-		// 	if (line[line_len - 1] == '\n')
-		// 	{
-		// 		// line was fully read
-		// 		break;
-		// 	}
-		// 	else
-		// 	{
-		// 		fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
-		// 		// line was not fully read
-		// 		buf_size *= 2;
-
-		// 		char *new_line = new char[buf_size];
-		// 		new_line = (char *)realloc(line, buf_size);
-		// 		ASSERT(new_line != NULL);
-		// 		line = new_line;
-		// 	}
-		// }
-		// gzclose(fp);
 		//TODO
 	}
 	else
@@ -894,6 +947,11 @@ void formulaStruct::shrink()
 /// @example formula = 'Samples ~ Continents/Regions/Populations'
 formulaStruct *formulaStruct_get(const char *formula)
 {
+	if(formula == NULL)
+	{
+		fprintf(stderr, "\n[ERROR]\tNo formula provided. Please provide a formula of the form y ~ x1/x2/.../xn via the --formula option.\n");
+		exit(1);
+	}
 	formulaStruct *fos = new formulaStruct;
 
 	fos->nTokens = 0;
@@ -927,7 +985,7 @@ formulaStruct *formulaStruct_get(const char *formula)
 		if (*p == '/')
 		{
 			// must not encounter any / before ~
-			fprintf(stderr, "\n[ERROR]\tFormula %s is not valid: Found '/' before '~'. \n", formula);
+			fprintf(stderr, "\n[ERROR]\tFormula \"%s\" is not valid: Found '/' before '~'. \n", formula);
 			exit(1);
 		}
 		++p;
@@ -936,7 +994,7 @@ formulaStruct *formulaStruct_get(const char *formula)
 	// check if anything is left in the remaning formula string
 	if (*p == '\0')
 	{
-		fprintf(stderr, "\n[ERROR]\tFormula %s is not valid: No token found after '~'. \n", formula);
+		fprintf(stderr, "\n[ERROR]\tFormula \"%s\" is not valid: No token found after '~'. \n", formula);
 		exit(1);
 	}
 
@@ -957,7 +1015,7 @@ formulaStruct *formulaStruct_get(const char *formula)
 	{
 		if (*p == '~')
 		{
-			fprintf(stderr, "\n[ERROR]\tFormula %s is not valid: Found more than one '~'. \n", formula);
+			fprintf(stderr, "\n[ERROR]\tFormula \"%s\" is not valid: Found more than one '~'. \n", formula);
 			exit(1);
 		}
 		if (*p == '/')
@@ -985,11 +1043,11 @@ formulaStruct *formulaStruct_get(const char *formula)
 
 	if (fos->nTokens == 0)
 	{
-		fprintf(stderr, "\n[ERROR]\tFormula %s is not valid: No tokens found.\n", fos->formula);
+		fprintf(stderr, "\n[ERROR]\tFormula \"%s\" is not valid: No tokens found.\n", fos->formula);
 		exit(1);
 	}else if (fos->nTokens == 1)
 	{
-		fprintf(stderr, "\n[ERROR]\tFormula %s is not valid: Only one token found.\n", fos->formula);
+		fprintf(stderr, "\n[ERROR]\tFormula \"%s\" is not valid: Only one token found.\n", fos->formula);
 		exit(1);
 	}
 

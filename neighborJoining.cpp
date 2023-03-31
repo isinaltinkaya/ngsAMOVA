@@ -2,6 +2,126 @@
 #include "mathUtils.h"
 #include "shared.h"
 
+void njStruct_print_newick(njStruct *nj, IO::outputStruct *out_nj_fs)
+{
+    // TODO add recursive function to unfold the internal nodes
+    // TODO when that works, add branch lengths
+    // TODO then add nwk extension to the output file name then print it to the file
+
+    // e.g. '(D,C,(A,B));'
+    //
+    // ei = edge index (0-based) (== index in edgeNodes[ei] edgeLengths[ei])
+    // L0 = length of edge ei=0 (== edgeLengths[0])
+    // L1 = length of edge ei=1 (== edgeLengths[1])
+    // ...
+    // then, the newick format is:
+    // '(D:L4,C:L3,(A:L0,B:L1):L2);'
+    //            (A,B) is an internal node
+    //            edgeNodes[0] => {A, parentNode1}
+    //            edgeNodes[1] => {B, parentNode1}
+    //
+    //          edgeNodes[2] => {parentNode1, parentNode2}
+    //         edgeNodes[3] => {C, parentNode2}
+    //        edgeNodes[4] => {D, parentNode2}
+    //
+
+    // PRINT in NEWICK FORMAT
+    // ----------------------
+
+    // number of '(' to print (== number of internal nodes groups)
+    int n_internal_groups = nj->nTreeNodes - nj->L - 1;
+
+    // number of children of the parent node
+    int nc = 0;
+
+    int skip = 0;
+
+    // open the tree
+    fprintf(stdout, "(");
+
+    // loop through the parent node indices
+    fprintf(stderr, "\nLoop through the parent node indices.\n");
+    for (int pi = nj->L; pi < nj->nTreeNodes; pi++)
+    {
+        fprintf(stderr, "\npi=%d\n", pi);
+        nc = 0;
+
+        if (n_internal_groups > 0)
+        {
+            fprintf(stdout, "(");
+        }
+        else
+        {
+            fprintf(stdout, ",");
+        }
+
+        // find all the children of the parent node
+        for (int i = 0; i < nj->nEdges; i++)
+        {
+
+            // when we have a distance between the parent node and a child node
+            // we always save the parent as the second node in the edge (edgeNodes[i][1])
+            if (nj->edgeNodes[i][1] == pi)
+            {
+
+                // TODO if we have parent-parent edges, we need to print them recursively
+                // we need to follow the lead
+
+                if (nj->edgeNodes[i][0] >= nj->L)
+                {
+                    // parent-child but the child is also a parent
+
+                    fprintf(stderr, "\nParent %d has child: parent %d.\n", pi, nj->edgeNodes[i][0]);
+
+                    // TODO recursiveness here, follow all the children until the child
+                    // is no longer a parent but just a child
+                    // (== not an internal node but a leaf node)
+
+                    // grandchildren
+                    for (int ii = 0; ii < nj->nEdges; ii++)
+                    {
+                        if (nj->edgeNodes)
+                            if (nj->edgeNodes[ii][1] == nj->edgeNodes[i][0])
+                            {
+                                fprintf(stderr, "Parent %d has child: parent %d has child %d.\n", pi, nj->edgeNodes[i][0], nj->edgeNodes[ii][0]);
+                            }
+                    }
+                    skip = 1;
+                    continue;
+                }
+                else
+                { // a regular parent-child edge (== leaf node, not an internal node)
+
+                    if (nc > 0)
+                        fprintf(stdout, ",");
+
+                    // fprintf(stderr,"parent node %d has child %d\n",pi,nj->edgeNodes[i][0]);
+                    fprintf(stdout, "%d", nj->edgeNodes[i][0]);
+                    ++nc;
+                }
+            }
+        }
+        if (n_internal_groups > 0)
+        {
+            fprintf(stdout, ")");
+        }
+
+        if (skip == 0)
+        { // if skipped, no need to put a colon
+            if (pi != nj->nTreeNodes - 1)
+                fprintf(stdout, ",");
+        }
+        else
+        { // reset
+            skip = 0;
+        }
+
+        --n_internal_groups;
+    }
+
+    // close the tree
+    fprintf(stdout, ");");
+}
 
 njStruct::njStruct(distanceMatrixStruct *dms)
 {
@@ -10,6 +130,7 @@ njStruct::njStruct(distanceMatrixStruct *dms)
 
     // initialize the number of leaf nodes
     totL = DistanceMatrixSt->nInd;
+    L = totL;
     iterL = totL;
 
     // an unrooted tree with n leaves has 2n-2 nodes and 2n-3 edges
@@ -94,9 +215,8 @@ njStruct::njStruct(distanceMatrixStruct *dms)
             }
             else
             {
-                //TODO check this being left at the end while printing
                 char label[100];
-                sprintf(label, "node%d", i);
+                sprintf(label, "item%d", i);
                 nodeLabels[i] = strdup(label);
             }
         }
@@ -276,14 +396,14 @@ void njIteration(njStruct *nji)
 
     // calculate the distance from the new node to each child node
     // d(min_i1,new_node) = ( d(min_i1,min_i2) + NetDivergence[min_i1] - NetDivergence[min_i2] ) / 2
-    edgeLength = (0.5 * (min_dist - min_NetDivergence));
+    edgeLength = (0.5 * (min_dist + min_NetDivergence));
     nji->addEdge(min_i1, newNode, edgeLength);
     int pxnew1 = nji->items2idx[min_i1][newNode];
     nji->NJD[pxnew1] = edgeLength;
 
     // calculate the distance from the new node to the child node 2
-    // d(min_i2,new_node) = ( d(min_i1,min_i2) + NetDivergence[min_i2] j NetDivergence[min_i1] ) / 2
-    edgeLength = (0.5 * (min_dist + min_NetDivergence));
+    // d(min_i2,new_node) = ( d(min_i1,min_i2) + NetDivergence[min_i2] - NetDivergence[min_i1] ) / 2
+    edgeLength = (0.5 * (min_dist - min_NetDivergence));
     nji->addEdge(min_i2, newNode, edgeLength);
     int pxnew2 = nji->items2idx[min_i2][newNode];
     nji->NJD[pxnew2] = edgeLength;
@@ -327,7 +447,7 @@ void njIteration(njStruct *nji)
 
                 int px = nji->items2idx[i1][i2];
                 nji->addEdge(i1, i2, nji->NJD[px]);
-                ASSERT(nji->totL==nji->nTreeNodes);
+                ASSERT(nji->totL == nji->nTreeNodes);
                 return;
             }
         }
@@ -337,6 +457,7 @@ void njIteration(njStruct *nji)
 
 void njStruct::addEdge(int node1, int node2, double edgeLength)
 {
+    // DEVPRINT("Adding edge %d-%d with length %f\n\n", node1, node2, edgeLength);
     edgeLengths[nEdges] = edgeLength;
     edgeNodes[nEdges][0] = node1;
     edgeNodes[nEdges][1] = node2;
@@ -391,7 +512,7 @@ void njStruct::print(IO::outputStruct *out_nj_fs)
 {
     fprintf(stderr, "\n[INFO]\t-> Writing the neighbor joining results to %s.\n", out_nj_fs->fn);
     kstring_t *kbuf = kbuf_init();
-    ksprintf(kbuf, "node1,node2,edge_length\n");
+    ksprintf(kbuf, "node1_id,node2_id,edge_length\n");
 
     for (int i = 0; i < nTreeEdges; i++)
     {
@@ -402,17 +523,16 @@ void njStruct::print(IO::outputStruct *out_nj_fs)
     kbuf_destroy(kbuf);
 }
 
-
-//TODO do this with a template type for both dxy and distanceMatrix
-njStruct::njStruct(dxyStruct* dxy)
+// TODO do this with a template type for both dxy and distanceMatrix
+njStruct::njStruct(dxyStruct *dxy)
 {
-    //TODO -limit to only one level dxy
-    
+    // TODO -limit to only one level dxy
+
     dxySt = dxy;
 
     // initialize the number of leaf nodes
     // get number of pairs of objects (individuals or groups) in the distance matrix
-    totL= (1+(sqrt(1+(8*dxySt->nDxy))))/2;
+    totL = (1 + (sqrt(1 + (8 * dxySt->nDxy)))) / 2;
     iterL = totL;
 
     // an unrooted tree with n leaves has 2n-2 nodes and 2n-3 edges
@@ -480,14 +600,14 @@ njStruct::njStruct(dxyStruct* dxy)
             for (int j = i + 1; j < totL; ++j)
             {
                 int new_index = items2idx[i][j];
-                int old_index=nCk_idx(totL, i, j);
+                int old_index = nCk_idx(totL, i, j);
                 ASSERT(new_index >= 0);
                 ASSERT(old_index >= 0);
                 NJD[new_index] = dxy->dxyArr[old_index];
             }
         }
 
-//TODO get groupnames, do this after changing dxy to be one struct per level
+        // TODO get groupnames, do this after changing dxy to be one struct per level
         char label[100];
         sprintf(label, "node%d", i);
         nodeLabels[i] = strdup(label);

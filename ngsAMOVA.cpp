@@ -283,12 +283,14 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		ASSERT(dMS[0]!=NULL);
 		njSt = njStruct_get(args,pars,dMS[0]);
     	njSt->print(outFiles->out_nj_fs);
+		// njStruct_print_newick(njSt, outFiles->out_nj_fs);
 	}
 	else if (args->doNJ==2)
 	{
 		ASSERT(dxySt!=NULL);
 		njSt = njStruct_get(args,pars,dxySt);
 		njSt->print(outFiles->out_nj_fs);
+		// njStruct_print_newick(njSt, outFiles->out_nj_fs);
 	}
 
 
@@ -345,24 +347,14 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 
 	IO::vprint(1, "input_DM is running\n");
 
-
-	if (args->doAMOVA == 0)
-	{
-		fprintf(stderr, "\n\t-> Nothing to do.\n");
-		return;
-	}
-
-
-
 	distanceMatrixStruct *dMS = distanceMatrixStruct_read(pars, args);
 
 	metadataStruct *metadataSt= metadataStruct_get(args, pars, formulaSt);
 
+	dMS->set_item_labels(metadataSt->indNames);
+
 	pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
-	// for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
-	// {
-	// 	pairSt[pidx] = new pairStruct(pars, pidx);
-	// }
+
 	for (int i1=0; i1<pars->nInd-1; i1++)
 	{
 		for (int i2=i1+1; i2<pars->nInd; i2++)
@@ -372,17 +364,17 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		}
 	}
 
-	AMOVA::amovaStruct *amv = AMOVA::doAmova(dMS, metadataSt, pars);
-
-	eval_amovaStruct(amv);
-
-	if (args->printAmovaTable == 1)
-	{
-		amv->print_as_table(stdout, metadataSt);
+	if (args->doAMOVA != 0){
+		AMOVA::amovaStruct *amv = AMOVA::doAmova(dMS, metadataSt, pars);
+		eval_amovaStruct(amv);
+		if (args->printAmovaTable == 1)
+		{
+			amv->print_as_table(stdout, metadataSt);
+		}
+		amv->print_as_csv(outFiles->out_amova_fs->fp, metadataSt);
+		delete amv;
 	}
-	amv->print_as_csv(outFiles->out_amova_fs->fp, metadataSt);
 
-	delete amv;
 
 	dxyStruct *dxySt = NULL;
 	if (args->doDxy>0)
@@ -401,12 +393,14 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		ASSERT(dMS!=NULL);
 		njSt = njStruct_get(args,pars,dMS);
     	njSt->print(outFiles->out_nj_fs);
+		// njStruct_print_newick(njSt, outFiles->out_nj_fs);
 	}
 	else if (args->doNJ==2)
 	{
 		ASSERT(dxySt!=NULL);
 		njSt = njStruct_get(args,pars,dxySt);
 		njSt->print(outFiles->out_nj_fs);
+		// njStruct_print_newick(njSt, outFiles->out_nj_fs);
 	}
 
 	delete metadataSt;
@@ -421,12 +415,10 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 	DELETE(njSt);
 
 	delete dMS;
-
 }
 
 int main(int argc, char **argv)
 {
-
 	if (argc == 1){
 		print_help(stderr);
 		exit(0);

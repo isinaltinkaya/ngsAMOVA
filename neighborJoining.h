@@ -28,6 +28,8 @@ typedef struct njStruct
     distanceMatrixStruct *DistanceMatrixSt=NULL;
     dxyStruct *dxySt=NULL;
 
+    // number of items in the distance matrix
+    int L = 0;
 
     // total number of leaf nodes
     // n.b. includes all new nodes added since we add them to the end of list
@@ -98,6 +100,7 @@ typedef struct njStruct
     njStruct(dxyStruct *dxySt);
     ~njStruct();
 
+
 } njStruct;
 
 njStruct *njStruct_get(argStruct *args, paramStruct *pars, distanceMatrixStruct *dms);
@@ -107,5 +110,6 @@ njStruct *njStruct_get(argStruct *args, paramStruct *pars, dxyStruct *dxy);
 /// @param nji - an instance of the njStruct at the current iteration
 void njIteration(njStruct *nji);
 
+void njStruct_print_newick(njStruct *nj, IO::outputStruct *out_nj_fs);
 
 #endif
