@@ -30,7 +30,10 @@ ngsAMOVA_validate_nj_tree_newick_output <- function(in_newick_fn, in_distance_ma
     ref_tree<-ape::nj(dd)
 
     tree<-ape::read.tree(text=nwk)
+    
+    # detailed comparison
     # ape::comparePhylo(ref_tree,tree)
+
     if(ape::all.equal.phylo(ref_tree,tree,use.edge.length = FALSE)==TRUE){
         print("[SUCCESS]")
         print("The tree topology read in from the newick file is the same as the tree topology obtained from the distance matrix using ape::nj().")
