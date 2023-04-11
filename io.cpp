@@ -4,6 +4,11 @@
 #include "io.h"
 #include "dataStructs.h"
 
+//TODO if -out has full output name and not prefix, detect it 
+//e.g. if you were going to write to a file called "out.amova.csv", and "-out out.amova.csv" is given
+// then extract prefix from that and use as prefix for other outputs as well
+// this is a useful feature for snakemake etc
+
 const char *IO::FILE_EXTENSIONS[] = {"", ".gz", ".bgz"};
 
 IO::outFilesStruct* outFiles = new IO::outFilesStruct();
@@ -75,7 +80,8 @@ FILE *IO::getFile(const char *fn, const char *mode)
 	}
 	if (NULL == (fp = fopen(fn, mode)))
 	{
-		fprintf(stderr, "[%s:%s()]\t->Error opening FILE handle for file:%s exiting\n", __FILE__, __FUNCTION__, fn);
+		// fprintf(stderr, "[%s:%s()]\t->Error opening FILE handle for file:%s exiting\n", __FILE__, __FUNCTION__, fn);
+		fprintf(stderr, "\n[ERROR]\tFailed to open file: %s\n", fn);
 		exit(1);
 	}
 	return fp;
@@ -720,7 +726,7 @@ void IO::outFilesStruct_set(argStruct *args, IO::outFilesStruct *ofs)
 	}
 	if (args->doNJ > 0)
 	{
-		ofs->out_nj_fs = new IO::outputStruct(args->out_fn, ".nj.csv", 0);
+		ofs->out_nj_fs = new IO::outputStruct(args->out_fn, ".newick", 0);
 	}
 }
 

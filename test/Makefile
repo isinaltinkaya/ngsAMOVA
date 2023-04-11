@@ -21,4 +21,4 @@ all:
 	bash -c "diff testwd/sim_demes_v2-model1-1-rep0-d2_maxIter50tole5.amova.csv reference/sim_demes_v2-model1-1-rep0-d2_maxIter50tole5.amova.csv";
 	printf "\n[TEST 7]: Neighbor Joining\n";
 	../ngsAMOVA -doAMOVA 2 -doDist 1 -i test_s9_d1_1K.vcf -m metadata_with_header_2lvl.tsv -f "Individual~Region/Population" --doNJ 1 -o testwd/test_s9_d1_1K_mtd2_nj;
-	bash -c "diff testwd/test_s9_d1_1K_mtd2_nj.nj.csv reference/test_s9_d1_1K_mtd2_nj.nj.csv";
+	bash -c "diff testwd/test_s9_d1_1K_mtd2_nj.newick reference/test_s9_d1_1K_mtd2_nj.newick";

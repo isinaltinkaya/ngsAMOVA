@@ -10,6 +10,28 @@
 typedef struct njStruct
 {
 
+    // TODO add treeStruct to store the tree in njStruct
+
+    // /def nEdgesPerParentNode[nParentNodes]
+    // p_i (parentNodeIndex) == nodeIndex-L
+    // nParentNodes = nTreeNodes-L
+    // nEdgesPerParentNode[p_i] = number of edges connected to the parent node p_i
+    // e.g. n=4 leaves, 6 nodes, 5 edges
+    // edgeNodes[edgeIndex] = {parentNodeIndex, childNodeIndex}
+    // edgeNodes[0] = {4,0}
+    // edgeNodes[1] = {4,1}
+    // edgeNodes[2] = {5,2}
+    // edgeNodes[3] = {5,3}
+    // edgeNodes[4] = {5,4}
+    // parent nodes nodeIndex: 4,5 (==parentNodeIndex 0,1)
+    // nEdgesPerParentNode[0] = 2
+    // nEdgesPerParentNode[1] = 3
+    int *nEdgesPerParentNode = NULL;
+
+    // /def parentToEdgeIdx[nParentNodes][nEdgesPerParentNode]
+    // parentToEdgeIdx[p_i][e_i] = Index of the e_i-th edge connected to the p_i-th parent node
+    int **parentToEdgeIdx = NULL;
+
     double *NJD = NULL;
 
     // lookup table for NJD
@@ -18,15 +40,14 @@ typedef struct njStruct
     // is choose(nTreeNodes,2) = nTreeNodes*(nTreeNodes-1)/2
     // since NJD contains all steps
     //
-    // idx2items[pair_index][0] = index of the first item in the pair
-    // idx2items[pair_index][1] = index of the second item in the pair
+    // /def idx2items[pair_index][0] = index of the first item in the pair
+    // /def idx2items[pair_index][1] = index of the second item in the pair
     int **idx2items = NULL;
-
     // items2idx[i1][i2] = index of the pair (i1,i2) in the distance matrix
     int **items2idx = NULL;
 
-    distanceMatrixStruct *DistanceMatrixSt=NULL;
-    dxyStruct *dxySt=NULL;
+    distanceMatrixStruct *DistanceMatrixSt = NULL;
+    dxyStruct *dxySt = NULL;
 
     // number of items in the distance matrix
     int L = 0;
@@ -64,9 +85,11 @@ typedef struct njStruct
     // edgeLengths[edge_index] = length of the edge
     double *edgeLengths = NULL;
 
-    // edgeNodes[nEdges][2]
-    // edgeNodes[edge_index][0] = index of the first node in the edge (start point)
-    // edgeNodes[edge_index][1] = index of the second node in the edge (end point)
+    int nParents = 0;
+
+    // /def edgeNodes[nTreeEdges][2] = keeps the indices of the nodes that are connected by the edge
+    // edgeNodes[edge_index][0] = index of the first node in the edge (start point) == parent node
+    // edgeNodes[edge_index][1] = index of the second node in the edge (end point) == child node
     int **edgeNodes = NULL;
 
     int nNeighbors = 0;
@@ -74,9 +97,16 @@ typedef struct njStruct
     // +2 at each iteration bc each iteration adds 2 nodes to the tree
     int *neighborIdx = NULL;
 
+    /// @brief print - print the neighbor-joining tree in newick format to the output file
+    /// @param out_nj_fs - outputStruct instance for this analysis
     void print(IO::outputStruct *out_nj_fs);
 
-    void addEdge(int node1, int node2, double edgeLength);
+    /// @brief _print - print the internal representation of the tree
+    void _print(void);
+
+    void print_leaf_newick(int node, kstring_t *kbuf);
+
+    void addEdge(int parentNode, int childNode, double edgeLength);
 
     /// @brief newParentNode - define a new parent node
     /// @param child1 - index of the first child node
@@ -100,7 +130,6 @@ typedef struct njStruct
     njStruct(dxyStruct *dxySt);
     ~njStruct();
 
-
 } njStruct;
 
 njStruct *njStruct_get(argStruct *args, paramStruct *pars, distanceMatrixStruct *dms);
@@ -110,6 +139,25 @@ njStruct *njStruct_get(argStruct *args, paramStruct *pars, dxyStruct *dxy);
 /// @param nji - an instance of the njStruct at the current iteration
 void njIteration(njStruct *nji);
 
-void njStruct_print_newick(njStruct *nj, IO::outputStruct *out_nj_fs);
+// printing the neighbor-joining tree in newick format:
+//
+// e.g. '(D,C,(A,B));'
+//
+// ei = edge index (0-based) (== index in edgeNodes[ei] edgeLengths[ei])
+// L0 = length of edge with index ei=0 (== edgeLengths[0])
+// ...
+//
+// then, the newick format is:
+// '(D:L4,C:L3,(A:L0,B:L1):L2);'
+//            (A,B) is an internal node
+//            edgeNodes[0] => {parentNode1, A}
+//            edgeNodes[1] => {parentNode1, B}
+//
+//          edgeNodes[2] => {parentNode2, parentNode1}
+//         edgeNodes[3] => {parentNode2, C}
+//        edgeNodes[4] => {parentNode2, D}
+//
+// edgeNodes[edge_index][0] = parent node
+// edgeNodes[edge_index][1] = child node
 
 #endif

@@ -218,7 +218,7 @@ void dxyStruct::print(IO::outputStruct *out_dxy_fs)
     for (int i = 0; i < nDxy; i++)
     {
         ksprintf(kbuf, "%s,%s,%s", groupNames1[i], groupNames2[i], levelNames[i]);
-        ksprintf(kbuf, ",%.*f\n", (int)DBL_MAXDIG10, dxyArr[i]);
+        ksprintf(kbuf, ",%.*f\n", DBL_MAXDIG10, dxyArr[i]);
     }
     out_dxy_fs->write(kbuf);
     kbuf_destroy(kbuf);

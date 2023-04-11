@@ -32,7 +32,7 @@
 using size_t = decltype(sizeof(int));
 
 // prepare distance matrix using original data
-void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS_orig, vcfData *vcfd, pairStruct **pairSt, formulaStruct *formulaSt,  blobStruct *blobSt)
+void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS_orig, vcfData *vcfd, pairStruct **pairSt, formulaStruct *formulaSt, blobStruct *blobSt)
 {
 
 	switch (args->doAMOVA)
@@ -97,7 +97,7 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 			}
 		}
 
-		vcfd->print_JointGenoCountDist( args);
+		vcfd->print_JointGenoCountDist(args);
 
 		break;
 	}
@@ -148,13 +148,12 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 {
 
 	vcfData *vcfd = vcfData_init(args, pars);
-	ASSERT(pars->nIndCmb>0);
+	ASSERT(pars->nIndCmb > 0);
 	pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
 
-
-	for (int i1=0; i1<vcfd->nInd-1; i1++)
+	for (int i1 = 0; i1 < vcfd->nInd - 1; i1++)
 	{
-		for (int i2=i1+1; i2<vcfd->nInd; i2++)
+		for (int i2 = i1 + 1; i2 < vcfd->nInd; i2++)
 		{
 			int pidx = nCk_idx(vcfd->nInd, i1, i2);
 			pairSt[pidx] = new pairStruct(pars, pidx, i1, i2);
@@ -175,7 +174,6 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		ASSERT(0 == 1);
 	}
 
-
 	// --------------------------- doAMOVA 0 --------------------------- //
 	// DO NOT run AMOVA
 	if (args->doAMOVA == 0 && args->doEM == 1)
@@ -189,7 +187,6 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		}
 		delete dMS;
 
-
 		for (int i = 0; i < pars->nIndCmb; i++)
 		{
 			delete pairSt[i];
@@ -200,8 +197,7 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		return;
 	}
 
-	metadataStruct *metadataSt= metadataStruct_get(args, pars, formulaSt);
-
+	metadataStruct *metadataSt = metadataStruct_get(args, pars, formulaSt);
 
 	pars->nAmovaRuns = 1;
 	if (args->nBootstraps > 0)
@@ -252,47 +248,44 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 	}
 
 	dxyStruct *dxySt = NULL;
-	if (args->doDxy>0)
+	if (args->doDxy > 0)
 	{
-		if(args->in_dxy_fn==NULL)
+		if (args->in_dxy_fn == NULL)
 		{
-			//TODO: implement this as an independent function that does not require to go through amova stuff
-			// pars->in_ft=IN_DXY;
-			dxySt = dxyStruct_get(args,pars,dMS[0],metadataSt);
-		}else{
-			dxySt = dxyStruct_read(args,pars,dMS[0],metadataSt);
+			// TODO: implement this as an independent function that does not require to go through amova stuff
+			//  pars->in_ft=IN_DXY;
+			dxySt = dxyStruct_get(args, pars, dMS[0], metadataSt);
+		}
+		else
+		{
+			dxySt = dxyStruct_read(args, pars, dMS[0], metadataSt);
 		}
 	}
 
-	//TODO print in csv format 
-	// for (int i1=0; i1<metadataSt->nInd-1; i1++)
-	// {
-	// 	for (int i2=i1+1; i2<metadataSt->nInd; i2++)
-	// 	{
-	// 		int pidx = nCk_idx(metadataSt->nInd, i1, i2);
-	// 		fprintf(stdout,"%d,%d,%d,", i1,i2,pidx);
-	// 		fprintf(stdout,"%.*f\n",(int)DBL_MAXDIG10, dMS[0]->M[pidx]);
-	// 	}
-	// }
-
-	
+	// TODO print in csv format
+	//  for (int i1=0; i1<metadataSt->nInd-1; i1++)
+	//  {
+	//  	for (int i2=i1+1; i2<metadataSt->nInd; i2++)
+	//  	{
+	//  		int pidx = nCk_idx(metadataSt->nInd, i1, i2);
+	//  		fprintf(stdout,"%d,%d,%d,", i1,i2,pidx);
+	//  		fprintf(stdout,"%.*f\n",DBL_MAXDIG10, dMS[0]->M[pidx]);
+	//  	}
+	//  }
 
 	njStruct *njSt = NULL;
-	if (args->doNJ==1)
+	if (args->doNJ == 1)
 	{
-		ASSERT(dMS[0]!=NULL);
-		njSt = njStruct_get(args,pars,dMS[0]);
-    	njSt->print(outFiles->out_nj_fs);
-		// njStruct_print_newick(njSt, outFiles->out_nj_fs);
-	}
-	else if (args->doNJ==2)
-	{
-		ASSERT(dxySt!=NULL);
-		njSt = njStruct_get(args,pars,dxySt);
+		ASSERT(dMS[0] != NULL);
+		njSt = njStruct_get(args, pars, dMS[0]);
 		njSt->print(outFiles->out_nj_fs);
-		// njStruct_print_newick(njSt, outFiles->out_nj_fs);
 	}
-
+	else if (args->doNJ == 2)
+	{
+		ASSERT(dxySt != NULL);
+		njSt = njStruct_get(args, pars, dxySt);
+		njSt->print(outFiles->out_nj_fs);
+	}
 
 	AMOVA::amovaStruct **amv = new AMOVA::amovaStruct *[pars->nAmovaRuns];
 
@@ -349,22 +342,23 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 
 	distanceMatrixStruct *dMS = distanceMatrixStruct_read(pars, args);
 
-	metadataStruct *metadataSt= metadataStruct_get(args, pars, formulaSt);
+	metadataStruct *metadataSt = metadataStruct_get(args, pars, formulaSt);
 
 	dMS->set_item_labels(metadataSt->indNames);
 
 	pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
 
-	for (int i1=0; i1<pars->nInd-1; i1++)
+	for (int i1 = 0; i1 < pars->nInd - 1; i1++)
 	{
-		for (int i2=i1+1; i2<pars->nInd; i2++)
+		for (int i2 = i1 + 1; i2 < pars->nInd; i2++)
 		{
 			int pidx = nCk_idx(pars->nInd, i1, i2);
 			pairSt[pidx] = new pairStruct(pars, pidx, i1, i2);
 		}
 	}
 
-	if (args->doAMOVA != 0){
+	if (args->doAMOVA != 0)
+	{
 		AMOVA::amovaStruct *amv = AMOVA::doAmova(dMS, metadataSt, pars);
 		eval_amovaStruct(amv);
 		if (args->printAmovaTable == 1)
@@ -375,32 +369,31 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		delete amv;
 	}
 
-
 	dxyStruct *dxySt = NULL;
-	if (args->doDxy>0)
+	if (args->doDxy > 0)
 	{
-		if(args->in_dxy_fn==NULL)
+		if (args->in_dxy_fn == NULL)
 		{
-			dxySt = dxyStruct_get(args,pars,dMS,metadataSt);
-		}else{
-			dxySt = dxyStruct_read(args,pars,dMS,metadataSt);
+			dxySt = dxyStruct_get(args, pars, dMS, metadataSt);
+		}
+		else
+		{
+			dxySt = dxyStruct_read(args, pars, dMS, metadataSt);
 		}
 	}
 
 	njStruct *njSt = NULL;
-	if (args->doNJ==1)
+	if (args->doNJ == 1)
 	{
-		ASSERT(dMS!=NULL);
-		njSt = njStruct_get(args,pars,dMS);
-    	njSt->print(outFiles->out_nj_fs);
-		// njStruct_print_newick(njSt, outFiles->out_nj_fs);
-	}
-	else if (args->doNJ==2)
-	{
-		ASSERT(dxySt!=NULL);
-		njSt = njStruct_get(args,pars,dxySt);
+		ASSERT(dMS != NULL);
+		njSt = njStruct_get(args, pars, dMS);
 		njSt->print(outFiles->out_nj_fs);
-		// njStruct_print_newick(njSt, outFiles->out_nj_fs);
+	}
+	else if (args->doNJ == 2)
+	{
+		ASSERT(dxySt != NULL);
+		njSt = njStruct_get(args, pars, dxySt);
+		njSt->print(outFiles->out_nj_fs);
 	}
 
 	delete metadataSt;
@@ -419,7 +412,8 @@ void input_DM(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 
 int main(int argc, char **argv)
 {
-	if (argc == 1){
+	if (argc == 1)
+	{
 		print_help(stderr);
 		exit(0);
 	}
@@ -427,7 +421,7 @@ int main(int argc, char **argv)
 	argStruct *args = argStruct_get(--argc, ++argv);
 	paramStruct *pars = paramStruct_init(args);
 	IO::outFilesStruct_set(args, outFiles);
-	
+
 	char *DATETIME = pars->DATETIME;
 	DATETIME = get_time();
 	fprintf(stderr, "\n%s", DATETIME);
@@ -440,35 +434,32 @@ int main(int argc, char **argv)
 	// TODO put formulaStruct into pars
 	// TODO use bitsetting to represent file types VCF/BCF, DM, etc.
 
-
-
 	// == OBTAIN THE DISTANCE MATRIX ==
 
 	// determine the method to obtain the distance matrix
 	switch (pars->in_ft)
 	{
 
-		// --------------------------- INPUT: VCF/BCF --------------------------- //
-		case IN_VCF:
-			input_VCF(args, pars, formulaSt);
-			break;
+	// --------------------------- INPUT: VCF/BCF --------------------------- //
+	case IN_VCF:
+		input_VCF(args, pars, formulaSt);
+		break;
 
-		// ---------------------------- INPUT: DISTANCE MATRIX ---------------------------- //
-		case IN_DM:
-			input_DM(args, pars, formulaSt);
-			break;
-		
-		// ---------------------------- INPUT: JGCD ---------------------------- //
-		case IN_JGCD:
-			// input_JGCD(args, pars, formulaSt);
-			break;
+	// ---------------------------- INPUT: DISTANCE MATRIX ---------------------------- //
+	case IN_DM:
+		input_DM(args, pars, formulaSt);
+		break;
 
-		// ---------------------------- INPUT: UNRECOGNIZED ---------------------------- //
-		default:
-			fprintf(stderr, "\n[ERROR]\t-> Input file type not recognized\n");
-			exit(1);
+	// ---------------------------- INPUT: JGCD ---------------------------- //
+	case IN_JGCD:
+		// input_JGCD(args, pars, formulaSt);
+		break;
+
+	// ---------------------------- INPUT: UNRECOGNIZED ---------------------------- //
+	default:
+		fprintf(stderr, "\n[ERROR]\t-> Input file type not recognized\n");
+		exit(1);
 	}
-
 
 	// == CLEANUP ==
 	formulaStruct_destroy(formulaSt);
@@ -478,5 +469,3 @@ int main(int argc, char **argv)
 
 	return 0;
 }
-
-

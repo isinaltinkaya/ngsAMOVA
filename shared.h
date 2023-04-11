@@ -278,6 +278,7 @@
 #define MAXDIG_PER_HLEVEL 2
 #define MAXSIZE_HLEVEL 100
 
+
 /*
  * Macro:[DBL_MAXDIG10]
  * Defines the maximum number of decimal digits that can be represented by a
@@ -289,7 +290,7 @@
  * to prevent any overflow issues.
  *
  */
-#define DBL_MAXDIG10 (2 + (DBL_MANT_DIG * 30103UL) / 100000UL)
+#define DBL_MAXDIG10 ((int)(2 + (DBL_MANT_DIG * 30103UL) / 100000UL))
 
 #define DELIMS "\t ,\n"
 
