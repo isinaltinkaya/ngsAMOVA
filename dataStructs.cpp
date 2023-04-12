@@ -747,10 +747,10 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *ar
 
 	IO::vprint(1, "Number of individuals are estimated to be %d based on the number of values in the distance matrix (%d).\n", pars->nInd, n_vals);
 
-	distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance, NULL);
-	dMS->isSquared = args->do_square_distance;
+	distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->square_distance, NULL);
+	dMS->isSquared = args->square_distance;
 
-	if (args->do_square_distance == 1)
+	if (args->square_distance == 1)
 	{
 		for (int i = 0; i < n_vals; i++)
 		{
@@ -926,11 +926,11 @@ void formulaStruct::print(FILE *fp)
 {
 	fprintf(fp, "\nFormula: %s", formula);
 	fprintf(fp, "\nTokens: %i\n", nTokens);
-	// for (int i = 0; i < nTokens; i++)
-	// {
-	// 	fprintf(fp, "\tToken %d (%s) corresponds to column %d in metadata.\n", i, formulaTokens[i], formulaTokenIdx[i]);
-	// }
-	// fprintf(fp, "\n");
+	for (int i = 0; i < nTokens; i++)
+	{
+		fprintf(fp, "\tToken %d (%s) corresponds to column %d in metadata.\n", i, formulaTokens[i], formulaTokenIdx[i]);
+	}
+	fprintf(fp, "\n");
 }
 
 int formulaStruct::setFormulaTokenIdx(const char *mtd_tok, const int mtd_col_idx)

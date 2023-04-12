@@ -161,6 +161,7 @@ extern u_char VERBOSE;
 * VALUE = 3: print in bgzipped format
 * VALUE = 4: print in binary bgzipped format 
 */
+
 struct argStruct
 {
 
@@ -198,7 +199,7 @@ int printDev;
 int isSim;
 int isTest;
 int doDist;
-int do_square_distance;
+int square_distance;
 int minInd;
 
 int hasColNames;

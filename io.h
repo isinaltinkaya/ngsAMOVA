@@ -276,5 +276,6 @@ kstring_t *kbuf_init();
 void kbuf_destroy(kstring_t *kbuf);
 
 extern IO::outFilesStruct* outFiles;
+//todo extern argstruct paramstruct too?
 
 #endif // __IO__

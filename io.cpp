@@ -4,14 +4,14 @@
 #include "io.h"
 #include "dataStructs.h"
 
-//TODO if -out has full output name and not prefix, detect it 
-//e.g. if you were going to write to a file called "out.amova.csv", and "-out out.amova.csv" is given
-// then extract prefix from that and use as prefix for other outputs as well
-// this is a useful feature for snakemake etc
+// TODO if -out has full output name and not prefix, detect it
+// e.g. if you were going to write to a file called "out.amova.csv", and "-out out.amova.csv" is given
+//  then extract prefix from that and use as prefix for other outputs as well
+//  this is a useful feature for snakemake etc
 
 const char *IO::FILE_EXTENSIONS[] = {"", ".gz", ".bgz"};
 
-IO::outFilesStruct* outFiles = new IO::outFilesStruct();
+IO::outFilesStruct *outFiles = new IO::outFilesStruct();
 
 // TODO exit with error function to handle printing [ERROR] etc
 /// also write the error message to a "filename.err" file
@@ -19,9 +19,9 @@ IO::outFilesStruct* outFiles = new IO::outFilesStruct();
 
 void IO::requireFile(const char *fn, const char *required, const char *requiredFor)
 {
-	if(fn==NULL)
+	if (fn == NULL)
 	{
-		fprintf(stderr,"\n[ERROR]\t-%s is required for %s.\n", required, requiredFor);
+		fprintf(stderr, "\n[ERROR]\t-%s is required for %s.\n", required, requiredFor);
 		exit(1);
 	}
 
@@ -40,9 +40,9 @@ void IO::requireFile(const char *fn, const char *required, const char *requiredF
 
 void IO::requireFile(const char *fn, const char *required)
 {
-	if(fn==NULL)
+	if (fn == NULL)
 	{
-		fprintf(stderr,"\n[ERROR]\t-%s is required, but found NULL.\n", required);
+		fprintf(stderr, "\n[ERROR]\t-%s is required, but found NULL.\n", required);
 		exit(1);
 	}
 
@@ -227,15 +227,15 @@ gzFile IO::openGzFileW(const char *a, const char *b)
 /// @brief getFirstLine get first line of a file
 /// @param fp pointer to file
 /// @return char* line
-char *IO::readFile::getFirstLine(const char* fn)
+char *IO::readFile::getFirstLine(const char *fn)
 {
 	FILE *fp = IO::getFile(fn, "r");
 
 	size_t buf_size = FGETS_BUF_SIZE;
-	char *line = (char*) malloc(FGETS_BUF_SIZE * sizeof(char));
+	char *line = (char *)malloc(FGETS_BUF_SIZE * sizeof(char));
 	ASSERT(line != NULL);
 
-	char *full_line = (char*) malloc(1);
+	char *full_line = (char *)malloc(1);
 	size_t full_line_size = 0;
 	full_line[0] = '\0';
 
@@ -243,25 +243,25 @@ char *IO::readFile::getFirstLine(const char* fn)
 	{
 		// check if the line was fully read
 		if (line[strlen(line) - 1] == '\n')
-		{// line was fully read
+		{ // line was fully read
 			full_line_size += strlen(line);
-			full_line = (char *)realloc(full_line, full_line_size +1);
+			full_line = (char *)realloc(full_line, full_line_size + 1);
 			ASSERT(full_line != NULL);
 			strcat(full_line, line);
 			break;
 		}
 		else
-		{// line was not fully read
+		{ // line was not fully read
 			fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
-			
+
 			full_line_size += strlen(line);
-			full_line = (char *)realloc(full_line, full_line_size +1);
+			full_line = (char *)realloc(full_line, full_line_size + 1);
 			ASSERT(full_line != NULL);
 			full_line[full_line_size - 1] = '\0';
 			strcat(full_line, line);
 
 			buf_size *= 2;
-			line = (char *) realloc(line, buf_size * sizeof(char));
+			line = (char *)realloc(line, buf_size * sizeof(char));
 			ASSERT(line != NULL);
 		}
 	}
@@ -280,10 +280,10 @@ char *IO::readFile::getFirstLine(FILE *fp)
 	ASSERT(fseek(fp, 0, SEEK_SET) == 0);
 
 	size_t buf_size = FGETS_BUF_SIZE;
-	char *line = (char*) malloc(FGETS_BUF_SIZE * sizeof(char));
+	char *line = (char *)malloc(FGETS_BUF_SIZE * sizeof(char));
 	ASSERT(line != NULL);
 
-	char *full_line = (char*) malloc(1);
+	char *full_line = (char *)malloc(1);
 	size_t full_line_size = 0;
 	full_line[0] = '\0';
 
@@ -291,25 +291,25 @@ char *IO::readFile::getFirstLine(FILE *fp)
 	{
 		// check if the line was fully read
 		if (line[strlen(line) - 1] == '\n')
-		{// line was fully read
+		{ // line was fully read
 			full_line_size += strlen(line);
-			full_line = (char *)realloc(full_line, full_line_size +1);
+			full_line = (char *)realloc(full_line, full_line_size + 1);
 			ASSERT(full_line != NULL);
 			strcat(full_line, line);
 			break;
 		}
 		else
-		{// line was not fully read
+		{ // line was not fully read
 			fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
-			
+
 			full_line_size += strlen(line);
-			full_line = (char *)realloc(full_line, full_line_size +1);
+			full_line = (char *)realloc(full_line, full_line_size + 1);
 			ASSERT(full_line != NULL);
 			full_line[full_line_size - 1] = '\0';
 			strcat(full_line, line);
 
 			buf_size *= 2;
-			line = (char *) realloc(line, buf_size * sizeof(char));
+			line = (char *)realloc(line, buf_size * sizeof(char));
 			ASSERT(line != NULL);
 		}
 	}
@@ -318,10 +318,11 @@ char *IO::readFile::getFirstLine(FILE *fp)
 	return full_line;
 }
 
-char* IO::readFile::readToBuffer(const char* fn){
-	char* buffer = NULL;
+char *IO::readFile::readToBuffer(const char *fn)
+{
+	char *buffer = NULL;
 	size_t buf_size = 0;
-	FILE* fp = IO::getFile(fn, "r");
+	FILE *fp = IO::getFile(fn, "r");
 
 	// seek to end of file
 	fseek(fp, 0, SEEK_END);
@@ -329,7 +330,7 @@ char* IO::readFile::readToBuffer(const char* fn){
 	buf_size = ftell(fp);
 	ASSERT(buf_size > 0);
 
-	buffer = (char*) malloc((buf_size + 1)*sizeof(char));
+	buffer = (char *)malloc((buf_size + 1) * sizeof(char));
 	ASSERT(buffer != NULL);
 
 	// seek back to beginning of file
@@ -351,8 +352,6 @@ char* IO::readFile::readToBuffer(const char* fn){
 // 	*n_rows = 0;
 // 	*n_cols = 0;
 // 	size_t buf_size = 0;
-
-
 
 // 	FCLOSE(fp);
 // 	return buffer;
@@ -447,25 +446,24 @@ int IO::readFile::getBufferSize(char *fn)
 	return buf_size;
 }
 
-
-
 /// @brief count number of columns in a line
 /// @param line pointer to line char
 /// @param delims delimiters
 /// @return integer number of columns
-int IO::inspectFile::count_nCols(const char* line, const char* delims)
+int IO::inspectFile::count_nCols(const char *line, const char *delims)
 {
 	ASSERT(line != NULL);
 	ASSERT(delims != NULL);
-    
-    int count = 1;
-    const char* p = line;
-    while (*p != '\0')
-    {
-        if (strchr(delims, *p) != NULL) ++count;
-        ++p;
-    }
-    return count;
+
+	int count = 1;
+	const char *p = line;
+	while (*p != '\0')
+	{
+		if (strchr(delims, *p) != NULL)
+			++count;
+		++p;
+	}
+	return count;
 }
 
 /// @brief count_nRows count number of rows in a file
@@ -730,7 +728,6 @@ void IO::outFilesStruct_set(argStruct *args, IO::outFilesStruct *ofs)
 	}
 }
 
-
 void IO::outFilesStruct_destroy(IO::outFilesStruct *ofs)
 {
 	// flushAll();
@@ -742,9 +739,7 @@ void IO::outFilesStruct_destroy(IO::outFilesStruct *ofs)
 	DELETE(ofs->out_dxy_fs);
 	DELETE(ofs->out_nj_fs);
 	DELETE(ofs);
-
 }
-
 
 // void flushAll()
 // {
@@ -772,10 +767,11 @@ void IO::outFilesStruct_destroy(IO::outFilesStruct *ofs)
 
 int IO::verbose(const int verbose_threshold)
 {
-	if(verbose_threshold==0){
+	if (verbose_threshold == 0)
+	{
 		return 1; // if checking against 0 (i.e. no verbose needed) return 1
 	}
-	return BITCHECK_ATLEAST(VERBOSE, verbose_threshold-1);
+	return BITCHECK_ATLEAST(VERBOSE, verbose_threshold - 1);
 }
 
 void IO::vprint(const char *format, ...)
@@ -796,7 +792,8 @@ void IO::vprint(const char *format, ...)
 
 void IO::vprint(const int verbose_threshold, const char *format, ...)
 {
-	if (verbose_threshold==0){
+	if (verbose_threshold == 0)
+	{
 		char str[1024];
 
 		va_list args;
@@ -806,7 +803,7 @@ void IO::vprint(const int verbose_threshold, const char *format, ...)
 
 		fprintf(stderr, "\n[INFO]\t%s\n", str);
 	}
-	if (BITCHECK_ATLEAST(VERBOSE, (verbose_threshold-1)) == 1)
+	if (BITCHECK_ATLEAST(VERBOSE, (verbose_threshold - 1)) == 1)
 	{
 		char str[1024];
 
@@ -821,7 +818,7 @@ void IO::vprint(const int verbose_threshold, const char *format, ...)
 
 void IO::vprint(FILE *fp, const int verbose_threshold, const char *format, ...)
 {
-	if (BITCHECK_ATLEAST(VERBOSE, (verbose_threshold-1)) == 1)
+	if (BITCHECK_ATLEAST(VERBOSE, (verbose_threshold - 1)) == 1)
 	{
 		char str[1024];
 
@@ -836,7 +833,7 @@ void IO::vprint(FILE *fp, const int verbose_threshold, const char *format, ...)
 
 void IO::vvprint(FILE *fp, const int verbose_threshold, const char *format, ...)
 {
-	if (BITCHECK_ATLEAST(VERBOSE, (verbose_threshold-1) ) == 1)
+	if (BITCHECK_ATLEAST(VERBOSE, (verbose_threshold - 1)) == 1)
 	{
 
 		char str[1024];
@@ -850,4 +847,3 @@ void IO::vvprint(FILE *fp, const int verbose_threshold, const char *format, ...)
 		fprintf(stderr, "\n[INFO][VERBOSE>=%d]\t%s\n", verbose_threshold, str);
 	}
 }
-

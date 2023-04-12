@@ -5,7 +5,6 @@
 // default: 0 (verbose mode off)
 u_char VERBOSE = 0;
 
-
 argStruct *argStruct_init()
 {
 
@@ -41,7 +40,7 @@ argStruct *argStruct_init()
 	args->tole = 1e-5;
 
 	args->doDist = -1;
-	args->do_square_distance = 1;
+	args->square_distance = 1;
 
 	args->isSim = 0;
 	args->isTest = 0;
@@ -78,40 +77,129 @@ argStruct *argStruct_get(int argc, char **argv)
 		char *arv = *argv;
 		char *val = *(++argv);
 
-		if (val == NULL){
+		if (val == NULL)
+		{
 			print_help(stdout);
 			exit(0);
 		}
 
-		if ((strcasecmp("--in_vcf", arv) == 0) || (strcasecmp("--input", arv) == 0) || (strcasecmp("-i", arv) == 0))
+		// ###########################
+		// #    ACTIONS [-doXXXX]    #
+		// ###########################
+		//
+		// Use action commands to specify the action (i.e. analysis) to be performed.
+		// Action commands are of the form `-doXXXX <value>`
+		//   where XXXX defines the general type of analysis to be performed
+		//   and <value> specifies the exact analysis to be performed.
+		// For example, `-doAMOVA <value>` specifies to perform AMOVA analysis.
+		//   and <value> specifies the exact AMOVA analysis to be performed.
+		//   e.g. `-doAMOVA 1` specifies to perform AMOVA analysis with the genotype likelihoods.
+		//
+		// The following action commands are available:
+		//   -doAMOVA <value> : perform AMOVA analysis
+		//   -doEM <value> : perform EM optimization
+		//   -doDxy <value> : estimate Dxy
+		//   -doNJ <value> : do neighbor-joining
+		//   -doDist <value> : calculate pairwise distances
+
+		if (strcasecmp("-doAMOVA", arv) == 0)
+		{
+			args->doAMOVA = atoi(val);
+		}
+		else if (strcasecmp("-doEM", arv) == 0)
+		{
+			args->doEM = atoi(val);
+		}
+
+		else if (strcasecmp("-doDxy", arv) == 0)
+		{
+			if (strIsNumeric(val))
+			{
+				args->doDxy = atoi(val);
+			}
+			else
+			{
+				args->doDxy = 999; // indicates that a string is provided
+				args->doDxyStr = strdup(val);
+			}
+		}
+
+		else if ((strcasecmp("-doNeighborJoining", arv) == 0) || (strcasecmp("-doNJ", arv) == 0))
+		{
+			args->doNJ = atoi(val);
+		}
+
+		// ################################
+		// #    INPUT FILES [--in-XXX]    #
+		// ################################
+		//
+		// Use input file commands to specify the input file types and their filenames.
+		// Input file is defined as the file containing the data to be used in the analyses.
+		// Input file commands are of the form `--in-XXX <filename>`
+		//   where XXX defines the type of input file
+		//   and <filename> specifies the filename of the input file.
+		// For example, `--in-vcf <filename>` specifies to read the input file as a VCF file.
+		//
+		// The following input file commands are available:
+		//   --in-vcf <filename> : VCF file input
+		//   --in-dm <filename> : distance matrix input
+		//   --in-dxy <filename> : Dxy file input
+		//   --in-jgcd <filename> : joint genotype count distribution input
+
+		else if ((strcasecmp("--in-vcf", arv) == 0) || (strcasecmp("--input", arv) == 0) || (strcasecmp("-i", arv) == 0))
 		{
 			args->in_vcf_fn = strdup(val);
 		}
-		// else if ((strcasecmp("--inputJointGenoProbDist", arv) == 0) || (strcasecmp("--inputJGPD", arv) == 0) || (strcasecmp("-iJGPD", arv) == 0)){
-		// 	args->in_sfs_fn = strdup(val);
-		// }
-		else if ((strcasecmp("--in_dm", arv) == 0))
+		else if ((strcasecmp("--in-dm", arv) == 0))
 		{
 			args->in_dm_fn = strdup(val);
 		}
-		else if ((strcasecmp("--in_dxy", arv) == 0))
+		else if ((strcasecmp("--in-dxy", arv) == 0))
 		{
 			args->in_dxy_fn = strdup(val);
 		}
-		else if (strcasecmp("-m", arv) == 0)
-			args->in_mtd_fn = strdup(val);
+		else if (strcasecmp("--in-jgcd", arv) == 0)
+		{
+			args->in_jgcd_fn = strdup(val);
+		}
+
+		// TODO this is prefix, but add output name checker to make it play nicer with snakemake
+		// e.g. --output out.amova.csv should detect that user meant to use out as prefix not the whole thing
+		// if one of the expected output filename is out.amova.csv
 		else if ((strcasecmp("--output", arv) == 0) || (strcasecmp("-out", arv) == 0) || (strcasecmp("-o", arv) == 0))
 		{
 			args->out_fn = strdup(val);
 		}
 
-		else if ((strcasecmp("--block_bed", arv) == 0) || (strcasecmp("-bf", arv) == 0))
-		{
-			args->in_blb_fn = strdup(val);
-		}
+		// #################################################################
+		// #    PRINTING COMMANDS [--printXxXxx/--printXX/-pXX <value>]    #
+		// #################################################################
+		//
+		// Use printing commands to specify the output files to be generated.
+		// This is only needed for output files that are not the default output files
+		//   associated with the analyses specified by the action commands.
+		//
+		// Printing commands are of the form `--printXxXxx <value>` or `--printXX <value>` or `-pXX <value>`
+		//   where XxXxx is the long form of the file type to be printed,
+		//   XX is the short form of the file type (typically  the first letter(s) of the long form),
+		//   and <value> defines the compression level of the output file.
+		// Output file names are automatically generated based on the value of the `--output` argument
+		//   and the file type to be printed.
+		//
+		// The following printing commands are available:
+		//   --printJointGenoCountDist/-pJGCD <value> : print joint genotype count distribution
+		//   --printJointGenoProbDist/-pJGPD <value> : print joint genotype probability distribution
+		//   --printAmovaTable/-pAT <value> : print AMOVA table
+		//
+		// The following compression levels are available:
+		//   0 : no compression
+		//   1 : gzip compression
+		//   2 : bgzip compression
+		//
+		//
 
-		else if (strcasecmp("-dev", arv) == 0)
-			args->printDev = atoi(val);
+		// TODO maybe use hypen style here --print-joint-geno-count-dist to be consistent with other commands
+		// TODO maybe make <value> optional and choose a default one, most people won't care about this
 
 		else if ((strcasecmp("--printJointGenoCountDist", arv) == 0) || (strcasecmp("--printJGCD", arv) == 0) || (strcasecmp("-pJGCD", arv) == 0))
 		{
@@ -125,21 +213,35 @@ argStruct *argStruct_get(int argc, char **argv)
 		{
 			args->printAmovaTable = atoi(val);
 		}
-		else if ((strcasecmp("--printDxy",arv) == 0) || (strcasecmp("-pDxy", arv) == 0))
+		else if ((strcasecmp("--printDxy", arv) == 0) || (strcasecmp("-pDxy", arv) == 0))
 		{
 			args->printDxy = atoi(val);
 		}
 
+		// #####################################
+		// #    ARGUMENTS [--long-form/-sf]    #
+		// #####################################
+		//
+		// Use argument commands to specify the parameters to be used in the analyses.
+		// Argument commands are of the form `--long-form <value>` or `-sf <value>`
+		//   where long form of the argument starts with double dash `--` and separated by hyphen `-`
+		//   and short form of the argument starts with single dash `-` and is typically the first letter(s) of the long form
+		//
+
+		else if (strcasecmp("--metadata", arv) == 0 || strcasecmp("-m", arv) == 0)
+		{
+			args->in_mtd_fn = strdup(val);
+		}
 		else if ((strcasecmp("--verbose", arv) == 0) || (strcasecmp("-v", arv) == 0))
 		{
 			if (atoi(val) == 0)
 			{
 				// explicit verbose off, use the default value 0
-				fprintf(stderr,"[INFO]\t-> Verbosity disabled explicitly. Will not print any information.\n");
+				fprintf(stderr, "[INFO]\t-> Verbosity disabled explicitly. Will not print any information.\n");
 			}
 			else if (strIsNumeric(val))
 			{
-				BITSET(VERBOSE, (atoi(val)-1));
+				BITSET(VERBOSE, (atoi(val) - 1));
 			}
 			else
 			{
@@ -148,6 +250,19 @@ argStruct *argStruct_get(int argc, char **argv)
 			fprintf(stderr, "\n[INFO]\t-> Verbosity level is set to %d.\n", WHICH_BIT_SET1(VERBOSE));
 		}
 
+		else if (strcasecmp("--formula", arv) == 0 || strcasecmp("-f", arv) == 0)
+		{
+			args->formula = strdup(val);
+		}
+
+		else if ((strcasecmp("--block_bed", arv) == 0) || (strcasecmp("-bf", arv) == 0))
+		{
+			args->in_blb_fn = strdup(val);
+		}
+
+		else if (strcasecmp("-dev", arv) == 0)
+			args->printDev = atoi(val);
+
 		else if (strcasecmp("--isSim", arv) == 0)
 			args->isSim = atoi(val);
 		else if (strcasecmp("--isTest", arv) == 0)
@@ -155,31 +270,10 @@ argStruct *argStruct_get(int argc, char **argv)
 		else if (strcasecmp("--minInd", arv) == 0)
 			args->minInd = atoi(val);
 
-		else if (strcasecmp("--doDist", arv) == 0)
-			args->doDist = atoi(val);
-		else if (strcasecmp("--do_square_distance", arv) == 0)
-			args->do_square_distance = atoi(val);
+		else if (strcasecmp("--square_distance", arv) == 0)
+			args->square_distance = atoi(val);
 		else if (strcasecmp("-sqDist", arv) == 0)
-			args->do_square_distance = atoi(val);
-
-		else if (strcasecmp("--doAMOVA", arv) == 0)
-			args->doAMOVA = atoi(val);
-		else if (strcasecmp("--doEM", arv) == 0)
-			args->doEM = atoi(val);
-
-		else if (strcasecmp("--doDxy", arv) == 0)
-		{
-    		if (strIsNumeric(val)){
-				args->doDxy = atoi(val);
-			}else{
-				args->doDxy = 999; // indicates that a string is provided
-				args->doDxyStr = strdup(val);
-			}
-		}
-
-		else if ((strcasecmp("--doNeighborJoining", arv)==0) || (strcasecmp("--doNJ", arv)==0)){
-			args->doNJ = atoi(val);
-		}
+			args->square_distance = atoi(val);
 
 		else if (strcasecmp("--mThreads", arv) == 0)
 			args->mThreads = atoi(val);
@@ -211,13 +305,6 @@ argStruct *argStruct_get(int argc, char **argv)
 		{
 			args->nBootstraps = (int)atof(val);
 		}
-
-		else if ((strcasecmp("-f", arv) == 0) || (strcasecmp("--formula", arv) == 0))
-		{
-			args->formula = strdup(val);
-		}
-
-		// TODO decide btw single - and --
 		else if (strcasecmp("-seed", arv) == 0)
 			args->seed = atoi(val);
 		else if (strcasecmp("-doAMOVA", arv) == 0)
@@ -266,7 +353,7 @@ argStruct *argStruct_get(int argc, char **argv)
 		++argv;
 	}
 
-	// TODO add 'requires' arg dependency checker
+	// TODO add 'requires' arg dependency checker, some libs do it like tclap
 
 	if (args->isSim > 1 || args->isSim < 0)
 	{
@@ -330,40 +417,41 @@ argStruct *argStruct_get(int argc, char **argv)
 	}
 	else
 	{
-		if(args->in_dm_fn==NULL){
+		if (args->in_dm_fn == NULL)
+		{
 			fprintf(stderr, "\n[ERROR]\t-doDist %d is not available.\n", args->doDist);
 			exit(1);
 		}
 	}
 
-	if (args->do_square_distance == 1)
+	if (args->square_distance == 1)
 	{
 		fprintf(stderr, "\n\t-> -do_square_distance is set to 1, will square the distance measure (Dij^2).\n");
 	}
-	else if (args->do_square_distance == 0)
+	else if (args->square_distance == 0)
 	{
 		fprintf(stderr, "\n\t-> -do_square_distance is set to 0, will not square the distance measure.\n");
 	}
 	else
 	{
-		fprintf(stderr, "\n[ERROR]\t-do_square_distance %d is not available.\n", args->do_square_distance);
+		fprintf(stderr, "\n[ERROR]\t-do_square_distance %d is not available.\n", args->square_distance);
 		exit(1);
 	}
 
-//TODO handle this better
-	if(args->in_dm_fn!=NULL){
-		args->do_square_distance = 0;
+	// TODO handle this better
+	if (args->in_dm_fn != NULL)
+	{
+		args->square_distance = 0;
 	}
-
 
 	if (args->in_vcf_fn == NULL && args->in_dm_fn == NULL)
 	{
-		fprintf(stderr, "\n[ERROR] Must supply either --in_vcf <VCF_file> or --in_dm <Distance_matrix_file>.\n");
+		fprintf(stderr, "\n[ERROR] Must supply either --in-vcf <VCF_file> or --in-dm <Distance_matrix_file>.\n");
 		exit(1);
 	}
 	else if (args->in_vcf_fn != NULL && args->in_dm_fn != NULL)
 	{
-		fprintf(stderr, "\n[ERROR] Cannot use --in_vcf %s and --in_dm %s at the same time.\n", args->in_vcf_fn, args->in_dm_fn);
+		fprintf(stderr, "\n[ERROR] Cannot use --in-vcf %s and --in-dm %s at the same time.\n", args->in_vcf_fn, args->in_dm_fn);
 		exit(1);
 	}
 
@@ -407,7 +495,7 @@ argStruct *argStruct_get(int argc, char **argv)
 
 		if (args->in_dm_fn != NULL)
 		{
-			fprintf(stderr, "\n-> --in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
+			fprintf(stderr, "\n-> --in-dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
 		}
 		else
 		{
@@ -420,7 +508,7 @@ argStruct *argStruct_get(int argc, char **argv)
 	{
 		if (args->in_dm_fn != NULL)
 		{
-			fprintf(stderr, "\n-> --in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
+			fprintf(stderr, "\n-> --in-dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
 			args->doAMOVA = 1; // 1: use dm input or gle tag in vcf
 		}
 		else
@@ -446,7 +534,7 @@ argStruct *argStruct_get(int argc, char **argv)
 
 		if (args->in_dm_fn != NULL)
 		{
-			fprintf(stderr, "\n-> --in_dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
+			fprintf(stderr, "\n-> --in-dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
 			args->doAMOVA = 1; // 1: use dm input or gle tag in vcf
 		}
 		else
@@ -523,19 +611,20 @@ argStruct *argStruct_get(int argc, char **argv)
 		fprintf(stderr, "\n[INFO]\t-> -windowSize %d; will use sliding windows of size %d\n", args->windowSize, args->windowSize);
 	}
 
-	// [dev mode] 
-#if 1==DEV
+	// [dev mode]
+#if 1 == DEV
 	DEVPRINT("Development mode is on. Will print extra information.\n");
 	// BITSET(VERBOSE, 7); // max: 7
 #endif
 
-	if(args->doAMOVA>0){
+	if (args->doAMOVA > 0)
+	{
 		IO::requireFile(args->formula, "--formula/-f");
 	}
 
-	if(args->doDxy==0 && args->printDxy == 1)
+	if (args->doDxy == 0 && args->printDxy == 1)
 	{
-		fprintf(stderr, "\n[ERROR]\t-> --printDxy 1 requires --doDxy 1.\n");
+		fprintf(stderr, "\n[ERROR]\t-> --printDxy 1 requires -doDxy 1.\n");
 		exit(1);
 	}
 
@@ -543,20 +632,17 @@ argStruct *argStruct_get(int argc, char **argv)
 	// doNJ 2 requires a dxy distance matrix from -in_dxy or -doDxy
 	if (args->doNJ == 1 && args->doDist == 0 && args->in_dm_fn == NULL)
 	{
-		fprintf(stderr, "\n[ERROR]\t-> --doNJ %i requires --doDist 1 or --in_dm <file>.\n", args->doNJ);
+		fprintf(stderr, "\n[ERROR]\t-> -doNJ %i requires -doDist 1 or --in-dm <file>.\n", args->doNJ);
 		exit(1);
 	}
 	if (args->doNJ == 2 && args->doDxy == 0 && args->in_dxy_fn == NULL)
 	{
-		fprintf(stderr, "\n[ERROR]\t-> --doNJ %i requires --doDxy 1 or --in_dxy <file>.\n", args->doNJ);
+		fprintf(stderr, "\n[ERROR]\t-> -doNJ %i requires -doDxy 1 or --in-dxy <file>.\n", args->doNJ);
 		exit(1);
 	}
 
-
-
 	return args;
 }
-
 
 void argStruct_destroy(argStruct *args)
 {

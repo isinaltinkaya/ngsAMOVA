@@ -59,6 +59,8 @@ void njStruct::print_leaf_newick(int node, kstring_t *kbuf)
             print_leaf_newick(edgeNodes[parentToEdgeIdx[nodeIdxInParents][edge_i]][1], kbuf);
             // %
 
+            ksprintf(kbuf, ":%.*f", DBL_MAXDIG10, edgeLengths[edge_i]);
+
             // there are multiple edges && this is the last edge
             if ((nEdgesPerParentNode[nodeIdxInParents] > 1) && (edge_i == nEdgesPerParentNode[nodeIdxInParents] - 1))
             {

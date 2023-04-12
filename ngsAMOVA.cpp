@@ -87,7 +87,7 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 				exit(1);
 			}
 
-			if (args->do_square_distance == 1)
+			if (args->square_distance == 1)
 			{
 				dMS_orig->M[pidx] = (double)SQUARE(MATH::EST::Dij(vcfd->JointGenoCountDistGT[pidx], snSites));
 			}
@@ -179,7 +179,7 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 	if (args->doAMOVA == 0 && args->doEM == 1)
 	{
 		// do not run AMOVA, but do EM and get distance matrix
-		distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance, NULL);
+		distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->square_distance, NULL);
 		prepare_distanceMatrix(args, pars, dMS, vcfd, pairSt, formulaSt, NULL);
 		if (args->printMatrix != 0)
 		{
@@ -211,7 +211,7 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 
 	for (int r = 0; r < pars->nAmovaRuns; r++)
 	{
-		dMS[r] = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->do_square_distance, metadataSt->indNames);
+		dMS[r] = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->square_distance, metadataSt->indNames);
 	}
 
 	if (args->blockSize != 0)
