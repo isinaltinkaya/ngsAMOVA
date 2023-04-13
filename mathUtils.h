@@ -2,11 +2,10 @@
 #define __MATH_UTILS__
 
 #include "shared.h"
-#include "vcfUtils.h"
+#include "vcfReader.h"
 
 #include <stdio.h>
 #include <math.h>
-#include <string.h>
 #include <limits>
 
 #define SQUARE(n) ((n) * (n))

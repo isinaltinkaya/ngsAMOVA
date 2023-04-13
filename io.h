@@ -54,7 +54,6 @@ namespace IO
     /// @example vprint(1, "Hello %s", "World"); // will print to both stderr and fp if verbose >= 1
     void vvprint(FILE *fp, const int verbose_threshold, const char *format, ...);
 
-
     void requireFile(const char *fn);
     void requireFile(const char *fn, const char *required);
     void requireFile(const char *fn, const char *required, const char *requiredFor);

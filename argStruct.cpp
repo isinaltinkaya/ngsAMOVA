@@ -5,62 +5,6 @@
 // default: 0 (verbose mode off)
 u_char VERBOSE = 0;
 
-argStruct *argStruct_init()
-{
-
-	argStruct *args = (argStruct *)malloc(sizeof(argStruct));
-
-	args->in_vcf_fn = NULL;
-	args->in_dm_fn = NULL;
-	args->in_mtd_fn = NULL;
-	args->in_jgcd_fn = NULL;
-	args->in_jgpd_fn = NULL;
-	args->in_blb_fn = NULL;
-	args->in_dxy_fn = NULL;
-
-	args->out_fn = NULL;
-
-	args->formula = NULL;
-	args->keyCols = NULL;
-
-	args->command = NULL;
-	args->blockSize = 0;
-
-	args->windowSize = 0;
-
-	args->doAMOVA = 0;
-	args->doEM = 0;
-	args->doDxy = 0;
-	args->doDxyStr = NULL;
-	args->doNJ = 0;
-
-	args->mThreads = 0;
-	args->maxEmIter = 100;
-
-	args->tole = 1e-5;
-
-	args->doDist = -1;
-	args->square_distance = 1;
-
-	args->isSim = 0;
-	args->isTest = 0;
-	args->minInd = -1;
-
-	args->printDev = 0;
-	args->printMatrix = 0;
-	args->printAmovaTable = 0;
-	args->printJointGenoCountDist = 0;
-	args->printJointGenoProbDist = 0;
-	args->printDxy = 0;
-
-	args->seed = -1;
-	args->nBootstraps = 0;
-
-	args->gl2gt = -1;
-
-	return args;
-}
-
 // TODO check multiple of same argument
 /// @brief argStruct_get read command line arguments
 /// @param argc
@@ -69,10 +13,12 @@ argStruct *argStruct_init()
 argStruct *argStruct_get(int argc, char **argv)
 {
 
-	argStruct *args = argStruct_init();
+	argStruct *args = new argStruct;
 
 	while (*argv)
 	{
+
+		// TODO check if given files exist here
 
 		char *arv = *argv;
 		char *val = *(++argv);
@@ -88,19 +34,19 @@ argStruct *argStruct_get(int argc, char **argv)
 		// ###########################
 		//
 		// Use action commands to specify the action (i.e. analysis) to be performed.
-		// Action commands are of the form `-doXXXX <value>`
+		// Action commands are of the form `-doXXXX <int>`
 		//   where XXXX defines the general type of analysis to be performed
-		//   and <value> specifies the exact analysis to be performed.
-		// For example, `-doAMOVA <value>` specifies to perform AMOVA analysis.
-		//   and <value> specifies the exact AMOVA analysis to be performed.
+		//   and <int> specifies the exact analysis to be performed.
+		// For example, `-doAMOVA <int>` specifies to perform AMOVA analysis.
+		//   and <int> specifies the exact AMOVA analysis to be performed.
 		//   e.g. `-doAMOVA 1` specifies to perform AMOVA analysis with the genotype likelihoods.
 		//
 		// The following action commands are available:
-		//   -doAMOVA <value> : perform AMOVA analysis
-		//   -doEM <value> : perform EM optimization
-		//   -doDxy <value> : estimate Dxy
-		//   -doNJ <value> : do neighbor-joining
-		//   -doDist <value> : calculate pairwise distances
+		//   -doAMOVA <int> : perform AMOVA analysis
+		//   -doEM <int> : perform EM optimization
+		//   -doDxy <int> : estimate Dxy
+		//   -doNJ <int> : do neighbor-joining
+		//   -doDist <int> : calculate pairwise distances
 
 		if (strcasecmp("-doAMOVA", arv) == 0)
 		{
@@ -127,6 +73,11 @@ argStruct *argStruct_get(int argc, char **argv)
 		else if ((strcasecmp("-doNeighborJoining", arv) == 0) || (strcasecmp("-doNJ", arv) == 0))
 		{
 			args->doNJ = atoi(val);
+		}
+
+		else if (strcasecmp("-doDist", arv) == 0)
+		{
+			args->doDist = atoi(val);
 		}
 
 		// ################################
@@ -163,33 +114,35 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->in_jgcd_fn = strdup(val);
 		}
 
-		// TODO this is prefix, but add output name checker to make it play nicer with snakemake
-		// e.g. --output out.amova.csv should detect that user meant to use out as prefix not the whole thing
-		// if one of the expected output filename is out.amova.csv
+		// TODO if -out has full output name and not prefix, detect it
+		// e.g. if you were going to write to a file called "out.amova.csv", and "-out out.amova.csv" is given
+		//  then extract prefix from that and use as prefix for other outputs as well
+		//  this is a useful feature for snakemake etc
 		else if ((strcasecmp("--output", arv) == 0) || (strcasecmp("-out", arv) == 0) || (strcasecmp("-o", arv) == 0))
 		{
 			args->out_fn = strdup(val);
 		}
 
 		// #################################################################
-		// #    PRINTING COMMANDS [--printXxXxx/--printXX/-pXX <value>]    #
+		// #    PRINTING COMMANDS                                          #
+		// #    [--printXxXxx/--printXX/-pXX <int>]                        #
 		// #################################################################
 		//
 		// Use printing commands to specify the output files to be generated.
 		// This is only needed for output files that are not the default output files
 		//   associated with the analyses specified by the action commands.
 		//
-		// Printing commands are of the form `--printXxXxx <value>` or `--printXX <value>` or `-pXX <value>`
+		// Printing commands are of the form `--printXxXxx <int>` or `--printXX <int>` or `-pXX <int>`
 		//   where XxXxx is the long form of the file type to be printed,
 		//   XX is the short form of the file type (typically  the first letter(s) of the long form),
-		//   and <value> defines the compression level of the output file.
+		//   and <int> defines the compression level of the output file.
 		// Output file names are automatically generated based on the value of the `--output` argument
 		//   and the file type to be printed.
 		//
 		// The following printing commands are available:
-		//   --printJointGenoCountDist/-pJGCD <value> : print joint genotype count distribution
-		//   --printJointGenoProbDist/-pJGPD <value> : print joint genotype probability distribution
-		//   --printAmovaTable/-pAT <value> : print AMOVA table
+		//   --printJointGenoCountDist/-pJGCD <int> : print joint genotype count distribution
+		//   --printJointGenoProbDist/-pJGPD <int> : print joint genotype probability distribution
+		//   --printAmovaTable/-pAT <int> : print AMOVA table
 		//
 		// The following compression levels are available:
 		//   0 : no compression
@@ -199,7 +152,7 @@ argStruct *argStruct_get(int argc, char **argv)
 		//
 
 		// TODO maybe use hypen style here --print-joint-geno-count-dist to be consistent with other commands
-		// TODO maybe make <value> optional and choose a default one, most people won't care about this
+		// TODO maybe make <int> optional and choose a default one, most people won't care about this
 
 		else if ((strcasecmp("--printJointGenoCountDist", arv) == 0) || (strcasecmp("--printJGCD", arv) == 0) || (strcasecmp("-pJGCD", arv) == 0))
 		{
@@ -223,7 +176,7 @@ argStruct *argStruct_get(int argc, char **argv)
 		// #####################################
 		//
 		// Use argument commands to specify the parameters to be used in the analyses.
-		// Argument commands are of the form `--long-form <value>` or `-sf <value>`
+		// Argument commands are of the form `--long-form <int>` or `-sf <int>`
 		//   where long form of the argument starts with double dash `--` and separated by hyphen `-`
 		//   and short form of the argument starts with single dash `-` and is typically the first letter(s) of the long form
 		//
@@ -255,9 +208,136 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->formula = strdup(val);
 		}
 
-		else if ((strcasecmp("--block_bed", arv) == 0) || (strcasecmp("-bf", arv) == 0))
+		// #######################################################################
+		// #    REGION SPECIFICATION COMMANDS                                    #
+		// #    [--region/-r] [--regions-file/-rf/-R] [--regions-bed/-rb/-Rb]    #
+		// #######################################################################
+		//
+		// Use region specification commands to specify the regions to be used in the analyses.
+		//
+		// There are two types of region specifications:
+		//    1) Specifying a single region
+		//    2) Specifying a list of regions (with a regions file or a BED file)
+		//
+		// Region specification commands for a single region are of the form `--region <int>` or `-r <int>`
+		//   where <int> is a string of the form `chr:start-end` or `chr:pos` or `chr`.
+		//
+		// Regions files can be in one of the following formats:
+		//   1. BED file
+		//      Region specification commands for a list of regions in BED file format
+		//        are of the form `--regions-bed <filename>` or `-rb <filename>` or `-Rb <filename>`
+		//
+		//   2. TAB-delimited genome position file
+		//      Region specification commands for a list of regions in regions file format
+		//        are of the form `--regions-file <filename>` or `-rf <filename>` or `-R <filename>`
+		//        where <filename> is the name of the file containing the list of regions .
+		//
+		// * Both types of regions files should be indexed using the `tabix` program.
+		// * Only one type of region specification command can be used at a time.
+		//
+		// Warning: Unexpected behavior may occur if the regions file is not in the correct format.
+		//   -> The regions file should be sorted by chromosome name and start position.
+		//   -> The regions file should not contain any duplicate or overlapping regions.
+		//   -> The regions file should not contain any regions that are not present in the VCF file.
+		//   -> The regions file should be indexed using the `tabix` program.
+		//   -> The regions file should have the same number of columns throughout the file.
+		//
+		//
+		// Coordinate systems
+		// -----------------
+		// e.g. Chromosome with name "chr1" is of length 8 bases and consists of the following sequence:
+		//           A C T G A C T G
+		// 0-based   0 1 2 3 4 5 6 7
+		// 1-based   1 2 3 4 5 6 7 8
+		//
+		// - **BED file**
+		//     - 0-based
+		//     - [start:included, end:excluded)
+		//     - Extension: .bed //TODO bed.gz
+		//     - Requirements:
+		//       - Should be sorted by chromosome name and start position.
+		//       - Should be indexed using the `tabix` program.//TODO
+		//
+		// - **TAB-delimited genome position file**
+		//     - 1-based
+		//     - [start:included, end:included]
+		//     - Extension: .tab //TODO tab.bgz
+		//     - Requirements:
+		//       - Should be sorted by chromosome name and start position.
+		//       - Should be indexed using the `tabix` program.
+		//       - Should have 1, 2, or 3 columns:
+		//         - 1 column: <CHR> (chromosome name)
+		//		   - 2 columns: <CHR> <POS> (chromosome name and position)
+		//		   - 3 columns: <CHR> <START> <END> (chromosome name and start and end positions)
+		//
+		//     e.g.
+		//     "chr1 2"
+		//       The second base of the chromosome "chr1" (C)
+		//     "chr1 2 3"
+		//        The second and third bases of the chromosome "chr1" (C and T)
+		//
+		// - **--region/-r**
+		//     - 1-based
+		//     - [start:included, end:included]
+		//     - Requirements:
+		//       - Should have 1, 2, or 3 columns:
+		//         - 1 column: <CHR> (chromosome name)
+		//		   - 2 columns: <CHR>:<POS> (chromosome name and position)
+		//		   - 3 columns: <CHR>:<START>-<END> (chromosome name and start and end positions)
+		//
+		//     e.g.
+		//     `--region chr1:0-8` == the entire chromosome "chr1" (8 bases)
+		//
+		//     //TODO check if this coordinate system is the same in angsd regions -r -rf
+
+		else if (strcasecmp("--region", arv) == 0 || strcmp("-r", arv) == 0)
 		{
-			args->in_blb_fn = strdup(val);
+			args->in_region = strdup(val);
+		}
+
+		// N.B. There are two short forms for the regions file command since
+		//      -R   easy to remember from bcftools
+		//      -rf  people are used to using it in angsd
+		else if (strcasecmp("--regions-file", arv) == 0 || strcasecmp("-rf", arv) == 0 || strcmp("-R", arv) == 0)
+		{
+			args->in_regions_tab_fn = strdup(val);
+		}
+
+		else if (strcasecmp("--regions-bed", arv) == 0 || strcasecmp("-rb", arv) == 0)
+		{
+			args->in_regions_bed_fn = strdup(val);
+		}
+
+		// ###################################################################
+		// #    BLOCK BOOTSTRAPPING COMMANDS                                 #
+		// #    [--block-size/-bs] [--blocks-file/-bf]  					 #
+		// ###################################################################
+		//
+		// Use block bootstrapping commands to specify the blocks to be used in the block bootstrapping analyses.
+		//
+		// There are two types of block bootstrapping specifications:
+		// - Block size specification
+		// - Block list specification
+		//
+		// Block size specification commands are of the form `--block-size <int>` or `-bs <int>`
+		//  where <int> is the size of the blocks. Using the VCF file as input, the blocks are enumerated
+		//  by reading the contig size from the VCF header and dividing the contig into blocks of size <int>.
+		//  This is repeated for all contigs defined in the VCF header.
+		//
+		// Block list specification commands are of the form `--blocks-file <filename>` or `-bf <filename>`
+		//  where <filename> is the name of the file containing the list of blocks.
+		//
+		// * Requires a VCF file as input data.
+		// * Only one block bootstrapping specification command can be used at a time.
+
+		else if (strcasecmp("--block-size", arv) == 0 || strcasecmp("-bs", arv) == 0)
+		{
+			args->blockSize = atoi(val);
+		}
+
+		else if (strcasecmp("--blocks-file", arv) == 0 || strcasecmp("-bf", arv) == 0)
+		{
+			args->in_blocks_fn = strdup(val);
 		}
 
 		else if (strcasecmp("-dev", arv) == 0)
@@ -271,9 +351,9 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->minInd = atoi(val);
 
 		else if (strcasecmp("--square_distance", arv) == 0)
-			args->square_distance = atoi(val);
+			args->squareDistance = atoi(val);
 		else if (strcasecmp("-sqDist", arv) == 0)
-			args->square_distance = atoi(val);
+			args->squareDistance = atoi(val);
 
 		else if (strcasecmp("--mThreads", arv) == 0)
 			args->mThreads = atoi(val);
@@ -307,10 +387,6 @@ argStruct *argStruct_get(int argc, char **argv)
 		}
 		else if (strcasecmp("-seed", arv) == 0)
 			args->seed = atoi(val);
-		else if (strcasecmp("-doAMOVA", arv) == 0)
-			args->doAMOVA = atoi(val);
-		else if (strcasecmp("-doEM", arv) == 0)
-			args->doEM = atoi(val);
 		else if (strcasecmp("-tole", arv) == 0)
 			args->tole = atof(val);
 		else if (strcasecmp("-isSim", arv) == 0)
@@ -323,8 +399,6 @@ argStruct *argStruct_get(int argc, char **argv)
 		else if (strcasecmp("--printMatrix", arv) == 0)
 			args->printMatrix = atoi(val);
 
-		else if (strcasecmp("-doDist", arv) == 0)
-			args->doDist = atoi(val);
 		else if (strcasecmp("-minInd", arv) == 0)
 			args->minInd = atoi(val);
 		else if (strcasecmp("-maxIter", arv) == 0)
@@ -341,7 +415,6 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->gl2gt = atoi(val);
 		else if (strcasecmp("-h", arv) == 0 || strcasecmp("--help", arv) == 0)
 		{
-			free(args);
 			print_help(stdout);
 			exit(0);
 		}
@@ -415,33 +488,25 @@ argStruct *argStruct_get(int argc, char **argv)
 	{
 		fprintf(stderr, "\n\t-> -doDist is set to 1, will use Dij (1-Sij) dissimilarity index as distance measure.\n");
 	}
-	else
-	{
-		if (args->in_dm_fn == NULL)
-		{
-			fprintf(stderr, "\n[ERROR]\t-doDist %d is not available.\n", args->doDist);
-			exit(1);
-		}
-	}
 
-	if (args->square_distance == 1)
+	if (args->squareDistance == 1)
 	{
 		fprintf(stderr, "\n\t-> -do_square_distance is set to 1, will square the distance measure (Dij^2).\n");
 	}
-	else if (args->square_distance == 0)
+	else if (args->squareDistance == 0)
 	{
 		fprintf(stderr, "\n\t-> -do_square_distance is set to 0, will not square the distance measure.\n");
 	}
 	else
 	{
-		fprintf(stderr, "\n[ERROR]\t-do_square_distance %d is not available.\n", args->square_distance);
+		fprintf(stderr, "\n[ERROR]\t-do_square_distance %d is not available.\n", args->squareDistance);
 		exit(1);
 	}
 
 	// TODO handle this better
 	if (args->in_dm_fn != NULL)
 	{
-		args->square_distance = 0;
+		args->squareDistance = 0;
 	}
 
 	if (args->in_vcf_fn == NULL && args->in_dm_fn == NULL)
@@ -651,13 +716,18 @@ void argStruct_destroy(argStruct *args)
 	FREE(args->in_mtd_fn);
 	FREE(args->in_jgcd_fn);
 	FREE(args->in_jgpd_fn);
-	FREE(args->in_blb_fn);
 	FREE(args->in_dxy_fn);
 	FREE(args->out_fn);
 	FREE(args->formula);
 	FREE(args->keyCols);
 	FREE(args->doDxyStr);
-	FREE(args);
+
+	FREE(args->in_dxy_fn);
+	FREE(args->in_region);
+	FREE(args->in_regions_tab_fn);
+	FREE(args->in_regions_bed_fn);
+
+	delete args;
 }
 
 /// @brief argStruct_print - print the arguments to a file pointer
@@ -684,35 +754,4 @@ void argStruct_print(FILE *fp, argStruct *args)
 		fprintf(fp, " --seed %d ", args->seed);
 	}
 	fprintf(fp, "\n");
-}
-
-/// @brief check_consistency_args_pars - check consistency between arguments and parameters
-/// @param args pointer to argStruct
-/// @param pars pointer to paramStruct
-void check_consistency_args_pars(argStruct *args, paramStruct *pars)
-{
-
-	if (args->minInd == pars->nInd)
-	{
-		fprintf(stderr, "\n\t-> -minInd %d is equal to the number of individuals found in file: %d. Setting -minInd to 0 (all).\n", args->minInd, pars->nInd);
-		args->minInd = 0;
-	}
-
-	if (pars->nInd == 1)
-	{
-		fprintf(stderr, "\n\n[ERROR]\tOnly one sample; will exit\n\n");
-		exit(1);
-	}
-
-	if (pars->nInd < args->minInd)
-	{
-		fprintf(stderr, "\n\n[ERROR]\tMinimum number of individuals -minInd is set to %d, but input file contains %d individuals; will exit!\n\n", args->minInd, pars->nInd);
-		exit(1);
-	}
-
-	if (pars->in_ft == IN_DM && args->printMatrix == 1)
-	{
-		fprintf(stderr, "\n\n[ERROR]\tCannot print distance matrix since input file is already a distance matrix; will exit!\n\n");
-		exit(1);
-	}
 }

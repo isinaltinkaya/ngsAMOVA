@@ -101,7 +101,7 @@ void spawnThreads_pairEM(argStruct *args, paramStruct *pars, pairStruct **pairSt
 		vcfd->JointGenoCountDistGL[pidx][vcfd->nJointClasses] = pair->snSites;
 		vcfd->JointGenoProbDistGL[pidx][vcfd->nJointClasses] = pair->snSites;
 
-		if (args->square_distance == 1)
+		if (args->squareDistance == 1)
 		{
 			distMatrix->M[pidx] = (double)SQUARE((MATH::EST::Dij(vcfd->JointGenoProbDistGL[pidx])));
 		}

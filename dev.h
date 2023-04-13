@@ -60,6 +60,9 @@
 
 
 
+//TODO maybe make macro append #if 1==DEV to the beginning and #endif to the end
+//so that it would only be run if dev mode is enabled
+
 /*
  *
  * Macro:[DEVPRINT]

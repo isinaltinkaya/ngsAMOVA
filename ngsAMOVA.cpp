@@ -2,30 +2,19 @@
  * ngsAMOVA
  */
 
-#include <htslib/vcf.h>
-#include <htslib/vcfutils.h>
-
-#include <stdio.h>
-#include <inttypes.h>
-#include <limits>
-#include <math.h>
-#include <time.h>
-#include <pthread.h>
-
 #include "dataStructs.h"
 #include "io.h"
 #include "argStruct.h"
 #include "paramStruct.h"
 #include "shared.h"
 #include "mathUtils.h"
-#include "vcfUtils.h"
+#include "vcfReader.h"
 #include "em.h"
 #include "amova.h"
 #include "bootstrap.h"
 #include "evaluation.h"
 #include "dxy.h"
 #include "neighborJoining.h"
-
 #include "dev.h"
 
 // TODO check size_t
@@ -87,7 +76,7 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 				exit(1);
 			}
 
-			if (args->square_distance == 1)
+			if (args->squareDistance == 1)
 			{
 				dMS_orig->M[pidx] = (double)SQUARE(MATH::EST::Dij(vcfd->JointGenoCountDistGT[pidx], snSites));
 			}
@@ -148,7 +137,6 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 {
 
 	vcfData *vcfd = vcfData_init(args, pars);
-	ASSERT(pars->nIndCmb > 0);
 	pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
 
 	for (int i1 = 0; i1 < vcfd->nInd - 1; i1++)
@@ -179,7 +167,7 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 	if (args->doAMOVA == 0 && args->doEM == 1)
 	{
 		// do not run AMOVA, but do EM and get distance matrix
-		distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->square_distance, NULL);
+		distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, NULL);
 		prepare_distanceMatrix(args, pars, dMS, vcfd, pairSt, formulaSt, NULL);
 		if (args->printMatrix != 0)
 		{
@@ -211,7 +199,7 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 
 	for (int r = 0; r < pars->nAmovaRuns; r++)
 	{
-		dMS[r] = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->square_distance, metadataSt->indNames);
+		dMS[r] = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, metadataSt->indNames);
 	}
 
 	if (args->blockSize != 0)

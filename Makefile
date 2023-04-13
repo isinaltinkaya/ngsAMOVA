@@ -6,7 +6,7 @@ CXX ?= g++
 
 #  -g     add debugging info to the executable 
 #  -Wall  turn on compiler warnings
-CXXFLAGS  := -g -Wall
+#CXXFLAGS  := -g -Wall
 LIBS = -lz -lm -lbz2 -llzma -lcurl -lpthread
 
 
@@ -19,6 +19,7 @@ LIBS = -lz -lm -lbz2 -llzma -lcurl -lpthread
 DEV_MODE=0
 ifeq ($(filter dev,$(MAKECMDGOALS)),dev)
 	DEV_MODE=1
+	CXXFLAGS  := -g -Wall
 endif
 
 DEV_VAL=$(shell grep "#define DEV [0,1]" dev.h | cut -d " " -f 3)

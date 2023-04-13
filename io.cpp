@@ -4,18 +4,16 @@
 #include "io.h"
 #include "dataStructs.h"
 
-// TODO if -out has full output name and not prefix, detect it
-// e.g. if you were going to write to a file called "out.amova.csv", and "-out out.amova.csv" is given
-//  then extract prefix from that and use as prefix for other outputs as well
-//  this is a useful feature for snakemake etc
+
 
 const char *IO::FILE_EXTENSIONS[] = {"", ".gz", ".bgz"};
 
 IO::outFilesStruct *outFiles = new IO::outFilesStruct();
 
+
 // TODO exit with error function to handle printing [ERROR] etc
 /// also write the error message to a "filename.err" file
-// and give directions to what to do next
+// and give directions to what to do next, inc github issues link etc
 
 void IO::requireFile(const char *fn, const char *required, const char *requiredFor)
 {
@@ -342,20 +340,6 @@ char *IO::readFile::readToBuffer(const char *fn)
 	FCLOSE(fp);
 	return buffer;
 }
-
-// char** IO::readFile::readLinesToBuffer(const char* fn, int* n_rows, int* n_cols){
-
-// 	char** buffer = NULL;
-// 	FILE* fp = IO::getFile(fn, "r");
-
-// 	// read file into buffer line by line and column by column
-// 	*n_rows = 0;
-// 	*n_cols = 0;
-// 	size_t buf_size = 0;
-
-// 	FCLOSE(fp);
-// 	return buffer;
-// }
 
 int IO::readGzFile::readToBuffer(char *fn, char **buffer_p, size_t *buf_size_p)
 {

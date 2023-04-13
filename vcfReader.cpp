@@ -1,6 +1,5 @@
-#include "vcfUtils.h"
+#include "vcfReader.h"
 #include "dataStructs.h"
-
 
 // from angsd analysisFunction.cpp
 extern const int bcf_allele_charToInt[256] = {
@@ -392,12 +391,16 @@ void vcfData_destroy(vcfData *v)
 {
 	bcf_hdr_destroy(v->hdr);
 	bcf_destroy(v->bcf);
-	int BCF_CLOSE;
-	if ((BCF_CLOSE = bcf_close(v->in_fp)))
+
+	int BCF_CLOSE = bcf_close(v->in_fp);
+	if (0 != BCF_CLOSE)
 	{
 		fprintf(stderr, "\n[ERROR]\tbcf_close had non-zero status %d\n", BCF_CLOSE);
 		exit(BCF_CLOSE);
 	}
+
+	bcf_itr_destroy(v->itr);
+	hts_idx_destroy(v->idx);
 
 	if (v->lngl != NULL)
 	{
@@ -432,7 +435,7 @@ void vcfData_destroy(vcfData *v)
 		}
 		FREE(v->JointGenoProbDistGL);
 	}
-	for(int i=0; i<v->nInd; i++)
+	for (int i = 0; i < v->nInd; i++)
 	{
 		FREE(v->indNames[i]);
 	}
@@ -464,11 +467,21 @@ vcfData *vcfData_init(argStruct *args, paramStruct *pars)
 	vcfd->hdr = bcf_hdr_read(vcfd->in_fp);
 	vcfd->bcf = bcf_init();
 
+	if (NULL != args->in_region)
+	{
+		vcfd->idx = bcf_index_load(args->in_vcf_fn);
+		ASSERT(vcfd->idx != NULL);
+
+		vcfd->itr = bcf_itr_querys(vcfd->idx, vcfd->hdr, args->in_region);
+		ASSERT(vcfd->itr != NULL);
+
+		vcfd->nseq = hts_idx_nseq(vcfd->idx);
+	}
+
 	pars->nInd = bcf_hdr_nsamples(vcfd->hdr);
 	vcfd->nInd = pars->nInd;
 	pars->nIndCmb = NC2_LUT[pars->nInd];
 	vcfd->nIndCmb = pars->nIndCmb;
-
 
 	if (args->doEM == 1)
 	{
@@ -505,7 +518,6 @@ vcfData *vcfData_init(argStruct *args, paramStruct *pars)
 /// if block block size for block bootstrapping is set
 /// collect pointers to blocks while reading the sites
 ///
-// TODO check inclusive ranges etc and bed intervals 0 based 1 based
 // void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairSt, blobStruct *blobSt)
 // {
 // 	NEVER;
@@ -532,7 +544,7 @@ vcfData *vcfData_init(argStruct *args, paramStruct *pars)
 // 	// before reading the data, prepare a template for blobStruct with expected intervals etc.
 // 	//
 // 	// as we read the data, we update the actual blobStruct
-// 	while (bcf_read(vcfd->in_fp, vcfd->hdr, vcfd->bcf) == 0)
+// while (vcfd->next_site())
 // 	{
 
 // 		if (vcfd->bcf->rlen != 1)
@@ -727,7 +739,7 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 {
 
 	int skip_site = 0;
-	while (bcf_read(vcfd->in_fp, vcfd->hdr, vcfd->bcf) == 0)
+	while (vcfd->next_site())
 	{
 
 		if (vcfd->bcf->rlen != 1)
@@ -788,7 +800,7 @@ void readSites_GT(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 	 * 		totSites==all sites processed
 	 *
 	 */
-	while (bcf_read(vcfd->in_fp, vcfd->hdr, vcfd->bcf) == 0)
+	while (vcfd->next_site())
 	{
 
 		if (vcfd->bcf->rlen != 1)
@@ -865,7 +877,7 @@ void vcfData::init_JointGenoCountDistGT()
 	}
 }
 
-void vcfData::print_JointGenoCountDist( argStruct *args)
+void vcfData::print_JointGenoCountDist(argStruct *args)
 {
 	if (outFiles->out_jgcd_fs != NULL)
 	{
@@ -915,7 +927,7 @@ void vcfData::print_JointGenoCountDist( argStruct *args)
 	}
 }
 
-void vcfData::print_JointGenoProbDist( argStruct *args)
+void vcfData::print_JointGenoProbDist(argStruct *args)
 {
 	if (args->printJointGenoProbDist != 0)
 	{
@@ -989,9 +1001,9 @@ void vcfData::lngl_init(int doEM)
 
 void vcfData::lngl_expand()
 {
-	ASSERT(nInd>0);
-	ASSERT(nGT>0);
-	ASSERT(lngl!=NULL);
+	ASSERT(nInd > 0);
+	ASSERT(nGT > 0);
+	ASSERT(lngl != NULL);
 
 	int prev_lngl = _lngl;
 	_lngl = _lngl * 2;
@@ -1010,11 +1022,48 @@ void vcfData::lngl_expand()
 			}
 		}
 	}
-
 }
 
-void vcfData::print(FILE *fp)
+void vcfData::_print(FILE *fp)
 {
 	fprintf(stderr, "\nNumber of samples: %i", nInd);
 	fprintf(stderr, "\nNumber of contigs: %d", nContigs);
+}
+
+void vcfData::_print()
+{
+	_print(stderr);
+}
+
+int vcfData::next_site()
+{
+	int ret = -42;
+
+	if (NULL == itr)
+	{
+		// no region specified
+		ret = bcf_read(in_fp, hdr, bcf);
+	}
+	else
+	{
+		// region reading using iterator
+		ret = bcf_itr_next(in_fp, itr, bcf);
+
+		// TODO is this check necessary? htslib might be doing it already
+		// if ( -1 > ret ){
+		// 	// error
+		// 	fprintf(stderr, "\n[ERROR:%d]\tError reading from VCF file",ret);
+		// 	exit(1);
+		// }
+
+		// TODO unpack?
+		//  bcf_unpack(bcf, BCF_UN_ALL);
+	}
+
+	if (-1 == ret)
+	{
+		// no more data
+		return 0;
+	}
+	return 1;
 }

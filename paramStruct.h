@@ -26,6 +26,8 @@ struct argStruct;
  */
 struct paramStruct
 {
+    // TODO add argStruct ptr to paramStruct to avoid always passing both
+    // argStruct *args; 
 
     // number of sites non skipped for all individuals
     // nSites may not be !=totSites if minInd is set
@@ -37,14 +39,13 @@ struct paramStruct
     int nInd;
     int nIndCmb;
 
+    //TODO move this to amova analysis
     int nAmovaRuns;
 
     // input file type from enum
     int in_ft;
 
-    char *DATETIME;
-
-
+    char *DATETIME=NULL;
 
     // PRINT FUNCTIONS
     void printParams(FILE *fp);

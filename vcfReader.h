@@ -1,5 +1,5 @@
-#ifndef __VCF_UTILS__
-#define __VCF_UTILS__
+#ifndef __VCF_READER__
+#define __VCF_READER__
 
 #include "paramStruct.h"
 #include "dataStructs.h"
@@ -23,8 +23,15 @@ typedef struct vcfData
 {
 
 	vcfFile *in_fp = NULL;
-	bcf_hdr_t *hdr = NULL;
 	bcf1_t *bcf = NULL;
+	
+	bcf_hdr_t *hdr = NULL;
+
+	hts_idx_t *idx = NULL;
+	hts_itr_t *itr = NULL;
+
+	int nseq = 0;
+
 
 	int nContigs = 0;
 	int nInd = 0;
@@ -55,6 +62,9 @@ typedef struct vcfData
 	int nJointClasses = 0;
 
 
+	// TODO instead of copying the names, just store the order
+	// and access the names via bcf_hdr_id2name(hdr, i) where i is the order of the individual
+	// in the bcf file
 
 	char **indNames = NULL; // individual names in bcf order
 
@@ -84,7 +94,10 @@ typedef struct vcfData
 	void lngl_init(int doEM);
 	void lngl_expand();
 
-	void print(FILE *fp);
+	void _print(FILE *fp);
+	void _print();
+
+	int next_site();
 
 } vcfData;
 
@@ -150,4 +163,4 @@ int GLtoGT_1_JointGenoDist(vcfData *vcf, paramStruct *pars, argStruct *args);
 
 int parse_VCF_GL(paramStruct *pars, argStruct *args, vcfFile *in_fp, bcf_hdr_t *hdr, bcf1_t *bcf, blobStruct *blobSt);
 
-#endif // __VCF_UTILS__
+#endif // __VCF_READER__

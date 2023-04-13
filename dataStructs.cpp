@@ -13,7 +13,6 @@ metadataStruct::metadataStruct(int nInd)
 	levelNames = (char **)malloc(MAX_N_HIER_LEVELS * sizeof(char *));
 
 	lvlgToIdx = (int **)malloc(MAX_N_HIER_LEVELS * sizeof(int *));
-	// nIndPerStrata = (int **)malloc(MAX_N_HIER_LEVELS * sizeof(int *));
 	nIndPerStrata = NULL;
 
 	lvlStartPos = (int *)malloc(MAX_N_HIER_LEVELS * sizeof(int));
@@ -747,10 +746,10 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *ar
 
 	IO::vprint(1, "Number of individuals are estimated to be %d based on the number of values in the distance matrix (%d).\n", pars->nInd, n_vals);
 
-	distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->square_distance, NULL);
-	dMS->isSquared = args->square_distance;
+	distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, NULL);
+	dMS->isSquared = args->squareDistance;
 
-	if (args->square_distance == 1)
+	if (args->squareDistance == 1)
 	{
 		for (int i = 0; i < n_vals; i++)
 		{
@@ -926,11 +925,11 @@ void formulaStruct::print(FILE *fp)
 {
 	fprintf(fp, "\nFormula: %s", formula);
 	fprintf(fp, "\nTokens: %i\n", nTokens);
-	for (int i = 0; i < nTokens; i++)
-	{
-		fprintf(fp, "\tToken %d (%s) corresponds to column %d in metadata.\n", i, formulaTokens[i], formulaTokenIdx[i]);
-	}
-	fprintf(fp, "\n");
+	// for (int i = 0; i < nTokens; i++)
+	// {
+	// 	fprintf(fp, "\tToken %d (%s) corresponds to column %d in metadata.\n", i, formulaTokens[i], formulaTokenIdx[i]);
+	// }
+	// fprintf(fp, "\n");
 }
 
 int formulaStruct::setFormulaTokenIdx(const char *mtd_tok, const int mtd_col_idx)
@@ -1094,7 +1093,7 @@ formulaStruct *formulaStruct_get(const char *formula)
 
 // 	fprintf(out_sfs_fs->fp, ",%d,%ld,%e,%e", pair->n_em_iter, pair->snSites, pair->d, args->tole);
 
-// 	if (args->doDist == 1 && args->do_square_distance == 1)
+// 	if (args->doDist == 1 && args->squareDistance == 1)
 // 	{
 // 		fprintf(out_sfs_fs->fp, ",%f,%f", (double)(1.0 - (double)MATH::EST::Sij(pair->SFS)), SQUARE((double)(1.0 - (double)MATH::EST::Sij(pair->SFS))));
 // 	}
@@ -1124,7 +1123,7 @@ formulaStruct *formulaStruct_get(const char *formula)
 
 // 	if (args->doDist == 1)
 // 	{
-// 		if (args->do_square_distance == 1)
+// 		if (args->squareDistance == 1)
 // 		{
 // 			fprintf(out_sfs_fs->fp, "%f", (double)SQUARE(MATH::EST::Dij(SFS_GT3, snSites)));
 // 		}
@@ -1166,9 +1165,7 @@ blobStruct *blobStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *
 	c->nContigs = (size_t)nContigs;
 	c->contigNames = (char **)malloc(nContigs * sizeof(char *));
 	c->contigLengths = (int *)malloc(nContigs * sizeof(int));
-
 	c->contigBlockStarts = (int **)malloc(nContigs * sizeof(int *));
-
 	c->contigBlockStartPtrs = (double ***)malloc(nContigs * sizeof(double **));
 	c->contigNBlocks = (int *)malloc(nContigs * sizeof(int));
 
