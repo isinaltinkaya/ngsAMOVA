@@ -134,19 +134,18 @@ dxyStruct *dxyStruct_read(argStruct *args, paramStruct *pars, distanceMatrixStru
     // number of lines in dxy file == number of pairwise dxy values
     int n_vals = 0;
 
-    int buf_size = IO::readFile::getBufferSize(args->in_dxy_fn);
-    char *line = (char *)malloc(buf_size);
+    char *line = (char *)malloc(FGETS_BUF_SIZE);
     ASSERT(line != NULL);
 
-    char dxy_buf[buf_size];
+    char dxy_buf[FGETS_BUF_SIZE];
 
     FILE *in_dxy_fp = fopen(args->in_dxy_fn, "r");
 
     // skip the first line (header)
-    fgets(dxy_buf, buf_size, in_dxy_fp);
+    fgets(dxy_buf, FGETS_BUF_SIZE, in_dxy_fp);
 
     int col = 0;
-    while (fgets(dxy_buf, buf_size, in_dxy_fp))
+    while (fgets(dxy_buf, FGETS_BUF_SIZE, in_dxy_fp))
     {
 
         col = 0;

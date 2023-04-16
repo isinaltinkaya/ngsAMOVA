@@ -207,24 +207,6 @@ metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars, formulaSt
 			if (col_i == fos->formulaTokenIdx[0])
 			{
 
-				// TODO use associative array from vcf_ind_indexes to metadata_ind_indexes instead
-				// if(pars->in_ft==IN_VCF)
-				// {
-				// 	for (sidx=0; sidx < pars->nInd; sidx++)
-				// 	{
-				// 		if(sidx==pars->nInd-1)
-				// 		{
-				// 			fprintf(stderr, "\n[ERROR]\t-> Individual %s is not in the VCF file.\n", tok);
-				// 			exit(1);
-				// 		}else if(strcmp(tok, indNames[sidx])==0)
-				// 		{
-				// 			// found the individual in the VCF file, break to keep its index in sidx
-				// 			break;
-
-				// 		}
-				// 	}
-				// }
-
 				// check if individual id is already in indNames
 				for (size_t ind = 0; ind < (size_t)nInd; ind++)
 				{
@@ -291,6 +273,9 @@ metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars, formulaSt
 
 		++nInd;
 	} // row loop (individuals)
+
+	// TODO
+	ASSERT(nBits_needed < 64);
 
 	// ASSERT(nInd == pars->nInd;
 	if (nInd != pars->nInd)
@@ -368,9 +353,6 @@ metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars, formulaSt
 		FREE(indToGroupIdx[i]);
 	}
 	FREE(indToGroupIdx);
-
-	// TODO
-	ASSERT(nBits_needed < 64);
 
 	return (mtd);
 }
@@ -712,14 +694,13 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *ar
 	else
 	{
 
-		int buf_size = IO::readFile::getBufferSize(args->in_dm_fn);
-		char *line = (char *)malloc(buf_size);
+		char *line = (char *)malloc(FGETS_BUF_SIZE);
 		ASSERT(line != NULL);
 
-		char dm_buf[buf_size];
+		char dm_buf[FGETS_BUF_SIZE];
 
-		FILE *in_dm_fp = fopen(args->in_dm_fn, "r");
-		while (fgets(dm_buf, buf_size, in_dm_fp))
+		FILE *in_dm_fp = IO::getFile(args->in_dm_fn, "r");
+		while (fgets(dm_buf, FGETS_BUF_SIZE, in_dm_fp))
 		{
 			char *tok = strtok(dm_buf, ",\n");
 			while (tok != NULL)
@@ -812,7 +793,7 @@ void IO::print::Array(FILE *fp, double *arr, size_t N, size_t M, char sep)
 	while (n < N && p < arr + N * M)
 	{
 
-		fprintf(fp, "%f%c", *p, (n == M - 1 && m == M - 1) ? '\n' : sep);
+		fprintf(fp, "%f%blob", *p, (n == M - 1 && m == M - 1) ? '\n' : sep);
 
 		m++;
 
@@ -842,7 +823,7 @@ void IO::print::Array(FILE *fp, int *arr, size_t N, size_t M, char sep)
 	while (n < N && p < arr + N * M)
 	{
 
-		fprintf(fp, "%d%c", *p, (n == M - 1 && m == M - 1) ? '\n' : sep);
+		fprintf(fp, "%d%blob", *p, (n == M - 1 && m == M - 1) ? '\n' : sep);
 
 		m++;
 
@@ -1072,141 +1053,236 @@ formulaStruct *formulaStruct_get(const char *formula)
 	return fos;
 }
 
-// void IO::readArgs::printArgs(argStruct *args)
-// {
-
-// 	fprintf(stderr, "\n\t-> -in %s", args->inputfile);
-// }
-
-/// @param sample1 name of sample 1
-/// @param sample2 name of sample 2
-// void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, pairStruct *pair, argStruct *args, const char *sample1, const char *sample2)
-// {
-
-// 	fprintf(out_sfs_fs->fp, "%s,%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f",
-// 			TYPE,
-// 			sample1,
-// 			sample2,
-// 			pair->snSites * pair->SFS[0], pair->snSites * pair->SFS[1], pair->snSites * pair->SFS[2],
-// 			pair->snSites * pair->SFS[3], pair->snSites * pair->SFS[4], pair->snSites * pair->SFS[5],
-// 			pair->snSites * pair->SFS[6], pair->snSites * pair->SFS[7], pair->snSites * pair->SFS[8]);
-
-// 	fprintf(out_sfs_fs->fp, ",%d,%ld,%e,%e", pair->n_em_iter, pair->snSites, pair->d, args->tole);
-
-// 	if (args->doDist == 1 && args->squareDistance == 1)
-// 	{
-// 		fprintf(out_sfs_fs->fp, ",%f,%f", (double)(1.0 - (double)MATH::EST::Sij(pair->SFS)), SQUARE((double)(1.0 - (double)MATH::EST::Sij(pair->SFS))));
-// 	}
-// 	else
-// 	{
-// 		exit(1);
-// 	}
-// 	fprintf(out_sfs_fs->fp, "\n");
-// }
-
-/// @brief print_SFS_GT print SFS_GT3
-/// @param TYPE type of analysis
-/// @param out_sfs_fs output file
-/// @param args pointer to argStruct
-/// @param SFS_GT3 matrix of 3 GT SFS for pair (int **SFS_GT3[pidx])
-/// @param snSites (shared) number of sites
-// void IO::print::Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, argStruct *args, int *SFS_GT3, int snSites, const char *sample1, const char *sample2)
-// {
-
-// 	fprintf(out_sfs_fs->fp, "%s,%s,%s,", TYPE, sample1, sample2);
-// 	fprintf(out_sfs_fs->fp, "%d,%d,%d,%d,%d,%d,%d,%d,%d",
-// 			SFS_GT3[0], SFS_GT3[1], SFS_GT3[2],
-// 			SFS_GT3[3], SFS_GT3[4], SFS_GT3[5],
-// 			SFS_GT3[6], SFS_GT3[7], SFS_GT3[8]);
-
-// 	fprintf(out_sfs_fs->fp, ",%s,%d,%s,%s", TYPE, snSites, TYPE, TYPE);
-
-// 	if (args->doDist == 1)
-// 	{
-// 		if (args->squareDistance == 1)
-// 		{
-// 			fprintf(out_sfs_fs->fp, "%f", (double)SQUARE(MATH::EST::Dij(SFS_GT3, snSites)));
-// 		}
-// 		else
-// 		{
-// 			fprintf(out_sfs_fs->fp, "%f", (double)MATH::EST::Dij(SFS_GT3, snSites));
-// 		}
-// 	}
-// 	else
-// 	{
-// 		exit(1);
-// 	}
-// 	fprintf(out_sfs_fs->fp, "\n");
-// }
-
-void blobStruct_destroy(blobStruct *c)
+blobStruct::~blobStruct()
 {
-
-	for (size_t i = 0; i < (size_t)c->nContigs; i++)
+	for (int i = 0; i < nBlocks; ++i)
 	{
-		FREE(c->contigBlockStartPtrs[i]);
-		FREE(c->contigNames[i]);
-		FREE(c->contigBlockStarts[i]);
+		FREE(blocks[i]);
+		FREE(blockPtrs[i]);
 	}
-	FREE(c->contigBlockStarts);
-	FREE(c->contigNames);
-	FREE(c->contigLengths);
-	FREE(c->contigNBlocks);
-	FREE(c->contigBlockStartPtrs);
-
-	delete c;
+	FREE(blocks);
+	FREE(blockPtrs);
 }
 
-blobStruct *blobStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *hdr)
+void blobStruct::addBlock()
 {
-
-	blobStruct *c = new blobStruct();
-
-	c->nContigs = (size_t)nContigs;
-	c->contigNames = (char **)malloc(nContigs * sizeof(char *));
-	c->contigLengths = (int *)malloc(nContigs * sizeof(int));
-	c->contigBlockStarts = (int **)malloc(nContigs * sizeof(int *));
-	c->contigBlockStartPtrs = (double ***)malloc(nContigs * sizeof(double **));
-	c->contigNBlocks = (int *)malloc(nContigs * sizeof(int));
-
-	for (size_t i = 0; i < c->nContigs; i++)
+	++nBlocks;
+	if (nBlocks > 1)
 	{
-		c->contigNames[i] = NULL;
-		c->contigBlockStarts[i] = NULL;
-		c->contigBlockStartPtrs[i] = NULL;
+		blocks = (blockStruct **)realloc(blocks, nBlocks * sizeof(blockStruct *));
+		blockPtrs = (int **)realloc(blockPtrs, nBlocks * sizeof(int *));
+	}
+	else
+	{
+		blocks = (blockStruct **)malloc(nBlocks * sizeof(blockStruct *));
+		blockPtrs = (int **)malloc(nBlocks * sizeof(int *));
+	}
+	blocks[nBlocks - 1] = (blockStruct *)malloc(sizeof(blockStruct));
+	blockPtrs[nBlocks - 1] = (int *)malloc(sizeof(int));
+}
+
+//     - 1-based
+//     - [start:included, end:included]
+blobStruct *blobStruct_read_tab(const char *fn)
+{
+	FILE *fp = IO::getFile(fn, "r");
+	char *firstLine = IO::readFile::getFirstLine(fp);
+	int nCols = IO::inspectFile::count_nCols(firstLine, "\t");
+	if (nCols != 3)
+	{
+		fprintf(stderr, "\n[ERROR]\tBlocks tab file must have 3 columns. Found %d columns.\n", nCols);
+		exit(1);
 	}
 
-	for (size_t ci = 0; ci < c->nContigs; ci++)
-	{
+	ASSERT(fseek(fp, 0, SEEK_SET) == 0);
+	int nBlocks = 0;
 
-		const int contigSize = hdr->id[BCF_DT_CTG][ci].val->info[0];
-		c->contigLengths[ci] = contigSize;
-		fprintf(stderr, "\nContig %ld length:%d\n", ci, contigSize);
-		int nBlocks = 0;
+	char *tok = NULL;
+	char chr[100];
+	char start[100];
+	char end[100];
+	blobStruct *blob = new blobStruct();
+
+	while (EOF != fscanf(fp, "%s\t%s\t%s", chr, &start, &end))
+	{
+		blob->addBlock();
+
+		ASSERTM(strIsNumeric(start), "Start position must be numeric.");
+		int start_int = atoi(start);
+
+		ASSERTM(strIsNumeric(end), "End position must be numeric.");
+		int end_int = atoi(end);
+
+		IO::validateString(chr);
+		blob->blocks[nBlocks]->chr = strdup(chr);
+
+		// tab file positions are 1-based, but blockStruct positions are 0-based
+		// so -1 to make it 0-based
+
+		// both tab file start and blockStruct start are inclusive
+		blob->blocks[nBlocks]->start = start_int - 1;
+		ASSERTM(start_int > 0, "Start position must be greater than 0. Note: Tab files have 1-based indexing with [start:inclusive, end:inclusive].");
+
+		// tab file end is inclusive, but blockStruct end is exclusive
+		// +1 to make it exclusive
+		// -1+1 = 0
+		blob->blocks[nBlocks]->end = end_int;
+
+		ASSERTM(end_int > 0, "End position must be greater than 0. Note: Tab files have 1-based indexing with [start:inclusive, end:inclusive].");
+
+		blob->blocks[nBlocks]->len = blob->blocks[nBlocks]->end - blob->blocks[nBlocks]->start;
+		ASSERTM(blob->blocks[nBlocks]->len > 0, "Block length must be greater than 0.");
+
+		++nBlocks;
+		fprintf(stderr, "%s\t%d\t%d\n", chr, start_int, end_int);
+	}
+
+	ASSERT(blob->nBlocks == nBlocks);
+
+	FREE(firstLine);
+	FREE(tok);
+	FCLOSE(fp);
+
+	return blob;
+}
+
+//     - 0-based
+//     - [start:included, end:excluded)
+blobStruct *blobStruct_read_bed(const char *fn)
+{
+	FILE *fp = IO::getFile(fn, "r");
+	char *firstLine = IO::readFile::getFirstLine(fp);
+	int nCols = IO::inspectFile::count_nCols(firstLine, "\t");
+	if (nCols != 3)
+	{
+		fprintf(stderr, "\n[ERROR]\tBlocks bed file must have 3 columns. Found %d columns.\n", nCols);
+		exit(1);
+	}
+
+	ASSERT(fseek(fp, 0, SEEK_SET) == 0);
+	int nBlocks = 0;
+
+	char *tok = NULL;
+	char chr[100];
+	char start[100];
+	char end[100];
+	blobStruct *blob = new blobStruct();
+
+	while (EOF != fscanf(fp, "%s\t%s\t%s", chr, &start, &end))
+	{
+		blob->addBlock();
+
+		ASSERTM(strIsNumeric(start), "Start position must be numeric.");
+		int start_int = atoi(start);
+
+		ASSERTM(strIsNumeric(end), "End position must be numeric.");
+		int end_int = atoi(end);
+
+		IO::validateString(chr);
+		blob->blocks[nBlocks]->chr = strdup(chr);
+
+		// both bed file and blockStruct positions are 0-based
+
+		// both tab file start and blockStruct start are inclusive
+		blob->blocks[nBlocks]->start = start_int;
+		ASSERTM(start_int > 0, "Start position must be greater than 0. Note: Bed files have 0-based indexing with [start:inclusive, end:exclusive).");
+
+		// both tab file end and blockStruct end are exclusive
+		blob->blocks[nBlocks]->end = end_int;
+		ASSERTM(end_int > 0, "End position must be greater than 0. Note: Bed files have 0-based indexing with [start:inclusive, end:exclusive).");
+
+		blob->blocks[nBlocks]->len = blob->blocks[nBlocks]->end - blob->blocks[nBlocks]->start;
+		ASSERTM(blob->blocks[nBlocks]->len > 0, "Block length must be greater than 0.");
+
+		++nBlocks;
+		fprintf(stderr, "%s\t%d\t%d\n", chr, start_int, end_int);
+	}
+
+	ASSERT(blob->nBlocks == nBlocks);
+
+	FREE(firstLine);
+	FREE(tok);
+	FCLOSE(fp);
+	
+	return blob;
+}
+
+blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf, argStruct *args)
+{
+
+	// TODO make it work with region and regions, we need to get ncontigs from the region filtered vcf
+	// maybe just add a lazy check afterwards to skip empty blocks due to site filtering?
+	if (args->in_regions_tab_fn != NULL || args->in_regions_bed_fn != NULL || args->in_region != NULL)
+	{
+		fprintf(stderr, "\n[ERROR]\tBlock definitions cannot be used with region definitions, yet.\n");
+		exit(1);
+	}
+
+	const int blockSize = args->blockSize;
+
+	blobStruct *blob = new blobStruct();
+
+	int nBlocks = 0;
+	for (size_t ci = 0; ci < vcf->nContigs; ci++)
+	{
+		int nBlocks_perContig = 0;
+		const int contigSize = vcf->hdr->id[BCF_DT_CTG][ci].val->info[0];
 
 		if (blockSize < contigSize)
 		{
-			nBlocks = (contigSize / blockSize) + 1;
+			nBlocks_perContig = (contigSize / blockSize) + 1;
 		}
 		else
 		{
-			nBlocks = 1;
+			nBlocks_perContig = 1;
 			fprintf(stderr, "\nContig %ld is smaller than block size, setting block size to contig size (%d)\n", ci, contigSize);
 		}
 
-		// allocate memory for contigBlockStarts
-		c->contigBlockStarts[ci] = (int *)malloc(nBlocks * sizeof(int));
-		c->contigBlockStartPtrs[ci] = (double **)malloc(nBlocks * sizeof(double *));
-		c->contigNBlocks[ci] = nBlocks;
-
-		// fprintf(stderr, "\nContig %d length:%d nBlocks: %d\n", ci, contigSize, nBlocks);
-		for (int bi = 0; bi < nBlocks; bi++)
+		for (int bi = 0; bi < nBlocks_perContig; bi++)
 		{
+			blob->addBlock();
 			int blockStart = bi * blockSize;
-			c->contigBlockStarts[ci][bi] = blockStart;
-			fprintf(stderr, "\nContig %ld block %d starts at %d\n", ci, bi, c->contigBlockStarts[ci][bi]);
+			blob->blocks[bi]->start = blockStart;
+			fprintf(stderr, "\nContig %s(idx:%ld) block (local_idx:%d,global_idx::%d) starts at %d\n", vcf->hdr->id[BCF_DT_CTG][ci].key, ci, bi, nBlocks + bi, blockStart);
 		}
+		nBlocks += nBlocks_perContig;
+	}
+	ASSERT(nBlocks == blob->nBlocks);
+
+	return blob;
+}
+
+blobStruct *blobStruct_get(vcfData *vcf, argStruct *args)
+{
+	fprintf(stderr, "\n\t-> --nBootstraps %d is set, will perform %d bootstraps for AMOVA significance testing.\n", args->nBootstraps, args->nBootstraps);
+
+	if (args->nBootstraps < 0)
+	{
+		fprintf(stderr, "\n[ERROR]\t-> --nBootstraps should be a positive integer or 0. You entered a negative value: %d.\n", args->nBootstraps);
+		exit(1);
 	}
 
-	return c;
+	blobStruct *blob = NULL;
+
+	if (args->blockSize != 0)
+	{
+		fprintf(stderr, "\n\t-> blockSize is set, will perform block bootstrapping with blocks of size %d.\n", args->blockSize);
+		blob = blobStruct_populate_blocks_withSize(vcf, args);
+	}
+	else if (args->in_blocks_tab_fn != NULL)
+	{
+		blob = blobStruct_read_tab(args->in_blocks_tab_fn);
+	}
+	else if (args->in_blocks_bed_fn != NULL)
+	{
+		blob = blobStruct_read_bed(args->in_blocks_bed_fn);
+	}
+	else
+	{
+		fprintf(stderr, "\n[ERROR] No blocks file specified\n");
+		exit(1);
+	}
+	ASSERT(blob != NULL);
+
+	return blob;
 }

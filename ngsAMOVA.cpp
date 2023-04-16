@@ -39,7 +39,10 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 		{
 
 			NEVER;
-			// blobSt = blobStruct_init(vcfd->nContigs, args->blockSize, vcfd->hdr);
+			if (0 != args->nBootstraps)
+			{
+				blobSt = blobStruct_get(vcfd, args);
+			}
 			// readSites_GL(vcfd, args, pars, pairSt, blobSt);
 		}
 
@@ -60,11 +63,14 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 		else
 		{
 
-			fprintf(stderr, "\n[ERROR]\t-> Not implemented yet. Please use -blockSize 0\n");
+			fprintf(stderr, "\n[ERROR]\t-> Not implemented yet.\n");
 			exit(1);
-			// blobStruct *blobSt = blobStruct_init(vcfd->nContigs, args->blockSize, vcfd->hdr);
+			if (0 != args->nBootstraps)
+			{
+				blobSt = blobStruct_get(vcfd, args);
+			}
 			// readSites_GT(vcfd,args, pars, pairSt, blobSt);
-			// blobStruct_destroy(blobSt);
+			// DELETE(blobSt);
 		}
 
 		for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
@@ -202,9 +208,9 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		dMS[r] = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, metadataSt->indNames);
 	}
 
-	if (args->blockSize != 0)
+	if (0 != args->nBootstraps)
 	{
-		blobSt = blobStruct_init(vcfd->nContigs, args->blockSize, vcfd->hdr);
+		blobSt = blobStruct_get(vcfd, args);
 	}
 
 	// prepare distance matrix dMS given analysis type (-doAMOVA)
@@ -212,6 +218,8 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 	// dMS[0] is the original distance matrix (not bootstrapped)
 
 	prepare_distanceMatrix(args, pars, dMS[0], vcfd, pairSt, formulaSt, blobSt);
+
+	// bootstrapDataset* bootstrap = bootstrapDataset_get(vcfd, pars, args, dMS[b], metadataSt, formulaSt, blobSt);
 
 	if (args->nBootstraps > 0)
 	{
@@ -225,14 +233,13 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 			// fill dMS with bootstrapped distance matrices
 			fprintf(stderr, "\n\t-> Bootstrapping %d/%d", b, args->nBootstraps);
 
-			prepare_bootstrap_blocks(vcfd, pars, args, dMS[b], metadataSt, formulaSt, blobSt);
 
 			// // perform AMOVA using the bootstrapped dMS
 
 			fprintf(stderr, "\n\t-> Finished running AMOVA for bootstrap %d/%d", b, args->nBootstraps);
 			b++;
 		}
-		blobStruct_destroy(blobSt);
+		DELETE(blobSt);
 	}
 
 	dxyStruct *dxySt = NULL;

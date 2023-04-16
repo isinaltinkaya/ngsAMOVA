@@ -18,6 +18,9 @@ struct pairStruct;
 namespace IO
 {
 
+    /// @brief validateString - check if string is valid
+    void validateString(const char *str);
+
     /// @brief verbose - check if verbose level meets the threshold
     ///
     /// @param verbose_threshold - threshold to check against the verbose arg value
@@ -76,15 +79,12 @@ namespace IO
 
     namespace readFile
     {
-        int SFS(FILE *in_sfs_fp, const char *delims);
-
         char *getFirstLine(const char *fn);
         char *getFirstLine(FILE *fp);
 
         char *readToBuffer(const char *fn);
-        char *readLinesToBuffer(const char *fn);
-        // char **readLinesToBuffer(const char* fn, int* n_rows, int* n_cols);
 
+        //TODO this is only for the first line!! consider rm and migrate to macrodef sizes
         int getBufferSize(FILE *fp);
         int getBufferSize(char *fn);
     };
@@ -269,6 +269,9 @@ namespace IO
         void M_PWD(const char *TYPE, IO::outputStruct *out_dm_fs, int nIndCmb, double *M_PWD);
 
     }
+
+
+    
 
 }
 kstring_t *kbuf_init();

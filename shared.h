@@ -260,6 +260,11 @@
 
 #define MAX_N_BITS 64
 
+// maximum level of verbosity allowed
+#define MAX_VERBOSE_LEVEL 7
+
+#define BLOCKSFILE_BUFSIZE_PERLINE 256
+
 /*
  * Macro:[MAXDIG_PER_HLEVEL]
  * Defines the maximum number of digits that can be used to

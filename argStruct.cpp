@@ -194,7 +194,13 @@ argStruct *argStruct_get(int argc, char **argv)
 			}
 			else if (strIsNumeric(val))
 			{
-				BITSET(VERBOSE, (atoi(val) - 1));
+				int verbose_val=atoi(val)-1;
+				if(verbose_val>MAX_VERBOSE_LEVEL)
+				{
+					fprintf(stderr, "\n[WARNING]\tVerbosity level is set to %d, which is greater than the maximum verbosity level %d. Setting verbosity level to %d.\n", verbose_val, MAX_VERBOSE_LEVEL, MAX_VERBOSE_LEVEL);
+					verbose_val=MAX_VERBOSE_LEVEL;
+				}
+				BITSET(VERBOSE, verbose_val);
 			}
 			else
 			{
@@ -210,7 +216,7 @@ argStruct *argStruct_get(int argc, char **argv)
 
 		// #######################################################################
 		// #    REGION SPECIFICATION COMMANDS                                    #
-		// #    [--region/-r] [--regions-file/-rf/-R] [--regions-bed/-rb/-Rb]    #
+		// #    [--region/-r] [--regions-tab/-rf/-R] [--regions-bed/-rb/-Rb]    #
 		// #######################################################################
 		//
 		// Use region specification commands to specify the regions to be used in the analyses.
@@ -229,11 +235,11 @@ argStruct *argStruct_get(int argc, char **argv)
 		//
 		//   2. TAB-delimited genome position file
 		//      Region specification commands for a list of regions in regions file format
-		//        are of the form `--regions-file <filename>` or `-rf <filename>` or `-R <filename>`
+		//        are of the form `--regions-tab <filename>` or `-rf <filename>` or `-R <filename>`
 		//        where <filename> is the name of the file containing the list of regions .
 		//
-		// * Both types of regions files should be indexed using the `tabix` program.
-		// * Only one type of region specification command can be used at a time.
+		// -> Both types of regions files should be indexed using the `tabix` program.
+		// -> Only one type of region specification command can be used at a time.
 		//
 		// Warning: Unexpected behavior may occur if the regions file is not in the correct format.
 		//   -> The regions file should be sorted by chromosome name and start position.
@@ -253,15 +259,13 @@ argStruct *argStruct_get(int argc, char **argv)
 		// - **BED file**
 		//     - 0-based
 		//     - [start:included, end:excluded)
-		//     - Extension: .bed //TODO bed.gz
 		//     - Requirements:
 		//       - Should be sorted by chromosome name and start position.
-		//       - Should be indexed using the `tabix` program.//TODO
+		//       - Should be indexed using the `tabix` program.
 		//
 		// - **TAB-delimited genome position file**
 		//     - 1-based
 		//     - [start:included, end:included]
-		//     - Extension: .tab //TODO tab.bgz
 		//     - Requirements:
 		//       - Should be sorted by chromosome name and start position.
 		//       - Should be indexed using the `tabix` program.
@@ -298,7 +302,7 @@ argStruct *argStruct_get(int argc, char **argv)
 		// N.B. There are two short forms for the regions file command since
 		//      -R   easy to remember from bcftools
 		//      -rf  people are used to using it in angsd
-		else if (strcasecmp("--regions-file", arv) == 0 || strcasecmp("-rf", arv) == 0 || strcmp("-R", arv) == 0)
+		else if (strcasecmp("--regions-tab", arv) == 0 || strcasecmp("-rf", arv) == 0 || strcmp("-R", arv) == 0)
 		{
 			args->in_regions_tab_fn = strdup(val);
 		}
@@ -310,7 +314,7 @@ argStruct *argStruct_get(int argc, char **argv)
 
 		// ###################################################################
 		// #    BLOCK BOOTSTRAPPING COMMANDS                                 #
-		// #    [--block-size/-bs] [--blocks-file/-bf]  					 #
+		// #    [--block-size/-bs] [--blocks-tab] [--blocks-bed]             #
 		// ###################################################################
 		//
 		// Use block bootstrapping commands to specify the blocks to be used in the block bootstrapping analyses.
@@ -321,24 +325,49 @@ argStruct *argStruct_get(int argc, char **argv)
 		//
 		// Block size specification commands are of the form `--block-size <int>` or `-bs <int>`
 		//  where <int> is the size of the blocks. Using the VCF file as input, the blocks are enumerated
-		//  by reading the contig size from the VCF header and dividing the contig into blocks of size <int>.
-		//  This is repeated for all contigs defined in the VCF header.
+		//  by reading the contig sizes from the VCF header and dividing the contigs into blocks of size <int>.
 		//
-		// Block list specification commands are of the form `--blocks-file <filename>` or `-bf <filename>`
+		// Block list specification commands are of the form `--blocks-tab <filename>` or `-bf <filename>`
 		//  where <filename> is the name of the file containing the list of blocks.
 		//
-		// * Requires a VCF file as input data.
-		// * Only one block bootstrapping specification command can be used at a time.
+		// The blocks file should be in one of the following formats:
+		//
+		//   1. BED file
+		//      Region specification commands for a list of regions in BED file format
+		//        are of the form `--regions-bed <filename>` or `-rb <filename>` or `-Rb <filename>`
+		//
+		
+		//
+		//   2. TAB-delimited genome position file
+		//     - 1-based
+		//     - [start:included, end:included]
+		//     - Requirements:
+		//       - Should be sorted by chromosome name and start position.
+		//       - Should be indexed using the `tabix` program.
+		//       - Should have 3 columns:
+		//		   - <CHR> <START> <END> (chromosome name and start and end positions)
+
+		// -> Requires a VCF file as input data.
+		// -> Only one block bootstrapping specification command can be used at a time.
 
 		else if (strcasecmp("--block-size", arv) == 0 || strcasecmp("-bs", arv) == 0)
 		{
-			args->blockSize = atoi(val);
+			// read block size as float and convert to int
+			// to allow for the use of scientific notation (e.g. 1e6)
+			args->blockSize = (int) atof(val);
 		}
 
-		else if (strcasecmp("--blocks-file", arv) == 0 || strcasecmp("-bf", arv) == 0)
+		else if (strcasecmp("--blocks-tab", arv) == 0)
 		{
-			args->in_blocks_fn = strdup(val);
+			args->in_blocks_tab_fn = strdup(val);
 		}
+
+		else if (strcasecmp("--blocks-bed", arv) == 0)
+		{
+			args->in_blocks_bed_fn = strdup(val);
+		}
+
+
 
 		else if (strcasecmp("-dev", arv) == 0)
 			args->printDev = atoi(val);
@@ -369,12 +398,6 @@ argStruct *argStruct_get(int argc, char **argv)
 		else if (strcasecmp("--seed", arv) == 0)
 			args->seed = atoi(val);
 
-		// read block size as float and convert to int
-		// this is to allow for the use of scientific notation (e.g. 1e6)
-		else if ((strcasecmp("-bs", arv) == 0) || (strcasecmp("--blockSize", arv) == 0))
-		{
-			args->blockSize = (int)atof(val);
-		}
 
 		else if ((strcasecmp("-ws", arv) == 0) || (strcasecmp("--windowSize", arv) == 0))
 		{
@@ -618,44 +641,16 @@ argStruct *argStruct_get(int argc, char **argv)
 	}
 	}
 
-	if (args->nBootstraps > 0)
+	if (args->seed == -1)
 	{
-
-		fprintf(stderr, "\n\t-> --nBootstraps %d is set, will perform %d bootstraps for AMOVA significance testing.\n", args->nBootstraps, args->nBootstraps);
-		if (args->blockSize == 0)
-		{
-			fprintf(stderr, "\n[ERROR] -blockSize must be set to a positive integer when --nBootstraps is set.\n");
-			exit(1);
-		}
-		else
-		{
-			fprintf(stderr, "\n\t-> -blockSize %d is set, will use %d as the genomic block size for block bootstrapping.\n", args->blockSize, args->blockSize);
-
-			if (args->seed == -1)
-			{
-				args->seed = time(NULL);
-				fprintf(stderr, "\n\t[INFO] -> -seed is not set, will use current time as seed for random number generator: %d.\n", args->seed);
-				srand48(args->seed);
-			}
-			else
-			{
-				fprintf(stderr, "\n\t-> -seed is set to %d, will use this seed for random number generator.\n", args->seed);
-				srand48(args->seed);
-			}
-		}
-	}
-	else if (args->nBootstraps < 0)
-	{
-		fprintf(stderr, "\n[ERROR]\t-> --nBootstraps should be a positive integer or 0. You entered a negative value: %d.\n", args->nBootstraps);
-		exit(1);
+		args->seed = time(NULL);
+		fprintf(stderr, "\n\t[INFO] -> -seed is not set, will use current time as seed for random number generator: %d.\n", args->seed);
+		srand48(args->seed);
 	}
 	else
 	{
-		if (args->blockSize != 0)
-		{
-			fprintf(stderr, "\n[ERROR] --blockSize is set to %d, but --nBootstraps is not set. Define both to perform block bootstrapping.\n", args->blockSize);
-			exit(1);
-		}
+		fprintf(stderr, "\n\t-> -seed is set to %d, will use this seed for random number generator.\n", args->seed);
+		srand48(args->seed);
 	}
 
 	if (args->in_dm_fn != NULL)
@@ -706,6 +701,17 @@ argStruct *argStruct_get(int argc, char **argv)
 		exit(1);
 	}
 
+	// TODO using regions with block definitions
+	// TODO handle empty blocks
+	if(args->in_blocks_tab_fn != NULL || args->in_blocks_bed_fn != NULL)
+	{
+		if(args->in_regions_tab_fn != NULL || args->in_regions_bed_fn != NULL || args->in_region != NULL)
+		{
+			fprintf(stderr, "\n[ERROR]\tBlock definitions cannot be used with region definitions, yet.\n");
+			exit(1);
+		}
+	}
+
 	return args;
 }
 
@@ -726,6 +732,8 @@ void argStruct_destroy(argStruct *args)
 	FREE(args->in_region);
 	FREE(args->in_regions_tab_fn);
 	FREE(args->in_regions_bed_fn);
+	FREE(args->in_blocks_tab_fn);
+	FREE(args->in_blocks_bed_fn);
 
 	delete args;
 }

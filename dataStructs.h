@@ -3,6 +3,8 @@
 
 #include "mathUtils.h"
 #include "io.h"
+#include "argStruct.h"
+#include "vcfReader.h"
 
 /* FORWARD DECLARATIONS ----------------------------------------------------- */
 struct formulaStruct;
@@ -14,6 +16,8 @@ struct distanceMatrixStruct;
 struct threadStruct;
 struct argStruct;
 struct paramStruct;
+
+struct vcfData;
 
 
 
@@ -68,41 +72,47 @@ formulaStruct *formulaStruct_get(const char *formula);
 void formulaStruct_validate(formulaStruct *fos, const int nLevels);
 void formulaStruct_destroy(formulaStruct *fos);
 
-/// @brief blobStruct - structure for storing blocks of contig data
+
+/// @brief blockStruct - structure for storing a single block
+/// @details
+///   positions are 0-based
+///   [start, end) - [inclusive start, exclusive end)
+typedef struct blockStruct
+{
+	char *chr = NULL;
+	int start = 0; // inclusive
+	int end = 0; // exclusive
+	int len = 0; // end - start; length of the block
+	
+} blockStruct;
+
+
+/// @brief blobStruct - structure for storing all blocks
 typedef struct blobStruct
 {
 
-	// Number of contigs
-	size_t nContigs;
+	// Total number of blocks 
+	int nBlocks = 0;
 
-	// array of contig indices
-	int *contigIdx;
+	// /def blocks[nBlocks]
+	// blocks[i] == pointer to a blockStruct at index i
+	blockStruct** blocks = NULL;
 
-	// 2d array of contig names
-	// [Contig][Name]
-	char **contigNames;
+	// /def blockPtrs[nBlocks]
+	// blockPtrs[i] == pointer to the location of the data for block i
+	// e.g. blockPtrs[42] == index of the first site in block 42 in vcf data
+	int** blockPtrs = NULL;
 
-	// Array of number of blocks per contig
-	// contigNBlocs[Contig] = number of blocks in the contig
-	int *contigNBlocks;
+	~blobStruct();
 
-	// Array of contig lengths
-	// contigLengths[Contig] = length of the contig
-	int *contigLengths;
-
-	// 2D array of contig block starts
-	// populated before reading data from vcf based on contig information in vcf header
-	// [Contig][BlockStart]
-	int **contigBlockStarts;
-
-	// [Contig][Block] int* to block start in vcfData->lngl
-	// 2D array of pointers to actual contig block starts
-	double ***contigBlockStartPtrs;
+	void addBlock();
 
 } blobStruct;
 
-blobStruct *blobStruct_init(const int nContigs, const int blockSize, bcf_hdr_t *hdr);
-void blobStruct_destroy(blobStruct *c);
+blobStruct *blobStruct_get(vcfData *vcf, argStruct *args);
+blobStruct *blobStruct_read_bed(const char* fn);
+blobStruct *blobStruct_read_tab(const char* fn);
+blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf, argStruct *args);
 
 typedef struct pairStruct
 {

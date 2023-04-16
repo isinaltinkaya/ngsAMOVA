@@ -179,7 +179,8 @@ struct argStruct
     char *in_regions_bed_fn = NULL;
 
     int blockSize = 0;
-    char *in_blocks_fn = NULL;
+    char *in_blocks_tab_fn = NULL;
+    char *in_blocks_bed_fn = NULL;
 
     char *command = NULL;
 

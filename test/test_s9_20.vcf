@@ -1,0 +1,27 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=PASS,Description="All filters passed">
+##contig=<ID=chr22,length=20>
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##fileDate=Tue Jun 14 12:12:56 2022
+##source=manual isinaltinkaya 230416
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	pop1_ind1	pop1_ind2	pop1_ind3	pop2_ind1	pop2_ind2	pop2_ind3	pop3_ind1	pop3_ind2	pop3_ind3
+chr22	1	.	A	C,G,T	.	PASS	.	GT	0|0	0|0	0|0	0|0	0|0	0|0	0|0	1|0	0|0
+chr22	2	.	A	C,G,T	.	PASS	.	GT	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0
+chr22	3	.	A	C,G,T	.	PASS	.	GT	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0
+chr22	4	.	A	C,G,T	.	PASS	.	GT	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0
+chr22	5	.	A	C,G,T	.	PASS	.	GT	0|1	0|0	0|1	0|1	1|0	1|1	1|1	0|1	0|1
+chr22	6	.	A	C,G,T	.	PASS	.	GT	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0
+chr22	7	.	A	C,G,T	.	PASS	.	GT	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0
+chr22	8	.	A	C,G,T	.	PASS	.	GT	1|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0
+chr22	9	.	A	C,G,T	.	PASS	.	GT	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0
+chr22	10	.	A	C,G,T	.	PASS	.	GT	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0
+chr22	11	.	A	C,G,T	.	PASS	.	GT	0|0	1|1	1|0	1|0	0|0	0|0	0|0	1|0	1|0
+chr22	12	.	A	C,G,T	.	PASS	.	GT	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0
+chr22	13	.	A	C,G,T	.	PASS	.	GT	0|0	0|0	0|0	1|0	0|0	0|0	0|0	1|0	0|0
+chr22	14	.	A	C,G,T	.	PASS	.	GT	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0
+chr22	15	.	A	C,G,T	.	PASS	.	GT	1|0	1|1	1|1	1|0	0|0	0|0	0|0	1|0	1|0
+chr22	16	.	A	C,G,T	.	PASS	.	GT	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0
+chr22	17	.	A	C,G,T	.	PASS	.	GT	1|0	1|1	1|1	1|0	0|1	0|0	0|0	1|0	0|0
+chr22	18	.	A	C,G,T	.	PASS	.	GT	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0
+chr22	19	.	A	C,G,T	.	PASS	.	GT	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0
+chr22	20	.	A	C,G,T	.	PASS	.	GT	0|0	0|0	0|0	1|0	0|1	0|0	0|0	1|0	0|0

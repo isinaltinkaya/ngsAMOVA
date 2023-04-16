@@ -387,6 +387,72 @@ int get_JointGenoDist_GT(vcfData *vcfd, paramStruct *pars, argStruct *args)
 	return 0;
 }
 
+vcfData *vcfData_init(argStruct *args, paramStruct *pars)
+{
+
+	vcfData *vcfd = new vcfData;
+
+	vcfd->in_fp = bcf_open(args->in_vcf_fn, "r");
+	if (vcfd->in_fp == NULL)
+	{
+		fprintf(stderr, "\n[ERROR] Could not open bcf file: %s\n", args->in_vcf_fn);
+		exit(1);
+	}
+
+	// -doEM 1 : use 3 GLs (anc/anc, anc/der, der/der)
+	// -doAMOVA 2 : use 3 GTs (anc/anc, anc/der, der/der)
+	if (args->doEM == 1 || args->doAMOVA == 2)
+	{
+		vcfd->nGT = 3;
+		vcfd->nJointClasses = vcfd->nGT * vcfd->nGT;
+	}
+
+	vcfd->hdr = bcf_hdr_read(vcfd->in_fp);
+	vcfd->bcf = bcf_init();
+
+	if (NULL != args->in_region)
+	{
+		vcfd->idx = bcf_index_load(args->in_vcf_fn);
+		ASSERT(vcfd->idx != NULL);
+
+		vcfd->itr = bcf_itr_querys(vcfd->idx, vcfd->hdr, args->in_region);
+		ASSERT(vcfd->itr != NULL);
+
+		vcfd->nseq = hts_idx_nseq(vcfd->idx);
+
+		//TODO nContigs should be different here
+		//the region filtered file may have diff number of contigs than the hdr
+	}
+
+	pars->nInd = bcf_hdr_nsamples(vcfd->hdr);
+	vcfd->nInd = pars->nInd;
+	pars->nIndCmb = NC2_LUT[pars->nInd];
+	vcfd->nIndCmb = pars->nIndCmb;
+
+	if (args->doEM == 1)
+	{
+		// vcfd->lngl = (double **)malloc(vcfd->_lngl * sizeof(double *));
+		vcfd->lngl_init(args->doEM);
+		vcfd->init_JointGenoCountDistGL();
+		vcfd->init_JointGenoProbDistGL();
+	}
+	if (args->doAMOVA == 2)
+	{
+		vcfd->init_JointGenoCountDistGT();
+	}
+
+	fprintf(stderr, "\nNumber of individual pairs: %d\n", pars->nIndCmb);
+
+	vcfd->addIndNames();
+
+	vcfd->nContigs = vcfd->hdr->n[BCF_DT_CTG];
+
+	check_consistency_args_pars(args, pars);
+
+	return vcfd;
+}
+
+
 void vcfData_destroy(vcfData *v)
 {
 	bcf_hdr_destroy(v->hdr);
@@ -398,9 +464,6 @@ void vcfData_destroy(vcfData *v)
 		fprintf(stderr, "\n[ERROR]\tbcf_close had non-zero status %d\n", BCF_CLOSE);
 		exit(BCF_CLOSE);
 	}
-
-	bcf_itr_destroy(v->itr);
-	hts_idx_destroy(v->idx);
 
 	if (v->lngl != NULL)
 	{
@@ -441,69 +504,17 @@ void vcfData_destroy(vcfData *v)
 	}
 	FREE(v->indNames);
 
+
+	if(NULL != v->itr){
+		hts_itr_destroy(v->itr);
+	}
+
+	if(NULL != v->idx){
+		hts_idx_destroy(v->idx);
+	}
+
 	delete v;
-}
 
-vcfData *vcfData_init(argStruct *args, paramStruct *pars)
-{
-
-	vcfData *vcfd = new vcfData;
-
-	vcfd->in_fp = bcf_open(args->in_vcf_fn, "r");
-	if (vcfd->in_fp == NULL)
-	{
-		fprintf(stderr, "\n[ERROR] Could not open bcf file: %s\n", args->in_vcf_fn);
-		exit(1);
-	}
-
-	// -doEM 1 : use 3 GLs (anc/anc, anc/der, der/der)
-	// -doAMOVA 2 : use 3 GTs (anc/anc, anc/der, der/der)
-	if (args->doEM == 1 || args->doAMOVA == 2)
-	{
-		vcfd->nGT = 3;
-		vcfd->nJointClasses = vcfd->nGT * vcfd->nGT;
-	}
-
-	vcfd->hdr = bcf_hdr_read(vcfd->in_fp);
-	vcfd->bcf = bcf_init();
-
-	if (NULL != args->in_region)
-	{
-		vcfd->idx = bcf_index_load(args->in_vcf_fn);
-		ASSERT(vcfd->idx != NULL);
-
-		vcfd->itr = bcf_itr_querys(vcfd->idx, vcfd->hdr, args->in_region);
-		ASSERT(vcfd->itr != NULL);
-
-		vcfd->nseq = hts_idx_nseq(vcfd->idx);
-	}
-
-	pars->nInd = bcf_hdr_nsamples(vcfd->hdr);
-	vcfd->nInd = pars->nInd;
-	pars->nIndCmb = NC2_LUT[pars->nInd];
-	vcfd->nIndCmb = pars->nIndCmb;
-
-	if (args->doEM == 1)
-	{
-		// vcfd->lngl = (double **)malloc(vcfd->_lngl * sizeof(double *));
-		vcfd->lngl_init(args->doEM);
-		vcfd->init_JointGenoCountDistGL();
-		vcfd->init_JointGenoProbDistGL();
-	}
-	if (args->doAMOVA == 2)
-	{
-		vcfd->init_JointGenoCountDistGT();
-	}
-
-	fprintf(stderr, "\nNumber of individual pairs: %d\n", pars->nIndCmb);
-
-	vcfd->addIndNames();
-
-	vcfd->nContigs = vcfd->hdr->n[BCF_DT_CTG];
-
-	check_consistency_args_pars(args, pars);
-
-	return vcfd;
 }
 
 /// @param vcfd		pointer to vcfData

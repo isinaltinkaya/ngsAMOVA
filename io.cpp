@@ -5,11 +5,25 @@
 #include "dataStructs.h"
 
 
-
 const char *IO::FILE_EXTENSIONS[] = {"", ".gz", ".bgz"};
 
 IO::outFilesStruct *outFiles = new IO::outFilesStruct();
 
+void IO::validateString(const char *str)
+{
+	ASSERTM(str != NULL, "Found NULL string.");
+	ASSERTM(str[0] != '\0', "Found empty string.");
+
+}
+
+//TODO
+// void IO::log(const char *format, ...)
+// {
+// 	va_list args;
+// 	va_start(args, format);
+// 	vfprintf(stderr, format, args);
+// 	va_end(args);
+// }
 
 // TODO exit with error function to handle printing [ERROR] etc
 /// also write the error message to a "filename.err" file
@@ -341,6 +355,7 @@ char *IO::readFile::readToBuffer(const char *fn)
 	return buffer;
 }
 
+
 int IO::readGzFile::readToBuffer(char *fn, char **buffer_p, size_t *buf_size_p)
 {
 	gzFile fp = IO::getGzFile(fn, "r");
@@ -563,44 +578,7 @@ int IO::inspectFile::count_nRows(FILE *fp, int HAS_COLNAMES)
 // 		}
 // 	}
 
-// 	// int nCols = IO::inspectFile::count_nColumns(IO::inspectFile::getLine(ff, 1), "\t ");
-// 	return nCols;
-// }
 
-/// @brief read SFS file
-/// @param in_sfs_fp input sfs file pointer
-/// @param delims delimiters
-int IO::readFile::SFS(FILE *in_sfs_fp, const char *delims)
-{
-
-	char sfs_buf[FGETS_BUF_SIZE];
-	while (fgets(sfs_buf, FGETS_BUF_SIZE, in_sfs_fp))
-	{
-
-		char *tok = strtok(sfs_buf, delims);
-		char *col = tok;
-
-		for (int coli = 0; coli < 9 - 1; coli++)
-		{
-			tok = strtok(NULL, delims);
-			col = tok;
-		}
-
-#if 1
-		fprintf(stderr, "\n");
-		fprintf(stderr, "\n");
-		fprintf(stderr, "--------------------------------------------------");
-		fprintf(stderr, "\n");
-
-		fprintf(stderr, "%s", col);
-		fprintf(stderr, "\n");
-		fprintf(stderr, "--------------------------------------------------");
-		fprintf(stderr, "\n");
-#endif
-	}
-
-	return 0;
-}
 
 kstring_t *kbuf_init()
 {
