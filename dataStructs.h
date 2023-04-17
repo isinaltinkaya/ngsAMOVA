@@ -8,7 +8,6 @@
 
 /* FORWARD DECLARATIONS ----------------------------------------------------- */
 struct formulaStruct;
-struct blobStruct;
 struct pairStruct;
 struct hierStruct;
 struct metadataStruct;
@@ -72,47 +71,6 @@ formulaStruct *formulaStruct_get(const char *formula);
 void formulaStruct_validate(formulaStruct *fos, const int nLevels);
 void formulaStruct_destroy(formulaStruct *fos);
 
-
-/// @brief blockStruct - structure for storing a single block
-/// @details
-///   positions are 0-based
-///   [start, end) - [inclusive start, exclusive end)
-typedef struct blockStruct
-{
-	char *chr = NULL;
-	int start = 0; // inclusive
-	int end = 0; // exclusive
-	int len = 0; // end - start; length of the block
-	
-} blockStruct;
-
-
-/// @brief blobStruct - structure for storing all blocks
-typedef struct blobStruct
-{
-
-	// Total number of blocks 
-	int nBlocks = 0;
-
-	// /def blocks[nBlocks]
-	// blocks[i] == pointer to a blockStruct at index i
-	blockStruct** blocks = NULL;
-
-	// /def blockPtrs[nBlocks]
-	// blockPtrs[i] == pointer to the location of the data for block i
-	// e.g. blockPtrs[42] == index of the first site in block 42 in vcf data
-	int** blockPtrs = NULL;
-
-	~blobStruct();
-
-	void addBlock();
-
-} blobStruct;
-
-blobStruct *blobStruct_get(vcfData *vcf, argStruct *args);
-blobStruct *blobStruct_read_bed(const char* fn);
-blobStruct *blobStruct_read_tab(const char* fn);
-blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf, argStruct *args);
 
 typedef struct pairStruct
 {
@@ -277,10 +235,7 @@ typedef struct metadataStruct
 	// number of hierarchical levels excluding the lowest level (i.e. individual)
 	int nLevels = 0;
 
-///TODO
-	int* nStrataPerLevel = NULL;
 
-	// nIndPerStrata[nLevels][nStrataPerLevel[nLevels]]
 	int** nIndPerStrata = NULL;
 
 	// Individual to Group Bitset Association

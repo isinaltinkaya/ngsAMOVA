@@ -1,5 +1,248 @@
 #include "bootstrap.h"
 
+
+void blobStruct::_print(){
+	for (int i = 0; i < nBlocks; ++i)
+	{
+		fprintf(stderr, "%s\t%d\t%d\t%d\n", blocks[i]->chr, blocks[i]->start, blocks[i]->end, blocks[i]->len);
+	}
+}
+
+blobStruct::~blobStruct()
+{
+	for (int i = 0; i < nBlocks; ++i)
+	{
+		FREE(blocks[i]);
+		FREE(blockPtrs[i]);
+	}
+	FREE(blocks);
+	FREE(blockPtrs);
+}
+
+void blobStruct::addBlock()
+{
+	++nBlocks;
+	if (nBlocks > 1)
+	{
+		blocks = (blockStruct **)realloc(blocks, nBlocks * sizeof(blockStruct *));
+		blockPtrs = (int **)realloc(blockPtrs, nBlocks * sizeof(int *));
+	}
+	else
+	{
+		blocks = (blockStruct **)malloc(nBlocks * sizeof(blockStruct *));
+		blockPtrs = (int **)malloc(nBlocks * sizeof(int *));
+	}
+	blocks[nBlocks - 1] = (blockStruct *)malloc(sizeof(blockStruct));
+	blockPtrs[nBlocks - 1] = (int *)malloc(sizeof(int));
+}
+
+//     - 1-based
+//     - [start:included, end:included]
+blobStruct *blobStruct_read_tab(const char *fn)
+{
+	FILE *fp = IO::getFile(fn, "r");
+	char *firstLine = IO::readFile::getFirstLine(fp);
+	int nCols = IO::inspectFile::count_nCols(firstLine, "\t");
+	if (nCols != 3)
+	{
+		fprintf(stderr, "\n[ERROR]\tBlocks tab file must have 3 columns. Found %d columns.\n", nCols);
+		exit(1);
+	}
+
+	ASSERT(fseek(fp, 0, SEEK_SET) == 0);
+	int nBlocks = 0;
+
+	char *tok = NULL;
+	char chr[100];
+	char start[100];
+	char end[100];
+	blobStruct *blob = new blobStruct();
+
+	while (EOF != fscanf(fp, "%s\t%s\t%s", chr, &start, &end))
+	{
+		blob->addBlock();
+
+		ASSERTM(strIsNumeric(start), "Start position must be numeric.");
+		int start_int = atoi(start);
+
+		ASSERTM(strIsNumeric(end), "End position must be numeric.");
+		int end_int = atoi(end);
+
+		IO::validateString(chr);
+		blob->blocks[nBlocks]->chr = strdup(chr);
+
+		// tab file positions are 1-based, but blockStruct positions are 0-based
+		// so -1 to make it 0-based
+
+		// both tab file start and blockStruct start are inclusive
+		blob->blocks[nBlocks]->start = start_int - 1;
+		ASSERTM(start_int > 0, "Start position must be greater than 0. Note: Tab files have 1-based indexing with [start:inclusive, end:inclusive].");
+
+		// tab file end is inclusive, but blockStruct end is exclusive
+		// +1 to make it exclusive
+		// -1+1 = 0
+		blob->blocks[nBlocks]->end = end_int;
+
+		ASSERTM(end_int > 0, "End position must be greater than 0. Note: Tab files have 1-based indexing with [start:inclusive, end:inclusive].");
+
+		blob->blocks[nBlocks]->len = blob->blocks[nBlocks]->end - blob->blocks[nBlocks]->start;
+		ASSERTM(blob->blocks[nBlocks]->len > 0, "Block length must be greater than 0.");
+
+		++nBlocks;
+		fprintf(stderr, "%s\t%d\t%d\n", chr, start_int, end_int);
+	}
+
+	ASSERT(blob->nBlocks == nBlocks);
+
+	FREE(firstLine);
+	FREE(tok);
+	FCLOSE(fp);
+
+	return blob;
+}
+
+//     - 0-based
+//     - [start:included, end:excluded)
+blobStruct *blobStruct_read_bed(const char *fn)
+{
+	FILE *fp = IO::getFile(fn, "r");
+	char *firstLine = IO::readFile::getFirstLine(fp);
+	int nCols = IO::inspectFile::count_nCols(firstLine, "\t");
+	if (nCols != 3)
+	{
+		fprintf(stderr, "\n[ERROR]\tBlocks bed file must have 3 columns. Found %d columns.\n", nCols);
+		exit(1);
+	}
+
+	ASSERT(fseek(fp, 0, SEEK_SET) == 0);
+	int nBlocks = 0;
+
+	char *tok = NULL;
+	char chr[100];
+	char start[100];
+	char end[100];
+	blobStruct *blob = new blobStruct();
+
+	while (EOF != fscanf(fp, "%s\t%s\t%s", chr, &start, &end))
+	{
+		blob->addBlock();
+
+		ASSERTM(strIsNumeric(start), "Start position must be numeric.");
+		int start_int = atoi(start);
+
+		ASSERTM(strIsNumeric(end), "End position must be numeric.");
+		int end_int = atoi(end);
+
+		IO::validateString(chr);
+		blob->blocks[nBlocks]->chr = strdup(chr);
+
+		// both bed file and blockStruct positions are 0-based
+
+		// both tab file start and blockStruct start are inclusive
+		blob->blocks[nBlocks]->start = start_int;
+		ASSERTM(start_int > 0, "Start position must be greater than 0. Note: Bed files have 0-based indexing with [start:inclusive, end:exclusive).");
+
+		// both tab file end and blockStruct end are exclusive
+		blob->blocks[nBlocks]->end = end_int;
+		ASSERTM(end_int > 0, "End position must be greater than 0. Note: Bed files have 0-based indexing with [start:inclusive, end:exclusive).");
+
+		blob->blocks[nBlocks]->len = blob->blocks[nBlocks]->end - blob->blocks[nBlocks]->start;
+		ASSERTM(blob->blocks[nBlocks]->len > 0, "Block length must be greater than 0.");
+
+		++nBlocks;
+		fprintf(stderr, "%s\t%d\t%d\n", chr, start_int, end_int);
+	}
+
+	ASSERT(blob->nBlocks == nBlocks);
+
+	FREE(firstLine);
+	FREE(tok);
+	FCLOSE(fp);
+	
+	return blob;
+}
+
+blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf, argStruct *args)
+{
+
+	// TODO make it work with region and regions, we need to get ncontigs from the region filtered vcf
+	// maybe just add a lazy check afterwards to skip empty blocks due to site filtering?
+	if (args->in_regions_tab_fn != NULL || args->in_regions_bed_fn != NULL || args->in_region != NULL)
+	{
+		fprintf(stderr, "\n[ERROR]\tBlock definitions cannot be used with region definitions, yet.\n");
+		exit(1);
+	}
+
+	const int blockSize = args->blockSize;
+
+	blobStruct *blob = new blobStruct();
+
+	int nBlocks = 0;
+	for (size_t ci = 0; ci < vcf->nContigs; ci++)
+	{
+		int nBlocks_perContig = 0;
+		const int contigSize = vcf->hdr->id[BCF_DT_CTG][ci].val->info[0];
+
+		if (blockSize < contigSize)
+		{
+			nBlocks_perContig = (contigSize / blockSize) + 1;
+		}
+		else
+		{
+			nBlocks_perContig = 1;
+			fprintf(stderr, "\nContig %ld is smaller than block size, setting block size to contig size (%d)\n", ci, contigSize);
+		}
+
+		for (int bi = 0; bi < nBlocks_perContig; bi++)
+		{
+			blob->addBlock();
+			int blockStart = bi * blockSize;
+			blob->blocks[bi]->start = blockStart;
+			fprintf(stderr, "\nContig %s(idx:%ld) block (local_idx:%d,global_idx::%d) starts at %d\n", vcf->hdr->id[BCF_DT_CTG][ci].key, ci, bi, nBlocks + bi, blockStart);
+		}
+		nBlocks += nBlocks_perContig;
+	}
+	ASSERT(nBlocks == blob->nBlocks);
+
+	return blob;
+}
+
+blobStruct *blobStruct_get(vcfData *vcf, argStruct *args)
+{
+	fprintf(stderr, "\n\t-> --nBootstraps %d is set, will perform %d bootstraps for AMOVA significance testing.\n", args->nBootstraps, args->nBootstraps);
+
+	if (args->nBootstraps < 0)
+	{
+		fprintf(stderr, "\n[ERROR]\t-> --nBootstraps should be a positive integer or 0. You entered a negative value: %d.\n", args->nBootstraps);
+		exit(1);
+	}
+
+	blobStruct *blob = NULL;
+
+	if (args->blockSize != 0)
+	{
+		fprintf(stderr, "\n\t-> blockSize is set, will perform block bootstrapping with blocks of size %d.\n", args->blockSize);
+		blob = blobStruct_populate_blocks_withSize(vcf, args);
+	}
+	else if (args->in_blocks_tab_fn != NULL)
+	{
+		blob = blobStruct_read_tab(args->in_blocks_tab_fn);
+	}
+	else if (args->in_blocks_bed_fn != NULL)
+	{
+		blob = blobStruct_read_bed(args->in_blocks_bed_fn);
+	}
+	else
+	{
+		fprintf(stderr, "\n[ERROR] No blocks file specified\n");
+		exit(1);
+	}
+	ASSERT(blob != NULL);
+	blob->_print();
+
+	return blob;
+}
+
 bootstrapData *prepare_bootstrap_block_1level(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, formulaStruct *formulaSt, blobStruct *blobSt)
 {
 
@@ -10,6 +253,11 @@ bootstrapData *prepare_bootstrap_block_1level(vcfData *vcfd, paramStruct *pars, 
 		boot->vblocks[i] = (int *)malloc(blobSt->nBlocks * sizeof(int));
 	}
 
+
+	// shuffle genomic blocks among all individuals in given level
+	// vblock= block from an individual at this_block
+	// range [0, mS->nIndMetadata-1]
+
 	// nLevels = 1
 	//      Shuffle all blocks among all groups
 	//      Sample set = all samples
@@ -19,6 +267,7 @@ bootstrapData *prepare_bootstrap_block_1level(vcfData *vcfd, paramStruct *pars, 
 	// i : index of the artificial individual created by shuffling blocks
 	for (int i = 0; i < mS->nInd; i++)
 	{
+		int vb=-1;
 
 		for (int block = 0; block < blobSt->nBlocks; ++block)
 		{
@@ -26,45 +275,22 @@ bootstrapData *prepare_bootstrap_block_1level(vcfData *vcfd, paramStruct *pars, 
 			// randomly sample an individual to use the block from
 			// repeat sampling for each block
 			// store sampled individual indices in an array of size nBlocks
-			int vb = sample_block_variant(mS, 0);
+
+			// from a sample set that is the same as the current group assignment
+			int vb = sample_block_variant(mS, 0, 0);
 			boot->vblocks[i][block] = vb;
 		}
 
-		// int blockStart = blobSt->contigBlockStarts[contig][block];
 
-		// shuffle genomic blocks among all individuals in given level
-
-		// choose a random individual among the individual set in the shuffling level
-		// then set the block to the chosen individual's block at the same position
-		// iblock= block from an individual at this_block
-		// range [0, mS->nIndMetadata-1]
-
-		// randomly sample an individual to use the block from
-		// repeat sampling for each block
-		// store sampled individual indices in an array of size nBlocks
-
-		// 	for (int i = 0; i < mS->nInd; i++)
-		// 	{
-		// 		// int chosen_iblock= rand() % mS->hierArr[level]->nIndPerStrata[i];
-		// 	}
-		// }
-
-		// // from a sample set that is the same as the current group assignment
-
-		// // fprintf(stderr, "\n\n\n\n######## chosen_block: %d", chosen_iblock);
-
-		// // distanceMatrixStruct *distanceMatrixStruct_read_csv(FILE *in_dm_fp, paramStruct *pars, argStruct *args, metadataStruct *metadataSt);
-
-		// // to access the data
-		// // if this block is not the last block in the contig
-		// // 		loop: from this_blockStart to next_blockStart
-		// // if this block is the last block in the contig
-		// // 		loop: from this_blockStart to the end of the contig
-		// for (int gti = 0; gti < 3; gti++)
-		// {
-		// 	double x = vcfd->lngl[0][3 * chosen_iblock + gti];
-		// 	fprintf(stderr, "\n\n\n\n######## x: %f", x);
-		// }
+		// to access the data
+		// if this block is not the last block in the contig
+		// 		loop: from this_blockStart to next_blockStart
+		// if this block is the last block in the contig
+		// 		loop: from this_blockStart to the end of the contig
+		for (int gti = 0; gti < 3; gti++)
+		{
+			double x = vcfd->lngl[0][3 * vb + gti];
+		}
 	}
 	return boot;
 }
@@ -88,6 +314,16 @@ bootstrapData *prepare_bootstrap_blocks_multilevel(vcfData *vcfd, paramStruct *p
 	return boot;
 }
 
+
+
+int sample_from_set(int n)
+{
+	ASSERT(n>0);
+	return (int)(n * (rand() / (RAND_MAX + 1.0)));
+}
+
+
+
 /// BLOCK BOOTSTRAPPING for AMOVA
 ///
 /// Bootstrap data blocks among samples, while keeping the order of blocks the same
@@ -101,18 +337,18 @@ bootstrapData *prepare_bootstrap_blocks_multilevel(vcfData *vcfd, paramStruct *p
 // nLevels = 2
 //      Shuffle blocks among groups of samples based on current group assignment
 //      Sample set = all samples in a given group
-int sample_block_variant(metadataStruct *mtd, const int r_lvl_idx)
+int sample_block_variant(metadataStruct* mtd, const int lvl, const int local_group_idx)
 {
-	if (r_lvl_idx == 0 && mtd->nLevels == 1)
+	int n = 0;
+	if ( lvl== 0 && mtd->nLevels == 1)
 	{
-		return (int)(mtd->nInd * (rand() / (RAND_MAX + 1.0)));
+		n = mtd->nInd;
 	}
 	else
 	{
-		// mS->hierArr[lvl]->nIndPerStrata[sti];
-		// return (int) (mS->hierArr[r_lvl_idx]->nInd * (rand() / (RAND_MAX + 1.0)));
-		return -1;
+		n = mtd->nIndPerStrata[lvl][local_group_idx];
 	}
+	return sample_from_set(n);
 }
 
 // Ind1  [block0][block1][block2][block3]
@@ -157,6 +393,7 @@ bootstrapDataset::~bootstrapDataset()
 bootstrapDataset *bootstrapDataset_get(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, formulaStruct *formulaSt, blobStruct *blobSt)
 {
 
+NEVER;
 	bootstrapDataset *bootstraps = new bootstrapDataset(args->nBootstraps, mS->nInd, blobSt->nBlocks);
 
 	if (mS->nLevels == 1)

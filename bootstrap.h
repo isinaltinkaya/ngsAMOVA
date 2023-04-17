@@ -8,7 +8,52 @@
 #include "dataStructs.h"
 
 
-int sample_block_variant(metadataStruct* mtd, const int r_lvl_idx);
+/// @brief blockStruct - structure for storing a single block
+/// @details
+///   positions are 0-based
+///   [start, end) - [inclusive start, exclusive end)
+typedef struct blockStruct
+{
+	char *chr = NULL;
+	int start = 0; // inclusive
+	int end = 0; // exclusive
+	int len = 0; // end - start; length of the block
+	
+} blockStruct;
+
+
+
+/// @brief blobStruct - structure for storing all blocks
+typedef struct blobStruct
+{
+
+	// Total number of blocks 
+	int nBlocks = 0;
+
+	// /def blocks[nBlocks]
+	// blocks[i] == pointer to a blockStruct at index i
+	blockStruct** blocks = NULL;
+
+	// /def blockPtrs[nBlocks]
+	// blockPtrs[i] == pointer to the location of the data for block i
+	// e.g. blockPtrs[42] == index of the first site in block 42 in vcf data
+	int** blockPtrs = NULL;
+
+	~blobStruct();
+
+	void addBlock();
+
+    void _print();
+
+} blobStruct;
+
+blobStruct *blobStruct_get(vcfData *vcf, argStruct *args);
+blobStruct *blobStruct_read_bed(const char* fn);
+blobStruct *blobStruct_read_tab(const char* fn);
+blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf, argStruct *args);
+
+
+int sample_block_variant(metadataStruct* mtd, const int lvl, const int local_group_idx);
 
 typedef struct bootstrapData{
 

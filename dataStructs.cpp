@@ -26,7 +26,6 @@ metadataStruct::metadataStruct(int nInd)
 	for (size_t lvl = 0; lvl < MAX_N_HIER_LEVELS; lvl++)
 	{
 		lvlgToIdx[lvl] = (int *)malloc(MAX_N_GROUPS_PER_LEVEL * sizeof(int));
-		// nIndPerStrata[lvl] = (int *) malloc(MAX_N_GROUPS_PER_LEVEL * sizeof(int));
 
 		groupNames[lvl] = (char **)malloc(MAX_N_GROUPS_PER_LEVEL * sizeof(char *));
 
@@ -35,7 +34,6 @@ metadataStruct::metadataStruct(int nInd)
 			groupNames[lvl][g] = NULL;
 
 			lvlgToIdx[lvl][g] = -1;
-			// nIndPerStrata[lvl][g] = 0;
 		}
 
 		nGroups[lvl] = 0;
@@ -102,7 +100,6 @@ metadataStruct::~metadataStruct()
 		FREE(idxToLvlg[i]);
 	}
 	FREE(idxToLvlg);
-	FREE(nStrataPerLevel);
 }
 
 metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars, formulaStruct *fos)
@@ -433,7 +430,6 @@ void metadataStruct::getNIndPerStrata()
 {
 	ASSERT(nInd > 0);
 	ASSERT(nLevels > 0);
-	// nIndPerStrata = (int **)realloc(nIndPerStrata, nLevels * sizeof(int *));
 	nIndPerStrata = (int **)malloc(sizeof(int *) * nLevels);
 	for (int lvl = 0; lvl < nLevels; lvl++)
 	{
@@ -1053,236 +1049,3 @@ formulaStruct *formulaStruct_get(const char *formula)
 	return fos;
 }
 
-blobStruct::~blobStruct()
-{
-	for (int i = 0; i < nBlocks; ++i)
-	{
-		FREE(blocks[i]);
-		FREE(blockPtrs[i]);
-	}
-	FREE(blocks);
-	FREE(blockPtrs);
-}
-
-void blobStruct::addBlock()
-{
-	++nBlocks;
-	if (nBlocks > 1)
-	{
-		blocks = (blockStruct **)realloc(blocks, nBlocks * sizeof(blockStruct *));
-		blockPtrs = (int **)realloc(blockPtrs, nBlocks * sizeof(int *));
-	}
-	else
-	{
-		blocks = (blockStruct **)malloc(nBlocks * sizeof(blockStruct *));
-		blockPtrs = (int **)malloc(nBlocks * sizeof(int *));
-	}
-	blocks[nBlocks - 1] = (blockStruct *)malloc(sizeof(blockStruct));
-	blockPtrs[nBlocks - 1] = (int *)malloc(sizeof(int));
-}
-
-//     - 1-based
-//     - [start:included, end:included]
-blobStruct *blobStruct_read_tab(const char *fn)
-{
-	FILE *fp = IO::getFile(fn, "r");
-	char *firstLine = IO::readFile::getFirstLine(fp);
-	int nCols = IO::inspectFile::count_nCols(firstLine, "\t");
-	if (nCols != 3)
-	{
-		fprintf(stderr, "\n[ERROR]\tBlocks tab file must have 3 columns. Found %d columns.\n", nCols);
-		exit(1);
-	}
-
-	ASSERT(fseek(fp, 0, SEEK_SET) == 0);
-	int nBlocks = 0;
-
-	char *tok = NULL;
-	char chr[100];
-	char start[100];
-	char end[100];
-	blobStruct *blob = new blobStruct();
-
-	while (EOF != fscanf(fp, "%s\t%s\t%s", chr, &start, &end))
-	{
-		blob->addBlock();
-
-		ASSERTM(strIsNumeric(start), "Start position must be numeric.");
-		int start_int = atoi(start);
-
-		ASSERTM(strIsNumeric(end), "End position must be numeric.");
-		int end_int = atoi(end);
-
-		IO::validateString(chr);
-		blob->blocks[nBlocks]->chr = strdup(chr);
-
-		// tab file positions are 1-based, but blockStruct positions are 0-based
-		// so -1 to make it 0-based
-
-		// both tab file start and blockStruct start are inclusive
-		blob->blocks[nBlocks]->start = start_int - 1;
-		ASSERTM(start_int > 0, "Start position must be greater than 0. Note: Tab files have 1-based indexing with [start:inclusive, end:inclusive].");
-
-		// tab file end is inclusive, but blockStruct end is exclusive
-		// +1 to make it exclusive
-		// -1+1 = 0
-		blob->blocks[nBlocks]->end = end_int;
-
-		ASSERTM(end_int > 0, "End position must be greater than 0. Note: Tab files have 1-based indexing with [start:inclusive, end:inclusive].");
-
-		blob->blocks[nBlocks]->len = blob->blocks[nBlocks]->end - blob->blocks[nBlocks]->start;
-		ASSERTM(blob->blocks[nBlocks]->len > 0, "Block length must be greater than 0.");
-
-		++nBlocks;
-		fprintf(stderr, "%s\t%d\t%d\n", chr, start_int, end_int);
-	}
-
-	ASSERT(blob->nBlocks == nBlocks);
-
-	FREE(firstLine);
-	FREE(tok);
-	FCLOSE(fp);
-
-	return blob;
-}
-
-//     - 0-based
-//     - [start:included, end:excluded)
-blobStruct *blobStruct_read_bed(const char *fn)
-{
-	FILE *fp = IO::getFile(fn, "r");
-	char *firstLine = IO::readFile::getFirstLine(fp);
-	int nCols = IO::inspectFile::count_nCols(firstLine, "\t");
-	if (nCols != 3)
-	{
-		fprintf(stderr, "\n[ERROR]\tBlocks bed file must have 3 columns. Found %d columns.\n", nCols);
-		exit(1);
-	}
-
-	ASSERT(fseek(fp, 0, SEEK_SET) == 0);
-	int nBlocks = 0;
-
-	char *tok = NULL;
-	char chr[100];
-	char start[100];
-	char end[100];
-	blobStruct *blob = new blobStruct();
-
-	while (EOF != fscanf(fp, "%s\t%s\t%s", chr, &start, &end))
-	{
-		blob->addBlock();
-
-		ASSERTM(strIsNumeric(start), "Start position must be numeric.");
-		int start_int = atoi(start);
-
-		ASSERTM(strIsNumeric(end), "End position must be numeric.");
-		int end_int = atoi(end);
-
-		IO::validateString(chr);
-		blob->blocks[nBlocks]->chr = strdup(chr);
-
-		// both bed file and blockStruct positions are 0-based
-
-		// both tab file start and blockStruct start are inclusive
-		blob->blocks[nBlocks]->start = start_int;
-		ASSERTM(start_int > 0, "Start position must be greater than 0. Note: Bed files have 0-based indexing with [start:inclusive, end:exclusive).");
-
-		// both tab file end and blockStruct end are exclusive
-		blob->blocks[nBlocks]->end = end_int;
-		ASSERTM(end_int > 0, "End position must be greater than 0. Note: Bed files have 0-based indexing with [start:inclusive, end:exclusive).");
-
-		blob->blocks[nBlocks]->len = blob->blocks[nBlocks]->end - blob->blocks[nBlocks]->start;
-		ASSERTM(blob->blocks[nBlocks]->len > 0, "Block length must be greater than 0.");
-
-		++nBlocks;
-		fprintf(stderr, "%s\t%d\t%d\n", chr, start_int, end_int);
-	}
-
-	ASSERT(blob->nBlocks == nBlocks);
-
-	FREE(firstLine);
-	FREE(tok);
-	FCLOSE(fp);
-	
-	return blob;
-}
-
-blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf, argStruct *args)
-{
-
-	// TODO make it work with region and regions, we need to get ncontigs from the region filtered vcf
-	// maybe just add a lazy check afterwards to skip empty blocks due to site filtering?
-	if (args->in_regions_tab_fn != NULL || args->in_regions_bed_fn != NULL || args->in_region != NULL)
-	{
-		fprintf(stderr, "\n[ERROR]\tBlock definitions cannot be used with region definitions, yet.\n");
-		exit(1);
-	}
-
-	const int blockSize = args->blockSize;
-
-	blobStruct *blob = new blobStruct();
-
-	int nBlocks = 0;
-	for (size_t ci = 0; ci < vcf->nContigs; ci++)
-	{
-		int nBlocks_perContig = 0;
-		const int contigSize = vcf->hdr->id[BCF_DT_CTG][ci].val->info[0];
-
-		if (blockSize < contigSize)
-		{
-			nBlocks_perContig = (contigSize / blockSize) + 1;
-		}
-		else
-		{
-			nBlocks_perContig = 1;
-			fprintf(stderr, "\nContig %ld is smaller than block size, setting block size to contig size (%d)\n", ci, contigSize);
-		}
-
-		for (int bi = 0; bi < nBlocks_perContig; bi++)
-		{
-			blob->addBlock();
-			int blockStart = bi * blockSize;
-			blob->blocks[bi]->start = blockStart;
-			fprintf(stderr, "\nContig %s(idx:%ld) block (local_idx:%d,global_idx::%d) starts at %d\n", vcf->hdr->id[BCF_DT_CTG][ci].key, ci, bi, nBlocks + bi, blockStart);
-		}
-		nBlocks += nBlocks_perContig;
-	}
-	ASSERT(nBlocks == blob->nBlocks);
-
-	return blob;
-}
-
-blobStruct *blobStruct_get(vcfData *vcf, argStruct *args)
-{
-	fprintf(stderr, "\n\t-> --nBootstraps %d is set, will perform %d bootstraps for AMOVA significance testing.\n", args->nBootstraps, args->nBootstraps);
-
-	if (args->nBootstraps < 0)
-	{
-		fprintf(stderr, "\n[ERROR]\t-> --nBootstraps should be a positive integer or 0. You entered a negative value: %d.\n", args->nBootstraps);
-		exit(1);
-	}
-
-	blobStruct *blob = NULL;
-
-	if (args->blockSize != 0)
-	{
-		fprintf(stderr, "\n\t-> blockSize is set, will perform block bootstrapping with blocks of size %d.\n", args->blockSize);
-		blob = blobStruct_populate_blocks_withSize(vcf, args);
-	}
-	else if (args->in_blocks_tab_fn != NULL)
-	{
-		blob = blobStruct_read_tab(args->in_blocks_tab_fn);
-	}
-	else if (args->in_blocks_bed_fn != NULL)
-	{
-		blob = blobStruct_read_bed(args->in_blocks_bed_fn);
-	}
-	else
-	{
-		fprintf(stderr, "\n[ERROR] No blocks file specified\n");
-		exit(1);
-	}
-	ASSERT(blob != NULL);
-
-	return blob;
-}
