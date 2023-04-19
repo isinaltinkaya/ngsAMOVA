@@ -14,7 +14,6 @@
 #include "argStruct.h"
 #include "paramStruct.h"
 
-
 int strIsNumeric(const char* val)
 {
     for(size_t i=0; i<strlen(val); i++){

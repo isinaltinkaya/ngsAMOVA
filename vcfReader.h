@@ -97,7 +97,7 @@ typedef struct vcfData
 	void _print(FILE *fp);
 	void _print();
 
-	int next_site();
+	int records_next();
 
 } vcfData;
 

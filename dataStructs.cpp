@@ -1,6 +1,8 @@
 #include "io.h"
 #include "dataStructs.h"
 
+//TODO add check if discrapency in metadata e.g. pop3 is both in reg1 and reg2
+
 metadataStruct::metadataStruct(int nInd)
 {
 	ASSERT(nInd > 0);

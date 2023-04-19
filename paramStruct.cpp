@@ -16,6 +16,69 @@ void setInputFileType(paramStruct *pars, argStruct *args)
     }
 }
 
+//     - 1-based
+//     - [start:included, end:included]
+// just like vcf
+void paramStruct::read_ancder_alleles(char* fn)
+{
+
+    int nSites_buf=1000;
+    anc = (char*) malloc(nSites_buf * sizeof(char));
+    der = (char*) malloc(nSites_buf * sizeof(char));
+
+    FILE *fp = IO::getFile(fn, "r");
+	char *firstLine = IO::readFile::getFirstLine(fp);
+	int nCols = IO::inspectFile::count_nCols(firstLine, "\t");
+	if (nCols != 4)
+	{
+		ERROR("File defining the ancestral and derived alleles must have 4 columns: [chr, start, end, ancestral_allele, derived_allele]. The file provided has %i columns.", nCols);
+	}
+
+	ASSERT(fseek(fp, 0, SEEK_SET) == 0);
+
+	char *tok = NULL;
+	char chr[100];
+    char pos[100];
+    char anc_i = 'N';
+    char der_i = 'N';
+
+    int pos_i = 0;
+	int pos_int = -1;
+
+	while (EOF != fscanf(fp, "%s\t%s\t%s\t%s", chr, pos, &anc_i, &der_i))
+	{
+
+        if(pos_i == nSites_buf) {
+            nSites_buf *= 2;
+            anc = (char*) realloc(anc, nSites_buf * sizeof(char));
+            der = (char*) realloc(der, nSites_buf * sizeof(char));
+        }
+
+		ASSERTM(strIsNumeric(pos), "Position must be numeric.");
+		pos_int=atoi(pos);
+
+		IO::validateString(chr);
+
+		ASSERTM(pos_int > 0, "Position must be greater than 0.");
+
+        anc[pos_i] = anc_i;
+        der[pos_i] = der_i;
+
+        ++pos_i;
+	}
+
+    ancder_nSites = pos_i;
+
+    anc = (char*) realloc(anc, ancder_nSites * sizeof(char));
+    der = (char*) realloc(der, ancder_nSites * sizeof(char));
+
+	FREE(firstLine);
+	FREE(tok);
+	FCLOSE(fp);
+
+}
+
+
 void paramStruct::printParams(FILE *fp)
 {
     fprintf(fp, "nSites: %li", nSites);
@@ -31,14 +94,16 @@ paramStruct *paramStruct_init(argStruct *args)
     paramStruct *pars = new paramStruct;
 
     setInputFileType(pars, args);
+    
+    if(args->in_ancder_fn != NULL) {
+        pars->read_ancder_alleles(args->in_ancder_fn);
+    }
 
     pars->nSites = 0;
     pars->totSites = 0;
 
     pars->nIndCmb = 0;
     pars->nInd = 0;
-
-    pars->DATETIME = NULL;
 
     pars->nAmovaRuns = 0;
 

@@ -21,6 +21,15 @@ typedef struct blockStruct
 	
 } blockStruct;
 
+// to access the data
+// if this block is not the last block in the contig
+// 		loop: from this_blockStart to next_blockStart
+// if this block is the last block in the contig
+// 		loop: from this_blockStart to the end of the contig
+// for (int gti = 0; gti < 3; gti++)
+// {
+// 	double x = vcfd->lngl[0][3 * vb + gti];
+// }
 
 
 /// @brief blobStruct - structure for storing all blocks
@@ -47,7 +56,8 @@ typedef struct blobStruct
 
 } blobStruct;
 
-blobStruct *blobStruct_get(vcfData *vcf, argStruct *args);
+// blobStruct *blobStruct_get(vcfData *vcf, argStruct *args);
+blobStruct *blobStruct_get(vcfData *vcf, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, formulaStruct *formulaSt);
 blobStruct *blobStruct_read_bed(const char* fn);
 blobStruct *blobStruct_read_tab(const char* fn);
 blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf, argStruct *args);
@@ -67,7 +77,8 @@ typedef struct bootstrapData{
 
 } bootstrapData;
 
-bootstrapData *prepare_bootstrap_block_1level(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, formulaStruct *formulaSt, blobStruct *blobSt);
+// bootstrapData *prepare_bootstrap_block_1level(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, formulaStruct *formulaSt, blobStruct *blobSt);
+bootstrapData *prepare_bootstrap_block_1level(vcfData *vcfd, metadataStruct *mS, blobStruct *blobSt);
 bootstrapData *prepare_bootstrap_blocks_multilevel(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, formulaStruct *formulaSt, blobStruct *blobSt);
 
 typedef struct bootstrapDataset{
@@ -87,7 +98,8 @@ typedef struct bootstrapDataset{
 
 } bootstrapDataset;
 
-bootstrapDataset* bootstrapDataset_get(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, formulaStruct *formulaSt,  blobStruct *blobSt);
+// bootstrapDataset* bootstrapDataset_get(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, formulaStruct *formulaSt,  blobStruct *blobSt);
+bootstrapDataset *bootstrapDataset_get(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, blobStruct *blobSt);
 
 
 #endif // __BOOTSTRAP__

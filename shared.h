@@ -72,9 +72,21 @@
 #define ASSERT(expr)                                                                             \
 	if (!(expr))                                                                                 \
 	{                                                                                            \
-		fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr); \
+		fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d) %s\n*******\n", __FILE__, __FUNCTION__, __LINE__, #expr); \
 		exit(1);                                                                                 \
 	}
+
+
+/*
+ * Macro:[ERROR]
+ * print a custom error message and exit the program
+ */
+#define ERROR(...)                                                                             \
+	fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d) ", __FILE__, __FUNCTION__, __LINE__); \
+	fprintf(stderr, __VA_ARGS__); \
+	fprintf(stderr, "\n*******\n"); \
+	exit(1);
+
 
 /*
  * Macro:[ASSERTM]
@@ -341,6 +353,7 @@ enum INFT
 // // then if(pars->inFileType & IN_VCF) ...
 
 /* ========================================================================== */
+
 
 /// @brief strIsNumeric - check if string is numeric
 /// @param val          - string to be checked

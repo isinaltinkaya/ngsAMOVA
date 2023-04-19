@@ -49,3 +49,8 @@ all:
 	../ngsAMOVA -doAMOVA 2 -doDist 1 --in-vcf test_s9_d1_1K.vcf -m metadata_with_header_2lvl.tsv -f "Individual~Region/Population" -doNJ 1 -o testwd/test_s9_d1_1K_mtd2_nj;
 	bash -c "diff testwd/test_s9_d1_1K_mtd2_nj.newick reference/test_s9_d1_1K_mtd2_nj.newick";
 	@printf "\n\n\n";
+	@printf "\n\n\n";
+	@printf "===============================================================================\n";
+	@printf "\n\n\n[TEST 9]: Same as TEST1 but with ancder file"
+	../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf -printMatrix 1 -isSim 1 -minInd 2 -doDist 1 -maxIter 100 -tole 1e-10 -m metadata_with_header_1lvl.tsv  -f "Individual~Population" --ancDerFile test_s9_d1_1K_ancder.tsv -out testwd/test_s9_d1_1K_mtd1_ancder;
+	bash -c "diff testwd/test_s9_d1_1K_mtd1_ancder.amova.csv reference/test_s9_d1_1K_mtd1.amova.csv";

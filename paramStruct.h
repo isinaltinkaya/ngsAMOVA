@@ -36,6 +36,14 @@ struct paramStruct
     // total number of sites processed
     size_t totSites;
 
+
+    int ancder_nSites=0;
+
+    // ancestral allelic state for each site
+    char* anc=NULL;
+    // derived allelic state for each site
+    char* der=NULL;
+
     int nInd;
     int nIndCmb;
 
@@ -44,7 +52,6 @@ struct paramStruct
 
     // input file type from enum
     int in_ft;
-
     char *DATETIME=NULL;
 
     // PRINT FUNCTIONS
@@ -57,6 +64,7 @@ struct paramStruct
     // e.g. nInd > 0
     void validate();
 
+    void read_ancder_alleles(char* fn);
 
 };
 

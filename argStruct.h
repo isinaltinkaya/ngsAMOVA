@@ -182,6 +182,9 @@ struct argStruct
     char *in_blocks_tab_fn = NULL;
     char *in_blocks_bed_fn = NULL;
 
+    char *in_majorminor_fn = NULL;
+    char *in_ancder_fn = NULL;
+
     char *command = NULL;
 
     char *formula = NULL;

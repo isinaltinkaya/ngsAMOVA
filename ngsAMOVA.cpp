@@ -21,7 +21,7 @@
 using size_t = decltype(sizeof(int));
 
 // prepare distance matrix using original data
-void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS_orig, vcfData *vcfd, pairStruct **pairSt, formulaStruct *formulaSt, blobStruct *blobSt)
+void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS_orig, vcfData *vcfd, pairStruct **pairSt, formulaStruct *formulaSt, blobStruct *blobSt, metadataStruct *metadataSt)
 {
 
 	switch (args->doAMOVA)
@@ -38,11 +38,10 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 		else
 		{
 
-			NEVER;
-			if (0 != args->nBootstraps)
-			{
-				blobSt = blobStruct_get(vcfd, args);
-			}
+			// if (0 != args->nBootstraps)
+			// {
+				// blobSt = blobStruct_get(vcfd, args);
+			// }
 			// readSites_GL(vcfd, args, pars, pairSt, blobSt);
 		}
 
@@ -55,22 +54,12 @@ void prepare_distanceMatrix(argStruct *args, paramStruct *pars, distanceMatrixSt
 	case 2:
 	{
 
-		if (args->blockSize == 0)
+		if (0 == args->nBootstraps)
 		{
-
 			readSites_GT(vcfd, args, pars, pairSt);
-		}
-		else
-		{
-
-			fprintf(stderr, "\n[ERROR]\t-> Not implemented yet.\n");
-			exit(1);
-			if (0 != args->nBootstraps)
-			{
-				blobSt = blobStruct_get(vcfd, args);
-			}
-			// readSites_GT(vcfd,args, pars, pairSt, blobSt);
-			// DELETE(blobSt);
+		}else{
+			// blobSt = blobStruct_get(vcfd, args);
+			blobSt = blobStruct_get(vcfd, pars, args, dMS_orig, metadataSt,formulaSt);
 		}
 
 		for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
@@ -154,27 +143,15 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		}
 	}
 
-	if (args->windowSize == 0)
-	{
-		// --------------------------- windowSize 0 --------------------------- //
-		fprintf(stderr, "\n[INFO]\t-> -windowSize 0; will not use sliding window\n");
-		// treat the whole genome as one window
-		// args->windowSize = vcfd->nSites;
-		// fprintf(stderr, "\n[INFO]\t-> -windowSize %d; will use the whole genome as one window. Therefore -windowSize is set to the total number of sites in the VCF/BCF file (nSites: %d)\n", args->windowSize, vcfd->nSites);
-	}
-	else
-	{
-		// --------------------------- windowSize > 0 --------------------------- //
-		ASSERT(0 == 1);
-	}
 
+	metadataStruct *metadataSt = metadataStruct_get(args, pars, formulaSt);
 	// --------------------------- doAMOVA 0 --------------------------- //
 	// DO NOT run AMOVA
 	if (args->doAMOVA == 0 && args->doEM == 1)
 	{
 		// do not run AMOVA, but do EM and get distance matrix
 		distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, NULL);
-		prepare_distanceMatrix(args, pars, dMS, vcfd, pairSt, formulaSt, NULL);
+		prepare_distanceMatrix(args, pars, dMS, vcfd, pairSt, formulaSt, NULL, metadataSt);
 		if (args->printMatrix != 0)
 		{
 			dMS->print(outFiles->out_dm_fs);
@@ -191,7 +168,6 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 		return;
 	}
 
-	metadataStruct *metadataSt = metadataStruct_get(args, pars, formulaSt);
 
 	pars->nAmovaRuns = 1;
 	if (args->nBootstraps > 0)
@@ -210,14 +186,13 @@ void input_VCF(argStruct *args, paramStruct *pars, formulaStruct *formulaSt)
 
 	if (0 != args->nBootstraps)
 	{
-		blobSt = blobStruct_get(vcfd, args);
+		// blobSt = blobStruct_get(vcfd, pars, args , dMS_orig, metadataSt, formulaSt);
 	}
 
 	// prepare distance matrix dMS given analysis type (-doAMOVA)
 
 	// dMS[0] is the original distance matrix (not bootstrapped)
-
-	prepare_distanceMatrix(args, pars, dMS[0], vcfd, pairSt, formulaSt, blobSt);
+	prepare_distanceMatrix(args, pars, dMS[0], vcfd, pairSt, formulaSt, blobSt, metadataSt);
 
 	// bootstrapDataset* bootstrap = bootstrapDataset_get(vcfd, pars, args, dMS[b], metadataSt, formulaSt, blobSt);
 

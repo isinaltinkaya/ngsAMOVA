@@ -9,9 +9,9 @@
 #include <pthread.h>
 
 
-void* t_EM_2DSFS_GL3(void* p);
+void* t_EM_optim_jgd_gl3(void* p);
 
-int EM_2DSFS_GL3(threadStruct* THREAD);
+int EM_optim_jgd_gl3(threadStruct* THREAD);
 
 void* DEV_t_EM_2DSFS_GL3(void* p);
 int DEV_EM_2DSFS_GL3(threadStruct* THREAD);

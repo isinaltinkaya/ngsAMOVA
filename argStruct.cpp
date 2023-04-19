@@ -171,49 +171,6 @@ argStruct *argStruct_get(int argc, char **argv)
 			args->printDxy = atoi(val);
 		}
 
-		// #####################################
-		// #    ARGUMENTS [--long-form/-sf]    #
-		// #####################################
-		//
-		// Use argument commands to specify the parameters to be used in the analyses.
-		// Argument commands are of the form `--long-form <int>` or `-sf <int>`
-		//   where long form of the argument starts with double dash `--` and separated by hyphen `-`
-		//   and short form of the argument starts with single dash `-` and is typically the first letter(s) of the long form
-		//
-
-		else if (strcasecmp("--metadata", arv) == 0 || strcasecmp("-m", arv) == 0)
-		{
-			args->in_mtd_fn = strdup(val);
-		}
-		else if ((strcasecmp("--verbose", arv) == 0) || (strcasecmp("-v", arv) == 0))
-		{
-			if (atoi(val) == 0)
-			{
-				// explicit verbose off, use the default value 0
-				fprintf(stderr, "[INFO]\t-> Verbosity disabled explicitly. Will not print any information.\n");
-			}
-			else if (strIsNumeric(val))
-			{
-				int verbose_val=atoi(val)-1;
-				if(verbose_val>MAX_VERBOSE_LEVEL)
-				{
-					fprintf(stderr, "\n[WARNING]\tVerbosity level is set to %d, which is greater than the maximum verbosity level %d. Setting verbosity level to %d.\n", verbose_val, MAX_VERBOSE_LEVEL, MAX_VERBOSE_LEVEL);
-					verbose_val=MAX_VERBOSE_LEVEL;
-				}
-				BITSET(VERBOSE, verbose_val);
-			}
-			else
-			{
-				NEVER;
-			}
-			fprintf(stderr, "\n[INFO]\t-> Verbosity level is set to %d.\n", WHICH_BIT_SET1(VERBOSE));
-		}
-
-		else if (strcasecmp("--formula", arv) == 0 || strcasecmp("-f", arv) == 0)
-		{
-			args->formula = strdup(val);
-		}
-
 		// #######################################################################
 		// #    REGION SPECIFICATION COMMANDS                                    #
 		// #    [--region/-r] [--regions-tab/-rf/-R] [--regions-bed/-rb/-Rb]    #
@@ -336,7 +293,6 @@ argStruct *argStruct_get(int argc, char **argv)
 		//      Region specification commands for a list of regions in BED file format
 		//        are of the form `--regions-bed <filename>` or `-rb <filename>` or `-Rb <filename>`
 		//
-		
 		//
 		//   2. TAB-delimited genome position file
 		//     - 1-based
@@ -366,6 +322,98 @@ argStruct *argStruct_get(int argc, char **argv)
 		{
 			args->in_blocks_bed_fn = strdup(val);
 		}
+
+		// #####################################
+		// #    ARGUMENTS [--long-form/-sf]    #
+		// #####################################
+		//
+		// Use argument commands to specify the parameters to be used in the analyses.
+		// Argument commands are of the form `--long-form <int>` or `-sf <int>`
+		//   where long form of the argument starts with double dash `--` and separated by hyphen `-`
+		//   and short form of the argument starts with single dash `-` and is typically the first letter(s) of the long form
+		//
+
+		else if (strcasecmp("--metadata", arv) == 0 || strcasecmp("-m", arv) == 0)
+		{
+			args->in_mtd_fn = strdup(val);
+		}
+		else if ((strcasecmp("--verbose", arv) == 0) || (strcasecmp("-v", arv) == 0))
+		{
+			if (atoi(val) == 0)
+			{
+				// explicit verbose off, use the default value 0
+				fprintf(stderr, "[INFO]\t-> Verbosity disabled explicitly. Will not print any information.\n");
+			}
+			else if (strIsNumeric(val))
+			{
+				int verbose_val=atoi(val)-1;
+				if(verbose_val>MAX_VERBOSE_LEVEL)
+				{
+					fprintf(stderr, "\n[WARNING]\tVerbosity level is set to %d, which is greater than the maximum verbosity level %d. Setting verbosity level to %d.\n", verbose_val, MAX_VERBOSE_LEVEL, MAX_VERBOSE_LEVEL);
+					verbose_val=MAX_VERBOSE_LEVEL;
+				}
+				BITSET(VERBOSE, verbose_val);
+			}
+			else
+			{
+				NEVER;
+			}
+			fprintf(stderr, "\n[INFO]\t-> Verbosity level is set to %d.\n", WHICH_BIT_SET1(VERBOSE));
+		}
+
+		else if (strcasecmp("--formula", arv) == 0 || strcasecmp("-f", arv) == 0)
+		{
+			args->formula = strdup(val);
+		}
+
+		// [--majorMinorFile/-mmf <filename>]
+		//     Filename of the file containing the major and minor alleles for each site in the VCF file.
+		//
+		//     The file should be in the following format:
+		//	   - 1-based indexing for positions [start:included, end:included]
+		//	   - Should be sorted by chromosome name and start position.
+		//     - Should be tab-delimited.
+		//
+		// e.g. Chromosome name <TAB> position <TAB> major allele <TAB> minor allele
+		//    chr1	100	A	T
+		//    chr1	200	A	G
+		//
+		//    This file can be obtained using ANGSD maf files.
+
+		else if (strcasecmp("--majorMinorFile", arv) == 0 || strcasecmp("-mmf", arv) == 0)
+		{
+			args->in_majorminor_fn = strdup(val);
+		}
+
+
+		// [--ancDerFile/-adf <filename>]
+		//     Filename of the file containing the ancestral and derived alleles for each site in the VCF file.
+		//
+		//     The file should be in the following format:
+		//	   - 1-based indexing for positions [start:included, end:included]
+		//	   - Should be sorted by chromosome name and start position.
+		//     - Should be tab-delimited.
+		//
+		// e.g. Chromosome name <TAB> position <TAB> ancestral allele <TAB> derived allele
+		//    chr1	100	A	T
+		//    chr1	200	A	G
+		//
+		//    This file can be obtained using ANGSD maf files.
+	
+		else if (strcasecmp("--ancDerFile", arv) == 0 || strcasecmp("-adf", arv) == 0)
+		{
+			args->in_ancder_fn = strdup(val);
+		}
+
+		//TODO majorminor and ancder file inputs,can we join them?
+
+
+
+
+
+
+
+
 
 
 
@@ -397,6 +445,8 @@ argStruct *argStruct_get(int argc, char **argv)
 
 		else if (strcasecmp("--seed", arv) == 0)
 			args->seed = atoi(val);
+		else if (strcasecmp("-seed", arv) == 0)
+			args->seed = atoi(val);
 
 
 		else if ((strcasecmp("-ws", arv) == 0) || (strcasecmp("--windowSize", arv) == 0))
@@ -408,8 +458,6 @@ argStruct *argStruct_get(int argc, char **argv)
 		{
 			args->nBootstraps = (int)atof(val);
 		}
-		else if (strcasecmp("-seed", arv) == 0)
-			args->seed = atoi(val);
 		else if (strcasecmp("-tole", arv) == 0)
 			args->tole = atof(val);
 		else if (strcasecmp("-isSim", arv) == 0)
@@ -734,6 +782,9 @@ void argStruct_destroy(argStruct *args)
 	FREE(args->in_regions_bed_fn);
 	FREE(args->in_blocks_tab_fn);
 	FREE(args->in_blocks_bed_fn);
+
+	FREE(args->in_majorminor_fn);
+	FREE(args->in_ancder_fn);
 
 	delete args;
 }

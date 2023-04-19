@@ -5,9 +5,11 @@
 #include "dataStructs.h"
 
 
+
 const char *IO::FILE_EXTENSIONS[] = {"", ".gz", ".bgz"};
 
 IO::outFilesStruct *outFiles = new IO::outFilesStruct();
+
 
 void IO::validateString(const char *str)
 {

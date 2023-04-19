@@ -67,11 +67,21 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
 	// TODO check why neccessary
 	if (bcf_is_snp(vcfd->bcf))
 	{
-		// reference allele
-		char a1 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[0][0]];
 
-		// alternative allele
-		char a2 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[1][0]];
+		char a1;
+		char a2;
+		if(pars->ancder_nSites>0){
+			a1=pars->anc[site_i];
+			a2=pars->der[site_i];
+		}else{
+			// reference allele
+			a1 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[0][0]];
+
+			// alternative allele
+			a2 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[1][0]];
+		}
+
+        // fprintf(stderr, "a1: %c, a2: %c\n", vcfd->bcf->d.allele[0][0], vcfd->bcf->d.allele[1][0]);
 
 		for (int indi = 0; indi < pars->nInd; indi++)
 		{
@@ -123,7 +133,6 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
 					for (int indi2 = indi - 1; indi2 > -1; indi2--)
 					{
 						// both inds has data
-						// pidx = pars->lut_indsToIdx[indi2][indi];
 						pidx = nCk_idx(pars->nInd, indi, indi2);
 
 						if (cmbArr[pidx])
@@ -140,7 +149,6 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
 					for (int indi2 = indi + 1; indi2 < pars->nInd; indi2++)
 					{
 						pidx = nCk_idx(pars->nInd, indi, indi2);
-						// cmbArr[pars->lut_indsToIdx[indi][indi2]]++;
 						cmbArr[pidx]++;
 					}
 				}
@@ -160,99 +168,6 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
 
 	return 0;
 }
-
-// minInd is already checked before this
-//
-// int GLtoGT_1_JointGenoDist(vcfData *vcfd, paramStruct *pars, argStruct *args)
-// {
-
-// 	// fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",nSites);
-// 	get_data<float> lgl;
-// 	lgl.n = bcf_get_format_float(vcfd->hdr, vcfd->bcf, "GL", &lgl.data, &lgl.size_e);
-
-// 	if (lgl.n < 0)
-// 	{
-// 		fprintf(stderr, "\n[ERROR](File reading)\tVCF tag GL does not exist; will exit!\n\n");
-// 		exit(1);
-// 	}
-
-// 	get_data<int32_t> new_gt;
-
-// 	// new_gt.ploidy=new_gt.n/pars->nInd;
-// 	new_gt.ploidy = 2;
-
-// 	if (new_gt.ploidy != 2)
-// 	{
-// 		fprintf(stderr, "ERROR:\n\nploidy: %d not supported\n", new_gt.ploidy);
-// 		exit(1);
-// 	}
-
-// 	if (bcf_is_snp(vcfd->bcf))
-// 	{
-
-// 		for (int indi = 0; indi < pars->nInd; indi++)
-// 		{
-
-// 			// pointer to genotype likelihoods
-// 			float *pgl = lgl.data + indi * new_gt.ploidy;
-
-// 			if (bcf_float_is_missing(pgl[0]))
-// 			{
-// 				new_gt.data[2 * indi] = new_gt.data[2 * indi + 1] = bcf_gt_missing;
-// 				continue;
-// 			}
-// 			if (isnan(lgl.data[(10 * indi) + 0]))
-// 			{
-// 				new_gt.data[2 * indi] = new_gt.data[2 * indi + 1] = bcf_gt_missing;
-// 				continue;
-// 			}
-
-// 			float max_like = NEG_INF;
-// 			int max_idx = -1;
-// 			// TODO
-// 			// max is 0 in simulated data input due to rescaling
-// 			// ignore multiple 0
-// 			//
-// 			for (int i = 0; i < 10; i++)
-// 			{
-// 				if (lgl.data[(10 * indi) + i] >= max_like)
-// 				{
-// 					max_like = lgl.data[(10 * indi) + i];
-// 					max_idx = i;
-// 				}
-// 			}
-
-// 			int a, b;
-// 			bcf_gt2alleles(max_idx, &a, &b);
-// 			new_gt.data[2 * indi] = bcf_gt_unphased(a);
-// 			new_gt.data[2 * indi + 1] = bcf_gt_unphased(b);
-// 		}
-// 	}
-
-// 	for (int pidx = 0; pidx < pars->nIndCmb; pidx++)
-// 	{
-// 		// TODO
-// 		// int i1 = pars->lut_idxToInds[pidx][0];
-// 		// int i2 = pars->lut_idxToInds[pidx][1];
-
-// 		int32_t *ptr1 = new_gt.data + i1 * new_gt.ploidy;
-// 		int32_t *ptr2 = new_gt.data + i2 * new_gt.ploidy;
-
-// 		int gti1 = bcf_gt_allele(ptr1[0]) + bcf_gt_allele(ptr1[1]);
-// 		int gti2 = bcf_gt_allele(ptr2[0]) + bcf_gt_allele(ptr2[1]);
-
-// 		vcfd->JointGenoCountDistGT[pidx][get_3x3_idx[gti1][gti2]]++;
-
-// 		// last field is for snSites
-// 		vcfd->JointGenoCountDistGT[pidx][9]++;
-// 	}
-// 	return 0;
-// }
-
-// if doAMOVA==3; both gl and gt; if gl returns 1 to skip all sites, this never runs
-// if gl returns 0; this will check again for shared sites using DP tag as an indicator
-//  return 1: skip site for all individuals
-//
 
 int get_JointGenoDist_GT(vcfData *vcfd, paramStruct *pars, argStruct *args)
 {
@@ -377,6 +292,7 @@ int get_JointGenoDist_GT(vcfData *vcfd, paramStruct *pars, argStruct *args)
 
 				gti1 += gt1;
 				gti2 += gt2;
+				//TODO ancder
 			}
 
 			vcfd->JointGenoCountDistGT[pair_idx][get_3x3_idx[gti1][gti2]]++;
@@ -399,8 +315,6 @@ vcfData *vcfData_init(argStruct *args, paramStruct *pars)
 		exit(1);
 	}
 
-	// -doEM 1 : use 3 GLs (anc/anc, anc/der, der/der)
-	// -doAMOVA 2 : use 3 GTs (anc/anc, anc/der, der/der)
 	if (args->doEM == 1 || args->doAMOVA == 2)
 	{
 		vcfd->nGT = 3;
@@ -420,8 +334,8 @@ vcfData *vcfData_init(argStruct *args, paramStruct *pars)
 
 		vcfd->nseq = hts_idx_nseq(vcfd->idx);
 
-		//TODO nContigs should be different here
-		//the region filtered file may have diff number of contigs than the hdr
+		// TODO nContigs should be different here
+		// the region filtered file may have diff number of contigs than the hdr
 	}
 
 	pars->nInd = bcf_hdr_nsamples(vcfd->hdr);
@@ -451,7 +365,6 @@ vcfData *vcfData_init(argStruct *args, paramStruct *pars)
 
 	return vcfd;
 }
-
 
 void vcfData_destroy(vcfData *v)
 {
@@ -504,17 +417,17 @@ void vcfData_destroy(vcfData *v)
 	}
 	FREE(v->indNames);
 
-
-	if(NULL != v->itr){
+	if (NULL != v->itr)
+	{
 		hts_itr_destroy(v->itr);
 	}
 
-	if(NULL != v->idx){
+	if (NULL != v->idx)
+	{
 		hts_idx_destroy(v->idx);
 	}
 
 	delete v;
-
 }
 
 /// @param vcfd		pointer to vcfData
@@ -555,7 +468,7 @@ void vcfData_destroy(vcfData *v)
 // 	// before reading the data, prepare a template for blobStruct with expected intervals etc.
 // 	//
 // 	// as we read the data, we update the actual blobStruct
-// while (vcfd->next_site())
+// while (vcfd->records_next())
 // 	{
 
 // 		if (vcfd->bcf->rlen != 1)
@@ -750,7 +663,7 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 {
 
 	int skip_site = 0;
-	while (vcfd->next_site())
+	while (vcfd->records_next())
 	{
 
 		if (vcfd->bcf->rlen != 1)
@@ -811,7 +724,7 @@ void readSites_GT(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 	 * 		totSites==all sites processed
 	 *
 	 */
-	while (vcfd->next_site())
+	while (vcfd->records_next())
 	{
 
 		if (vcfd->bcf->rlen != 1)
@@ -1046,7 +959,7 @@ void vcfData::_print()
 	_print(stderr);
 }
 
-int vcfData::next_site()
+int vcfData::records_next()
 {
 	int ret = -42;
 
