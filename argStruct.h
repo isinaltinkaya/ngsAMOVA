@@ -23,9 +23,6 @@ extern u_char VERBOSE;
  *
  * @field *out_fn		pointer to output file prefix [angsdput]
  *
- * @field isSim			input is vcfgl simulation output
- * 							anc=ref and der=alt[0]
- *
  * @field isTest		[DEV] run for testing purposes
  *
  * @field minInd		[-1 = not set]
@@ -216,7 +213,6 @@ struct argStruct
     char *doDxyStr = NULL;//TODO maybe not needed
     int gl2gt = -1;
     int windowSize = 0;
-    int isSim = 0;
     int isTest = 0;
     int *keyCols = NULL;
 };

@@ -420,8 +420,6 @@ argStruct *argStruct_get(int argc, char **argv)
 		else if (strcasecmp("-dev", arv) == 0)
 			args->printDev = atoi(val);
 
-		else if (strcasecmp("--isSim", arv) == 0)
-			args->isSim = atoi(val);
 		else if (strcasecmp("--isTest", arv) == 0)
 			args->isTest = atoi(val);
 		else if (strcasecmp("--minInd", arv) == 0)
@@ -460,8 +458,6 @@ argStruct *argStruct_get(int argc, char **argv)
 		}
 		else if (strcasecmp("-tole", arv) == 0)
 			args->tole = atof(val);
-		else if (strcasecmp("-isSim", arv) == 0)
-			args->isSim = atoi(val);
 		else if (strcasecmp("-isTest", arv) == 0)
 			args->isTest = atoi(val);
 
@@ -499,11 +495,6 @@ argStruct *argStruct_get(int argc, char **argv)
 
 	// TODO add 'requires' arg dependency checker, some libs do it like tclap
 
-	if (args->isSim > 1 || args->isSim < 0)
-	{
-		fprintf(stderr, "\n[ERROR]\tArgument isSim is set to %d\n", args->isSim);
-		exit(1);
-	}
 
 	if (args->minInd == 0)
 	{
@@ -799,7 +790,7 @@ void argStruct_print(FILE *fp, argStruct *args)
 
 	// TODO use lut to store names and values and associatons (e.g. tole maxiter etc assoc with doEM)
 	// and if -formula is used, run formulaStruct_get()
-	fprintf(fp, "\nngsAMOVA -doAMOVA %d -i %s -out %s -isSim %d -minInd %d -printMatrix %d -m %s -doDist %d -nThreads %d", args->doAMOVA, args->in_vcf_fn, args->out_fn, args->isSim, args->minInd, args->printMatrix, args->in_mtd_fn, args->doDist, args->mThreads);
+	fprintf(fp, "\nngsAMOVA -doAMOVA %d -i %s -out %s -minInd %d -printMatrix %d -m %s -doDist %d -nThreads %d", args->doAMOVA, args->in_vcf_fn, args->out_fn, args->minInd, args->printMatrix, args->in_mtd_fn, args->doDist, args->mThreads);
 	if (args->doEM != 0)
 	{
 		fprintf(fp, " -tole %e ", args->tole);
