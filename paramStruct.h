@@ -1,12 +1,11 @@
 #ifndef __PARAM_STRUCT__
 #define __PARAM_STRUCT__
 
-// #include "shared.h"
+#include "shared.h"
 
-#include <stdio.h>
-
-struct paramStruct;
 struct argStruct;
+
+typedef struct paramStruct paramStruct;
 
 /*
  * @typedef
@@ -24,10 +23,9 @@ struct argStruct;
  * @field anc					ancestral allele
  * @field der					derived allele
  */
-struct paramStruct
-{
+struct paramStruct {
     // TODO add argStruct ptr to paramStruct to avoid always passing both
-    // argStruct *args; 
+    // argStruct *args;
 
     // number of sites non skipped for all individuals
     // nSites may not be !=totSites if minInd is set
@@ -36,23 +34,22 @@ struct paramStruct
     // total number of sites processed
     size_t totSites;
 
-
-    int ancder_nSites=0;
+    int ancder_nSites = 0;
 
     // ancestral allelic state for each site
-    char* anc=NULL;
+    char *anc = NULL;
     // derived allelic state for each site
-    char* der=NULL;
+    char *der = NULL;
 
     int nInd;
     int nIndCmb;
 
-    //TODO move this to amova analysis
+    // TODO move this to amova analysis
     int nAmovaRuns;
 
     // input file type from enum
     int in_ft;
-    char *DATETIME=NULL;
+    char *DATETIME = NULL;
 
     // PRINT FUNCTIONS
     void printParams(FILE *fp);
@@ -64,8 +61,7 @@ struct paramStruct
     // e.g. nInd > 0
     void validate();
 
-    void read_ancder_alleles(char* fn);
-
+    void read_ancDerFile(char *fn);
 };
 
 /// @brief paramStruct_init initialize the paramStruct
@@ -76,4 +72,4 @@ void paramStruct_destroy(paramStruct *p);
 
 void check_consistency_args_pars(argStruct *args, paramStruct *pars);
 
-#endif // __PARAM_STRUCT__
+#endif  // __PARAM_STRUCT__

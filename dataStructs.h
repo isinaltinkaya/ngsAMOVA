@@ -1,28 +1,27 @@
 #ifndef __DATA_STRUCTS__
 #define __DATA_STRUCTS__
 
-#include "argStruct.h"
 #include "io.h"
 #include "mathUtils.h"
+#include "paramStruct.h"
 #include "vcfReader.h"
 
 /* FORWARD DECLARATIONS ----------------------------------------------------- */
-struct formulaStruct;
-struct pairStruct;
-struct hierStruct;
-struct metadataStruct;
-struct distanceMatrixStruct;
-struct threadStruct;
-struct argStruct;
-struct paramStruct;
 
-struct vcfData;
+typedef struct formulaStruct formulaStruct;
+typedef struct pairStruct pairStruct;
+typedef struct distanceMatrixStruct distanceMatrixStruct;
+typedef struct threadStruct threadStruct;
+typedef struct metadataStruct metadataStruct;
+
+/* -------------------------------------------------------------------------- */
+
 
 /// trim spaces from the beginning and end of a char* (inplace)
 /// @param str - char* to trim
 void trimSpaces(char *str);
 
-typedef struct formulaStruct {
+struct formulaStruct {
     // @nTokens number of tokens in the formula
     // e.g. formula: "Individual ~ Region/Population/Subpopulation"
     // 		nTokens = 4
@@ -61,14 +60,13 @@ typedef struct formulaStruct {
     // TODO deprec
     //  @brief shrink - shrink the size of the arrays defined with default max values to the actual size needed
     void shrink();
-
-} formulaStruct;
+};
 
 formulaStruct *formulaStruct_get(const char *formula);
 void formulaStruct_validate(formulaStruct *fos, const int nLevels);
 void formulaStruct_destroy(formulaStruct *fos);
 
-typedef struct pairStruct {
+struct pairStruct {
     int idx;  // index of the pair
     int i1;   // index of the first individual
     int i2;   // index of the second individual
@@ -134,8 +132,7 @@ typedef struct pairStruct {
             sharedSites[i] = -1;
         }
     }
-
-} pairStruct;
+};
 
 /**
  * @brief distanceMatrixStruct stores the distance matrix
@@ -147,7 +144,7 @@ typedef struct pairStruct {
  * @param isSquared 	1 if the distance matrix is squared, 0 otherwise
  *
  */
-typedef struct distanceMatrixStruct {
+struct distanceMatrixStruct {
     double *M = NULL;
 
     // idx2inds[pair_index][0] = index of the first individual in the pair
@@ -169,8 +166,7 @@ typedef struct distanceMatrixStruct {
     void print(IO::outputStruct *out_dm_fs);
 
     void set_item_labels(char **indNames);
-
-} distanceMatrixStruct;
+};
 
 // read distance matrix from distance matrix csv file
 distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *args);
@@ -178,7 +174,7 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *ar
 // prepare distance matrix using genotype likelihoods and EM algorithm
 distanceMatrixStruct *distanceMatrixStruct_get(formulaStruct *FORMULA, paramStruct *pars, argStruct *args);
 
-typedef struct threadStruct {
+struct threadStruct {
     pairStruct *pair;
     double **lngls;
 
@@ -194,14 +190,14 @@ typedef struct threadStruct {
         // pars = pars_;
         tole = args->tole;
         maxEmIter = args->maxEmIter;
+        nSites = pars->nSites;
         // ASSERT(pars->nSites > 0);
-        // nSites = pars->nSites;
+        // tes = pars->nSites;
     }
-
-} threadStruct;
+};
 // void print_SFS_GT(const char *TYPE, IO::outputStruct *out_sfs_fs, paramStruct *pars, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
 
-typedef struct metadataStruct {
+struct metadataStruct {
     // total number of individuals in the entire dataset
     int nInd = 0;
 
@@ -448,8 +444,7 @@ typedef struct metadataStruct {
     /// @param levelName  - name of the level
     /// @return index of the level, throw an error if the level name is not found
     int whichLevel1(const char *levelName);
-
-} metadataStruct;
+};
 
 metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars, formulaStruct *fos);
 void metadataStruct_destroy(metadataStruct *mtd);

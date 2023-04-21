@@ -4,7 +4,7 @@ all:
 	@printf "\n\n\n";
 	@printf "===============================================================================\n";
 	@printf "\n\n\n[TEST 1]: EM, then AMOVA with 1 levels in metadata, print distance matrix\n";
-	../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf -printMatrix 1 -minInd 2 -doDist 1 -maxIter 100 -tole 1e-10 -m metadata_with_header_1lvl.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1;
+	../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf --printDistanceMatrix 1 -minInd 2 -doDist 1 -maxIter 100 -tole 1e-10 -m metadata_with_header_1lvl.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1;
 	bash -c "diff testwd/test_s9_d1_1K_mtd1.amova.csv reference/test_s9_d1_1K_mtd1.amova.csv";
 #
 	@printf "\n\n\n";
@@ -22,7 +22,7 @@ all:
 	@printf "\n\n\n";
 	@printf "===============================================================================\n";
 	@printf "\n\n\n[TEST 4]: Read the data from distance matrix file, then do 1-level AMOVA using formula from metadata with 2 levels\n";
-	../ngsAMOVA -doEM 0 -doAMOVA 1 --in-dm test_s9_d1_1K_mtd1_maxIter100_tole10.distance_matrix.csv -minInd 2 -doDist 1 -nThreads 0 -m metadata_with_header_2lvl.tsv -sqDist 0 -f "Individual~Population" -out testwd/indm_test_s9_d1_1K_mtd1;
+	../ngsAMOVA -doEM 0 -doAMOVA 1 --in-dm test_s9_d1_1K_mtd1_maxIter100_tole10.distance_matrix.csv -minInd 2 -doDist 1 --nThreads 0 -m metadata_with_header_2lvl.tsv -sqDist 0 -f "Individual~Population" -out testwd/indm_test_s9_d1_1K_mtd1;
 	bash -c "diff testwd/indm_test_s9_d1_1K_mtd1.amova.csv testwd/test_s9_d1_1K_mtd1.amova.csv";
 #
 	@printf "\n\n\n";
@@ -52,7 +52,7 @@ all:
 	@printf "\n\n\n";
 	@printf "===============================================================================\n";
 	@printf "\n\n\n[TEST 9]: Same as TEST1 but with ancder file"
-	../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf -printMatrix 1 -minInd 2 -doDist 1 -maxIter 100 -tole 1e-10 -m metadata_with_header_1lvl.tsv -f "Individual~Population" --ancDerFile test_s9_d1_1K_ancder.tsv -out testwd/test_s9_d1_1K_mtd1_ancder;
+	../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf --printDistanceMatrix 1 -minInd 2 -doDist 1 -maxIter 100 -tole 1e-10 -m metadata_with_header_1lvl.tsv -f "Individual~Population" --ancDerFile test_s9_d1_1K_ancder.tsv -out testwd/test_s9_d1_1K_mtd1_ancder;
 	bash -c "diff testwd/test_s9_d1_1K_mtd1_ancder.amova.csv reference/test_s9_d1_1K_mtd1.amova.csv";
 #
 	@printf "\n\n\n";

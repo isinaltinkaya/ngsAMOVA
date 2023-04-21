@@ -1,11 +1,10 @@
 #ifndef __ARG_STRUCT__
 #define __ARG_STRUCT__
 
-#include "shared.h"
 #include "ctype.h"
+#include "shared.h"
 
-// TODO is this necessary?
-struct argStruct;
+typedef struct argStruct argStruct;
 
 extern u_char VERBOSE;
 
@@ -22,8 +21,6 @@ extern u_char VERBOSE;
  * @field *in_dxy_fn     input dxy filename
  *
  * @field *out_fn		pointer to output file prefix [angsdput]
- *
- * @field isTest		[DEV] run for testing purposes
  *
  * @field minInd		[-1 = not set]
  * 						minimum number of individuals needed
@@ -119,7 +116,7 @@ extern u_char VERBOSE;
  *
  *
  *
- * @field mThreads		maximum number of threads defined by user
+ * @field nThreads		number of threads
  * @field mEmIter		maximum number of iterations allowed for em
  *
  * @field seed			random seed for bootstrapping
@@ -158,15 +155,12 @@ extern u_char VERBOSE;
  * VALUE = 4: print in binary bgzipped format
  */
 
-
-struct argStruct
-{
-
+struct argStruct {
     char *in_vcf_fn = NULL;
     char *in_dm_fn = NULL;
     char *in_mtd_fn = NULL;
     char *in_jgcd_fn = NULL;
-    char *in_jgpd_fn = NULL; // TODO
+    char *in_jgpd_fn = NULL;  // TODO
     char *in_dxy_fn = NULL;
 
     char *out_fn = NULL;
@@ -203,17 +197,16 @@ struct argStruct
 
     int minInd = -1;
     double tole = 1e-5;
-    int maxEmIter=100;
+    int maxEmIter = 100;
 
-    int mThreads=0;
+    int nThreads = 0;
     int seed = -1;
     int nBootstraps = 0;
 
-    //TODO check below
-    char *doDxyStr = NULL;//TODO maybe not needed
+    // TODO check below
+    char *doDxyStr = NULL;  // TODO maybe not needed
     int gl2gt = -1;
     int windowSize = 0;
-    int isTest = 0;
     int *keyCols = NULL;
 };
 
@@ -224,4 +217,4 @@ argStruct *argStruct_get(int argc, char **argv);
 void argStruct_destroy(argStruct *arg);
 void argStruct_print(FILE *fp, argStruct *arg);
 
-#endif // __ARG_STRUCT__
+#endif  // __ARG_STRUCT__

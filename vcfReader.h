@@ -7,9 +7,13 @@
 #include "io.h"
 #include "paramStruct.h"
 
+/* FORWARD DECLARATIONS ----------------------------------------------------- */
+
+typedef struct vcfData vcfData;
+
+/* -------------------------------------------------------------------------- */
+
 struct blobStruct;
-struct formulaStruct;
-struct pairStruct;
 
 extern const int get_3x3_idx[3][3];
 
@@ -19,7 +23,7 @@ int bcf_alleles_get_gtidx(int a1, int a2);
 
 int bcf_alleles_get_gtidx(char a1, char a2);
 
-typedef struct vcfData {
+struct vcfData {
     vcfFile *in_fp = NULL;
     bcf1_t *bcf = NULL;
 
@@ -90,8 +94,7 @@ typedef struct vcfData {
     void _print();
 
     int records_next();
-
-} vcfData;
+};
 
 vcfData *vcfData_init(argStruct *args, paramStruct *pars);
 void vcfData_destroy(vcfData *v);

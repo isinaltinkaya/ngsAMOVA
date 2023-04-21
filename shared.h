@@ -1,25 +1,20 @@
 #ifndef __SHARED__
 #define __SHARED__
 
-#include <limits.h>
-#include <time.h>
-
-#include <stddef.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-
-#include <sys/stat.h>
 #include <float.h>
-
 #include <htslib/vcf.h>
 #include <htslib/vcfutils.h>
-
+#include <limits.h>
 #include <math.h>
-
-#include "lookup.h"
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <time.h>
 
 #include "dev.h"
+#include "lookup.h"
 
 /* ========================================================================== */
 /* MACRO DEFINITIONS ======================================================== */
@@ -29,7 +24,6 @@
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
-
 
 /*
  * Macro:[DBL_MAX_DIG_TOPRINT]
@@ -59,8 +53,8 @@
  * indicates that a point in the code should never be reached
  */
 #define NEVER                                                                                                                                                   \
-	fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) Control should never reach this point; please report this to the developers.\n*******\n", __FILE__, __LINE__); \
-	exit(1);
+    fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) Control should never reach this point; please report this to the developers.\n*******\n", __FILE__, __LINE__); \
+    exit(1);
 
 /*
  * Macro:[ASSERT]
@@ -69,36 +63,33 @@
  * also prints the file and line info and exits the program
  * if the expression evaluates to false
  */
-#define ASSERT(expr)                                                                             \
-	if (!(expr))                                                                                 \
-	{                                                                                            \
-		fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d) %s\n*******\n", __FILE__, __FUNCTION__, __LINE__, #expr); \
-		exit(1);                                                                                 \
-	}
-
+#define ASSERT(expr)                                                                                              \
+    if (!(expr)) {                                                                                                \
+        fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d) %s\n*******\n", __FILE__, __FUNCTION__, __LINE__, #expr); \
+        exit(1);                                                                                                  \
+    }
 
 /*
  * Macro:[ERROR]
  * print a custom error message and exit the program
  */
-#define ERROR(...)                                                                             \
-	fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d) ", __FILE__, __FUNCTION__, __LINE__); \
-	fprintf(stderr, __VA_ARGS__); \
-	fprintf(stderr, "\n*******\n"); \
-	exit(1);
-
+#define ERROR(...)                                                                        \
+    fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d) ", __FILE__, __FUNCTION__, __LINE__); \
+    fprintf(stderr, __VA_ARGS__);                                                         \
+    fprintf(stderr, "\n*******\n");                                                       \
+    exit(1);
 
 /*
  * Macro:[ASSERTM]
  * shortcut to evaluate an expression, works the same way as ASSERT macro
  * but also prints a custom message
  */
-#define ASSERTM(expr, msg)                                                                     \
-	if (!(expr))                                                                               \
-	{                                                                                          \
-		fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, msg); \
-		exit(1);                                                                               \
-	}
+#define ASSERTM(expr, msg)                                                                               \
+    if (!(expr)) {                                                                                       \
+        fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d) %s\n", __FILE__, __FUNCTION__, __LINE__, #expr); \
+        fprintf(stderr, "\n%s!!\n", #msg);                                                               \
+        exit(1);                                                                                         \
+    }
 
 /*
  * Macro:[FREE]
@@ -106,76 +97,66 @@
  * and catch double free
  */
 #define FREE(expr)   \
-	if (expr)        \
-	{                \
-		free(expr);  \
-		expr = NULL; \
-	}                \
-	// fprintf(stderr, "\n\n*******\n[FREEING NULL MEMORY](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr);
+    if (expr) {      \
+        free(expr);  \
+        expr = NULL; \
+    }                \
+    // fprintf(stderr, "\n\n*******\n[FREEING NULL MEMORY](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr);
 
-#define FREE2(expr, n)                   \
-	if (expr)                            \
-	{                                    \
-		for (int i = 0; i < (int)n; i++) \
-		{                                \
-			free(expr[i]);               \
-			expr[i] = NULL;              \
-		}                                \
-		free(expr);                      \
-		expr = NULL;                     \
-	}
+#define FREE2(expr, n)                     \
+    if (expr) {                            \
+        for (int i = 0; i < (int)n; i++) { \
+            free(expr[i]);                 \
+            expr[i] = NULL;                \
+        }                                  \
+        free(expr);                        \
+        expr = NULL;                       \
+    }
 
 #define DELETE(expr) \
-	if (expr)        \
-	{                \
-		delete expr; \
-		expr = NULL; \
-	}
+    if (expr) {      \
+        delete expr; \
+        expr = NULL; \
+    }
 
 /*
  * Macro:[FCLOSE]
  * shortcut to check if file is open and close it
  */
 #define FCLOSE(expr)                                                                                 \
-	if (expr)                                                                                        \
-	{                                                                                                \
-		if (fclose(expr) != 0)                                                                       \
-		{                                                                                            \
-			fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr); \
-			exit(1);                                                                                 \
-		};                                                                                           \
-		expr = NULL;                                                                                 \
-	}
+    if (expr) {                                                                                      \
+        if (fclose(expr) != 0) {                                                                     \
+            fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr); \
+            exit(1);                                                                                 \
+        };                                                                                           \
+        expr = NULL;                                                                                 \
+    }
 
 /*
  * Macro:[BGZCLOSE]
  * shortcut to check if bgzFile is open and close it
  */
 #define BGZCLOSE(expr)                                                                               \
-	if (expr)                                                                                        \
-	{                                                                                                \
-		if (bgzf_close(expr) != 0)                                                                   \
-		{                                                                                            \
-			fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr); \
-			exit(1);                                                                                 \
-		};                                                                                           \
-		expr = NULL;                                                                                 \
-	}
+    if (expr) {                                                                                      \
+        if (bgzf_close(expr) != 0) {                                                                 \
+            fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr); \
+            exit(1);                                                                                 \
+        };                                                                                           \
+        expr = NULL;                                                                                 \
+    }
 
 /*
  * Macro:[GZCLOSE]
  * shortcut to check if gzFile is open and close it
  */
 #define GZCLOSE(expr)                                                                                \
-	if (expr)                                                                                        \
-	{                                                                                                \
-		if (gzclose(expr) != Z_OK)                                                                   \
-		{                                                                                            \
-			fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr); \
-			exit(1);                                                                                 \
-		};                                                                                           \
-		expr = Z_NULL;                                                                               \
-	}
+    if (expr) {                                                                                      \
+        if (gzclose(expr) != Z_OK) {                                                                 \
+            fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr); \
+            exit(1);                                                                                 \
+        };                                                                                           \
+        expr = Z_NULL;                                                                               \
+    }
 
 /* -> BIT MANIPULATION MACROS ------------------------------------------------*/
 
@@ -188,12 +169,11 @@
  */
 // #define BITSET(x, bit) ((x) |= (1ULL << (bit)))
 #define BITSET(x, bit)                                      \
-	if ((bit) < 0 || (bit) >= 64)                           \
-	{                                                       \
-		fprintf(stderr, "Invalid bit number: %d\n", (bit)); \
-		exit(1);                                            \
-	}                                                       \
-	(x) |= (1ULL << (bit));
+    if ((bit) < 0 || (bit) >= 64) {                         \
+        fprintf(stderr, "Invalid bit number: %d\n", (bit)); \
+        exit(1);                                            \
+    }                                                       \
+    (x) |= (1ULL << (bit));
 
 /* Macro:[BITTOGGLE]
  * toggle a specific bit in x
@@ -295,7 +275,6 @@
 #define MAXDIG_PER_HLEVEL 2
 #define MAXSIZE_HLEVEL 100
 
-
 /*
  * Macro:[DBL_MAXDIG10]
  * Defines the maximum number of decimal digits that can be represented by a
@@ -330,20 +309,18 @@ int find_n_given_nC2(int nC2_res);
 /* ENUMERATIONS ============================================================= */
 
 // output file compression types
-enum OUTFC
-{
-	NONE, // no compression [0]
-	GZ,	  // gzip [1]
-	BBGZ, // bgzip (binary) [2]
+enum OUTFC {
+    NONE,  // no compression [0]
+    GZ,    // gzip [1]
+    BBGZ,  // bgzip (binary) [2]
 };
 
 // input file types
-enum INFT
-{
-	IN_VCF,
-	IN_DM,
-	IN_JGCD,
-	IN_DXY,
+enum INFT {
+    IN_VCF,
+    IN_DM,
+    IN_JGCD,
+    IN_DXY,
 };
 
 // TODO maybe use
@@ -353,7 +330,6 @@ enum INFT
 // // then if(pars->inFileType & IN_VCF) ...
 
 /* ========================================================================== */
-
 
 /// @brief strIsNumeric - check if string is numeric
 /// @param val          - string to be checked
