@@ -106,6 +106,9 @@ paramStruct *paramStruct_init(argStruct *args) {
 void paramStruct_destroy(paramStruct *pars) {
     FREE(pars->DATETIME);
 
+    FREE(pars->anc);
+    FREE(pars->der);
+
     delete pars;
 }
 

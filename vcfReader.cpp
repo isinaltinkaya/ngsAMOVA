@@ -65,20 +65,23 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
             a1 = pars->anc[site_i];
             a2 = pars->der[site_i];
         } else {
+            // TODO this would only work with my simulated data, consider removing
             // reference allele
             a1 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[0][0]];
 
-            // alternative allele
+            // alternative allele 1
             a2 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[1][0]];
+            ASSERT(a1 != a2);
         }
 
         // fprintf(stderr, "a1: %c, a2: %c\n", vcfd->bcf->d.allele[0][0], vcfd->bcf->d.allele[1][0]);
 
         for (int indi = 0; indi < pars->nInd; indi++) {
+            // 3x3 we save 3 gls so nGT = 3
             int indi3 = indi * vcfd->nGT;
 
             if (isnan(lgl.data[(10 * indi) + 0])) {
-                // if only use sites shared across all individuals; skip site when you first encounter nan
+                // if only use sites shared across all individuals (minInd 0); skip site when you first encounter nan
                 if (args->minInd == 0) {
                     return 1;
                 } else {
@@ -123,6 +126,7 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
                         cmbArr[pidx]++;
                     }
                 }
+                // TODO can this prev and latter check be checkin stuff twice?
 
                 vcfd->lngl[site_i][indi3 + 0] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a1)]);
                 vcfd->lngl[site_i][indi3 + 1] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a2)]);
@@ -138,8 +142,27 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
     return 0;
 }
 
-int get_JointGenoDist_GT(vcfData *vcfd, paramStruct *pars, argStruct *args) {
-    int nInd = pars->nInd;
+int get_JointGenoDist_GT(const size_t site_i, vcfData *vcfd, paramStruct *pars, argStruct *args) {
+    const int nInd = pars->nInd;
+
+    char a1;
+    char a2;
+    if (pars->ancder_nSites > 0) {
+        a1 = bcf_allele_charToInt[pars->anc[site_i]];
+        a2 = bcf_allele_charToInt[pars->der[site_i]];
+
+    } else {
+        // TODO this would only work with my simulated data, consider removing
+        a1 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[0][0]];
+        a2 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[1][0]];
+        ASSERT(a1 != a2);
+    }
+
+    // ACGT
+    int ancder_lut[4] = {-1, -1, -1, -1};
+    ancder_lut[a1] = 0;  // major/ancestral
+    ancder_lut[a2] = 1;  // minor/derived
+    // rest is -1 == not ancestral or derived
 
     get_data<int32_t> gt;
     gt.n = bcf_get_genotypes(vcfd->hdr, vcfd->bcf, &gt.data, &gt.size_e);
@@ -147,62 +170,102 @@ int get_JointGenoDist_GT(vcfData *vcfd, paramStruct *pars, argStruct *args) {
     gt.ploidy = gt.n / nInd;
 
     if (gt.n < 0) {
-        fprintf(stderr, "\n[ERROR](File reading)\tProblem with reading GT; will exit!\n\n");
-        exit(1);
+        ERROR("Problem with reading GT: GT not present.");
     }
 
     if (gt.ploidy != 2) {
-        fprintf(stderr, "ERROR:\n\nploidy: %d not supported\n", gt.ploidy);
-        exit(1);
+        ERROR("Ploidy %d not supported.", gt.ploidy);
     }
 
-    if (args->minInd > 2) {
-        int n_missing_ind = 0;
-        for (int indi = 0; indi < nInd; indi++) {
-            int32_t *ptri = gt.data + indi * gt.ploidy;
+    for (int i1 = 0; i1 < nInd; i1++) {
+        int32_t *ptr1 = gt.data + i1 * gt.ploidy;
 
-            for (int j = 0; j < gt.ploidy; j++) {
-                if (bcf_gt_is_missing(ptri[j])) {
-                    n_missing_ind++;
+        for (int j1 = 0; j1 < gt.ploidy; j1++) {
+            if (bcf_gt_is_missing(ptr1[j1])) {
+                // if only use sites shared across all individuals (minInd 0); skip site when you first encounter nan
+                if (args->minInd == 0) {
+                    return 1;
+                }
+                gt.n_missing_ind++;
+
+                if (nInd == gt.n_missing_ind) {
+                    return 1;
+                }
+
+                if (args->minInd != 2) {
+                    // skip site if minInd is defined and #non-missing inds=<nInd
+                    if ((nInd - gt.n_missing_ind) < args->minInd) {
+                        return 1;
+                    }
                 }
             }
         }
-        ASSERT((nInd - n_missing_ind) > args->minInd);
     }
 
     for (int i1 = 0; i1 < nInd - 1; i1++) {
+        int32_t *ptr1 = gt.data + i1 * gt.ploidy;
+
+        if (bcf_gt_is_missing(ptr1[0]) || bcf_gt_is_missing(ptr1[1])) {
+            continue;
+        }
+
+        // index in the bcf->d.allele array
+        int i1_1 = bcf_gt_allele(ptr1[0]);
+        int i1_2 = bcf_gt_allele(ptr1[1]);
+
+        // corresponding allele char
+        char *i1a1 = vcfd->bcf->d.allele[i1_1];
+        char *i1a2 = vcfd->bcf->d.allele[i1_2];
+
+        // index in ACGT
+        int i1a1i = bcf_allele_charToInt[*i1a1];
+        int i1a2i = bcf_allele_charToInt[*i1a2];
+
+        int i1a1_state = ancder_lut[i1a1i];
+        int i1a2_state = ancder_lut[i1a2i];
+
+        // allele in i1's genotype is not in the ancestral/derived allele list
+        if (i1a1_state == -1 && i1a2_state == -1) {
+            // skip i1
+            continue;
+        }
+        int i1_state_gt = i1a1_state + i1a2_state;
+
         for (int i2 = i1 + 1; i2 < nInd; i2++) {
-            int32_t *ptr1 = gt.data + i1 * gt.ploidy;
             int32_t *ptr2 = gt.data + i2 * gt.ploidy;
 
             // assuming ploidy=2
-            if (bcf_gt_is_missing(ptr1[0]) || bcf_gt_is_missing(ptr2[0]) || bcf_gt_is_missing(ptr1[1]) || bcf_gt_is_missing(ptr2[1])) {
-                // TODO check if freeing ptr1 ptr2 here is necessary
-                //  skip the pair
+            if (bcf_gt_is_missing(ptr2[0]) || bcf_gt_is_missing(ptr2[1])) {
                 continue;
             }
-            // int pair_idx = pars->lut_indsToIdx[i1][i2];
-            int pair_idx = nCk_idx(nInd, i1, i2);
 
-            int gti1 = 0;
-            int gti2 = 0;
+            // index in the bcf->d.allele array
+            int i2_1 = bcf_gt_allele(ptr2[0]);
+            int i2_2 = bcf_gt_allele(ptr2[1]);
 
-            // TODO support nonbinary
-            // using binary input genotypes from vcfd GT tag
-            // assume ploidy=2
-            for (int i = 0; i < 2; i++) {
-                int gt1 = bcf_gt_allele(ptr1[i]);
-                int gt2 = bcf_gt_allele(ptr2[i]);
-                ASSERT((gt1 >> 1) == 0);
-                ASSERT((gt2 >> 1) == 0);
+            // corresponding allele char
+            char *i2a1 = vcfd->bcf->d.allele[i2_1];
+            char *i2a2 = vcfd->bcf->d.allele[i2_2];
 
-                gti1 += gt1;
-                gti2 += gt2;
-                // TODO ancder
+            // index in ACGT
+            int i2a1i = bcf_allele_charToInt[*i2a1];
+            int i2a2i = bcf_allele_charToInt[*i2a2];
+
+            int i2a1_state = ancder_lut[i2a1i];
+            int i2a2_state = ancder_lut[i2a2i];
+
+            // allele in i2's genotype is not in the ancestral/derived allele list
+            if (i2a1_state == -1 && i2a2_state == -1) {
+                // skip i1
+                continue;
             }
 
-            vcfd->JointGenoCountDistGT[pair_idx][get_3x3_idx[gti1][gti2]]++;
-            vcfd->JointGenoCountDistGT[pair_idx][9]++;
+            int pair_idx = nCk_idx(nInd, i1, i2);
+
+            int i2_state_gt = i2a1_state + i2a2_state;
+
+            vcfd->JointGenoCountDistGT[pair_idx][get_3x3_idx[i1_state_gt][i2_state_gt]]++;
+            vcfd->JointGenoCountDistGT[pair_idx][9]++;  // #shared sites
         }
     }
 
@@ -588,6 +651,7 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 }
 
 void readSites_GT(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairSt) {
+    int skip_site = 0;
     /*
      * [START] Reading sites
      *
@@ -604,21 +668,23 @@ void readSites_GT(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
             exit(1);
         }
 
-        // TODO
-        // if (args->gl2gt == 1)
-        // {
-        // 	ASSERT(GLtoGT_1_JointGenoDist(vcfd, pars, args) == 0);
-        // 	pars->nSites++;
-        // 	pars->totSites++;
-        // }
+        skip_site = get_JointGenoDist_GT(pars->nSites, vcfd, pars, args);
 
-        ASSERT(get_JointGenoDist_GT(vcfd, pars, args) == 0);
+        if (skip_site == 1) {
+            fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
+            pars->totSites++;
+
+            //  next loop will skip this and use the same site_i
+            FREE(vcfd->lngl[pars->nSites]);
+            continue;
+        }
+
         pars->nSites++;
         pars->totSites++;
     }
-    /*
-    [END] Read sites
-    */
+
+    vcfd->nSites = pars->nSites;
+    vcfd->totSites = pars->totSites;
 #if 0
 	fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",pars->nSites);
 	fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu) totSites:%d\n\n",pars->nSites,vcfd->bcf->pos,vcfd->bcf->pos+1,pars->totSites);
@@ -782,9 +848,12 @@ void vcfData::_print() {
 int vcfData::records_next() {
     int ret = -42;
 
+    // at least BCF_UN_STR unpack is needed to use bcf->d.allele with bcf_get_genotypes
+
     if (NULL == itr) {
         // no region specified
         ret = bcf_read(in_fp, hdr, bcf);
+        bcf_unpack(bcf, BCF_UN_ALL);
     } else {
         // region reading using iterator
         ret = bcf_itr_next(in_fp, itr, bcf);
@@ -796,8 +865,7 @@ int vcfData::records_next() {
         // 	exit(1);
         // }
 
-        // TODO unpack?
-        //  bcf_unpack(bcf, BCF_UN_ALL);
+        bcf_unpack(bcf, BCF_UN_ALL);
     }
 
     if (-1 == ret) {

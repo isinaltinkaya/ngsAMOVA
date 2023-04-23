@@ -17,7 +17,7 @@ struct blobStruct;
 
 extern const int get_3x3_idx[3][3];
 
-extern const int bcf_allele_c3arToInt[256];
+extern const int bcf_allele_charToInt[256];
 
 int bcf_alleles_get_gtidx(int a1, int a2);
 
@@ -121,8 +121,9 @@ struct get_data {
     int size_e = 0;
     int n = 0;
     int n_missing_ind = 0;
-    int ploidy = 0;
 
+    // TODO nvalues vs ploidy
+    int ploidy = 0;
     int n_values = 0;
 
     T &operator[](unsigned i) {
@@ -145,7 +146,7 @@ void readSites_GT(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 
 int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairs);
 
-int get_JointGenoDist_GT(vcfData *vcf, paramStruct *pars, argStruct *args);
+int get_JointGenoDist_GT(const size_t site_i, vcfData *vcf, paramStruct *pars, argStruct *args);
 
 int GLtoGT_1_JointGenoDist(vcfData *vcf, paramStruct *pars, argStruct *args);
 
