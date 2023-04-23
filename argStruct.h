@@ -163,7 +163,7 @@ struct argStruct {
     char *in_jgpd_fn = NULL;  // TODO
     char *in_dxy_fn = NULL;
 
-    char *out_fn = NULL;
+    char *out_fnp = NULL;
 
     char *in_region = NULL;
     char *in_regions_tab_fn = NULL;
@@ -191,7 +191,7 @@ struct argStruct {
     int printJointGenoCountDist = 0;
     int printJointGenoProbDist = 0;
     int printDxy = 0;
-    int printDev = 0;
+    int printBlocksTab = 0;
 
     int squareDistance = 1;
 
@@ -208,6 +208,7 @@ struct argStruct {
     int gl2gt = -1;
     int windowSize = 0;
     int *keyCols = NULL;
+    int printDev = 0;
 };
 
 //

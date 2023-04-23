@@ -54,6 +54,8 @@ struct blobStruct {
     void addBlock();
 
     void _print();
+
+    void print(IO::outputStruct *out_dm_fs);
 };
 
 // blobStruct *blobStruct_get(vcfData *vcf, argStruct *args);

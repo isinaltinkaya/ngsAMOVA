@@ -3,7 +3,9 @@
 #include "io.h"
 #include "paramStruct.h"
 
-// default: 0 (verbose mode off)
+// TODO use tclap?
+
+//  default: 0 (verbose mode off)
 u_char VERBOSE = 0;
 
 // TODO check multiple of same argument
@@ -93,7 +95,7 @@ argStruct *argStruct_get(int argc, char **argv) {
         //  then extract prefix from that and use as prefix for other outputs as well
         //  this is a useful feature for snakemake etc
         else if ((strcasecmp("--output", arv) == 0) || (strcasecmp("-out", arv) == 0) || (strcasecmp("-o", arv) == 0)) {
-            args->out_fn = strdup(val);
+            args->out_fnp = strdup(val);
         }
 
         // #################################################################
@@ -118,6 +120,8 @@ argStruct *argStruct_get(int argc, char **argv) {
         //   --printAmovaTable/-pAT <int> : print AMOVA table
         //   --printDxy/-pDxy <int> : print Dxy
         //   --printDistanceMatrix/-pDM <int> : print distance matrix
+        //   --printBlocksTab <0|1> : print tab-delimited blocks file defining the start and end
+        //      positions of each block (default: 0 = do not print, 1 = print)
         //
         // The following compression levels are available:
         //   0 : no compression
@@ -139,6 +143,8 @@ argStruct *argStruct_get(int argc, char **argv) {
             args->printDxy = atoi(val);
         } else if (strcasecmp("--printDistanceMatrix", arv) == 0 || strcasecmp("-pDM", arv) == 0) {
             args->printMatrix = atoi(val);
+        } else if (strcasecmp("--printBlocksTab", arv) == 0) {
+            args->printBlocksTab = atoi(val);
         }
 
         // #######################################################################
@@ -426,9 +432,9 @@ argStruct *argStruct_get(int argc, char **argv) {
         exit(1);
     }
 
-    if (args->out_fn == NULL) {
-        args->out_fn = strdup("amovaput");
-        fprintf(stderr, "\n\t-> -out <output_prefix> not set; will use %s as a prefix for output files.\n", args->out_fn);
+    if (args->out_fnp == NULL) {
+        args->out_fnp = strdup("amovaput");
+        fprintf(stderr, "\n\t-> -out <output_prefix> not set; will use %s as a prefix for output files.\n", args->out_fnp);
     }
 
     if (args->in_mtd_fn == NULL) {
@@ -594,6 +600,15 @@ argStruct *argStruct_get(int argc, char **argv) {
 
     // TODO using regions with block definitions
     // TODO handle empty blocks
+    if (args->blockSize > 0 && args->in_blocks_tab_fn != NULL) {
+        fprintf(stderr, "\n[ERROR]\t-> `--block-size` cannot be used with `--in-blocks-tab`.\n");
+        exit(1);
+    }
+    if (args->blockSize > 0 && args->in_blocks_bed_fn != NULL) {
+        fprintf(stderr, "\n[ERROR]\t-> `--block-size` cannot be used with `--in-blocks-bed`.\n");
+        exit(1);
+    }
+
     if (args->in_blocks_tab_fn != NULL || args->in_blocks_bed_fn != NULL) {
         if (args->in_regions_tab_fn != NULL || args->in_regions_bed_fn != NULL || args->in_region != NULL) {
             fprintf(stderr, "\n[ERROR]\tBlock definitions cannot be used with region definitions, yet.\n");
@@ -611,7 +626,7 @@ void argStruct_destroy(argStruct *args) {
     FREE(args->in_jgcd_fn);
     FREE(args->in_jgpd_fn);
     FREE(args->in_dxy_fn);
-    FREE(args->out_fn);
+    FREE(args->out_fnp);
     FREE(args->formula);
     FREE(args->keyCols);
     FREE(args->doDxyStr);
@@ -638,7 +653,7 @@ void argStruct_print(FILE *fp, argStruct *args) {
 
     // TODO use lut to store names and values and associatons (e.g. tole maxiter etc assoc with doEM)
     // and if -formula is used, run formulaStruct_get()
-    fprintf(fp, "\nngsAMOVA -doAMOVA %d -i %s -out %s -minInd %d -printMatrix %d -m %s -doDist %d -nThreads %d", args->doAMOVA, args->in_vcf_fn, args->out_fn, args->minInd, args->printMatrix, args->in_mtd_fn, args->doDist, args->nThreads);
+    fprintf(fp, "\nngsAMOVA -doAMOVA %d -i %s -out %s -minInd %d -printMatrix %d -m %s -doDist %d -nThreads %d", args->doAMOVA, args->in_vcf_fn, args->out_fnp, args->minInd, args->printMatrix, args->in_mtd_fn, args->doDist, args->nThreads);
     if (args->doEM != 0) {
         fprintf(fp, " -tole %e ", args->tole);
         fprintf(fp, " -doEM %d ", args->doEM);
@@ -646,7 +661,7 @@ void argStruct_print(FILE *fp, argStruct *args) {
     }
     if (args->nBootstraps > 0) {
         fprintf(fp, " --nBootstraps %d ", args->nBootstraps);
-        fprintf(fp, " --blockSize %d ", args->blockSize);
+        fprintf(fp, " --block-size %d ", args->blockSize);
         fprintf(fp, " --seed %d ", args->seed);
     }
     fprintf(fp, "\n");
