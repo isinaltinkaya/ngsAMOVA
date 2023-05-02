@@ -25,3 +25,12 @@ You can then use the tree object to plot the tree using the `plot` function in t
 plot(tree)
 ```
 
+___
+
+
+# Misc
+## Get block size parameter from ngsLD output
+
+```sh
+Rscript get_block_size.R --ld_files ld_file_list --fit_level 3 --seed 42 --decay_threshold 99
+```
