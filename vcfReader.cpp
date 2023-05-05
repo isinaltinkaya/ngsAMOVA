@@ -3,7 +3,7 @@
 #include "dataStructs.h"
 
 // from angsd analysisFunction.cpp
-extern const int bcf_allele_charToInt[256] = {
+extern const int bcf_allele_charToInd[(int)256] = {
     0, 1, 2, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,  // 15
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,  // 31
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,  // 47
@@ -27,11 +27,11 @@ int bcf_alleles_get_gtidx(int a1, int a2) {
 }
 
 int bcf_alleles_get_gtidx(char a1, char a2) {
-    return bcf_alleles2gt(bcf_allele_charToInt[(unsigned char)a1], bcf_allele_charToInt[(unsigned char)a2]);
+    return bcf_alleles2gt(bcf_allele_charToInd[(int)(unsigned char)a1], bcf_allele_charToInd[(int)(unsigned char)a2]);
 }
 
 int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2) {
-    return bcf_alleles2gt(bcf_allele_charToInt[a1], bcf_allele_charToInt[a2]);
+    return bcf_alleles2gt(bcf_allele_charToInd[(int)a1], bcf_allele_charToInd[(int)a2]);
 }
 
 // return 1: skip site for all individuals
@@ -66,10 +66,10 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, argStruct 
         // if(1==args->isSim){
         // TODO this would only work with my simulated data, consider issim arg
         //     // reference allele
-        //     a1 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[0][0]];
+        //     a1 = bcf_allele_charToInd[(int)(unsigned char)vcfd->bcf->d.allele[0][0]];
 
         //     // alternative allele 1
-        //     a2 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[1][0]];
+        //     a2 = bcf_allele_charToInd[(int)(unsigned char)vcfd->bcf->d.allele[1][0]];
         //     ASSERT(a1 != a2);
         ////---------------------------------------------------
         // }
@@ -147,19 +147,19 @@ int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, pa
 
     ASSERT(pars->ancder_nSites[contig_i] > 0);  // TODO
     ASSERT(NULL != pars->anc[contig_i]);        // assume: ancderfile contains all contigs in vcf
-    const char a1 = bcf_allele_charToInt[pars->anc[contig_i][site_i]];
-    const char a2 = bcf_allele_charToInt[pars->der[contig_i][site_i]];
+    const char a1 = bcf_allele_charToInd[(int)pars->anc[contig_i][site_i]];
+    const char a2 = bcf_allele_charToInd[(int)pars->der[contig_i][site_i]];
 
     // // TODO this would only work with my simulated data, consider removing
     // see the same in get_jointgenodist_gl
-    // a1 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[0][0]];
-    // a2 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[1][0]];
+    // a1 = bcf_allele_charToInd[(int)(unsigned char)vcfd->bcf->d.allele[0][0]];
+    // a2 = bcf_allele_charToInd[(int)(unsigned char)vcfd->bcf->d.allele[1][0]];
     // ASSERT(a1 != a2);
 
     // ACGT
     int ancder_lut[4] = {-1, -1, -1, -1};
-    ancder_lut[a1] = 0;  // major/ancestral
-    ancder_lut[a2] = 1;  // minor/derived
+    ancder_lut[(int)a1] = 0;  // major/ancestral
+    ancder_lut[(int)a2] = 1;  // minor/derived
     // rest is -1 == not ancestral or derived
 
     get_data<int32_t> gt;
@@ -216,8 +216,8 @@ int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, pa
         char *i1a2 = vcfd->bcf->d.allele[i1_2];
 
         // index in ACGT
-        int i1a1i = bcf_allele_charToInt[*i1a1];
-        int i1a2i = bcf_allele_charToInt[*i1a2];
+        int i1a1i = bcf_allele_charToInd[(int)*i1a1];
+        int i1a2i = bcf_allele_charToInd[(int)*i1a2];
 
         int i1a1_state = ancder_lut[i1a1i];
         int i1a2_state = ancder_lut[i1a2i];
@@ -246,8 +246,8 @@ int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, pa
             char *i2a2 = vcfd->bcf->d.allele[i2_2];
 
             // index in ACGT
-            int i2a1i = bcf_allele_charToInt[*i2a1];
-            int i2a2i = bcf_allele_charToInt[*i2a2];
+            int i2a1i = bcf_allele_charToInd[(int)*i2a1];
+            int i2a2i = bcf_allele_charToInd[(int)*i2a2];
 
             int i2a1_state = ancder_lut[i2a1i];
             int i2a2_state = ancder_lut[i2a2i];
@@ -388,10 +388,6 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
     int contig_i = 0;
     int site_i = 0;
     char prev_contig[100];
-    pars->contigNames = (char **)malloc(vcfd->nContigs * sizeof(char *));
-    for (int i = 0; i < vcfd->nContigs; i++) {
-        pars->contigNames[i] = (char *)malloc(100 * sizeof(char));
-    }
 
     while (vcfd->records_next()) {
         if (vcfd->bcf->rlen != 1) {
@@ -418,7 +414,6 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
         if (0 != contig_i && 0 != strcmp(contig_id, prev_contig)) {
             strcpy(prev_contig, contig_id);
             ++contig_i;
-            strcpy(pars->contigNames[contig_i], contig_id);  // dragon
             if (contig_i >= vcfd->nContigs) {
                 ERROR("Number of contigs in the VCF file header is larger than the number of contigs in the VCF file");
             }
@@ -463,11 +458,6 @@ void readSites_GT(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 
     ASSERT(0 == pars->nSites);
     ASSERT(0 == pars->nContigs);
-
-    pars->contigNames = (char **)malloc(vcfd->nContigs * sizeof(char *));
-    for (int i = 0; i < vcfd->nContigs; i++) {
-        pars->contigNames[i] = (char *)malloc(100 * sizeof(char));  // dragon
-    }
 
     int contig_i = 0;
     int site_i = 0;

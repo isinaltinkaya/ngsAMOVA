@@ -79,8 +79,6 @@ struct paramStruct {
     size_t nSites;
     size_t totSites;  // total number of sites processed
 
-    char **contigNames = NULL;
-
     int nContigs;
 
     // \def ancder_nSites[nContigs]=nSites

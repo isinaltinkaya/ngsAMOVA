@@ -165,10 +165,17 @@ paramStruct *paramStruct_init(argStruct *args) {
 
 void paramStruct_destroy(paramStruct *pars) {
     FREE(pars->DATETIME);
+
+    for (int i = 0; i < pars->nContigs; ++i) {
+        FREE(pars->anc[i]);
+        FREE(pars->der[i]);
+    }
     FREE(pars->anc);
     FREE(pars->der);
 
     formulaStruct_destroy(pars->formula);
+
+    FREE(pars->ancder_nSites);
 
     delete pars;
 }
