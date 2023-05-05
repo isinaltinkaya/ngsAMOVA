@@ -22,14 +22,14 @@ ifeq ($(filter dev,$(MAKECMDGOALS)),dev)
 	CXXFLAGS  := -g -Wall
 endif
 
-DEV_VAL=$(shell grep "#define DEV [0,1]" dev.h | cut -d " " -f 3)
+DEV_VAL=$(shell grep "define DEV [0,1]" dev.h | cut -d " " -f 3)
 
 # - if DEV_MODE is already set to the desired value, do nothing; otherwise, change it in dev.h
 ifeq ($(DEV_VAL),$(DEV_MODE))
 $(info [INFO] No change in DEV_MODE)
 else
 $(info [INFO] Changing DEV_MODE)
-$(shell sed -i "s/#define DEV [0-1]/#define DEV $(DEV_MODE)/g" dev.h)
+$(shell sed -i "s/define DEV [0-1]/define DEV $(DEV_MODE)/g" dev.h)
 endif
 
 dev: all
