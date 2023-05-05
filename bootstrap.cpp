@@ -77,7 +77,7 @@ blobStruct *blobStruct_read_tab(const char *fn) {
         ASSERTM(blob->blocks[nBlocks]->len > 0, "Block length must be greater than 0.");
 
         ++nBlocks;
-        fprintf(stderr, "%s\t%d\t%d\n", chr, start_int, end_int);
+        // fprintf(stderr, "%s\t%d\t%d\n", chr, start_int, end_int);
     }
 
     ASSERT(blob->nBlocks == nBlocks);
@@ -134,7 +134,7 @@ blobStruct *blobStruct_read_bed(const char *fn) {
         ASSERTM(blob->blocks[nBlocks]->len > 0, "Block length must be greater than 0.");
 
         ++nBlocks;
-        fprintf(stderr, "%s\t%d\t%d\n", chr, start_int, end_int);
+        // fprintf(stderr, "%s\t%d\t%d\n", chr, start_int, end_int);
     }
 
     ASSERT(blob->nBlocks == nBlocks);

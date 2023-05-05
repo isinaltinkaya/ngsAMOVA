@@ -281,7 +281,7 @@ vcfData *vcfData_init(argStruct *args, paramStruct *pars) {
         exit(1);
     }
 
-    if (args->doEM == 1 || args->doAMOVA == 2) {
+    if (args->doEM == 1 || args->doAMOVA == 1) {
         vcfd->nGT = 3;
         vcfd->nJointClasses = vcfd->nGT * vcfd->nGT;
     }
@@ -307,13 +307,12 @@ vcfData *vcfData_init(argStruct *args, paramStruct *pars) {
     pars->nIndCmb = NC2_LUT[pars->nInd];
     vcfd->nIndCmb = pars->nIndCmb;
 
-    if (args->doEM == 1) {
+    if (1 == args->doDist) {
         // vcfd->lngl = (double **)malloc(vcfd->_lngl * sizeof(double *));
         vcfd->lngl_init(args->doEM);
         vcfd->init_JointGenoCountDistGL();
         vcfd->init_JointGenoProbDistGL();
-    }
-    if (args->doAMOVA == 2) {
+    } else if (2 == args->doDist) {
         vcfd->init_JointGenoCountDistGT();
     }
 
@@ -621,7 +620,7 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
         }
 
         // if cleared in the previous loop to skip the site, allocate memory again
-        if (vcfd->lngl[pars->nSites] == NULL) {
+        if (NULL == vcfd->lngl[pars->nSites]) {
             vcfd->lngl[pars->nSites] = (double *)malloc(pars->nInd * vcfd->nGT * sizeof(double));
             for (int indi = 0; indi < pars->nInd; indi++) {
                 int indi3 = indi * vcfd->nGT;

@@ -8,63 +8,23 @@
 
 /* FORWARD DECLARATIONS ----------------------------------------------------- */
 
-typedef struct formulaStruct formulaStruct;
 typedef struct pairStruct pairStruct;
 typedef struct distanceMatrixStruct distanceMatrixStruct;
 typedef struct threadStruct threadStruct;
 typedef struct metadataStruct metadataStruct;
+typedef struct vcfData vcfData;
 
+void setInputFileType(paramStruct *pars, int inFileType);
 /* -------------------------------------------------------------------------- */
 
+// prepare distance matrix using genotype likelihoods
+void get_distanceMatrix_GL(argStruct *args, paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt);
+// prepare distance matrix using genotypes
+void get_distanceMatrix_GT(argStruct *args, paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt);
 
 /// trim spaces from the beginning and end of a char* (inplace)
 /// @param str - char* to trim
 void trimSpaces(char *str);
-
-struct formulaStruct {
-    // @nTokens number of tokens in the formula
-    // e.g. formula: "Individual ~ Region/Population/Subpopulation"
-    // 		nTokens = 4
-    // 		corresponds to 3 hierarchical levels (Region, Population, Subpopulation)
-    // 		thus nTokens == nLevels + 1
-    int nTokens = 0;
-
-    // the formula in the raw text form as it is in the argument
-    // e.g. "Individual ~ Region/Population/Subpopulation"
-    char *formula = NULL;
-
-    // @formulaTokens
-    // array of tokens in the formula
-    // e.g. formula: "Individual ~ Region/Population/Subpopulation"
-    // 		formulaTokens = {"Individual","Region","Population","Subpopulation"}
-    char **formulaTokens;
-
-    // @formulaTokenIdx[nTokens]
-    //
-    // maps index of the token in formula to index of the corresponding column in metadata file
-    // formulaTokenIdx[indexOfTokenInFormula] = indexOfTokenInMetadataFile
-    //
-    // e.g. metadata file header: "Individual,Population,Etc,Region,Subpopulation"
-    // 		formula: "Individual ~ Region/Population/Subpopulation"
-    // 		formulaTokenIdx = {0,3,1,2}
-    int *formulaTokenIdx;
-
-    void print(FILE *fp);
-
-    /// match the given metadata token with formula tokens
-    /// @param mtd_tok 		- metadata token to match
-    /// @param mtd_col_idx	- index of the metadata column containing mtd_tok
-    /// @return int			- index if found any match, -1 otherwise
-    int setFormulaTokenIdx(const char *mtd_tok, const int mtd_col_idx);
-
-    // TODO deprec
-    //  @brief shrink - shrink the size of the arrays defined with default max values to the actual size needed
-    void shrink();
-};
-
-formulaStruct *formulaStruct_get(const char *formula);
-void formulaStruct_validate(formulaStruct *fos, const int nLevels);
-void formulaStruct_destroy(formulaStruct *fos);
 
 struct pairStruct {
     int idx;  // index of the pair
@@ -163,16 +123,23 @@ struct distanceMatrixStruct {
     distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquared_, char **itemLabels_);
     ~distanceMatrixStruct();
 
-    void print(IO::outputStruct *out_dm_fs);
+    void print(int printMatrix, IO::outputStruct *out_dm_fs);
 
     void set_item_labels(char **indNames);
+    // TODO print in csv format
+    //  for (int i1=0; i1<metadataSt->nInd-1; i1++)
+    //  {
+    //  	for (int i2=i1+1; i2<metadataSt->nInd; i2++)
+    //  	{
+    //  		int pidx = nCk_idx(metadataSt->nInd, i1, i2);
+    //  		fprintf(stdout,"%d,%d,%d,", i1,i2,pidx);
+    //  		fprintf(stdout,"%.*f\n",DBL_MAXDIG10, dMS[0]->M[pidx]);
+    //  	}
+    //  }
 };
 
 // read distance matrix from distance matrix csv file
 distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *args);
-
-// prepare distance matrix using genotype likelihoods and EM algorithm
-distanceMatrixStruct *distanceMatrixStruct_get(formulaStruct *FORMULA, paramStruct *pars, argStruct *args);
 
 struct threadStruct {
     pairStruct *pair;
@@ -446,7 +413,7 @@ struct metadataStruct {
     int whichLevel1(const char *levelName);
 };
 
-metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars, formulaStruct *fos);
+metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars);
 void metadataStruct_destroy(metadataStruct *mtd);
 
 #endif  // __DATA_STRUCTS__

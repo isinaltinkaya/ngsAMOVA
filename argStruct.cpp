@@ -1,9 +1,6 @@
 #include "argStruct.h"
 
 #include "io.h"
-#include "paramStruct.h"
-
-// TODO use tclap?
 
 //  default: 0 (verbose mode off)
 u_char VERBOSE = 0;
@@ -44,7 +41,7 @@ argStruct *argStruct_get(int argc, char **argv) {
         //   -doEM <int> : perform EM optimization
         //   -doDxy <int> : estimate Dxy
         //   -doNJ <int> : do neighbor-joining
-        //   -doDist <int> : calculate pairwise distances
+        //   -doDist <int> : estimate pairwise distance matrix
 
         if (strcasecmp("-doAMOVA", arv) == 0) {
             args->doAMOVA = atoi(val);
@@ -59,6 +56,12 @@ argStruct *argStruct_get(int argc, char **argv) {
             }
         } else if ((strcasecmp("-doNeighborJoining", arv) == 0) || (strcasecmp("-doNJ", arv) == 0)) {
             args->doNJ = atoi(val);
+
+            // -doDist      default: 0
+            //              0: do not estimate distance matrix
+            //              1: estimate distance matrix from genotype likelihoods
+            //              2: estimate distance matrix from genotypes
+            //              3: read distance matrix from file
         } else if (strcasecmp("-doDist", arv) == 0) {
             args->doDist = atoi(val);
         }
@@ -86,8 +89,6 @@ argStruct *argStruct_get(int argc, char **argv) {
             args->in_dm_fn = strdup(val);
         } else if ((strcasecmp("--in-dxy", arv) == 0)) {
             args->in_dxy_fn = strdup(val);
-        } else if (strcasecmp("--in-jgcd", arv) == 0) {
-            args->in_jgcd_fn = strdup(val);
         }
 
         // TODO if -out has full output name and not prefix, detect it
@@ -118,7 +119,6 @@ argStruct *argStruct_get(int argc, char **argv) {
         //   --printJointGenoCountDist/-pJGCD <int> : print joint genotype count distribution
         //   --printJointGenoProbDist/-pJGPD <int> : print joint genotype probability distribution
         //   --printAmovaTable/-pAT <int> : print AMOVA table
-        //   --printDxy/-pDxy <int> : print Dxy
         //   --printDistanceMatrix/-pDM <int> : print distance matrix
         //   --printBlocksTab <0|1> : print tab-delimited blocks file defining the start and end
         //      positions of each block (default: 0 = do not print, 1 = print)
@@ -139,10 +139,8 @@ argStruct *argStruct_get(int argc, char **argv) {
             args->printJointGenoProbDist = atoi(val);
         } else if ((strcasecmp("--printAmovaTable", arv) == 0) || (strcasecmp("--printAT", arv) == 0) || (strcasecmp("-pAT", arv) == 0)) {
             args->printAmovaTable = atoi(val);
-        } else if ((strcasecmp("--printDxy", arv) == 0) || (strcasecmp("-pDxy", arv) == 0)) {
-            args->printDxy = atoi(val);
         } else if (strcasecmp("--printDistanceMatrix", arv) == 0 || strcasecmp("-pDM", arv) == 0) {
-            args->printMatrix = atoi(val);
+            args->printDistanceMatrix = atoi(val);
         } else if (strcasecmp("--printBlocksTab", arv) == 0) {
             args->printBlocksTab = atoi(val);
         }
@@ -287,23 +285,24 @@ argStruct *argStruct_get(int argc, char **argv) {
 
         else if (strcasecmp("--blocks-tab", arv) == 0) {
             args->in_blocks_tab_fn = strdup(val);
-        }
-
-        else if (strcasecmp("--blocks-bed", arv) == 0) {
+        } else if (strcasecmp("--blocks-bed", arv) == 0) {
             args->in_blocks_bed_fn = strdup(val);
-        }
 
-        // #####################################
-        // #    ARGUMENTS [--long-form/-sf]    #
-        // #####################################
-        //
-        // Use argument commands to specify the parameters to be used in the analyses.
-        // Argument commands are of the form `--long-form <int>` or `-sf <int>`
-        //   where long form of the argument starts with double dash `--` and separated by hyphen `-`
-        //   and short form of the argument starts with single dash `-` and is typically the first letter(s) of the long form
-        //
+            // #####################################
+            // #    ARGUMENTS [--long-form/-sf]    #
+            // #####################################
+            //
+            // Use argument commands to specify the parameters to be used in the analyses.
+            // Argument commands are of the form `--long-form <int>` or `-sf <int>`
+            //   where long form of the argument starts with double dash `--` and separated by hyphen `-`
+            //   and short form of the argument starts with single dash `-` and is typically the first letter(s) of the long form
+            //
 
-        else if (strcasecmp("--seed", arv) == 0) {
+        } else if (strcasecmp("--dxy-groups", arv) == 0) {
+            args->dxyGroups = strdup(val);
+        } else if (strcasecmp("--dxy-levels", arv) == 0) {
+            args->dxyLevels = strdup(val);
+        } else if (strcasecmp("--seed", arv) == 0) {
             args->seed = atoi(val);
         } else if (strcasecmp("--metadata", arv) == 0 || strcasecmp("-m", arv) == 0) {
             args->in_mtd_fn = strdup(val);
@@ -372,15 +371,10 @@ argStruct *argStruct_get(int argc, char **argv) {
         else if (strcasecmp("--minInd", arv) == 0)
             args->minInd = atoi(val);
 
-        else if (strcasecmp("--square_distance", arv) == 0)
-            args->squareDistance = atoi(val);
-        else if (strcasecmp("-sqDist", arv) == 0)
-            args->squareDistance = atoi(val);
-
         else if (strcasecmp("--mEmIter", arv) == 0)
             args->maxEmIter = atoi(val);
 
-        else if (strcasecmp("--tole", arv) == 0)
+        else if (strcasecmp("--em-tole", arv) == 0)
             args->tole = atof(val);
 
         else if (strcasecmp("--gl2gt", arv) == 0)
@@ -392,13 +386,10 @@ argStruct *argStruct_get(int argc, char **argv) {
 
         else if ((strcasecmp("-nb", arv) == 0) || (strcasecmp("--nBootstraps", arv) == 0)) {
             args->nBootstraps = (int)atof(val);
-        } else if (strcasecmp("-tole", arv) == 0)
-            args->tole = atof(val);
+        }
 
         else if (strcasecmp("-minInd", arv) == 0)
             args->minInd = atoi(val);
-        else if (strcasecmp("-maxIter", arv) == 0)
-            args->maxEmIter = atoi(val);
         else if (strcasecmp("--maxEmIter", arv) == 0)
             args->maxEmIter = atoi(val);
         else if (strcasecmp("-gl2gt", arv) == 0)
@@ -418,158 +409,66 @@ argStruct *argStruct_get(int argc, char **argv) {
         ++argv;
     }
 
-    // TODO add 'requires' arg dependency checker, some libs do it like tclap
+    args->check_arg_dependencies();
 
-    if (args->minInd == 0) {
+    return args;
+}
+
+void argStruct::check_arg_dependencies() {
+    if (minInd == 0) {
         fprintf(stderr, "\n\t-> -minInd 0; will use sites with data for all individuals.\n");
-    } else if (args->minInd == -1) {
+    } else if (minInd == -1) {
         fprintf(stderr, "\n\t-> -minInd not set; will use sites that is nonmissing for both individuals in a pair.\n");
-        args->minInd = 2;
-    } else if (args->minInd == 2) {
+        minInd = 2;
+    } else if (minInd == 2) {
         fprintf(stderr, "\n\t-> -minInd 2; will use sites that is nonmissing for both individuals in a pair.\n");
-    } else if (args->minInd == 1 || args->minInd < -1) {
+    } else if (minInd == 1 || minInd < -1) {
         fprintf(stderr, "\n[ERROR]\tMinimum value allowed for minInd is 2.\n");
         exit(1);
     }
 
-    if (args->out_fnp == NULL) {
-        args->out_fnp = strdup("amovaput");
-        fprintf(stderr, "\n\t-> -out <output_prefix> not set; will use %s as a prefix for output files.\n", args->out_fnp);
+    if (out_fnp == NULL) {
+        out_fnp = strdup("amovaput");
+        fprintf(stderr, "\n\t-> -out <output_prefix> not set; will use %s as a prefix for output files.\n", out_fnp);
     }
 
-    if (args->in_mtd_fn == NULL) {
-        if (args->doAMOVA != 0) {
-            fprintf(stderr, "\n[ERROR]\tMust supply -m <Metadata_file> for performing AMOVA.\n");
-            exit(1);
-        }
-    } else {
-        if (args->formula == NULL) {
-            fprintf(stderr, "\nAMOVA formula not defined, will use all columns in Metadata file %s assuming they are ordered as hierarchical levels.\n", args->in_mtd_fn);
-        } else {
-            fprintf(stderr, "\nAMOVA formula is defined as %s; will use the formula to define hierarchical structure in Metadata file %s.\n", args->formula, args->in_mtd_fn);
-        }
-    }
-
-    if (args->doDist == 1) {
-        fprintf(stderr, "\n\t-> -doDist is set to 1, will use Dij (1-Sij) dissimilarity index as distance measure.\n");
-    }
-
-    if (args->squareDistance == 1) {
-        fprintf(stderr, "\n\t-> -do_square_distance is set to 1, will square the distance measure (Dij^2).\n");
-    } else if (args->squareDistance == 0) {
-        fprintf(stderr, "\n\t-> -do_square_distance is set to 0, will not square the distance measure.\n");
-    } else {
-        fprintf(stderr, "\n[ERROR]\t-do_square_distance %d is not available.\n", args->squareDistance);
-        exit(1);
-    }
-
-    // TODO handle this better
-    if (args->in_dm_fn != NULL) {
-        args->squareDistance = 0;
-    }
-
-    if (args->in_vcf_fn == NULL && args->in_dm_fn == NULL) {
+    if (in_vcf_fn == NULL && in_dm_fn == NULL) {
         fprintf(stderr, "\n[ERROR] Must supply either --in-vcf <VCF_file> or --in-dm <Distance_matrix_file>.\n");
         exit(1);
-    } else if (args->in_vcf_fn != NULL && args->in_dm_fn != NULL) {
-        fprintf(stderr, "\n[ERROR] Cannot use --in-vcf %s and --in-dm %s at the same time.\n", args->in_vcf_fn, args->in_dm_fn);
+    } else if (in_vcf_fn != NULL && in_dm_fn != NULL) {
+        fprintf(stderr, "\n[ERROR] Cannot use --in-vcf %s and --in-dm %s at the same time.\n", in_vcf_fn, in_dm_fn);
         exit(1);
     }
 
-    if (args->printMatrix != 0) {
-        fprintf(stderr, "\n[INFO]\t-> -printMatrix %d; will print distance matrix\n", args->printMatrix);
+    if (printDistanceMatrix != 0) {
+        fprintf(stderr, "\n[INFO]\t-> -printMatrix %d; will print distance matrix\n", printDistanceMatrix);
     }
 
-    switch (args->doAMOVA) {
-    case 0: {
-        fprintf(stderr, "\n\t-> -doAMOVA is set to 0, will not perform AMOVA.\n");
-
-        if (args->doEM == 1) {
-            if (args->in_dm_fn != NULL) {
-                fprintf(stderr, "\n[ERROR] Cannot use -in_dm %s with -doEM 1.\n", args->in_dm_fn);
-                exit(1);
-            }
-            if (args->in_vcf_fn == NULL) {
-                fprintf(stderr, "\n[ERROR] Must supply -i <input_file> for -doEM 1.\n");
-                exit(1);
-            }
-
-            fprintf(stderr, "\n\t-> -doEM is set to 1, will use EM algorithm to estimate parameters.\n");
-        }
-
-        break;
-    }
-    case 1:  // doAMOVA 1
-    {
-        if (args->doEM == 0 && args->in_dm_fn == NULL) {
-            fprintf(stderr, "\n[ERROR]\t-doAMOVA %i requires -doEM 1.\n", args->doAMOVA);
-            exit(1);
-        }
-
-        if (args->in_dm_fn != NULL) {
-            fprintf(stderr, "\n-> --in-dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
-        } else {
-            fprintf(stderr, "\n[INFO]\t-> -doAMOVA 1; will use 10 genotype likelihoods from VCF file GL field.\n");
-        }
-        break;
-    }
-    case 2: {
-        if (args->in_dm_fn != NULL) {
-            fprintf(stderr, "\n-> --in-dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
-            args->doAMOVA = 1;  // 1: use dm input or gle tag in vcf
-        } else {
-            fprintf(stderr, "\n[INFO]\t-> -doAMOVA 2; will use genotypes from VCF file GT field.\n");
-        }
-
-        if (args->doEM != 0) {
-            fprintf(stderr, "\n[ERROR]\t-doAMOVA %i cannot be used with -doEM %i.\n", args->doAMOVA, args->doEM);
-            exit(1);
-        }
-        break;
-    }
-    case 3: {
-        if (args->doEM == 0) {
-            fprintf(stderr, "\n[ERROR]\t-doAMOVA %i requires -doEM 1.\n", args->doAMOVA);
-            exit(1);
-        }
-
-        if (args->in_dm_fn != NULL) {
-            fprintf(stderr, "\n-> --in-dm %s is set, will use distance matrix file as data.\n", args->in_dm_fn);
-            args->doAMOVA = 1;  // 1: use dm input or gle tag in vcf
-        } else {
-            fprintf(stderr, "\n[INFO]\t-> -doAMOVA 3; will do both -doAMOVA 1 and -doAMOVA 2.\n");
-        }
-        break;
+    // if data is from in_dm_fn (distance matrix file) can only use -doDist 3
+    if (NULL != in_dm_fn && doDist != 3) {
+        ERROR("Cannot use -doDist %d with -in_dm %s.", doDist, in_dm_fn);
     }
 
-    // ---------------------- doAMOVA NOT in {0,1,2,3} ---------------------- //
-    default: {
-        fprintf(stderr, "\n[ERROR]\t-> -doAMOVA %d not recognized\n", args->doAMOVA);
-        exit(1);
-        break;
-    }
-    }
-
-    if (args->seed == -1) {
-        args->seed = time(NULL);
-        fprintf(stderr, "\n[INFO]\tSeed is not set, will use current time as seed for random number generator: %d.\n", args->seed);
-        srand48(args->seed);
+    if (seed == -1) {
+        seed = time(NULL);
+        fprintf(stderr, "\n[INFO]\tSeed is not set, will use current time as seed for random number generator: %d.\n", seed);
+        srand48(seed);
     } else {
-        fprintf(stderr, "\n[INFO]\tSeed is set to %d, will use this seed for random number generator.\n", args->seed);
-        srand48(args->seed);
+        fprintf(stderr, "\n[INFO]\tSeed is set to %d, will use this seed for random number generator.\n", seed);
+        srand48(seed);
     }
 
-    if (args->in_dm_fn != NULL) {
-        if (args->doEM != 0) {
-            fprintf(stderr, "\n[ERROR]\t-doEM %i cannot be used with -in_dm %s.\n", args->doEM, args->in_dm_fn);
+    if (in_dm_fn != NULL) {
+        if (doEM != 0) {
+            fprintf(stderr, "\n[ERROR]\t-doEM %i cannot be used with -in_dm %s.", doEM, in_dm_fn);
             exit(1);
         }
     }
 
-    if (args->windowSize == 0) {
+    if (windowSize == 0) {
         fprintf(stderr, "\n[INFO]\t-> -windowSize 0; will not use sliding window\n");
     } else {
-        fprintf(stderr, "\n[INFO]\t-> -windowSize %d; will use sliding windows of size %d\n", args->windowSize, args->windowSize);
+        fprintf(stderr, "\n[INFO]\t-> -windowSize %d; will use sliding windows of size %d\n", windowSize, windowSize);
     }
 
 // [dev mode]
@@ -578,53 +477,174 @@ argStruct *argStruct_get(int argc, char **argv) {
 // BITSET(VERBOSE, 7); // max: 7
 #endif
 
-    if (args->doAMOVA > 0) {
-        IO::requireFile(args->formula, "--formula/-f");
+    //----------------------------------------------------------------------------------//
+    // -doDist      defines the method to estimate distance matrix
+    //              default: 0
+    //
+    //              0: do not estimate distance matrix
+    //              1: estimate distance matrix from genotype likelihoods
+    //              2: estimate distance matrix from genotypes
+    //              3: read distance matrix from file
+
+    if (0 == doDist) {
+        if (0 != printDistanceMatrix) {
+            ERROR("--printDistanceMatrix %d requires -doDist != 0.\n", printDistanceMatrix);
+        }
+    } else if (1 == doDist) {
+        LOG("-doDist 1, will estimate distance matrix from genotype likelihoods.");
+
+        IO::requireArgFile(in_vcf_fn, "--in-vcf", "-doDist 1");
+
+        if (0 == doEM) {
+            ERROR("-doDist 1 requires -doEM != 0.\n");
+        }
+        squareDistance = 1;
+    } else if (2 == doDist) {
+        IO::requireArgFile(in_vcf_fn, "--in-vcf", "-doDist 2");
+        squareDistance = 1;
+    } else if (3 == doDist) {
+        IO::requireArgFile(in_dm_fn, "--in-dm", "-doDist 3");
+        squareDistance = 0;
+
+        if (0 != printDistanceMatrix) {
+            ERROR("-doDist 3 cannot be used with --printDistanceMatrix.\n");
+        }
+    } else {
+        ERROR("-doDist %d is not a valid option.", doDist);
     }
 
-    if (args->doDxy == 0 && args->printDxy == 1) {
-        fprintf(stderr, "\n[ERROR]\t-> --printDxy 1 requires -doDxy 1.\n");
-        exit(1);
+    //----------------------------------------------------------------------------------//
+    // -doAMOVA
+    //             default: 0
+    //             0: do not perform AMOVA
+    //             1: perform AMOVA on all groups in each hierarchical level defined in the metadata file (requires: method to obtain distance matrix, metadata file)
+
+    if (0 == doAMOVA) {
+        //
+    } else if (1 == doAMOVA) {
+        IO::requireArgStr(formula, "--formula/-f", "-doAMOVA 1");
+        IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doAMOVA 1");
+
+        if (0 == doDist) {
+            ERROR("-doAMOVA %d requires -doDist != 0.", doAMOVA);
+        }
+    } else {
+        ERROR("-doAMOVA %d is not a valid option.", doAMOVA);
     }
 
-    // doNJ 1 requires a distance matrix from -in_dm or -doDist
-    // doNJ 2 requires a dxy distance matrix from -in_dxy or -doDxy
-    if (args->doNJ == 1 && args->doDist == 0 && args->in_dm_fn == NULL) {
-        fprintf(stderr, "\n[ERROR]\t-> -doNJ %i requires -doDist 1 or --in-dm <file>.\n", args->doNJ);
-        exit(1);
+    if (0 == doEM) {
+        //
+        if (-1 != tole) {
+            ERROR("-tole %e requires -doEM != 0.", tole);
+        }
+        if (-1 != maxEmIter) {
+            ERROR("--maxEmIter %d requires -doEM != 0.", maxEmIter);
+        }
+    } else if (1 == doEM) {
+        if (-1 == tole) {
+            tole = 1e-6;
+            LOG("-tole is not set, setting to default value %e. Will terminate the EM algorithm if the change in the log-likelihood is less than %e.", tole, tole);
+        } else {
+            LOG("-tole is set to %e. Will terminate the EM algorithm if the change in the log-likelihood is less than %e.", tole, tole);
+        }
+
+        if (-1 == maxEmIter) {
+            maxEmIter = 1000;
+            LOG("-maxEmIter is not set, setting to default value %d. Will terminate the EM algorithm if the number of iterations exceeds %d.", maxEmIter, maxEmIter);
+        } else {
+            LOG("-maxEmIter is set to %d. Will terminate the EM algorithm if the number of iterations exceeds %d.", maxEmIter, maxEmIter);
+        }
+
+    } else {
+        ERROR("-doEM %d is not a valid option.", doEM);
     }
-    if (args->doNJ == 2 && args->doDxy == 0 && args->in_dxy_fn == NULL) {
-        fprintf(stderr, "\n[ERROR]\t-> -doNJ %i requires -doDxy 1 or --in-dxy <file>.\n", args->doNJ);
-        exit(1);
+
+    //----------------------------------------------------------------------------------//
+    // -doDxy
+    //              default: 0
+    //              0: do not estimate dxy
+    //              1: estimate dxy from the distance matrix for all groups in each hierarchical level defined in the metadata file (requires: method to obtain distance matrix, metadata file)
+    //              2: estimate dxy from the distance matrix for the groups in metadata specified by the user via --dxy-groups (requires: method to obtain distance matrix, metadata file, --dxy-groups)
+    //              3: estimate dxy from the distance matrix for the groups in the hierarchical level specified by the user via --dxy-levels (requires: method to obtain distance matrix, metadata file, --dxy-levels)
+
+    // : (doDist 1,2 or in_ft == IN_DM), (--metadata-file <METADATA_FILE> or doDxyStr)
+    if (0 == doDxy) {
+        //
+    } else if (1 == doDxy) {
+        IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doDxy 1");
+        if (0 == doDist) {
+            ERROR("-doDxy %d requires -doDist != 0.", doDxy);
+        }
+    } else if (2 == doDxy) {
+        IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doDxy 2");
+        IO::requireArgStr(dxyGroups, "--dxy-groups", "-doDxy 2");
+        if (0 == doDist) {
+            ERROR("-doDxy %d requires -doDist != 0.", doDxy);
+        }
+    } else if (3 == doDxy) {
+        IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doDxy 3");
+        IO::requireArgStr(dxyLevels, "--dxy-levels", "-doDxy 3");
+        if (0 == doDist) {
+            ERROR("-doDxy %d requires -doDist != 0.", doDxy);
+        }
+    } else {
+        ERROR("-doDxy %d is not a valid option.", doDxy);
     }
+
+    //----------------------------------------------------------------------------------//
+    // -doNJ
+    //              default: 0
+    //              0: do not perform neighbor joining
+    //              1: perform neighbor joining with individuals (requires: method to obtain distance matrix)
+    //              2: perform neighbor joining with dxy groups (requires: method to obtain dxy matrix)
+    //
+
+    if (0 == doNJ) {
+        //
+    } else if (1 == doNJ) {
+        if (0 == doDist && NULL == in_dm_fn) {
+            ERROR("-doNJ %d requires a distance matrix (either -doDist <int> or --in-dm <file>).", doNJ);
+        }
+    } else if (2 == doNJ) {
+        if (0 == doDxy && NULL == in_dxy_fn) {
+            ERROR("-doNJ %d requires a dxy matrix (either -doDxy <int> or --in-dxy <file>).", doNJ);
+        }
+    } else {
+        ERROR("-doNJ %d is not a valid option.", doNJ);
+    }
+
+    //  else if (doNJ == 1 && doDist == 0 && in_dm_fn == NULL) {
+    //     fprintf(stderr, "\n[ERROR]\t-> -doNJ %i requires -doDist 1 or --in-dm <file>.", doNJ);
+    //     exit(1);
+    // }
+    // if (doNJ == 2 && doDxy == 0 && in_dxy_fn == NULL) {
+    //     fprintf(stderr, "\n[ERROR]\t-> -doNJ %i requires -doDxy 1 or --in-dxy <file>.", doNJ);
+    //     exit(1);
+    // }
 
     // TODO using regions with block definitions
     // TODO handle empty blocks
-    if (args->blockSize > 0 && args->in_blocks_tab_fn != NULL) {
+    if (blockSize > 0 && in_blocks_tab_fn != NULL) {
         fprintf(stderr, "\n[ERROR]\t-> `--block-size` cannot be used with `--in-blocks-tab`.\n");
         exit(1);
     }
-    if (args->blockSize > 0 && args->in_blocks_bed_fn != NULL) {
+    if (blockSize > 0 && in_blocks_bed_fn != NULL) {
         fprintf(stderr, "\n[ERROR]\t-> `--block-size` cannot be used with `--in-blocks-bed`.\n");
         exit(1);
     }
 
-    if (args->in_blocks_tab_fn != NULL || args->in_blocks_bed_fn != NULL) {
-        if (args->in_regions_tab_fn != NULL || args->in_regions_bed_fn != NULL || args->in_region != NULL) {
+    if (in_blocks_tab_fn != NULL || in_blocks_bed_fn != NULL) {
+        if (in_regions_tab_fn != NULL || in_regions_bed_fn != NULL || in_region != NULL) {
             fprintf(stderr, "\n[ERROR]\tBlock definitions cannot be used with region definitions, yet.\n");
             exit(1);
         }
     }
-
-    return args;
 }
 
 void argStruct_destroy(argStruct *args) {
     FREE(args->in_vcf_fn);
     FREE(args->in_dm_fn);
     FREE(args->in_mtd_fn);
-    FREE(args->in_jgcd_fn);
-    FREE(args->in_jgpd_fn);
     FREE(args->in_dxy_fn);
     FREE(args->out_fnp);
     FREE(args->formula);
@@ -653,7 +673,7 @@ void argStruct_print(FILE *fp, argStruct *args) {
 
     // TODO use lut to store names and values and associatons (e.g. tole maxiter etc assoc with doEM)
     // and if -formula is used, run formulaStruct_get()
-    fprintf(fp, "\nngsAMOVA -doAMOVA %d -i %s -out %s -minInd %d -printMatrix %d -m %s -doDist %d -nThreads %d", args->doAMOVA, args->in_vcf_fn, args->out_fnp, args->minInd, args->printMatrix, args->in_mtd_fn, args->doDist, args->nThreads);
+    fprintf(fp, "\nngsAMOVA -doAMOVA %d -i %s -out %s -minInd %d -printMatrix %d -m %s -doDist %d -nThreads %d", args->doAMOVA, args->in_vcf_fn, args->out_fnp, args->minInd, args->printDistanceMatrix, args->in_mtd_fn, args->doDist, args->nThreads);
     if (args->doEM != 0) {
         fprintf(fp, " -tole %e ", args->tole);
         fprintf(fp, " -doEM %d ", args->doEM);

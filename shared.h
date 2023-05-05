@@ -1,6 +1,7 @@
 #ifndef __SHARED__
 #define __SHARED__
 
+#include <ctype.h>
 #include <float.h>
 #include <htslib/vcf.h>
 #include <htslib/vcfutils.h>
@@ -80,6 +81,12 @@
     exit(1);
 
 /*
+ * Macro:[LOG]
+ */
+#define LOG(...) \
+    fprintf(stderr, "\n[LOG](%s/%s:%d)\t%s\n", __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__);
+
+/*
  * Macro:[ASSERTM]
  * shortcut to evaluate an expression, works the same way as ASSERT macro
  * but also prints a custom message
@@ -96,27 +103,40 @@
  * shortcut to free memory and set pointer to NULL
  * and catch double free
  */
-#define FREE(expr)   \
-    if (expr) {      \
-        free(expr);  \
-        expr = NULL; \
-    }                \
-    // fprintf(stderr, "\n\n*******\n[FREEING NULL MEMORY](%s:%d) %s\n*******\n", __FILE__, __LINE__, #expr);
-
-#define FREE2(expr, n)                     \
-    if (expr) {                            \
-        for (int i = 0; i < (int)n; i++) { \
-            free(expr[i]);                 \
-            expr[i] = NULL;                \
-        }                                  \
-        free(expr);                        \
-        expr = NULL;                       \
+#define FREE(x)      \
+    if (NULL != x) { \
+        free(x);     \
+        x = NULL;    \
     }
 
-#define DELETE(expr) \
-    if (expr) {      \
-        delete expr; \
-        expr = NULL; \
+#define FREE_ARRAY(x, size)                         \
+    if (NULL != x) {                                \
+        for (size_t i = 0; i < (size_t)size; i++) { \
+            if (NULL != x[i]) {                     \
+                free(x[i]);                         \
+                x[i] = NULL;                        \
+            }                                       \
+        }                                           \
+        free(x);                                    \
+        x = NULL;                                   \
+    }
+
+#define DELETE(x)    \
+    if (NULL != x) { \
+        delete x;    \
+        x = NULL;    \
+    }
+
+#define DELETE_ARRAY(x, size)                       \
+    if (NULL != x) {                                \
+        for (size_t i = 0; i < (size_t)size; i++) { \
+            if (NULL != x[i]) {                     \
+                delete x[i];                        \
+                x[i] = NULL;                        \
+            }                                       \
+        }                                           \
+        delete[] x;                                 \
+        x = NULL;                                   \
     }
 
 /*
@@ -315,19 +335,10 @@ enum OUTFC {
     BBGZ,  // bgzip (binary) [2]
 };
 
-// input file types
-enum INFT {
-    IN_VCF,
-    IN_DM,
-    IN_JGCD,
-    IN_DXY,
-};
-
-// TODO maybe use
-// #define IN_VCF 0
-// #define IN_DM (1<<1)
-// #define IN_JGPD (1<<2)
-// // then if(pars->inFileType & IN_VCF) ...
+// input file types for main data input
+#define IN_VCF (1 << 0)  // 1
+#define IN_DM (1 << 1)   // 2
+#define IN_DXY (1 << 2)  // 4
 
 /* ========================================================================== */
 

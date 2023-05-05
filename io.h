@@ -7,7 +7,6 @@
 
 #include "argStruct.h"
 
-struct formulaStruct;
 struct pairStruct;
 
 //********************************************************************************
@@ -55,11 +54,15 @@ void vprint(FILE *fp, const int verbose_threshold, const char *format, ...);
 /// @example vprint(1, "Hello %s", "World"); // will print to both stderr and fp if verbose >= 1
 void vvprint(FILE *fp, const int verbose_threshold, const char *format, ...);
 
-void requireFile(const char *fn);
-void requireFile(const char *fn, const char *required);
-void requireFile(const char *fn, const char *required, const char *requiredFor);
+void requireArgFile(const char *fn, const char *requiredArg, const char *requiredFor);
+void requireArgFile(const char *fn, const char *requiredArg);
+
+void requireArgStr(const char *str, const char *requiredArg, const char *requiredFor);
+void requireArgStr(const char *str, const char *requiredArg);
 
 extern const char *FILE_EXTENSIONS[];
+
+int fileExists(const char *fn);
 
 char *setFileName(const char *a, const char *b);
 char *setFileName(const char *fn, const char *suffix, const char *fc_ext);
@@ -98,10 +101,6 @@ int count_nCols(const char *line, const char *delims);
 int count_nRows(char *fn, int HAS_COLNAMES);
 int count_nRows(FILE *fp, int HAS_COLNAMES);
 };  // namespace inspectFile
-
-namespace validateFile {
-int Metadata(FILE *in_mtd_fp, int nInds, int *keyCols, formulaStruct *FORMULA, const char *delims, int HAS_COLNAMES);
-};
 
 typedef struct outputStruct {
     char *fn = NULL;
@@ -234,18 +233,6 @@ void Array(FILE *fp, double *arr, size_t N, size_t M, char sep);
 // IO::print::Array
 // :overload: int array
 void Array(FILE *fp, int *arr, size_t N, size_t M, char sep);
-
-/// @brief print sfs output amovaput.sfs.csv
-/// @param TYPE type of analysis
-/// @param out_sfs_fs pointer to output file
-/// @param pair pair of samples
-/// @param pars parameters struct
-/// @param args arguments struct
-/// @param sample1 name of sample 1
-/// @param sample2 name of sample 2
-// void Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, pairStruct *pair, argStruct *args, const char *sample1, const char *sample2);
-
-// void Sfs(const char *TYPE, IO::outputStruct *out_sfs_fs, argStruct *args, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
 
 void M_PWD(const char *TYPE, IO::outputStruct *out_dm_fs, int nIndCmb, double *M_PWD);
 

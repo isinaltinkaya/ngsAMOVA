@@ -14,56 +14,67 @@ void IO::validateString(const char *str) {
     ASSERTM(str[0] != '\0', "Found empty string.");
 }
 
-// TODO
-//  void IO::log(const char *format, ...)
-//  {
-//  	va_list args;
-//  	va_start(args, format);
-//  	vfprintf(stderr, format, args);
-//  	va_end(args);
-//  }
+int IO::fileExists(const char *fn) {
+    struct stat st;
+    return (0 == stat(fn, &st));
+}
 
-// TODO exit with error function to handle printing [ERROR] etc
-/// also write the error message to a "filename.err" file
-// and give directions to what to do next, inc github issues link etc
-
-void IO::requireFile(const char *fn, const char *required, const char *requiredFor) {
-    if (fn == NULL) {
-        fprintf(stderr, "\n[ERROR]\t-%s is required for %s.\n", required, requiredFor);
-        exit(1);
+void IO::requireArgFile(const char *fn, const char *requiredArg, const char *requiredFor) {
+    if (NULL == fn) {
+        ERROR("'%s' is required for %s, but found NULL.", requiredArg, requiredFor);
     }
 
-    if (fn[0] == '\0') {
-        fprintf(stderr, "\n[ERROR]\t-%s is required for %s, but found empty string.\n", required, requiredFor);
-        exit(1);
+    if ('\0' == fn[0]) {
+        ERROR("'%s' is required for %s, but found empty string.", requiredArg, requiredFor);
     }
 
-    if (strcmp(fn, "-") == 0) {
-        fprintf(stderr, "\n[ERROR]\t-%s is required for %s, but found \"-\".\n", required, requiredFor);
-        exit(1);
+    if (0 == strcmp(fn, "-")) {
+        ERROR("'%s' is required for %s, but found \"-\".", requiredArg, requiredFor);
+    }
+
+    fileExists(fn);
+}
+
+void IO::requireArgFile(const char *fn, const char *requiredArg) {
+    if (NULL == fn) {
+        ERROR("'%s' is required, but found NULL.", requiredArg);
+    }
+
+    if ('\0' == fn[0]) {
+        ERROR("'%s' is required, but found empty string.", requiredArg);
+    }
+
+    if (0 == strcmp(fn, "-")) {
+        ERROR("'%s' is required, but found \"-\".", requiredArg);
     }
 }
 
-void IO::requireFile(const char *fn, const char *required) {
-    if (fn == NULL) {
-        fprintf(stderr, "\n[ERROR]\t-%s is required, but found NULL.\n", required);
-        exit(1);
+void IO::requireArgStr(const char *str, const char *requiredArg, const char *requiredFor) {
+    if (NULL == str) {
+        ERROR("-%s is required for %s.", requiredArg, requiredFor);
     }
 
-    if (fn[0] == '\0') {
-        fprintf(stderr, "\n[ERROR]\t-%s is required, but found empty string.\n", required);
-        exit(1);
+    if ('\0' == str[0]) {
+        ERROR("-%s is required for %s, but found empty string.", requiredArg, requiredFor);
     }
 
-    if (strcmp(fn, "-") == 0) {
-        fprintf(stderr, "\n[ERROR]\t-%s is required, but found \"-\".\n", required);
-        exit(1);
+    if (0 == strcmp(str, "-")) {
+        ERROR("-%s is required for %s, but found \"-\".", requiredArg, requiredFor);
     }
 }
-void IO::requireFile(const char *fn) {
-    ASSERTM(fn != NULL, "File name is NULL");
-    ASSERTM(fn[0] != '\0', "File name is empty");
-    ASSERTM(strcmp(fn, "-") != 0, "File name is \"-\"");
+
+void IO::requireArgStr(const char *str, const char *requiredArg) {
+    if (NULL == str) {
+        ERROR("-%s is required.", requiredArg);
+    }
+
+    if ('\0' == str[0]) {
+        ERROR("-%s is required, but found empty string.", requiredArg);
+    }
+
+    if (0 == strcmp(str, "-")) {
+        ERROR("-%s is required, but found \"-\".", requiredArg);
+    }
 }
 
 /// @brief get file handle fp
@@ -71,8 +82,6 @@ void IO::requireFile(const char *fn) {
 /// @param mode file open mode
 /// @return file *fp
 FILE *IO::getFile(const char *fn, const char *mode) {
-    requireFile(fn);
-
     FILE *fp = NULL;
     if (strcmp(mode, "r") == 0) {
         fprintf(stderr, "\n\t-> Reading file: %s\n", fn);
@@ -570,8 +579,8 @@ void IO::outputStruct::write(const kstring_t *kbuf) {
 }
 
 void IO::outFilesStruct_set(argStruct *args, IO::outFilesStruct *ofs) {
-    if (args->printMatrix != 0) {
-        ofs->out_dm_fs = new IO::outputStruct(args->out_fnp, ".distance_matrix.csv", args->printMatrix - 1);
+    if (args->printDistanceMatrix != 0) {
+        ofs->out_dm_fs = new IO::outputStruct(args->out_fnp, ".distance_matrix.csv", args->printDistanceMatrix - 1);
     }
 
     if (args->doEM == 1) {
@@ -599,9 +608,6 @@ void IO::outFilesStruct_set(argStruct *args, IO::outFilesStruct *ofs) {
     // TODO
     if (args->printDev == 1) {
         ofs->out_dev_fs = new IO::outputStruct(args->out_fnp, ".dev.csv", 1);
-    }
-    if (args->printDxy == 1) {
-        ofs->out_dxy_fs = new IO::outputStruct(args->out_fnp, ".dxy.csv", args->printDxy - 1);
     }
     if (args->printBlocksTab == 1) {
         ofs->out_blockstab_fs = new IO::outputStruct(args->out_fnp, ".blocks.tab", 0);

@@ -1,12 +1,12 @@
 #ifndef __ARG_STRUCT__
 #define __ARG_STRUCT__
 
-#include "ctype.h"
 #include "shared.h"
 
 typedef struct argStruct argStruct;
 
 extern u_char VERBOSE;
+// extern argStruct *args;
 
 /*
  * @typedef
@@ -15,8 +15,6 @@ extern u_char VERBOSE;
  * @field *in_vcf_fn		input VCF filename
  * @field *in_dm_fn		input distance matrix filename
  * @field *in_mtd_fn	    input metadata filename
- * @field *in_jgcd_fn	input joint genotype count distribution data filename
- * @field *in_jgpd_fn	input joint genotype probability distribution data filename
  * @field *in_blb_fn     input block bed filename
  * @field *in_dxy_fn     input dxy filename
  *
@@ -141,9 +139,6 @@ extern u_char VERBOSE;
  *                              [0] do NOT print
  *                              [VALUE] print joint genotype distributions of pairs of individuals
  *
- * @field printDxy               [default = 0]
- *                              [0] do NOT print
- *                              [VALUE] print pairwise Dxy values
  *
  *
  * printing options
@@ -159,8 +154,6 @@ struct argStruct {
     char *in_vcf_fn = NULL;
     char *in_dm_fn = NULL;
     char *in_mtd_fn = NULL;
-    char *in_jgcd_fn = NULL;
-    char *in_jgpd_fn = NULL;  // TODO
     char *in_dxy_fn = NULL;
 
     char *out_fnp = NULL;
@@ -184,24 +177,29 @@ struct argStruct {
     int doEM = 0;
     int doDxy = 0;
     int doNJ = 0;
-    int doDist = 1;
+    int doDist = 0;
 
     int printAmovaTable = 0;
-    int printMatrix = 0;
+    int printDistanceMatrix = 0;
     int printJointGenoCountDist = 0;
     int printJointGenoProbDist = 0;
-    int printDxy = 0;
     int printBlocksTab = 0;
 
     int squareDistance = 1;
 
+    char *dxyGroups = NULL;
+    char *dxyLevels = NULL;
+
+    // EM
     int minInd = -1;
-    double tole = 1e-5;
-    int maxEmIter = 100;
+    double tole = -1;
+    int maxEmIter = -1;
 
     int nThreads = 0;
     int seed = -1;
     int nBootstraps = 0;
+
+    void check_arg_dependencies();
 
     // TODO check below
     char *doDxyStr = NULL;  // TODO maybe not needed

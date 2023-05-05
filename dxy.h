@@ -1,12 +1,11 @@
 #ifndef __DXY__
 #define __DXY__
 
-#include "mathUtils.h"
 #include "dataStructs.h"
 #include "io.h"
+#include "mathUtils.h"
 
 // TODO dxystruct is also a distancematrixstruct template
-
 
 /// @brief dxyStruct - structure for dxy analysis results
 ///
@@ -20,13 +19,11 @@
 /// @details
 /// dxy[i] is the dxy value between groupNames1[i] and groupNames2[i] (at levelNames[i])
 ///
-typedef struct dxyStruct
-{
-
+typedef struct dxyStruct {
     // number of dxy values
     int nDxy = 0;
 
-    size_t _dxyArr = 100; // initial value for malloc; will be increased if needed
+    size_t _dxyArr = 100;  // initial value for malloc; will be increased if needed
 
     double *dxyArr;
     char **groupNames1;
@@ -37,7 +34,7 @@ typedef struct dxyStruct
     void print_struct();
     void expand();
 
-    dxyStruct(const int printDxy);
+    dxyStruct();
     ~dxyStruct();
 
     /// @brief estimate_dxy_2groups - estimate pairwise dxy between two groups

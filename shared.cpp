@@ -1,92 +1,67 @@
-/*
- *
- * [Parameters]
- *
- * idea from angsd funkyPars
- * at https://github.com/ANGSD/angsd/blob/master/shared.cpp
- *
- */
-
 #include "shared.h"
-#include "mathUtils.h"
-#include <stdlib.h>
 
-#include "argStruct.h"
-#include "paramStruct.h"
-
-int strIsNumeric(const char* val)
-{
-    for(size_t i=0; i<strlen(val); i++){
-        if(!isdigit(val[i])){
+int strIsNumeric(const char *val) {
+    for (size_t i = 0; i < strlen(val); i++) {
+        if (!isdigit(val[i])) {
             return 0;
         }
     }
     return 1;
 }
 
-
 /// @brief usage - print usage
 /// @param fp pointer to the file to print to
-void print_help(FILE *fp)
-{
-	// fprintf(stderr,"");
-	// fprintf(stderr,"\n");
-	// fprintf(stderr,"  --help         : Print this help\n");
-	// fprintf(stderr,"\t--in\t\t\t: input VCF/BCF filed\n");
+void print_help(FILE *fp) {
+    fprintf(fp,
+            "\n"
+            "Program: ngsAMOVA\n");
 
-	fprintf(fp,
-			"\n"
-			"Program: ngsAMOVA\n");
-	// fprintf(fp, "Version: %s (using htslib %s)\n\n", program_version(), hts_version());
-	// "Version: %s (using htslib %s)\n\n", program_version(), hts_version());
-	// "build(%s %s)\n",__DATE__,__TIME__);
+    fprintf(fp,
+            "\n"
+            "Usage:\tngsAMOVA <command> [options]\n"
+            "\n"
+            "Tool for performing the Analysis of Molecular Variance [AMOVA]\n"
+            "\n"
+            "Commands:\n"
+            "\t-- Analyses\n"
+            "\n"
+            "Options:\n"
+            " -i\n"
+            "\n"
+            "\t-s\n"
+            "\t-m\n"
+            "\t-out/o\n"
+            "\n"
 
-	fprintf(fp,
-			"\n"
-			"Usage:\tngsAMOVA <command> [options]\n"
-			"\n"
-			"Tool for performing the Analysis of Molecular Variance [AMOVA]\n"
-			"\n"
-			"Commands:\n"
-			"\t-- Analyses\n"
-			"\n"
-			"Options:\n"
-			" -i\n"
-			"\n"
-			"\t-s\n"
-			"\t-m\n"
-			"\t-out/o\n"
-			"\n"
+            "\t-bs/bSize\n"
+            "\t-mCol\n"
+            "\t-seed\n"
+            "\t-doAMOVA\n"
+            "\t-printMatrix\n"
 
-			"\t-bs/bSize\n"
-			"\t-mCol\n"
-			"\t-seed\n"
-			"\t-doAMOVA\n"
-			"\t-printMatrix\n"
+            "\t-doDist\n"
+            "\t-sqDist (default: 1)\n"
 
-			"\t-doDist\n"
-			"\t-sqDist (default: 1)\n"
+            "\t-minInd\n"
+            "\t-doTest\n"
+            "\t-maxIter/maxEmIter/mEmIter\n"
+            "\t-P/nThreads (default: 1)\n"
+            "\t-gl2gt\n"
+            "\n");
 
-			"\t-minInd\n"
-			"\t-doTest\n"
-			"\t-maxIter/maxEmIter/mEmIter\n"
-			"\t-P/nThreads (default: 1)\n"
-			"\t-gl2gt\n"
-			"\n");
+    // fprintf(fp, "\n");
+    // fprintf(fp, "Usage: ngsAMOVA [options] -i <vcf file> -out <output file>\n");
+    // fprintf(fp, "\n");
+    // fprintf(fp, "Options:\n");
+    // fprintf(fp, "  -in <vcf file>		: input vcf file\n");
+    // fprintf(fp, "  -out <output file>		: output file\n");
+    // fprintf(fp, "  -doAMOVA <0/1>		: do AMOVA (default: 1)\n");
+    // fprintf(fp, "  -doTest <0/1>		: do EM test (default:
+    // fprintf(fp, "  -printMatrix <0/1>		: print distance matrix (default: 0)\n");
+    // fprintf(fp, "  -printSFS <0/1>		: print SFS (default: 0)\n");
 
-	// fprintf(fp, "\n");
-	// fprintf(fp, "Usage: ngsAMOVA [options] -i <vcf file> -out <output file>\n");
-	// fprintf(fp, "\n");
-	// fprintf(fp, "Options:\n");
-	// fprintf(fp, "  -in <vcf file>		: input vcf file\n");
-	// fprintf(fp, "  -out <output file>		: output file\n");
-	// fprintf(fp, "  -doAMOVA <0/1>		: do AMOVA (default: 1)\n");
-	// fprintf(fp, "  -doTest <0/1>		: do EM test (default:
-	// fprintf(fp, "  -printMatrix <0/1>		: print distance matrix (default: 0)\n");
-	// fprintf(fp, "  -printSFS <0/1>		: print SFS (default: 0)\n");
-
-	//
-	//
+    //
+    //
 }
 
 /// AMOVA Formula Specification:
@@ -108,14 +83,13 @@ void print_help(FILE *fp)
 /// 4. The formula must therefore contain 1 tilde and 0 or more / characters.
 ///
 
-void print_help_formula(FILE *fp)
-{
-	fprintf(fp, "Formula specification:\n");
-	fprintf(fp, "  -f <formula>		: formula for AMOVA\n");
-	fprintf(fp, "Formulas must have the following format:\n");
-	fprintf(fp, "  <token> ~ <token> / <token> ... \n");
-	fprintf(fp, "Example:\n");
-	fprintf(fp, "  -f 'Individual ~ Region / Population'\n");
+void print_help_formula(FILE *fp) {
+    fprintf(fp, "Formula specification:\n");
+    fprintf(fp, "  -f <formula>		: formula for AMOVA\n");
+    fprintf(fp, "Formulas must have the following format:\n");
+    fprintf(fp, "  <token> ~ <token> / <token> ... \n");
+    fprintf(fp, "Example:\n");
+    fprintf(fp, "  -f 'Individual ~ Region / Population'\n");
 }
 
 //
@@ -132,26 +106,23 @@ void print_help_formula(FILE *fp)
 // mmMM mmMm mmmm
 // TODO rename and consider change format
 extern const int get_3x3_idx[3][3] = {
-	{0, 1, 2},
-	{3, 4, 5},
-	{6, 7, 8}};
+    {0, 1, 2},
+    {3, 4, 5},
+    {6, 7, 8}};
 
 // TODO check this
 using size_t = decltype(sizeof(int));
 
-int find_n_given_nC2(int nC2_res)
-{
-	int n = 0;
-	while (NC2_LUT[n] < nC2_res)
-	{
-		n++;
-	}
-	if (NC2_LUT[n] != nC2_res)
-	{
-		fprintf(stderr, "[%s:%s()]\t->Error: nC2_res:%d not found in NC2_LUT[]\n", __FILE__, __FUNCTION__, nC2_res);
-		exit(1);
-	}
-	return n;
+int find_n_given_nC2(int nC2_res) {
+    int n = 0;
+    while (NC2_LUT[n] < nC2_res) {
+        n++;
+    }
+    if (NC2_LUT[n] != nC2_res) {
+        fprintf(stderr, "[%s:%s()]\t->Error: nC2_res:%d not found in NC2_LUT[]\n", __FILE__, __FUNCTION__, nC2_res);
+        exit(1);
+    }
+    return n;
 }
 
 // TODO
@@ -168,13 +139,12 @@ int find_n_given_nC2(int nC2_res)
 
 /// @brief get current time
 /// @return time as char*
-char *get_time()
-{
-	time_t current_time;
-	struct tm *local_time;
-	current_time = time(NULL);
-	local_time = localtime(&current_time);
-	return (asctime(local_time));
+char *get_time() {
+    time_t current_time;
+    struct tm *local_time;
+    current_time = time(NULL);
+    local_time = localtime(&current_time);
+    return (asctime(local_time));
 }
 
 // /// Warnings
@@ -190,7 +160,6 @@ char *get_time()
 // 		{"Assuming that the VCF file is sorted by position."},
 // 		// IN_DM	input file type is distance matrix
 // 		{"Assuming that the distance matrix is either an output from this program or a distance matrix with prepared with the same format as the output of this program."},
-// 		// IN_JGPD
 // 		{""}
 // 	}
 // }

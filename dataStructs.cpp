@@ -1,6 +1,33 @@
 #include "dataStructs.h"
 
-#include "io.h"
+#include "bootstrap.h"
+#include "em.h"
+
+void get_distanceMatrix_GL(argStruct *args, paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt) {
+    readSites_GL(vcfd, args, pars, pairSt);
+    if (1 == args->doEM) {
+        spawnThreads_pairEM(args, pars, pairSt, vcfd, distanceMatrix);
+        return;
+    }
+    NEVER;
+}
+
+void get_distanceMatrix_GT(argStruct *args, paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt) {
+    readSites_GT(vcfd, args, pars, pairSt);
+    for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
+        int snSites = vcfd->JointGenoCountDistGT[pidx][vcfd->nJointClasses];
+        if (snSites == 0) {
+            fprintf(stderr, "\n[ERROR]\t-> No shared sites found for pair %d (snSites=%d). This is currently not allowed.\n", pidx, snSites);
+            exit(1);
+        }
+        if (args->squareDistance == 1) {
+            distanceMatrix->M[pidx] = (double)SQUARE(MATH::EST::Dij(vcfd->JointGenoCountDistGT[pidx], snSites));
+        } else {
+            distanceMatrix->M[pidx] = (double)MATH::EST::Dij(vcfd->JointGenoCountDistGT[pidx], snSites);
+        }
+    }
+    vcfd->print_JointGenoCountDist(args);
+}
 
 // TODO add check if discrapency in metadata e.g. pop3 is both in reg1 and reg2
 
@@ -92,7 +119,7 @@ metadataStruct::~metadataStruct() {
     FREE(idxToLvlg);
 }
 
-metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars, formulaStruct *fos) {
+metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars) {
     ASSERT(pars->nInd > 0);
     metadataStruct *mtd = new metadataStruct(pars->nInd);
 
@@ -117,7 +144,7 @@ metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars, formulaSt
         ++hdr_col_idx;
 
         // if token from metadata file is found in formula
-        int col_lvl_i = fos->setFormulaTokenIdx(hdrtok, hdr_col_idx);
+        int col_lvl_i = pars->formula->setFormulaTokenIdx(hdrtok, hdr_col_idx);
         if (col_lvl_i > -1) {
             mtd->addLevelName(hdrtok, col_lvl_i);
             ++nLevels;
@@ -132,11 +159,11 @@ metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars, formulaSt
     ASSERT(nLevels <= MAX_N_HIER_LEVELS);
 
     if (IO::verbose(2)) {
-        fos->print(stderr);
+        pars->formula->print(stderr);
     }
 
     mtd->nLevels = nLevels;
-    formulaStruct_validate(fos, nLevels);
+    formulaStruct_validate(pars->formula, nLevels);
 
     int nRows = 0;
     int nCols = 0;
@@ -178,7 +205,7 @@ metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars, formulaSt
         while (col != NULL) {  // loop through cols
 
             // individual column (left hand side of formula)
-            if (col_i == fos->formulaTokenIdx[0]) {
+            if (col_i == pars->formula->formulaTokenIdx[0]) {
                 // check if individual id is already in indNames
                 for (size_t ind = 0; ind < (size_t)nInd; ind++) {
                     if ((mtd->indNames[ind] != NULL) && (strcmp(mtd->indNames[ind], col) == 0)) {
@@ -191,9 +218,9 @@ metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars, formulaSt
             } else {
                 // loop through the rest of the tokens, i.e. the hierarchical levels in order high->low
                 // e.g. Region, Population, Subpopulation
-                for (int tok_i = 1; tok_i < fos->nTokens; tok_i++) {
+                for (int tok_i = 1; tok_i < pars->formula->nTokens; tok_i++) {
                     // if the column index matches the formula token index
-                    if (col_i == fos->formulaTokenIdx[tok_i]) {
+                    if (col_i == pars->formula->formulaTokenIdx[tok_i]) {
                         // hierarchical level index, excluding the individual column
                         int lvl_idx = tok_i - 1;
 
@@ -464,7 +491,11 @@ void distanceMatrixStruct::set_item_labels(char **itemLabelArr) {
     }
 }
 
-void distanceMatrixStruct::print(IO::outputStruct *out_dm_fs) {
+void distanceMatrixStruct::print(int printMatrix, IO::outputStruct *out_dm_fs) {
+    if (0 == printMatrix)
+        return;
+
+    ASSERT(out_dm_fs != NULL);
     fprintf(stderr, "\n[INFO]\t-> Writing distance matrix to %s.\n", out_dm_fs->fn);
     kstring_t *kbuf = kbuf_init();
 
@@ -632,25 +663,6 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *ar
     return dMS;
 }
 
-void formulaStruct_validate(formulaStruct *fos, const int nLevels) {
-    // validate that all tokens in formula has a corresponding column index in metadata
-    for (int i = 0; i < fos->nTokens; i++) {
-        if (fos->formulaTokenIdx[i] == -1) {
-            fprintf(stderr, "\n[ERROR]\tFormula token \"%s\" does not have a corresponding column in metadata.\n", fos->formulaTokens[i]);
-            exit(1);
-        }
-    }
-    ASSERT(fos->nTokens == nLevels + 1);
-
-    if (nLevels > MAX_N_HIER_LEVELS) {
-        fprintf(stderr, "\n[ERROR]\tNumber of levels (%d) exceeds the maximum number of levels allowed (%d).\n", nLevels, MAX_N_HIER_LEVELS);
-        exit(1);
-    }
-
-    // all is ok, shrink and ready to go
-    fos->shrink();
-}
-
 // IO::print::Array
 /// @brief Print elements of an array to a file (or stream)
 /// @param fp file to print to
@@ -747,146 +759,4 @@ void trimSpaces(char *str) {
     if (strlen(str) == 0) {
         fprintf(stderr, "\n[ERROR][trimSpaces] Error: string is empty (len=0)\n");
     }
-}
-
-void formulaStruct_destroy(formulaStruct *fos) {
-    FREE(fos->formula);
-    for (int i = 0; i < fos->nTokens; i++) {
-        FREE(fos->formulaTokens[i]);
-    }
-    FREE(fos->formulaTokens);
-    FREE(fos->formulaTokenIdx);
-
-    delete fos;
-}
-
-void formulaStruct::print(FILE *fp) {
-    fprintf(fp, "\nFormula: %s", formula);
-    fprintf(fp, "\nTokens: %i\n", nTokens);
-    // for (int i = 0; i < nTokens; i++)
-    // {
-    // 	fprintf(fp, "\tToken %d (%s) corresponds to column %d in metadata.\n", i, formulaTokens[i], formulaTokenIdx[i]);
-    // }
-    // fprintf(fp, "\n");
-}
-
-int formulaStruct::setFormulaTokenIdx(const char *mtd_tok, const int mtd_col_idx) {
-    for (int i = 0; i < nTokens; i++) {
-        if (strcmp(formulaTokens[i], mtd_tok) == 0) {
-            formulaTokenIdx[i] = mtd_col_idx;
-            return i;
-        }
-    }
-    IO::vprint(1, "Ignoring the column \"%s\" in metadata file. Reason: Level \"%s\" from metadata header not found in formula (%s).", mtd_tok, mtd_tok, formula);
-    return -1;
-}
-
-// @brief shrink - shrink the size of the arrays defined with default max values to the actual size needed
-void formulaStruct::shrink() {
-    formulaTokens = (char **)realloc(formulaTokens, nTokens * sizeof(char *));
-    formulaTokenIdx = (int *)realloc(formulaTokenIdx, nTokens * sizeof(int));
-}
-
-/// @brief formulaStruct_get initialize the formulaStruct
-/// @param formula formula string
-/// @return pointer to formulaStruct
-/// @example formula = 'Samples ~ Continents/Regions/Populations'
-formulaStruct *formulaStruct_get(const char *formula) {
-    if (formula == NULL) {
-        fprintf(stderr, "\n[ERROR]\tNo formula provided. Please provide a formula of the form y ~ x1/x2/.../xn via the --formula option.\n");
-        exit(1);
-    }
-    formulaStruct *fos = new formulaStruct;
-
-    fos->nTokens = 0;
-
-    fos->formula = strdup(formula);
-    fos->formulaTokens = (char **)malloc(MAX_N_FORMULA_TOKENS * sizeof(char *));
-    fos->formulaTokenIdx = (int *)malloc(MAX_N_FORMULA_TOKENS * sizeof(int));
-
-    for (int i = 0; i < MAX_N_FORMULA_TOKENS; ++i) {
-        fos->formulaTokenIdx[i] = -1;
-    }
-
-    // pointer to the first character of formula string
-    const char *p = formula;
-
-    /// ------------------------------------------------------------
-    /// get the first token - y (before the tilde ~)
-    /// from the formula of form y ~ x1/x2/.../xn
-
-    // skip until the tilde ~
-    while (*p != '\0') {
-        if (*p == '~') {
-            ++p;
-            // move the pointer to point to the character after the tilde after while loop
-            break;
-        }
-        if (*p == '/') {
-            // must not encounter any / before ~
-            fprintf(stderr, "\n[ERROR]\tFormula \"%s\" is not valid: Found '/' before '~'. \n", formula);
-            exit(1);
-        }
-        ++p;
-    }
-
-    // check if anything is left in the remaning formula string
-    if (*p == '\0') {
-        fprintf(stderr, "\n[ERROR]\tFormula \"%s\" is not valid: No token found after '~'. \n", formula);
-        exit(1);
-    }
-
-    char *token = strndup(formula, p - formula - 1);  // -1 to remove the tilde
-    trimSpaces(token);
-    fos->formulaTokens[0] = strdup(token);
-    fos->nTokens++;
-    IO::vprint(1, "Found new token \"%s\" in formula \"%s\".\n", token, formula);
-
-    /// ------------------------------------------------------------
-    /// get remaining tokens - x(s) (after the tilde ~)
-    /// if multiple, separated by /
-
-    // point to the rest of the string
-    const char *pstart = p;
-    while (*p != '\0') {
-        if (*p == '~') {
-            fprintf(stderr, "\n[ERROR]\tFormula \"%s\" is not valid: Found more than one '~'. \n", formula);
-            exit(1);
-        }
-        if (*p == '/') {
-            FREE(token);
-            token = strndup(pstart, p - pstart);
-            trimSpaces(token);
-            fos->formulaTokens[fos->nTokens] = strdup(token);
-            fos->nTokens++;
-            IO::vprint(1, "Found new token \"%s\" in formula \"%s\".\n", token, formula);
-            pstart = p + 1;
-        }
-        ++p;
-
-        if (*p == '\0') {
-            FREE(token);
-            token = strndup(pstart, p - pstart);
-            trimSpaces(token);
-            fos->formulaTokens[fos->nTokens] = strdup(token);
-            fos->nTokens++;
-            IO::vprint(1, "Found new token \"%s\" in formula \"%s\".\n", token, formula);
-        }
-    }
-
-    if (fos->nTokens == 0) {
-        fprintf(stderr, "\n[ERROR]\tFormula \"%s\" is not valid: No tokens found.\n", fos->formula);
-        exit(1);
-    } else if (fos->nTokens == 1) {
-        fprintf(stderr, "\n[ERROR]\tFormula \"%s\" is not valid: Only one token found.\n", fos->formula);
-        exit(1);
-    }
-
-    fprintf(stderr, "\n\t-> Formula %s has %d tokens:\n", fos->formula, fos->nTokens);
-    for (int i = 0; i < fos->nTokens; ++i) {
-        fprintf(stderr, "\t\t-> %s\n", fos->formulaTokens[i]);
-    }
-
-    FREE(token);
-    return fos;
 }
