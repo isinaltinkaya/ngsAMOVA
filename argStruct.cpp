@@ -57,11 +57,6 @@ argStruct *argStruct_get(int argc, char **argv) {
         } else if ((strcasecmp("-doNeighborJoining", arv) == 0) || (strcasecmp("-doNJ", arv) == 0)) {
             args->doNJ = atoi(val);
 
-            // -doDist      default: 0
-            //              0: do not estimate distance matrix
-            //              1: estimate distance matrix from genotype likelihoods
-            //              2: estimate distance matrix from genotypes
-            //              3: read distance matrix from file
         } else if (strcasecmp("-doDist", arv) == 0) {
             args->doDist = atoi(val);
         }

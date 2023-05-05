@@ -35,18 +35,17 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2) {
 }
 
 // return 1: skip site for all individuals
-int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairs) {
+int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairs) {
+    const int nInd = pars->nInd;
     // data from VCF GL field is in log10 scale
     get_data<float> lgl;
     lgl.n = bcf_get_format_float(vcfd->hdr, vcfd->bcf, "GL", &lgl.data, &lgl.size_e);
-
-    lgl.n_values = lgl.n / pars->nInd;
+    lgl.n_values = lgl.n / nInd;
 
     if (lgl.n_values != 10) {
         fprintf(stderr, "\n[ERROR](File reading)\t%d GL values found; this is not yet supported.\n\n", lgl.n_values);
         exit(1);
     }
-
     if (lgl.n < 0) {
         fprintf(stderr, "\n[ERROR](File reading)\tVCF GL tag does not exist; will exit!\n\n");
         exit(1);
@@ -57,26 +56,27 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
         cmbArr[i] = 0;
     }
 
-    // TODO check why neccessary
     if (bcf_is_snp(vcfd->bcf)) {
-        char a1;
-        char a2;
-        if (pars->ancder_nSites > 0) {
-            a1 = pars->anc[site_i];
-            a2 = pars->der[site_i];
-        } else {
-            // TODO this would only work with my simulated data, consider removing
-            // reference allele
-            a1 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[0][0]];
+        ASSERT(pars->ancder_nSites[contig_i] > 0);  // TODO
 
-            // alternative allele 1
-            a2 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[1][0]];
-            ASSERT(a1 != a2);
-        }
+        const char a1 = pars->anc[contig_i][site_i];
+        const char a2 = pars->der[contig_i][site_i];
+
+        ////---------------------------------------------------
+        // if(1==args->isSim){
+        // TODO this would only work with my simulated data, consider issim arg
+        //     // reference allele
+        //     a1 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[0][0]];
+
+        //     // alternative allele 1
+        //     a2 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[1][0]];
+        //     ASSERT(a1 != a2);
+        ////---------------------------------------------------
+        // }
 
         // fprintf(stderr, "a1: %c, a2: %c\n", vcfd->bcf->d.allele[0][0], vcfd->bcf->d.allele[1][0]);
 
-        for (int indi = 0; indi < pars->nInd; indi++) {
+        for (int indi = 0; indi < nInd; indi++) {
             // 3x3 we save 3 gls so nGT = 3
             int indi3 = indi * vcfd->nGT;
 
@@ -86,19 +86,19 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
                     return 1;
                 } else {
                     // if there are only 2 individuals any missing will skip the site
-                    if (pars->nInd == 2) {
+                    if (nInd == 2) {
                         return 1;
                     }
 
                     lgl.n_missing_ind++;
 
-                    if (pars->nInd == lgl.n_missing_ind) {
+                    if (nInd == lgl.n_missing_ind) {
                         return 1;
                     }
 
                     if (args->minInd != 2) {
                         // skip site if minInd is defined and #non-missing inds=<nInd
-                        if ((pars->nInd - lgl.n_missing_ind) < args->minInd) {
+                        if ((nInd - lgl.n_missing_ind) < args->minInd) {
                             // fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,pars->nInd-n_missing_ind,site);
                             return 1;
                         }
@@ -110,27 +110,27 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
                 if (indi != 0) {
                     for (int indi2 = indi - 1; indi2 > -1; indi2--) {
                         // both inds has data
-                        pidx = nCk_idx(pars->nInd, indi, indi2);
+                        pidx = nCk_idx(nInd, indi, indi2);
 
                         if (cmbArr[pidx]) {
                             // append site to sharedSites shared sites list
-                            pairs[pidx]->sharedSites_add(site_i);
+                            pairs[pidx]->sharedSites_add(pars->nSites);
                         }
                     }
                 }
 
                 // if not last individual, check latter individuals pairing with current ind
-                if (indi != pars->nInd - 1) {
-                    for (int indi2 = indi + 1; indi2 < pars->nInd; indi2++) {
-                        pidx = nCk_idx(pars->nInd, indi, indi2);
+                if (indi != nInd - 1) {
+                    for (int indi2 = indi + 1; indi2 < nInd; indi2++) {
+                        pidx = nCk_idx(nInd, indi, indi2);
                         cmbArr[pidx]++;
                     }
                 }
                 // TODO can this prev and latter check be checkin stuff twice?
 
-                vcfd->lngl[site_i][indi3 + 0] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a1)]);
-                vcfd->lngl[site_i][indi3 + 1] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a2)]);
-                vcfd->lngl[site_i][indi3 + 2] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a2, a2)]);
+                vcfd->lngl[pars->nSites][indi3 + 0] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a1)]);
+                vcfd->lngl[pars->nSites][indi3 + 1] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a2)]);
+                vcfd->lngl[pars->nSites][indi3 + 2] = (double)LOG2LN(lgl.data[(10 * indi) + bcf_alleles_get_gtidx(a2, a2)]);
             }
         }
     } else {
@@ -142,21 +142,19 @@ int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruc
     return 0;
 }
 
-int get_JointGenoDist_GT(const size_t site_i, vcfData *vcfd, paramStruct *pars, argStruct *args) {
+int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, argStruct *args) {
     const int nInd = pars->nInd;
 
-    char a1;
-    char a2;
-    if (pars->ancder_nSites > 0) {
-        a1 = bcf_allele_charToInt[pars->anc[site_i]];
-        a2 = bcf_allele_charToInt[pars->der[site_i]];
+    ASSERT(pars->ancder_nSites[contig_i] > 0);  // TODO
+    ASSERT(NULL != pars->anc[contig_i]);        // assume: ancderfile contains all contigs in vcf
+    const char a1 = bcf_allele_charToInt[pars->anc[contig_i][site_i]];
+    const char a2 = bcf_allele_charToInt[pars->der[contig_i][site_i]];
 
-    } else {
-        // TODO this would only work with my simulated data, consider removing
-        a1 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[0][0]];
-        a2 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[1][0]];
-        ASSERT(a1 != a2);
-    }
+    // // TODO this would only work with my simulated data, consider removing
+    // see the same in get_jointgenodist_gl
+    // a1 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[0][0]];
+    // a2 = bcf_allele_charToInt[(unsigned char)vcfd->bcf->d.allele[1][0]];
+    // ASSERT(a1 != a2);
 
     // ACGT
     int ancder_lut[4] = {-1, -1, -1, -1};
@@ -382,233 +380,19 @@ void vcfData_destroy(vcfData *v) {
 /// @param args		pointer to argStruct
 /// @param pars		pointer to paramStruct
 /// @param pairSt	pointer to *pairStruct
-/// @param blobSt	pointer to blobStruct
-/// @return			void
-///
-/// @details
-/// read vcfd sites AND store block pointers for block bootstrapping
-/// if block block size for block bootstrapping is set
-/// collect pointers to blocks while reading the sites
-///
-// void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairSt, blobStruct *blobSt)
-// {
-// 	NEVER;
-// 	/*
-// 	 * [START] Reading sites
-// 	 *
-// 	 * nSites=0; totSites=0
-// 	 *
-// 	 * if minInd is set
-// 	 * 		nSites==where minInd threshold can be passed
-// 	 * 		totSites==all sites processed
-// 	 *
-// 	 */
-// 	int prev_block = -1;
-
-// 	// double *prev_ptr = NULL;
-
-// 	int contig_id;
-// 	int prev_contig;
-
-// 	int skip_site = 0;
-
-// 	//
-// 	// before reading the data, prepare a template for blobStruct with expected intervals etc.
-// 	//
-// 	// as we read the data, we update the actual blobStruct
-// while (vcfd->records_next())
-// 	{
-
-// 		if (vcfd->bcf->rlen != 1)
-// 		{
-// 			fprintf(stderr, "\n[ERROR](File reading)\tVCF file REF allele with length of %ld is currently not supported, will exit!\n\n", vcfd->bcf->rlen);
-// 			exit(1);
-// 		}
-
-// 		while (pars->nSites >= vcfd->_lngl)
-// 		{
-// 			vcfd->lngl_expand();
-// 		}
-
-// 		// // lngl[i] = (double *)malloc(nInd * nGT * sizeof(double));
-// 		// if (vcfd->lngl[pars->nSites] == NULL)
-// 		// {
-// 		// 	NEVER;
-// 		// 	vcfd->lngl[pars->nSites] = (double *)malloc(pars->nInd * vcfd->nGT * sizeof(double));
-// 		// }
-
-// 		skip_site = site_read_GL(pars->nSites, vcfd, args, pars, pairSt);
-// 		if (skip_site == 1)
-// 		{
-// 			fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
-
-// 			pars->totSites++;
-// 			FREE(vcfd->lngl[pars->nSites]);
-// 			vcfd->lngl[pars->nSites]=NULL;
-
-// 			// skipping the site thus we will not increment pars->nSites
-// 			// so next loop will overwrite the same lngl but for next site
-
-// 			continue;
-// 		}
-
-// 		double *block_ptr = NULL;
-
-// 		contig_id = vcfd->bcf->rid;
-
-// 		// if in the first loop
-// 		if (prev_contig == -1)
-// 		{
-// 			prev_contig = contig_id;
-// 			prev_block = 0;
-
-// 			block_ptr = vcfd->lngl[pars->nSites];
-
-// 			// pos bigger than the beginning of the first block == we may be in the first block
-// 			if (vcfd->bcf->pos > blobSt->contigBlockStarts[contig_id][prev_block])
-// 			{
-// 				// make sure we are in the first block and not exceed the end of the first block
-
-// 				int bi = prev_block + 1;
-// 				while (vcfd->bcf->pos > blobSt->contigBlockStarts[contig_id][bi])
-// 				{
-// 					fprintf(stderr, "\n[INFO]\tSite %ld is outside of block (start: %d, idx: %d, contig: %d). Skipping the block.\n", vcfd->bcf->pos, blobSt->contigBlockStarts[contig_id][bi], bi, contig_id);
-// 					bi++;
-// 				}
-// 				// if we skipped at least one block
-// 				if (bi != prev_block + 1)
-// 				{
-// 					// TODO
-// 					//  prev_block = bi;
-// 				}
-// 				else
-// 				{ // we did not skip any blocks; so we really are in the first block
-
-// 					// check if we already have a pointer to the first block
-// 					if (blobSt->contigBlockStartPtrs[contig_id][prev_block] == NULL)
-// 					{
-// 						// if not, set the pointer to the first block
-// 						blobSt->contigBlockStartPtrs[contig_id][prev_block] = block_ptr;
-// 					}
-// 					else
-// 					{
-// 						// this should never happen since we are in the first loop
-// 						NEVER;
-// 					}
-// 				}
-// 			}
-// 			else
-// 			{ // not yet inside the first block, skip sites until we are inside the first block
-
-// 				// skip site
-// 				// TODO
-// 			}
-// 		}
-// 		else
-// 		{ // not in the first loop
-
-// 			// contig is changed
-// 			if (contig_id != prev_contig)
-// 			{
-// 				prev_contig = contig_id;
-
-// 				// if contig is changed, we should reset block index
-// 				prev_block = 0;
-
-// 				// check if the new contig has any blocks we are supposed to use
-// 				// TODO
-// 				//
-
-// 				// check if we are in the first block of the new contig
-// 				if (vcfd->bcf->pos > blobSt->contigBlockStarts[contig_id][prev_block])
-// 				{
-
-// 					// make sure we are in the first block and not exceed the end of the first block
-
-// 					int bi = prev_block + 1;
-// 					while (vcfd->bcf->pos > blobSt->contigBlockStarts[contig_id][bi])
-// 					{
-// 						fprintf(stderr, "\n[INFO]\tSite %ld is outside of block (start: %d, idx: %d, contig: %d). Skipping the block.\n", vcfd->bcf->pos, blobSt->contigBlockStarts[contig_id][bi], bi, contig_id);
-// 						bi++;
-// 					}
-// 					// if we skipped at least one block
-// 					if (bi != prev_block + 1)
-// 					{
-// 						// TODO
-
-// 						// prev_block = bi;
-// 						blobSt->contigBlockStartPtrs[contig_id][prev_block] = block_ptr;
-// 					}
-// 					else
-// 					{ // we did not skip any blocks; so we really are in the first block
-
-// 						// check if we already have a pointer to the first block
-// 						if (blobSt->contigBlockStartPtrs[contig_id][prev_block] == NULL)
-// 						{
-// 							// if not, set the pointer to the first block
-// 							block_ptr = vcfd->lngl[pars->nSites];
-// 							blobSt->contigBlockStartPtrs[contig_id][prev_block] = block_ptr;
-// 						}
-// 						else
-// 						{
-// 							// this should never happen since we are in a new contig
-// 							NEVER;
-// 						}
-// 					}
-// 				}
-// 				else
-// 				{ // not yet inside the first block, skip sites until we are inside the first block
-
-// 					// skip site
-// 					// TODO
-// 				}
-// 			}
-// 			else
-// 			{ // not in the first loop and the contig is not changed
-
-// 				// TODO
-// 			}
-// 		}
-
-// 		//  fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block prev_bi %d\n\n",vcfd->bcf->pos,ci,prev_bi);
-
-// 		// if (vcfd->bcf->pos > blobSt->contigBlockStarts[contig_id][prev_block])
-// 		// {
-// 		// 	// fprintf(stderr,"\n\n\t-> Printing at pos %d contig %d block %d blobSt->contigBlockStarts[%d][%d] %d\n\n",vcfd->bcf->pos,ci,prev_bi,ci,prev_bi,blobSt->contigBlockStarts[ci][prev_bi]);
-// 		// 	blobSt->contigBlockStartPtrs[contig_id][prev_block] = prev_ptr;
-// 		// 	prev_bi++;
-// 		// }
-
-// 		// TODO check if any block interval is empty
-
-// 		// populate the stack blobstruct as you read, then replace the blobstruct with the actual blobstruct after reading all sites
-
-// 		pars->nSites++;
-// 		pars->totSites++;
-// 	}
-
-// 	vcfd->nSites = pars->nSites;
-// 	vcfd->totSites = pars->totSites;
-// 	/*
-// 	[END] Read sites
-// 	*/
-// #if 0
-// 	fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",pars->nSites);
-// 	fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu) totSites:%d\n\n",pars->nSites,vcfd->bcf->pos,vcfd->bcf->pos+1,pars->totSites);
-// #endif
-
-// 	fprintf(stderr, "\n\t-> Finished reading sites\n");
-// }
-
-/// @param vcfd		pointer to vcfData
-/// @param args		pointer to argStruct
-/// @param pars		pointer to paramStruct
-/// @param pairSt	pointer to *pairStruct
 ///
 /// @details
 /// overload: not saving blob information for block bootstrapping
 void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairSt) {
     int skip_site = 0;
+    int contig_i = 0;
+    int site_i = 0;
+    char prev_contig[100];
+    pars->contigNames = (char **)malloc(vcfd->nContigs * sizeof(char *));
+    for (int i = 0; i < vcfd->nContigs; i++) {
+        pars->contigNames[i] = (char *)malloc(100 * sizeof(char));
+    }
+
     while (vcfd->records_next()) {
         if (vcfd->bcf->rlen != 1) {
             fprintf(stderr, "\n[ERROR](File reading)\tVCF file REF allele with length of %ld is currently not supported, will exit!\n\n", vcfd->bcf->rlen);
@@ -630,16 +414,31 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
             }
         }
 
-        skip_site = site_read_GL(pars->nSites, vcfd, args, pars, pairSt);
+        const char *contig_id = bcf_seqname(vcfd->hdr, vcfd->bcf);
+        if (0 != contig_i && 0 != strcmp(contig_id, prev_contig)) {
+            strcpy(prev_contig, contig_id);
+            ++contig_i;
+            strcpy(pars->contigNames[contig_i], contig_id);  // dragon
+            if (contig_i >= vcfd->nContigs) {
+                ERROR("Number of contigs in the VCF file header is larger than the number of contigs in the VCF file");
+            }
+            site_i = 0;
+        }
+
+        skip_site = site_read_GL(contig_i, site_i, vcfd, args, pars, pairSt);
+
         if (skip_site == 1) {
             fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
             pars->totSites++;
 
-            //  next loop will skip this and use the same site_i
+            //  next loop will skip this and use the same pars->nSites
             FREE(vcfd->lngl[pars->nSites]);
             continue;
         }
+
+        // check if contig changed
         pars->nSites++;
+        ++site_i;
         pars->totSites++;
     }
 
@@ -661,23 +460,36 @@ void readSites_GT(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
      * 		totSites==all sites processed
      *
      */
+
+    ASSERT(0 == pars->nSites);
+    ASSERT(0 == pars->nContigs);
+
+    pars->contigNames = (char **)malloc(vcfd->nContigs * sizeof(char *));
+    for (int i = 0; i < vcfd->nContigs; i++) {
+        pars->contigNames[i] = (char *)malloc(100 * sizeof(char));  // dragon
+    }
+
+    int contig_i = 0;
+    int site_i = 0;
+
     while (vcfd->records_next()) {
         if (vcfd->bcf->rlen != 1) {
             fprintf(stderr, "\n[ERROR](File reading)\tVCF file REF allele with length of %ld is currently not supported, will exit!\n\n", vcfd->bcf->rlen);
             exit(1);
         }
 
-        skip_site = get_JointGenoDist_GT(pars->nSites, vcfd, pars, args);
+        skip_site = get_JointGenoDist_GT(contig_i, site_i, vcfd, pars, args);
 
         if (skip_site == 1) {
             fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
             pars->totSites++;
 
-            //  next loop will skip this and use the same site_i
-            FREE(vcfd->lngl[pars->nSites]);
+            //  next loop will skip this and use the same pars->nSites
+            FREE(vcfd->lngl[site_i]);
             continue;
         }
 
+        ++site_i;
         pars->nSites++;
         pars->totSites++;
     }

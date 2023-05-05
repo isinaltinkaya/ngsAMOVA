@@ -83,8 +83,9 @@
 /*
  * Macro:[LOG]
  */
-#define LOG(...) \
-    fprintf(stderr, "\n[LOG](%s/%s:%d)\t%s\n", __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__);
+#define LOG(...)                                                              \
+    fprintf(stderr, "\n[LOG](%s/%s:%d)\t", __FILE__, __FUNCTION__, __LINE__); \
+    fprintf(stderr, __VA_ARGS__);
 
 /*
  * Macro:[ASSERTM]

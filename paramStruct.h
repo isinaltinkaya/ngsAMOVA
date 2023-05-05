@@ -79,9 +79,14 @@ struct paramStruct {
     size_t nSites;
     size_t totSites;  // total number of sites processed
 
-    int ancder_nSites = 0;
-    char *anc = NULL;  // ancestral allelic state for each site
-    char *der = NULL;  // derived allelic state for each site
+    char **contigNames = NULL;
+
+    int nContigs;
+
+    // \def ancder_nSites[nContigs]=nSites
+    int *ancder_nSites = NULL;  // number of ancder nSites per contig
+    char **anc = NULL;          // ancestral allelic state for each site
+    char **der = NULL;          // derived allelic state for each site
 
     formulaStruct *formula = NULL;
 

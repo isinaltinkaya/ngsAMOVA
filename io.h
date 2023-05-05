@@ -54,6 +54,9 @@ void vprint(FILE *fp, const int verbose_threshold, const char *format, ...);
 /// @example vprint(1, "Hello %s", "World"); // will print to both stderr and fp if verbose >= 1
 void vvprint(FILE *fp, const int verbose_threshold, const char *format, ...);
 
+// TODO
+// int requireNCols(const char *fn, const int nCols, const char *delims);
+
 void requireArgFile(const char *fn, const char *requiredArg, const char *requiredFor);
 void requireArgFile(const char *fn, const char *requiredArg);
 

@@ -51,8 +51,7 @@ all:
 #
 	@printf "\n\n\n";
 	@printf "===============================================================================\n";
-	@printf "\n\n\n[TEST 9]: Same as TEST1 but with ancder file"
-	../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf --printDistanceMatrix 1 -minInd 2 -doDist 1 --maxEmIter 100 --em-tole 1e-10 -m metadata_with_header_1lvl.tsv --ancDerFile test_s9_d1_1K_ancder.tsv -f "Individual~Population" --ancDerFile test_s9_d1_1K_ancder.tsv -out testwd/test_s9_d1_1K_mtd1_ancder 2> testwd/logs/test_s9_d1_1K_mtd1_ancder.log;
-	bash -c "diff testwd/test_s9_d1_1K_mtd1_ancder.amova.csv reference/test_s9_d1_1K_mtd1.amova.csv";
-#
+	@printf "\n\n\n[TEST 9]: Same as TEST1 but with same sites divided into 2 contigs\n";
+	../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K_2contigs.vcf --printDistanceMatrix 1 -minInd 2 -doDist 1 --maxEmIter 100 --em-tole 1e-10 -m metadata_with_header_1lvl.tsv -f "Individual~Population" --ancDerFile test_s9_d1_1K_2contigs_ancder.tsv -out testwd/test_s9_d1_1K_2contigs_mtd1 2> testwd/logs/test_s9_d1_1K_2contigs_mtd1.log;
+	bash -c "diff testwd/test_s9_d1_1K_2contigs_mtd1.amova.csv reference/test_s9_d1_1K_mtd1.amova.csv";
 	@printf "\n\n\n";

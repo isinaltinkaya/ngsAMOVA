@@ -373,7 +373,7 @@ bootstrapDataset *bootstrapDataset_get(vcfData *vcfd, paramStruct *pars, argStru
         }
     }
 
-    int from_ind = -1;
+    // int from_ind = -1;
 
     fprintf(stderr, "\n\n~~~~\n\n\n");
     for (int i = 0; i < vcfd->nInd; i++) {

@@ -144,9 +144,9 @@ void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
 
 void readSites_GT(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairSt);
 
-int site_read_GL(const size_t site_i, vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairs);
+int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairs);
 
-int get_JointGenoDist_GT(const size_t site_i, vcfData *vcf, paramStruct *pars, argStruct *args);
+int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcf, paramStruct *pars, argStruct *args);
 
 int GLtoGT_1_JointGenoDist(vcfData *vcf, paramStruct *pars, argStruct *args);
 

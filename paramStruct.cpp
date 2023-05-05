@@ -11,58 +11,114 @@ void setInputFileType(paramStruct *pars, int inputFileType) {
 // just like vcf
 void paramStruct::read_ancDerFile(char *fn) {
     int nSites_buf = 1000;
-    anc = (char *)malloc(nSites_buf * sizeof(char));
-    der = (char *)malloc(nSites_buf * sizeof(char));
+    int nContigs_buf = 100;
 
-    FILE *fp = IO::getFile(fn, "r");
-    char *firstLine = IO::readFile::getFirstLine(fp);
-    int nCols = IO::inspectFile::count_nCols(firstLine, "\t");
-    if (nCols != 4) {
-        ERROR("File defining the ancestral and derived alleles must have 4 columns: [chr, start, end, ancestral_allele, derived_allele]. The file provided has %i columns.", nCols);
+    anc = (char **)malloc(nContigs_buf * sizeof(char *));
+    der = (char **)malloc(nContigs_buf * sizeof(char *));
+    for (int i = 0; i < nContigs_buf; ++i) {
+        anc[i] = (char *)malloc(nSites_buf * sizeof(char));
+        der[i] = (char *)malloc(nSites_buf * sizeof(char));
     }
 
-    ASSERT(fseek(fp, 0, SEEK_SET) == 0);
+    FILE *fp = IO::getFile(fn, "r");
 
     char *tok = NULL;
-    char chr[100];
-    char pos[100];
-    char anc_i = 'N';
-    char der_i = 'N';
 
     int pos_i = 0;
     int pos_int = -1;
 
-    while (EOF != fscanf(fp, "%s\t%s\t%s\t%s", chr, pos, &anc_i, &der_i)) {
-        if (pos_i == nSites_buf) {
-            nSites_buf *= 2;
-            anc = (char *)realloc(anc, nSites_buf * sizeof(char));
-            der = (char *)realloc(der, nSites_buf * sizeof(char));
-        }
+    int coli = 0;
 
-        ASSERTM(strIsNumeric(pos), "Position must be numeric.");
+    int contig_i = 0;
 
-        pos_int = atoi(pos);
+    char last_contig[1024];
+    ////
 
-        IO::validateString(chr);
+    char *buf = (char *)malloc(FGETS_BUF_SIZE * sizeof(char));
 
-        ASSERTM(pos_int > 0, "Position must be greater than 0.");
-
-        anc[pos_i] = anc_i;
-        der[pos_i] = der_i;
-
-        ++pos_i;
+    ancder_nSites = (int *)malloc(nContigs_buf * sizeof(int));
+    for (int i = 0; i < nContigs_buf; ++i) {
+        ancder_nSites[i] = 0;
     }
 
-    ancder_nSites = pos_i;
+    while (fgets(buf, FGETS_BUF_SIZE, fp) != NULL) {
+        coli = 0;
+        if (buf[strlen(buf) - 1] != '\n') {
+            ERROR("Line in metadata file is too long. Maximum line length is %d. Please increase FGETS_BUF_SIZE.\n", FGETS_BUF_SIZE);
+        }
 
-    // for (int i = 0; i < ancder_nSites; ++i) {
-    //     fprintf(stderr, "%i\t%c\t%c\n", i, anc[i], der[i]);
-    // }
+        char *tok = strtok(buf, "\t\n");
+        while (tok != NULL) {
+            DEVPRINT("%s", tok);
 
-    anc = (char *)realloc(anc, ancder_nSites * sizeof(char));
-    der = (char *)realloc(der, ancder_nSites * sizeof(char));
+            if (0 == coli) {
+                // -> chr
+                IO::validateString(tok);
 
-    FREE(firstLine);
+                if (0 == contig_i) {
+                    strcpy(last_contig, tok);
+                }
+
+                // if chr is changed; move to next contig index
+                if (0 != contig_i && 0 != strcmp(last_contig, tok)) {
+                    ++contig_i;
+                    pos_i = 0;
+                }
+                ++ancder_nSites[contig_i];
+
+                if (pos_i == nSites_buf) {
+                    nSites_buf *= 2;
+                    anc[contig_i] = (char *)realloc(anc[contig_i], nSites_buf * sizeof(char));
+                    der[contig_i] = (char *)realloc(der[contig_i], nSites_buf * sizeof(char));
+                }
+
+            } else if (1 == coli) {
+                // -> pos
+                ASSERTM(strIsNumeric(tok), "Position must be numeric.");
+                pos_int = atoi(tok);
+                ASSERTM(pos_int > 0, "Position must be greater than 0.");
+
+            } else if (2 == coli) {
+                // -> anc
+                ASSERT(1 == strlen(tok));
+                anc[contig_i][pos_i] = tok[0];
+
+            } else if (3 == coli) {
+                // -> der
+                ASSERT(1 == strlen(tok));
+                der[contig_i][pos_i] = tok[0];
+
+            } else {
+                ERROR("Too many columns in file %s. Expected: 4", fn);
+            }
+            tok = strtok(NULL, "\t\n");
+            ++coli;
+        }
+        ++pos_i;
+    }
+    ////
+
+    //     while (fread(line, sizeof(char), FREAD_BUF_SIZE, fp)) {
+    //     char col[4][FREAD_BUF_SIZE];
+    //     coli = 0;
+    //     tok = strtok(line, "\t\n");
+
+    //     while (NULL != tok) {
+    //         if (coli == 4) {
+    //         }
+    //         DEVPRINT("%s", tok);
+    //         strcpy(col[coli++], tok);
+    //         tok = strtok(NULL, "\t\n");
+    //     }
+
+    // ancder_nSites[contig_i] = pos_i;
+
+    for (int j = 0; j < nContigs; j++) {
+        for (int i = 0; i < ancder_nSites[j]; ++i) {
+            fprintf(stderr, "%i\t%c\t%c\n", i, anc[j][i], der[j][i]);
+        }
+    }
+
     FREE(tok);
     FCLOSE(fp);
 }
@@ -93,6 +149,7 @@ paramStruct *paramStruct_init(argStruct *args) {
 
     pars->nSites = 0;
     pars->totSites = 0;
+    pars->nContigs = 0;
 
     if (NULL != args->formula) {
         pars->formula = formulaStruct_get(args->formula);
