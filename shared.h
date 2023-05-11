@@ -276,8 +276,6 @@
 // maximum level of verbosity allowed
 #define MAX_VERBOSE_LEVEL 7
 
-#define BLOCKSFILE_BUFSIZE_PERLINE 256
-
 /*
  * Macro:[MAXDIG_PER_HLEVEL]
  * Defines the maximum number of digits that can be used to
@@ -315,6 +313,11 @@
 
 // for growing buffer memory
 #define N_INDIVIDUALS_BUF 100
+#define BLOCKSFILE_BUFSIZE_PERLINE 256
+
+// dragon
+#define BUF_NSITES 4096
+#define BUF_NCONTIGS 256
 
 #define FREAD_BUF_SIZE 4096
 #define FGETS_BUF_SIZE 4096

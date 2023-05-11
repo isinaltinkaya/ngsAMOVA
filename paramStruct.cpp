@@ -9,85 +9,89 @@ void setInputFileType(paramStruct *pars, int inputFileType) {
 //     - 1-based
 //     - [start:included, end:included]
 // just like vcf
-void paramStruct::read_ancDerFile(char *fn) {
-    int nSites_buf = 1000;
-    int nContigs_buf = 100;
 
-    anc = (char **)malloc(nContigs_buf * sizeof(char *));
-    der = (char **)malloc(nContigs_buf * sizeof(char *));
-    for (int i = 0; i < nContigs_buf; ++i) {
-        anc[i] = (char *)malloc(nSites_buf * sizeof(char));
-        der[i] = (char *)malloc(nSites_buf * sizeof(char));
+alleleStruct::alleleStruct() {
+    nSites = (int *)calloc(BUF_NCONTIGS, sizeof(int));
+    a1 = (char **)malloc(BUF_NCONTIGS * sizeof(char *));
+    a2 = (char **)malloc(BUF_NCONTIGS * sizeof(char *));
+    for (int i = 0; i < BUF_NCONTIGS; ++i) {
+        a1[i] = (char *)malloc(BUF_NSITES * sizeof(char));
+        a2[i] = (char *)malloc(BUF_NSITES * sizeof(char));
     }
+}
+
+alleleStruct::~alleleStruct() {
+    FREE(nSites);
+    int n_contigs = nContigs > BUF_NCONTIGS ? nContigs : BUF_NCONTIGS;
+    for (int i = 0; i < n_contigs; ++i) {
+        FREE(a1[i]);
+        FREE(a2[i]);
+    }
+    FREE(a1);
+    FREE(a2);
+}
+
+alleleStruct *alleleStruct_read(const char *fn) {
+    alleleStruct *A = new alleleStruct;
 
     FILE *fp = IO::getFile(fn, "r");
 
-    char *tok = NULL;
+    int n_sites = BUF_NSITES;
 
     int pos_i = 0;
-    int pos_int = -1;
-
+    // int pos_int = -1;
     int coli = 0;
-
     int contig_i = 0;
 
+    // dragon
     char last_contig[1024];
-    ////
-
     char *buf = (char *)malloc(FGETS_BUF_SIZE * sizeof(char));
-
-    ancder_nSites = (int *)malloc(nContigs_buf * sizeof(int));
-    for (int i = 0; i < nContigs_buf; ++i) {
-        ancder_nSites[i] = 0;
-    }
 
     while (fgets(buf, FGETS_BUF_SIZE, fp) != NULL) {
         coli = 0;
         if (buf[strlen(buf) - 1] != '\n') {
-            ERROR("Line in metadata file is too long. Maximum line length is %d. Please increase FGETS_BUF_SIZE.\n", FGETS_BUF_SIZE);
+            ERROR("FGETS_BUF_SIZE is too small");
         }
 
         char *tok = strtok(buf, "\t\n");
         while (tok != NULL) {
-            DEVPRINT("%s", tok);
-
-            if (0 == coli) {
-                // -> chr
-                IO::validateString(tok);
+            if (0 == coli) {  // -> contig id
+                // TODO maybe set a debug mode for these, so it doesn't slow down the program if the user doesn't want to validate
+                // IO::validateString(tok);
 
                 if (0 == contig_i) {
+                    // if first contig; set last_contig to current contig
                     strcpy(last_contig, tok);
-                }
-
-                // if chr is changed; move to next contig index
-                if (0 != contig_i && 0 != strcmp(last_contig, tok)) {
+                } else if (0 != strcmp(last_contig, tok)) {
+                    // if chr is changed; move to next contig index
                     ++contig_i;
                     pos_i = 0;
+                    strcpy(last_contig, tok);
+                    n_sites = BUF_NSITES;
                 }
-                ++ancder_nSites[contig_i];
+                A->nSites[contig_i]++;
 
-                if (pos_i == nSites_buf) {
-                    nSites_buf *= 2;
-                    anc[contig_i] = (char *)realloc(anc[contig_i], nSites_buf * sizeof(char));
-                    der[contig_i] = (char *)realloc(der[contig_i], nSites_buf * sizeof(char));
+                if (pos_i == n_sites) {
+                    n_sites *= 2;
+                    // dragon unnecessary space can be allocated
+                    A->a1[contig_i] = (char *)realloc(A->a1[contig_i], n_sites * sizeof(char));
+                    A->a2[contig_i] = (char *)realloc(A->a2[contig_i], n_sites * sizeof(char));
+                    for (int i = pos_i; i < n_sites; ++i) {
+                        A->a1[contig_i][i] = 0;
+                        A->a2[contig_i][i] = 0;
+                    }
                 }
+            } else if (1 == coli) {  // -> position
+                // ASSERTM(strIsNumeric(tok), "Position must be numeric.");
+                // pos_int = atoi(tok);
 
-            } else if (1 == coli) {
-                // -> pos
-                ASSERTM(strIsNumeric(tok), "Position must be numeric.");
-                pos_int = atoi(tok);
-                ASSERTM(pos_int > 0, "Position must be greater than 0.");
+            } else if (2 == coli) {        // -> anc/major
+                ASSERT(1 == strlen(tok));  // expect a single character e.g. G
+                A->a1[contig_i][pos_i] = tok[0];
 
-            } else if (2 == coli) {
-                // -> anc
+            } else if (3 == coli) {  // -> der/minor
                 ASSERT(1 == strlen(tok));
-                anc[contig_i][pos_i] = tok[0];
-
-            } else if (3 == coli) {
-                // -> der
-                ASSERT(1 == strlen(tok));
-                der[contig_i][pos_i] = tok[0];
-
+                A->a2[contig_i][pos_i] = tok[0];
             } else {
                 ERROR("Too many columns in file %s. Expected: 4", fn);
             }
@@ -96,31 +100,13 @@ void paramStruct::read_ancDerFile(char *fn) {
         }
         ++pos_i;
     }
-    ////
 
-    //     while (fread(line, sizeof(char), FREAD_BUF_SIZE, fp)) {
-    //     char col[4][FREAD_BUF_SIZE];
-    //     coli = 0;
-    //     tok = strtok(line, "\t\n");
+    A->nContigs = contig_i + 1;
 
-    //     while (NULL != tok) {
-    //         if (coli == 4) {
-    //         }
-    //         DEVPRINT("%s", tok);
-    //         strcpy(col[coli++], tok);
-    //         tok = strtok(NULL, "\t\n");
-    //     }
-
-    // ancder_nSites[contig_i] = pos_i;
-
-    for (int j = 0; j < nContigs; j++) {
-        for (int i = 0; i < ancder_nSites[j]; ++i) {
-            fprintf(stderr, "%i\t%c\t%c\n", i, anc[j][i], der[j][i]);
-        }
-    }
-
-    FREE(tok);
+    FREE(buf);
     FCLOSE(fp);
+
+    return A;
 }
 
 void paramStruct::printParams(FILE *fp) {
@@ -144,7 +130,12 @@ paramStruct *paramStruct_init(argStruct *args) {
         setInputFileType(pars, IN_DM);
     }
     if (NULL != args->in_ancder_fn) {
-        pars->read_ancDerFile(args->in_ancder_fn);
+        pars->ancder = alleleStruct_read(args->in_ancder_fn);
+        ASSERT(pars->ancder != NULL);
+    }
+    if (NULL != args->in_majorminor_fn) {
+        pars->majmin = alleleStruct_read(args->in_majorminor_fn);
+        ASSERT(pars->majmin->a1 != NULL);
     }
 
     pars->nSites = 0;
@@ -166,16 +157,14 @@ paramStruct *paramStruct_init(argStruct *args) {
 void paramStruct_destroy(paramStruct *pars) {
     FREE(pars->DATETIME);
 
-    for (int i = 0; i < pars->nContigs; ++i) {
-        FREE(pars->anc[i]);
-        FREE(pars->der[i]);
+    if (NULL != pars->ancder) {
+        DELETE(pars->ancder);
     }
-    FREE(pars->anc);
-    FREE(pars->der);
+    if (NULL != pars->majmin) {
+        DELETE(pars->majmin);
+    }
 
     formulaStruct_destroy(pars->formula);
-
-    FREE(pars->ancder_nSites);
 
     delete pars;
 }
@@ -199,11 +188,6 @@ void check_consistency_args_pars(argStruct *args, paramStruct *pars) {
 
     if (pars->nInd < args->minInd) {
         fprintf(stderr, "\n\n[ERROR]\tMinimum number of individuals -minInd is set to %d, but input file contains %d individuals; will exit!\n\n", args->minInd, pars->nInd);
-        exit(1);
-    }
-
-    if (pars->in_ft & IN_DM && args->printDistanceMatrix == 1) {
-        fprintf(stderr, "\n\n[ERROR]\tCannot print distance matrix since input file is already a distance matrix; will exit!\n\n");
         exit(1);
     }
 }

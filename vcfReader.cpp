@@ -43,12 +43,10 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, argStruct 
     lgl.n_values = lgl.n / nInd;
 
     if (lgl.n_values != 10) {
-        fprintf(stderr, "\n[ERROR](File reading)\t%d GL values found; this is not yet supported.\n\n", lgl.n_values);
-        exit(1);
+        ERROR("VCF GL tag does not have 10 values per individual; will exit!")
     }
     if (lgl.n < 0) {
-        fprintf(stderr, "\n[ERROR](File reading)\tVCF GL tag does not exist; will exit!\n\n");
-        exit(1);
+        ERROR("VCF GL tag does not exist; will exit!")
     }
 
     int cmbArr[pars->nIndCmb];
@@ -57,10 +55,10 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, argStruct 
     }
 
     if (bcf_is_snp(vcfd->bcf)) {
-        ASSERT(pars->ancder_nSites[contig_i] > 0);  // TODO
+        ASSERT(pars->ancder->nSites[contig_i] > 0);  // TODO
 
-        const char a1 = pars->anc[contig_i][site_i];
-        const char a2 = pars->der[contig_i][site_i];
+        const char a1 = pars->ancder->a1[contig_i][site_i];
+        const char a2 = pars->ancder->a2[contig_i][site_i];
 
         ////---------------------------------------------------
         // if(1==args->isSim){
@@ -145,10 +143,10 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, argStruct 
 int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, argStruct *args) {
     const int nInd = pars->nInd;
 
-    ASSERT(pars->ancder_nSites[contig_i] > 0);  // TODO
-    ASSERT(NULL != pars->anc[contig_i]);        // assume: ancderfile contains all contigs in vcf
-    const char a1 = bcf_allele_charToInd[(int)pars->anc[contig_i][site_i]];
-    const char a2 = bcf_allele_charToInd[(int)pars->der[contig_i][site_i]];
+    ASSERT(NULL != pars->ancder->a1[contig_i]);
+    // assume: ancderfile contains all contigs in vcf
+    const char a1 = bcf_allele_charToInd[(int)pars->ancder->a1[contig_i][site_i]];
+    const char a2 = bcf_allele_charToInd[(int)pars->ancder->a2[contig_i][site_i]];
 
     // // TODO this would only work with my simulated data, consider removing
     // see the same in get_jointgenodist_gl

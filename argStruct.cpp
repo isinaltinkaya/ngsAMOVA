@@ -308,8 +308,8 @@ argStruct *argStruct_get(int argc, char **argv) {
             } else if (strIsNumeric(val)) {
                 int verbose_val = atoi(val) - 1;
                 if (verbose_val > MAX_VERBOSE_LEVEL) {
-                    fprintf(stderr, "\n[WARNING]\tVerbosity level is set to %d, which is greater than the maximum verbosity level %d. Setting verbosity level to %d.\n", verbose_val, MAX_VERBOSE_LEVEL, MAX_VERBOSE_LEVEL);
                     verbose_val = MAX_VERBOSE_LEVEL;
+                    fprintf(stderr, "\n[WARNING]\tVerbosity level is set to %d, which is greater than the maximum verbosity level %d. Setting verbosity level to MAX.\n", verbose_val, MAX_VERBOSE_LEVEL);
                 }
                 BITSET(VERBOSE, verbose_val);
             } else {
@@ -336,7 +336,7 @@ argStruct *argStruct_get(int argc, char **argv) {
         //
         //    This file can be obtained using ANGSD maf files.
 
-        else if (strcasecmp("--majorMinorFile", arv) == 0 || strcasecmp("-mmf", arv) == 0) {
+        else if (strcasecmp("--majorMinorFile", arv) == 0 || strcasecmp("--majMinFile", arv) == 0 || strcasecmp("-mmf", arv) == 0) {
             args->in_majorminor_fn = strdup(val);
         }
 
@@ -427,6 +427,9 @@ void argStruct::check_arg_dependencies() {
         fprintf(stderr, "\n\t-> -out <output_prefix> not set; will use %s as a prefix for output files.\n", out_fnp);
     }
 
+    if (NULL == in_ancder_fn) {
+        ERROR("AncDer file is required\n");
+    }
     if (in_vcf_fn == NULL && in_dm_fn == NULL) {
         fprintf(stderr, "\n[ERROR] Must supply either --in-vcf <VCF_file> or --in-dm <Distance_matrix_file>.\n");
         exit(1);
@@ -544,10 +547,10 @@ void argStruct::check_arg_dependencies() {
         }
 
         if (-1 == maxEmIter) {
-            maxEmIter = 1000;
-            LOG("-maxEmIter is not set, setting to default value %d. Will terminate the EM algorithm if the number of iterations exceeds %d.", maxEmIter, maxEmIter);
+            maxEmIter = 500;
+            LOG("-maxEmIter is not set, setting to default value %d. Will terminate the EM algorithm if the number of iterations exceed %d.", maxEmIter, maxEmIter);
         } else {
-            LOG("-maxEmIter is set to %d. Will terminate the EM algorithm if the number of iterations exceeds %d.", maxEmIter, maxEmIter);
+            LOG("-maxEmIter is set to %d. Will terminate the EM algorithm if the number of iterations exceed %d.", maxEmIter, maxEmIter);
         }
 
     } else {

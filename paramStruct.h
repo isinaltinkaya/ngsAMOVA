@@ -5,6 +5,8 @@
 
 struct argStruct;
 
+typedef struct alleleStruct alleleStruct;
+
 typedef struct paramStruct paramStruct;
 
 typedef struct formulaStruct formulaStruct;
@@ -81,11 +83,8 @@ struct paramStruct {
 
     int nContigs;
 
-    // \def ancder_nSites[nContigs]=nSites
-    int *ancder_nSites = NULL;  // number of ancder nSites per contig
-    char **anc = NULL;          // ancestral allelic state for each site
-    char **der = NULL;          // derived allelic state for each site
-
+    alleleStruct *ancder = NULL;
+    alleleStruct *majmin = NULL;
     formulaStruct *formula = NULL;
 
     int nInd;
@@ -95,7 +94,7 @@ struct paramStruct {
     int nAmovaRuns;
 
     // input file type from enum
-    int in_ft;
+    int in_ft = 0;
     char *DATETIME = NULL;
 
     // PRINT FUNCTIONS
@@ -107,9 +106,43 @@ struct paramStruct {
     // validate that parameters make sense
     // e.g. nInd > 0
     void validate();
-
-    void read_ancDerFile(char *fn);
 };
+
+struct alleleStruct {
+    // \def nSites[nContigs]
+    //      nSites[contig_i] == number of sites with a1 a2 data in contig_i
+    int *nSites = NULL;
+
+    int nContigs = 0;
+
+    // \def a1[nContigs][nSites[contig_i]]
+    //      a1[contig_i][site_j] == a1 data for site_j in contig_i
+    //      a1 can be ancestral or major allele
+    char **a1 = NULL;
+
+    // \def a2[nContigs][nSites[contig_i]]
+    //      a2[contig_i][site_j] == a2 data for site_j in contig_i
+    //      a2 can be derived or minor allele
+    char **a2 = NULL;
+
+    alleleStruct();
+    ~alleleStruct();
+};
+
+/// @brief alleleStruct_read read alleles file
+/// @param fn alleles file name
+/// @return pointer to alleleStruct
+/// @details alleles files are tab delimited files with 4 columns:
+/// 1. contig name
+/// 2. position
+/// 3. a1
+/// 4. a2
+/// a1 and a2 can be ancestral and derived or major and minor alleles
+alleleStruct *alleleStruct_read(const char *fn);
+
+/// @brief alleleStruct_destroy destroy alleleStruct
+/// @param as pointer to alleleStruct
+void alleleStruct_destroy(alleleStruct *A);
 
 /// @brief paramStruct_init initialize the paramStruct
 /// @param args arguments argStruct
