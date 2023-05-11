@@ -1,5 +1,53 @@
 #include "bootstrap.h"
 
+blobStruct *blobStruct_get(vcfData *vcf, paramStruct *pars, argStruct *args) {
+    fprintf(stderr, "\n\t-> --nBootstraps %d is set, will perform %d bootstraps for AMOVA significance testing.\n", args->nBootstraps, args->nBootstraps);
+
+    if (args->nBootstraps < 0) {
+        ERROR("nBootstraps should be a positive integer or 0, but found %d.", args->nBootstraps);
+    }
+
+    blobStruct *blob = NULL;
+
+    if (args->blockSize != 0) {
+        fprintf(stderr, "\n\t-> blockSize is set, will perform block bootstrapping with blocks of size %d.\n", args->blockSize);
+        blob = blobStruct_populate_blocks_withSize(vcf, args);
+    } else if (args->in_blocks_tab_fn != NULL) {
+        blob = blobStruct_read_tab(args->in_blocks_tab_fn);
+    } else if (args->in_blocks_bed_fn != NULL) {
+        blob = blobStruct_read_bed(args->in_blocks_bed_fn);
+    } else {
+        ERROR("--nBootstraps %d requires --block-size, --in_blocks_tab_fn or --in_blocks_bed_fn to be set.", args->nBootstraps);
+    }
+
+    blob->bootstraps = bootstrapDataset_get(vcf, pars, args, blob);
+
+    return blob;
+}
+
+bootstrapDataset *bootstrapDataset_get(vcfData *vcfd, paramStruct *pars, argStruct *args, blobStruct *blobSt) {
+    bootstrapDataset *bootstraps = new bootstrapDataset(args, pars, args->nBootstraps, blobSt->nBlocks);
+
+    int rblock = -1;
+
+    for (int rep = 0; rep < args->nBootstraps; ++rep) {
+        for (int block = 0; block < blobSt->nBlocks; ++block) {
+            rblock = sample_with_replacement(blobSt->nBlocks);
+            bootstraps->bootRep[rep]->rBlocks[block] = rblock;
+        }
+    }
+
+    return bootstraps;
+}
+
+// / @brief sample an index from a set of size n
+/// @param n
+/// @return
+int sample_with_replacement(int n) {
+    ASSERT(n > 0);
+    return (int)(n * drand48());
+}
+
 void blobStruct::_print() {
     for (int i = 0; i < nBlocks; ++i) {
         fprintf(stderr, "%s\t%d\t%d\t%d\n", blocks[i]->chr, blocks[i]->start, blocks[i]->end, blocks[i]->len);
@@ -7,7 +55,9 @@ void blobStruct::_print() {
 }
 
 blobStruct::~blobStruct() {
+    DELETE(bootstraps);
     for (int i = 0; i < nBlocks; ++i) {
+        FREE(blocks[i]->chr);
         FREE(blocks[i]);
         FREE(blockPtrs[i]);
     }
@@ -19,7 +69,9 @@ void blobStruct::addBlock() {
     ++nBlocks;
     if (nBlocks > 1) {
         blocks = (blockStruct **)realloc(blocks, nBlocks * sizeof(blockStruct *));
+        ASSERT(blocks != NULL);
         blockPtrs = (int **)realloc(blockPtrs, nBlocks * sizeof(int *));
+        ASSERT(blockPtrs != NULL);
     } else {
         blocks = (blockStruct **)malloc(nBlocks * sizeof(blockStruct *));
         blockPtrs = (int **)malloc(nBlocks * sizeof(int *));
@@ -213,182 +265,46 @@ blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf, argStruct *args) {
     return blob;
 }
 
-blobStruct *blobStruct_get(vcfData *vcf, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, formulaStruct *formulaSt) {
-    fprintf(stderr, "\n\t-> --nBootstraps %d is set, will perform %d bootstraps for AMOVA significance testing.\n", args->nBootstraps, args->nBootstraps);
-
-    if (args->nBootstraps < 0) {
-        ERROR("nBootstraps should be a positive integer or 0, but found %d.", args->nBootstraps);
-    }
-
-    blobStruct *blob = NULL;
-
-    if (args->blockSize != 0) {
-        fprintf(stderr, "\n\t-> blockSize is set, will perform block bootstrapping with blocks of size %d.\n", args->blockSize);
-        blob = blobStruct_populate_blocks_withSize(vcf, args);
-    } else if (args->in_blocks_tab_fn != NULL) {
-        blob = blobStruct_read_tab(args->in_blocks_tab_fn);
-    } else if (args->in_blocks_bed_fn != NULL) {
-        blob = blobStruct_read_bed(args->in_blocks_bed_fn);
-    } else {
-        ERROR("--nBootstraps %d requires --block-size, --in_blocks_tab_fn or --in_blocks_bed_fn to be set.", args->nBootstraps);
-    }
-
-    bootstrapDataset_get(vcf, pars, args, dMS, mS, blob);
-    ASSERT(blob != NULL);
-
-    return blob;
-}
-
-bootstrapData *prepare_bootstrap_block_1level(vcfData *vcfd, metadataStruct *mS, blobStruct *blobSt) {
-    bootstrapData *boot = (bootstrapData *)malloc(sizeof(bootstrapData));
-    boot->vblocks = (int **)malloc(mS->nInd * sizeof(int *));
-    for (int i = 0; i < mS->nInd; i++) {
-        boot->vblocks[i] = (int *)malloc(blobSt->nBlocks * sizeof(int));
-    }
-
-    // shuffle genomic blocks among all individuals in given level
-    // vblock= block from an individual at this_block
-    // range [0, mS->nIndMetadata-1]
-
-    // nLevels = 1
-    //      Shuffle all blocks among all groups
-    //      Sample set = all samples
-    //
-    //      to create an artificial individual set of size nInd
-
-    // i : index of the artificial individual created by shuffling blocks
-    for (int i = 0; i < mS->nInd; i++) {
-        int vb = -1;
-
-        for (int block = 0; block < blobSt->nBlocks; ++block) {
-            // randomly sample an individual to use the block from
-            // repeat sampling for each block
-            // store sampled individual indices in an array of size nBlocks
-
-            // from a sample set that is the same as the current group assignment
-            vb = sample_block_variant(mS, 0, 0);
-            boot->vblocks[i][block] = vb;
-        }
-    }
-    return boot;
-}
-
-bootstrapData *prepare_bootstrap_blocks_multilevel(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, formulaStruct *formulaSt, blobStruct *blobSt) {
-    bootstrapData *boot = (bootstrapData *)malloc(sizeof(bootstrapData));
-
-    // multiple levels; shuffle blocks among groups of samples based on current group assignment
-
-    // boot->vblocks = (int**)malloc(mS->nInd * sizeof(int*));
-
-    // for (int i = 0; i < mS->nInd; i++)
-    // {
-    // 	boot->vblocks[i] = (int*)malloc(blobSt->nBlocks * sizeof(int));
-    // }
-
-    // // more than one level; shuffle blocks within each level
-    // for (int level = 0; level < mS->nLevels; level++)
-    // {
-    return boot;
-}
-
-// / @brief sample an index from a set of size n
-/// @param n
-/// @return
-int sample_from_set(int n) {
-    ASSERT(n > 0);
-    return (int)(n * drand48());
-}
-
-/// BLOCK BOOTSTRAPPING for AMOVA
-///
-/// Bootstrap data blocks among samples, while keeping the order of blocks the same
-/// 1. Collect pointers to data blocks
-/// 2. Shuffle pointers among groups of samples based on current group assignment
-
-//
-// nLevels = 1
-//      Shuffle all blocks among all groups
-//      Sample set = all samples
-// nLevels = 2
-//      Shuffle blocks among groups of samples based on current group assignment
-//      Sample set = all samples in a given group
-int sample_block_variant(metadataStruct *mtd, const int lvl, const int local_group_idx) {
-    int n = 0;
-    if (lvl == 0 && mtd->nLevels == 1) {
-        n = mtd->nInd;
-
-    } else {
-        n = mtd->nIndPerStrata[lvl][local_group_idx];
-    }
-    return sample_from_set(n);
-}
-
-// Ind1  [block0][block1][block2][block3]
-// Ind2  [block0][block1][block2][block3]
-// Ind3  [block0][block1][block2][block3]
-// Ind4  [block0][block1][block2][block3]
-
-// vblock == the index of the 'block variant' among individuals for a given block
-// e.g. synthetic individual 1
-// s_ind1 [0,2] [1,1] [2,3] [3,0]
-//     consists of the following block variants:
-//       block0: [0,2]
-//           data from individual with idx 2 (Ind3) for block 0
-//       block1: [1,1]
-//           data from individual with idx 1 (Ind2) for block 1
-//       block2: [2,3]
-//           data from individual with idx 3 (Ind4) for block 2
-//       block3: [3,0]
-//           data from individual with idx 0 (Ind1) for block 3
-bootstrapDataset::bootstrapDataset(int nBootstraps_, int nInd_, int nBlocks_) {
+bootstrapDataset::bootstrapDataset(argStruct *args, paramStruct *pars, int nBootstraps_, int nBlocks_) {
     nBootstraps = nBootstraps_;
-    nInd = nInd_;
     nBlocks = nBlocks_;
-    bdata = (bootstrapData **)malloc(nBootstraps * sizeof(bootstrapData *));
+    bootRep = new bootstrapRep *[nBootstraps];
+    distanceMatrixRep = new distanceMatrixStruct *[nBootstraps];
+    for (int b = 0; b < nBootstraps; ++b) {
+        bootRep[b] = new bootstrapRep(nBlocks);
+    }
 }
 
 bootstrapDataset::~bootstrapDataset() {
-    for (int b = 0; b < nBootstraps; ++b) {
-        for (int i = 0; i < nInd; ++i) {
-            FREE(bdata[b]->vblocks[i]);
-        }
-        FREE(bdata[b]->vblocks);
-        FREE(bdata[b]);
-    }
-    FREE(bdata);
+    DELETE_ARRAY(bootRep, nBootstraps);
 }
 
-bootstrapDataset *bootstrapDataset_get(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, blobStruct *blobSt) {
-    bootstrapDataset *bootstraps = new bootstrapDataset(args->nBootstraps, mS->nInd, blobSt->nBlocks);
-
-    if (mS->nLevels == 1) {
-        // only one level; shuffle all individual blocks
-        for (int boot = 0; boot < args->nBootstraps; ++boot) {
-            bootstraps->bdata[boot] = prepare_bootstrap_block_1level(vcfd, mS, blobSt);
-        }
-    } else {
-        // multiple levels; shuffle blocks among groups of samples based on current group assignment
-        for (int boot = 0; boot < args->nBootstraps; ++boot) {
-            // bootstraps->bdata[boot] = prepare_bootstrap_blocks_multilevel(vcfd, pars, args, dMS, mS, blobSt);
-        }
+bootstrapRep::bootstrapRep(int nBlocks) {
+    rBlocks = (int *)malloc(nBlocks * sizeof(int));
+    for (int i = 0; i < nBlocks; ++i) {
+        rBlocks[i] = -1;
     }
+}
 
-    // int from_ind = -1;
+bootstrapRep::~bootstrapRep() {
+    FREE(rBlocks);
+}
 
-    fprintf(stderr, "\n\n~~~~\n\n\n");
-    for (int i = 0; i < vcfd->nInd; i++) {
-        for (int b = 0; b < bootstraps->nBlocks; b++) {
-            // fprintf(stderr,"ind%d",i);
-            // fprintf(stderr,",");
-            // fprintf(stderr,"boot%d",b);
-            // fprintf(stderr,",");
-            // //site 0
-            // from_ind=bootstraps->bdata[0]->vblocks[i][b];
-            // fprintf(stderr,"%d",from_ind);
-            fprintf(stdout, "%s,%d,%d\n", vcfd->indNames[i], b, bootstraps->bdata[0]->vblocks[i][b]);
-        }
-    }
-    fprintf(stderr, "\n\n~~~~\n\n\n");
+distanceMatrixStruct *get_distanceMatrix_GT_bootstrapRep(const int nInd, const int nIndCmb, const int squareDistance, bootstrapRep *bRep, vcfData *vcfd) {
+    distanceMatrixStruct *distanceMatrix = new distanceMatrixStruct(nInd, nIndCmb, squareDistance, NULL);
 
-    return bootstraps;
+    return distanceMatrix;
+}
+
+distanceMatrixStruct *get_distanceMatrix_GL_bootstrapRep(const int nInd, const int nIndCmb, const int squareDistance, bootstrapRep *bRep, vcfData *vcfd) {
+    distanceMatrixStruct *distanceMatrix = new distanceMatrixStruct(nInd, nIndCmb, squareDistance, NULL);
+    // readSites_bootstrapReplicate(vcfd, args, pars, bRep);
+    // spawnThreads_amovaRep(args, pars, bRep->pairSt, vcfd, distanceMatrix);
+
+    // distanceMatrix->M[pidx] = (double)SQUARE(MATH::EST::Dij());
+    return distanceMatrix;
+}
+
+void readSites_bootstrapReplicate(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairSt, bootstrapRep *brep) {
+    return;
 }

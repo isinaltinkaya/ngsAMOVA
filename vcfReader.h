@@ -94,6 +94,8 @@ struct vcfData {
     void _print();
 
     int records_next();
+
+    void set_n_joint_categories(argStruct *args, paramStruct *pars);
 };
 
 vcfData *vcfData_init(argStruct *args, paramStruct *pars);

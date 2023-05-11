@@ -88,6 +88,7 @@ struct pairStruct {
 
         _sharedSites *= 2;
         sharedSites = (int *)realloc(sharedSites, _sharedSites * sizeof(int));
+        ASSERT(NULL != sharedSites);
         for (size_t i = oldSize; i < _sharedSites; i++) {
             sharedSites[i] = -1;
         }
@@ -415,5 +416,7 @@ struct metadataStruct {
 
 metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars);
 void metadataStruct_destroy(metadataStruct *mtd);
+
+// void get_distanceMatrix_bootstrapRep(argStruct *args, paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, bootstrapRep *bRep);
 
 #endif  // __DATA_STRUCTS__

@@ -4,12 +4,13 @@
 #include "argStruct.h"
 #include "dataStructs.h"
 #include "shared.h"
+// #include "vcfReader.h"
 
 /* FORWARD DECLARATIONS ----------------------------------------------------- */
 
 typedef struct blockStruct blockStruct;
 typedef struct blobStruct blobStruct;
-typedef struct bootstrapData bootstrapData;
+typedef struct bootstrapRep bootstrapRep;
 typedef struct bootstrapDataset bootstrapDataset;
 
 /* -------------------------------------------------------------------------- */
@@ -49,6 +50,8 @@ struct blobStruct {
     // e.g. blockPtrs[42] == index of the first site in block 42 in vcf data
     int **blockPtrs = NULL;
 
+    bootstrapDataset *bootstraps = NULL;
+
     ~blobStruct();
 
     void addBlock();
@@ -56,45 +59,56 @@ struct blobStruct {
     void _print();
 
     void print(IO::outputStruct *out_dm_fs);
+
+    void get_bootstrap_replicates(vcfData *vcfd, bootstrapRep *bRep);
 };
 
 // blobStruct *blobStruct_get(vcfData *vcf, argStruct *args);
 blobStruct *blobStruct_get(vcfData *vcf, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, formulaStruct *formulaSt);
+blobStruct *blobStruct_get(vcfData *vcf, paramStruct *pars, argStruct *args);
 blobStruct *blobStruct_read_bed(const char *fn);
 blobStruct *blobStruct_read_tab(const char *fn);
 blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf, argStruct *args);
 
+void *blobStruct_destroy(blobStruct *blob);
+
 int sample_block_variant(metadataStruct *mtd, const int lvl, const int local_group_idx);
 
-struct bootstrapData {
-    // /def vblocks[nInd][nBlocks]
-    // vblocks[i][j] == index of the vblock associated with the jth block of the ith synthetic individual
-    //   == index of the individual in the original dataset that the jth block of the ith synthetic individual is copied from
-    int **vblocks = NULL;
+bootstrapRep *get_bootstrap_replicate(vcfData *vcfd, blobStruct *blobSt);
+int sample_with_replacement(int n);
+
+struct bootstrapRep {
+    // /def rBlocks[nBlocks] - set of block ids
+    // sampled in the bootstrap replicate bootstrapRep
+    int *rBlocks = NULL;
 
     // stats associated with the bootstrap
+
+    bootstrapRep(int nBlocks);
+    ~bootstrapRep();
 };
 
-// bootstrapData *prepare_bootstrap_block_1level(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, formulaStruct *formulaSt, blobStruct *blobSt);
-bootstrapData *prepare_bootstrap_block_1level(vcfData *vcfd, metadataStruct *mS, blobStruct *blobSt);
-bootstrapData *prepare_bootstrap_blocks_multilevel(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, formulaStruct *formulaSt, blobStruct *blobSt);
-
 struct bootstrapDataset {
-    // /def bdata[nBootstraps]
-    // bdata[i] == pointer to bootstrapData struct for ith bootstrap
-    bootstrapData **bdata = NULL;
+    // /def bootRep[nBootstraps]
+    // bootRep[i] == pointer to bootstrapData struct for ith bootstrap replicate
+    bootstrapRep **bootRep = NULL;
+
+    // /def distanceMatrixRep[nBootstraps]
+    // distanceMatrixRep[i] == pointer to distanceMatrixStruct for ith bootstrap replicate
+    distanceMatrixStruct **distanceMatrixRep = NULL;
 
     int nBootstraps = 0;
-    int nInd = 0;
     int nBlocks = 0;
 
     // stats for all bootstraps
 
-    bootstrapDataset(int nBootstraps_, int nInd_, int nBlocks_);
+    bootstrapDataset(argStruct *args, paramStruct *pars, int nBootstraps_, int nBlocks_);
     ~bootstrapDataset();
 };
 
-// bootstrapDataset* bootstrapDataset_get(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, formulaStruct *formulaSt,  blobStruct *blobSt);
-bootstrapDataset *bootstrapDataset_get(vcfData *vcfd, paramStruct *pars, argStruct *args, distanceMatrixStruct *dMS, metadataStruct *mS, blobStruct *blobSt);
+bootstrapDataset *bootstrapDataset_get(vcfData *vcfd, paramStruct *pars, argStruct *args, blobStruct *blobSt);
+distanceMatrixStruct *get_distanceMatrix_GL_bootstrapRep(const int nInd, const int nIndCmb, const int squareDistance, bootstrapRep *bRep, vcfData *vcfd);
+distanceMatrixStruct *get_distanceMatrix_GT_bootstrapRep(const int nInd, const int nIndCmb, const int squareDistance, bootstrapRep *bRep, vcfData *vcfd);
+void readSites_bootstrapReplicate(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairSt, bootstrapRep *brep);
 
 #endif  // __BOOTSTRAP__

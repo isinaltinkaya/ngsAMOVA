@@ -91,7 +91,7 @@ struct paramStruct {
     int nIndCmb;
 
     // TODO move this to amova analysis
-    int nAmovaRuns;
+    int nAmovaRuns = 0;
 
     // input file type from enum
     int in_ft = 0;

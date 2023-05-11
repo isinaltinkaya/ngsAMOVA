@@ -268,6 +268,27 @@ int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, pa
     return 0;
 }
 
+void vcfData::set_n_joint_categories(argStruct *args, paramStruct *pars) {
+    if (1 == args->doDist) {
+        // EM using 3 GL values
+        if (args->doEM == 1) {
+            nGT = 3;
+            nJointClasses = 9;
+        }
+        // EM using 10 GL values
+        else if (args->doEM == 2) {
+            nGT = 10;
+            nJointClasses = 100;
+        }
+    } else if (2 == args->doDist) {
+        // GT
+        nGT = 3;
+        nJointClasses = 9;
+    } else {
+        NEVER;
+    }
+}
+
 vcfData *vcfData_init(argStruct *args, paramStruct *pars) {
     vcfData *vcfd = new vcfData;
 
@@ -277,10 +298,7 @@ vcfData *vcfData_init(argStruct *args, paramStruct *pars) {
         exit(1);
     }
 
-    if (args->doEM == 1 || args->doAMOVA == 1) {
-        vcfd->nGT = 3;
-        vcfd->nJointClasses = vcfd->nGT * vcfd->nGT;
-    }
+    vcfd->set_n_joint_categories(args, pars);
 
     vcfd->hdr = bcf_hdr_read(vcfd->in_fp);
     vcfd->bcf = bcf_init();
@@ -304,7 +322,6 @@ vcfData *vcfData_init(argStruct *args, paramStruct *pars) {
     vcfd->nIndCmb = pars->nIndCmb;
 
     if (1 == args->doDist) {
-        // vcfd->lngl = (double **)malloc(vcfd->_lngl * sizeof(double *));
         vcfd->lngl_init(args->doEM);
         vcfd->init_JointGenoCountDistGL();
         vcfd->init_JointGenoProbDistGL();
@@ -492,6 +509,7 @@ void readSites_GT(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct 
     fprintf(stderr, "\n\t-> Finished reading sites\n");
 }
 
+// dragon
 void vcfData::init_JointGenoCountDistGL() {
     ASSERT(nJointClasses > 0);
     ASSERT(nIndCmb > 0);
@@ -517,7 +535,6 @@ void vcfData::init_JointGenoProbDistGL() {
 }
 
 void vcfData::init_JointGenoCountDistGT() {
-    ASSERT(nJointClasses > 0);
     ASSERT(nIndCmb > 0);
     JointGenoCountDistGT = (int **)malloc(nIndCmb * sizeof(int *));
     for (int i = 0; i < nIndCmb; i++) {
@@ -587,17 +604,6 @@ void vcfData::print_JointGenoProbDist(argStruct *args) {
 
 void vcfData::lngl_init(int doEM) {
     lngl = (double **)malloc(_lngl * sizeof(double *));
-
-    // EM using 3 GL values
-    if (doEM == 1) {
-        nGT = 3;
-    }
-    // EM using 10 GL values
-    else if (doEM == 2) {
-        nGT = 10;
-    } else {
-        ASSERT(0 == 1);
-    }
 
     ASSERT(nInd > 0);
     ASSERT(nGT > 0);

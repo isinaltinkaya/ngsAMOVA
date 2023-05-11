@@ -121,6 +121,7 @@ metadataStruct::~metadataStruct() {
 
 metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars) {
     ASSERT(pars->nInd > 0);
+    ASSERT(args->formula != NULL);
     metadataStruct *mtd = new metadataStruct(pars->nInd);
 
     FILE *in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
@@ -155,7 +156,12 @@ metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars) {
     // exclude the left-hand-side of the formula (i.e. Individual column) from the number of hierarchical levels count
     nLevels--;
 
-    ASSERT(nLevels > 0);
+    if (-1 == nLevels) {
+        ERROR("No hierarchical levels found in metadata file. Please make sure that the names defined in the formula are present in the metadata file.\n");
+    } else if (0 == nLevels) {
+        ERROR("Only one hierarchical level found in metadata file.");
+    }
+
     ASSERT(nLevels <= MAX_N_HIER_LEVELS);
 
     if (IO::verbose(2)) {
@@ -605,6 +611,7 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *ar
             if (n_vals > dm_vals_size) {
                 dm_vals_size = dm_vals_size * 2;
                 dm_vals = (double *)realloc(dm_vals, (dm_vals_size) * sizeof(double));
+                ASSERT(NULL!=dm_vals);
             }
             dm_vals[n_vals] = atof(tok);
             n_vals++;

@@ -74,10 +74,10 @@
  * Macro:[ERROR]
  * print a custom error message and exit the program
  */
-#define ERROR(...)                                                                        \
-    fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d) ", __FILE__, __FUNCTION__, __LINE__); \
-    fprintf(stderr, __VA_ARGS__);                                                         \
-    fprintf(stderr, "\n*******\n");                                                       \
+#define ERROR(...)                                                                           \
+    fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, __FUNCTION__, __LINE__); \
+    fprintf(stderr, __VA_ARGS__);                                                            \
+    fprintf(stderr, "\n*******\n");                                                          \
     exit(1);
 
 /*

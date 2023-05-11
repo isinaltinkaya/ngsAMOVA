@@ -34,7 +34,7 @@ void input_VCF(argStruct *args, paramStruct *pars) {
 
     if (args->doDist == 0) {
         fprintf(stderr, "\n[INFO]\tNothing to do.\n");
-        return;
+        exit(0);
     }
     // all the rest requires doDist distance matrix
 
@@ -42,6 +42,7 @@ void input_VCF(argStruct *args, paramStruct *pars) {
     metadataStruct *metadata = NULL;
     if (NULL != args->in_mtd_fn) {
         metadata = metadataStruct_get(args, pars);
+
         indNames = metadata->indNames;
     }
 
@@ -58,19 +59,7 @@ void input_VCF(argStruct *args, paramStruct *pars) {
         // -> use genotypes
         get_distanceMatrix_GT(args, pars, distanceMatrix, vcfd, pairSt);
 
-        // if (0 != args->nBootstraps) {
-        //     blobSt = blobStruct_get(vcfd, pars, args, distanceMatrix_orig, metadata, formulaSt);
-        //     if (args->printBlocksTab == 1) {
-        //         blobSt->print(outFiles->out_blockstab_fs);
-        //     }
-        //     exit(0);
-        // }
-
-    } else if (args->doDist == 3) {
-        // -> read distance matrix from file
-        NEVER;
-        // TODO
-
+        //} else if (args->doDist == 3) {
     } else {
         ERROR("-doDist %d not recognized.", args->doDist);
     }
@@ -106,41 +95,55 @@ void input_VCF(argStruct *args, paramStruct *pars) {
     }
 
     AMOVA::amovaStruct *amova = NULL;
+    AMOVA::amovaStruct **r_amova = new AMOVA::amovaStruct *[args->nBootstraps];
     if (args->doAMOVA != 0) {
         pars->nAmovaRuns = 1;
-        amova = AMOVA::doAmova(distanceMatrix, metadata, pars);
-        eval_amovaStruct(amova);
-        if (args->printAmovaTable == 1) {
-            amova->print_as_table(stdout, metadata);
+        if (args->nBootstraps > 0) {
+            pars->nAmovaRuns += args->nBootstraps;
         }
-        amova->print_as_csv(outFiles->out_amova_fs->fp, metadata);
-        // if (args->nBootstraps > 0) {
-        //     pars->nAmovaRuns += args->nBootstraps;
-        // }
-        // blobStruct *blobSt = NULL;
-        // for (int r = 0; r < pars->nAmovaRuns; r++) {
-        //     distanceMatrix[r] = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, metadata->indNames);
-        // }
-        // if (0 != args->nBootstraps) {
-        // blobSt = blobStruct_get(vcfd, pars, args , distanceMatrix_orig, metadata, formulaSt);
-        // }
-        // bootstrapDataset* bootstrap = bootstrapDataset_get(vcfd, pars, args, distanceMatrix[b], metadata, formulaSt, blobSt);
+        blobStruct *blobSt = NULL;
 
-        // if (args->nBootstraps > 0) {
-        //     // distanceMatrix[0] is already filled with the original distance matrix
-        //     // bootstrapped distance matrices start at distanceMatrix[1] and go to distanceMatrix[nBootstraps+1]
-        //     // therefore bootstrap is 1-indexed
-        //     int b = 1;
-        //     while (b < pars->nAmovaRuns) {
-        //         // fill distanceMatrix with bootstrapped distance matrices
-        //         fprintf(stderr, "\n\t-> Bootstrapping %d/%d", b, args->nBootstraps);
+        if (0 != args->nBootstraps) {
+            blobSt = blobStruct_get(vcfd, pars, args);
+            if (args->printBlocksTab == 1) {
+                blobSt->print(outFiles->out_blockstab_fs);
+            }
+        }
 
-        //         // // perform AMOVA using the bootstrapped distanceMatrix
+        // TODO we can parallelize the amovaruns
+        for (int arun = 0; arun < pars->nAmovaRuns; arun++) {
+            if (0 < arun) {
+                // get distance matrix for bootstrap replicate
+                if (args->doDist == 1) {
+                    // -> use genotype likelihoods
+                    blobSt->bootstraps->distanceMatrixRep[arun - 1] = get_distanceMatrix_GL_bootstrapRep(pars->nInd, pars->nIndCmb, args->squareDistance, blobSt->bootstraps->bootRep[arun - 1], vcfd);
 
-        //         fprintf(stderr, "\n\t-> Finished running AMOVA for bootstrap %d/%d", b, args->nBootstraps);
-        //         b++;
-        //     }
-        // }
+                } else if (args->doDist == 2) {
+                    // -> use genotypes
+                    blobSt->bootstraps->distanceMatrixRep[arun - 1] = get_distanceMatrix_GT_bootstrapRep(pars->nInd, pars->nIndCmb, args->squareDistance, blobSt->bootstraps->bootRep[arun - 1], vcfd);
+                }
+
+                // run AMOVA for bootstrap replicate
+                r_amova[arun - 1] = AMOVA::doAmova(blobSt->bootstraps->distanceMatrixRep[arun - 1], metadata, pars);
+                fprintf(stderr, "\n\t-> Finished running AMOVA for bootstrap replicate %d/%d", arun - 1, args->nBootstraps);
+                r_amova[arun - 1]->print_as_table(stdout, metadata);
+
+            } else if (0 == arun) {
+                // AMOVA run with original data
+                amova = AMOVA::doAmova(distanceMatrix, metadata, pars);
+                if (args->printAmovaTable == 1) {
+                    amova->print_as_table(stdout, metadata);
+                }
+                amova->print_as_csv(outFiles->out_amova_fs->fp, metadata);
+            } else {
+                NEVER;
+            }
+        }
+        DELETE(blobSt);
+        for (int r = 0; r < args->nBootstraps; ++r) {
+            DELETE(r_amova[r]);
+        }
+        DELETE_ARRAY(r_amova, args->nBootstraps);
     }
 
     fprintf(stderr, "Total number of sites processed: %lu\n", pars->totSites);
@@ -158,8 +161,7 @@ void input_VCF(argStruct *args, paramStruct *pars) {
 
 void input_DM(argStruct *args, paramStruct *pars) {
     if (args->blockSize != 0) {
-        fprintf(stderr, "\n[ERROR] blockSize is not supported for distance matrix input. Please set blockSize to 0.\n");
-        exit(0);
+        ERROR("-blockSize is not supported for distance matrix input.");
     }
 
     IO::vprint(1, "input_DM is running\n");

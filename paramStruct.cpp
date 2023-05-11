@@ -203,8 +203,7 @@ void formulaStruct_validate(formulaStruct *fos, const int nLevels) {
     // validate that all tokens in formula has a corresponding column index in metadata
     for (int i = 0; i < fos->nTokens; i++) {
         if (fos->formulaTokenIdx[i] == -1) {
-            fprintf(stderr, "\n[ERROR]\tFormula token \"%s\" does not have a corresponding column in metadata.\n", fos->formulaTokens[i]);
-            exit(1);
+            ERROR("Formula token \"%s\" does not have a corresponding column in metadata.", fos->formulaTokens[i]);
         }
     }
     ASSERT(fos->nTokens == nLevels + 1);
@@ -253,7 +252,9 @@ int formulaStruct::setFormulaTokenIdx(const char *mtd_tok, const int mtd_col_idx
 // @brief shrink - shrink the size of the arrays defined with default max values to the actual size needed
 void formulaStruct::shrink() {
     formulaTokens = (char **)realloc(formulaTokens, nTokens * sizeof(char *));
+    ASSERT(formulaTokens != NULL)
     formulaTokenIdx = (int *)realloc(formulaTokenIdx, nTokens * sizeof(int));
+    ASSERT(formulaTokenIdx != NULL)
 }
 
 /// @brief formulaStruct_get initialize the formulaStruct
@@ -293,8 +294,7 @@ formulaStruct *formulaStruct_get(const char *formula) {
         }
         if (*p == '/') {
             // must not encounter any / before ~
-            fprintf(stderr, "\n[ERROR]\tFormula \"%s\" is not valid: Found '/' before '~'. \n", formula);
-            exit(1);
+            ERROR("Formula \"%s\" is not valid: Found '/' before '~'.", formula);
         }
         ++p;
     }

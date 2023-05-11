@@ -519,6 +519,14 @@ void argStruct::check_arg_dependencies() {
 
     if (0 == doAMOVA) {
         //
+        if (NULL != in_mtd_fn) {
+            ERROR("-m/--metadata is provided but no analysis requires it. Please remove -m/--metadata or set -doAMOVA != 0.");
+        }
+
+        if (NULL != formula) {
+            ERROR("-f/--formula is provided but no analysis requires it. Please remove -f/--formula or set -doAMOVA != 0.");
+        }
+
     } else if (1 == doAMOVA) {
         IO::requireArgStr(formula, "--formula/-f", "-doAMOVA 1");
         IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doAMOVA 1");
