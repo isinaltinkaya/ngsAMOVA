@@ -1,7 +1,5 @@
 #include "vcfReader.h"
 
-#include "dataStructs.h"
-
 // from angsd analysisFunction.cpp
 extern const int bcf_allele_charToInd[(int)256] = {
     0, 1, 2, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,  // 15
@@ -57,20 +55,26 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, argStruct 
     if (bcf_is_snp(vcfd->bcf)) {
         ASSERT(pars->ancder->nSites[contig_i] > 0);  // TODO
 
-        const char a1 = pars->ancder->a1[contig_i][site_i];
-        const char a2 = pars->ancder->a2[contig_i][site_i];
+        char a1;
+        char a2;
 
-        ////---------------------------------------------------
-        // if(1==args->isSim){
-        // TODO this would only work with my simulated data, consider issim arg
-        //     // reference allele
-        //     a1 = bcf_allele_charToInd[(int)(unsigned char)vcfd->bcf->d.allele[0][0]];
+        if (NULL != pars->ancder) {
+            a1 = pars->ancder->a1[contig_i][site_i];
+            a2 = pars->ancder->a2[contig_i][site_i];
+        } else if (NULL != pars->majmin) {
+            a1 = pars->majmin->a1[contig_i][site_i];
+            a2 = pars->majmin->a2[contig_i][site_i];
+        } else if (1 == args->isSim) {
+            // reference allele
+            a1 = bcf_allele_charToInd[(int)(unsigned char)vcfd->bcf->d.allele[0][0]];
 
-        //     // alternative allele 1
-        //     a2 = bcf_allele_charToInd[(int)(unsigned char)vcfd->bcf->d.allele[1][0]];
-        //     ASSERT(a1 != a2);
-        ////---------------------------------------------------
-        // }
+            // alternative allele 1
+            a2 = bcf_allele_charToInd[(int)(unsigned char)vcfd->bcf->d.allele[1][0]];
+        } else {
+            NEVER;
+        }
+
+        // ASSERT(a1 != a2); dbg
 
         // fprintf(stderr, "a1: %c, a2: %c\n", vcfd->bcf->d.allele[0][0], vcfd->bcf->d.allele[1][0]);
 

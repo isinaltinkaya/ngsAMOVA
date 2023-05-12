@@ -1,4 +1,3 @@
-
 #include "em.h"
 
 /// @brief spawnThreads_pairEM spawn threads for running EM algorithm for each individual pair
@@ -10,10 +9,10 @@
 /// @param distMatrix
 void spawnThreads_pairEM(argStruct *args, paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, distanceMatrixStruct *distMatrix) {
     pthread_t pairThreads[pars->nIndCmb];
-    threadStruct **PTHREADS = new threadStruct *[pars->nIndCmb];
+    indPairThreads **PTHREADS = new indPairThreads *[pars->nIndCmb];
 
     for (int i = 0; i < pars->nIndCmb; i++) {
-        PTHREADS[i] = new threadStruct(pairSt[i], vcfd->lngl, args, pars);
+        PTHREADS[i] = new indPairThreads(pairSt[i], vcfd->lngl, args, pars);
     }
 
     int nJobs_sent = 0;
@@ -62,9 +61,9 @@ void spawnThreads_pairEM(argStruct *args, paramStruct *pars, pairStruct **pairSt
         vcfd->JointGenoProbDistGL[pidx][vcfd->nJointClasses] = pair->snSites;
 
         if (args->squareDistance == 1) {
-            distMatrix->M[pidx] = (double)SQUARE((MATH::EST::Dij(vcfd->JointGenoProbDistGL[pidx])));
+            distMatrix->M[pidx] = (double)SQUARE((MATH::Dij(vcfd->JointGenoProbDistGL[pidx])));
         } else {
-            distMatrix->M[pidx] = (double)MATH::EST::Dij(vcfd->JointGenoProbDistGL[pidx]);
+            distMatrix->M[pidx] = (double)MATH::Dij(vcfd->JointGenoProbDistGL[pidx]);
         }
         delete PTHREADS[pidx];
     }
@@ -78,7 +77,7 @@ void spawnThreads_pairEM(argStruct *args, paramStruct *pars, pairStruct **pairSt
 /// @param p
 /// @return
 void *t_EM_optim_jgd_gl3(void *p) {
-    threadStruct *THREAD = (threadStruct *)p;
+    indPairThreads *THREAD = (indPairThreads *)p;
 
     if (EM_optim_jgd_gl3(THREAD) != 0) {
         NEVER;
@@ -89,7 +88,7 @@ void *t_EM_optim_jgd_gl3(void *p) {
 /// @brief EM algorithm for 3x3 PGC (pairwise genotype categories)
 /// @param THREAD
 /// @return
-int EM_optim_jgd_gl3(threadStruct *THREAD) {
+int EM_optim_jgd_gl3(indPairThreads *THREAD) {
     double **lngls = THREAD->lngls;
     pairStruct *pair = THREAD->pair;
     const double tole = THREAD->tole;
@@ -169,7 +168,7 @@ int EM_optim_jgd_gl3(threadStruct *THREAD) {
 /// @brief EM algorithm for 3x3 PGC (pairwise genotype categories) of bootstrap samples
 /// @param THREAD
 /// @return
-// int EM_optim_jgd_gl3_bootstrap(threadStruct *THREAD)
+// int EM_optim_jgd_gl3_bootstrap(indPairThreads *THREAD)
 // {
 
 // 	double **lngls = THREAD->lngls;

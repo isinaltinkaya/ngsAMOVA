@@ -20,6 +20,10 @@
 // TODO check size_t
 using size_t = decltype(sizeof(int));
 
+// TODO
+// void prepare_threads(argStruct *args) {
+// }
+
 void input_VCF(argStruct *args, paramStruct *pars) {
     vcfData *vcfd = vcfData_init(args, pars);
 
@@ -94,8 +98,8 @@ void input_VCF(argStruct *args, paramStruct *pars) {
         }
     }
 
-    AMOVA::amovaStruct *amova = NULL;
-    AMOVA::amovaStruct **r_amova = new AMOVA::amovaStruct *[args->nBootstraps];
+    amovaStruct *amova = NULL;
+    amovaStruct **r_amova = new amovaStruct *[args->nBootstraps];
     if (args->doAMOVA != 0) {
         pars->nAmovaRuns = 1;
         if (args->nBootstraps > 0) {
@@ -124,13 +128,13 @@ void input_VCF(argStruct *args, paramStruct *pars) {
                 }
 
                 // run AMOVA for bootstrap replicate
-                r_amova[arun - 1] = AMOVA::doAmova(blobSt->bootstraps->distanceMatrixRep[arun - 1], metadata, pars);
+                r_amova[arun - 1] = doAmova(blobSt->bootstraps->distanceMatrixRep[arun - 1], metadata, pars);
                 fprintf(stderr, "\n\t-> Finished running AMOVA for bootstrap replicate %d/%d", arun - 1, args->nBootstraps);
                 r_amova[arun - 1]->print_as_table(stdout, metadata);
 
             } else if (0 == arun) {
                 // AMOVA run with original data
-                amova = AMOVA::doAmova(distanceMatrix, metadata, pars);
+                amova = doAmova(distanceMatrix, metadata, pars);
                 if (args->printAmovaTable == 1) {
                     amova->print_as_table(stdout, metadata);
                 }
@@ -182,7 +186,7 @@ void input_DM(argStruct *args, paramStruct *pars) {
     }
 
     if (args->doAMOVA != 0) {
-        AMOVA::amovaStruct *amova = AMOVA::doAmova(distanceMatrix, metadata, pars);
+        amovaStruct *amova = doAmova(distanceMatrix, metadata, pars);
         eval_amovaStruct(amova);
         if (args->printAmovaTable == 1) {
             amova->print_as_table(stdout, metadata);
@@ -238,7 +242,10 @@ int main(int argc, char **argv) {
     DATETIME = get_time();
     fprintf(stderr, "\n%s", DATETIME);
 
-    argStruct_print(stderr, args);
+    args->print(stderr);
+
+    // TODO pre-prepare threads
+    // prepare_threads(args);
 
     // input file type + args determines the method to obtain the distance matrix
 

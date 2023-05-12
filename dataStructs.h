@@ -10,10 +10,11 @@
 
 typedef struct pairStruct pairStruct;
 typedef struct distanceMatrixStruct distanceMatrixStruct;
-typedef struct threadStruct threadStruct;
 typedef struct metadataStruct metadataStruct;
 typedef struct vcfData vcfData;
+typedef struct indPairThreads indPairThreads;
 
+void spawnThreads_pairEM(argStruct *args, paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, distanceMatrixStruct *distMatrix);
 void setInputFileType(paramStruct *pars, int inFileType);
 /* -------------------------------------------------------------------------- */
 
@@ -139,30 +140,12 @@ struct distanceMatrixStruct {
     //  }
 };
 
-// read distance matrix from distance matrix csv file
+/// @brief read distance matrix from distance matrix csv file
+/// @param in_dm_fp input distance matrix file
+/// @param pars paramStruct parameters
+/// @return distance matrix double*
 distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *args);
 
-struct threadStruct {
-    pairStruct *pair;
-    double **lngls;
-
-    double tole = 0.0;
-    int maxEmIter = 0;
-
-    size_t nSites;
-
-    threadStruct(pairStruct *tPair, double **lngl, argStruct *args, paramStruct *pars) {
-        pair = tPair;
-        lngls = lngl;
-        // args = args_;
-        // pars = pars_;
-        tole = args->tole;
-        maxEmIter = args->maxEmIter;
-        nSites = pars->nSites;
-        // ASSERT(pars->nSites > 0);
-        // tes = pars->nSites;
-    }
-};
 // void print_SFS_GT(const char *TYPE, IO::outputStruct *out_sfs_fs, paramStruct *pars, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
 
 struct metadataStruct {
@@ -261,37 +244,6 @@ struct metadataStruct {
     int get_lvlgidx(int lvl, int g) {
         return (lvl * nGroups[lvl - 1] + g);
     }
-
-    // TODO DEPRECATED
-    int get_g_from_lvlgidx(int lvlgidx) {
-        int lvl = 1;
-        while (lvlgidx > nGroups[lvl]) {
-            lvlgidx -= nGroups[lvl];
-            lvl++;
-        }
-        int g = lvlgidx;
-        return g;
-    }
-
-    int get_lvl_from_lvlgidx(int lvlgidx) {
-        int lvl = 1;
-        while (lvlgidx > nGroups[lvl]) {
-            lvlgidx -= nGroups[lvl];
-            lvl++;
-        }
-        return lvl;
-    }
-
-    char *get_groupName_from_lvlgidx(int lvlgidx) {
-        int lvl = 1;
-        while (lvlgidx > nGroups[lvl]) {
-            lvlgidx -= nGroups[lvl];
-            lvl++;
-        }
-        int g = lvlgidx;
-        return groupNames[lvl][g];
-    }
-    // TODO DEPRECATED END
 
     /// @param lvl:		hierarchical level of the group to add
     /// @param g:	group index at level lvl of the group to add
@@ -417,6 +369,35 @@ struct metadataStruct {
 metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars);
 void metadataStruct_destroy(metadataStruct *mtd);
 
-// void get_distanceMatrix_bootstrapRep(argStruct *args, paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, bootstrapRep *bRep);
+struct indPairThreads {
+    pairStruct *pair;
+    double **lngls;
+
+    double tole = 0.0;
+    int maxEmIter = 0;
+
+    size_t nSites;
+
+    indPairThreads(pairStruct *tPair, double **lngl, argStruct *args, paramStruct *pars) {
+        pair = tPair;
+        lngls = lngl;
+        // args = args_;
+        // pars = pars_;
+        tole = args->tole;
+        maxEmIter = args->maxEmIter;
+        nSites = pars->nSites;
+        // ASSERT(pars->nSites > 0);
+        // tes = pars->nSites;
+    }
+};
+
+// struct bootstrapThreads {
+//     amovaStruct **amova;
+//     double **lngls;
+//     size_t nSites;
+
+//     bootstrapThreads();
+//     ~bootstrapThreads();
+// };
 
 #endif  // __DATA_STRUCTS__

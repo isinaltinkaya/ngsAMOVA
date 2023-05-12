@@ -6,10 +6,6 @@ void setInputFileType(paramStruct *pars, int inputFileType) {
     pars->in_ft = pars->in_ft | inputFileType;
 }
 
-//     - 1-based
-//     - [start:included, end:included]
-// just like vcf
-
 alleleStruct::alleleStruct() {
     nSites = (int *)calloc(BUF_NCONTIGS, sizeof(int));
     a1 = (char **)malloc(BUF_NCONTIGS * sizeof(char *));
@@ -31,6 +27,9 @@ alleleStruct::~alleleStruct() {
     FREE(a2);
 }
 
+//     - 1-based
+//     - [start:included, end:included]
+// just like vcf
 alleleStruct *alleleStruct_read(const char *fn) {
     alleleStruct *A = new alleleStruct;
 

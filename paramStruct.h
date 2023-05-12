@@ -6,9 +6,7 @@
 struct argStruct;
 
 typedef struct alleleStruct alleleStruct;
-
 typedef struct paramStruct paramStruct;
-
 typedef struct formulaStruct formulaStruct;
 
 struct formulaStruct {
@@ -108,6 +106,14 @@ struct paramStruct {
     void validate();
 };
 
+/// @brief paramStruct_init initialize the paramStruct
+/// @param args arguments argStruct
+/// @return pointer to paramStruct
+paramStruct *paramStruct_init(argStruct *args);
+void paramStruct_destroy(paramStruct *p);
+
+void check_consistency_args_pars(argStruct *args, paramStruct *pars);
+
 struct alleleStruct {
     // \def nSites[nContigs]
     //      nSites[contig_i] == number of sites with a1 a2 data in contig_i
@@ -143,13 +149,5 @@ alleleStruct *alleleStruct_read(const char *fn);
 /// @brief alleleStruct_destroy destroy alleleStruct
 /// @param as pointer to alleleStruct
 void alleleStruct_destroy(alleleStruct *A);
-
-/// @brief paramStruct_init initialize the paramStruct
-/// @param args arguments argStruct
-/// @return pointer to paramStruct
-paramStruct *paramStruct_init(argStruct *args);
-void paramStruct_destroy(paramStruct *p);
-
-void check_consistency_args_pars(argStruct *args, paramStruct *pars);
 
 #endif  // __PARAM_STRUCT__

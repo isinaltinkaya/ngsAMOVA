@@ -14,6 +14,10 @@ void IO::validateString(const char *str) {
     ASSERTM(str[0] != '\0', "Found empty string.");
 }
 
+/// @brief file_exists - check if file exists
+/// @param fn input filename
+/// @return 1 if file exists; 0 otherwise
+/// @credit angsd/aio.cpp
 int IO::fileExists(const char *fn) {
     struct stat st;
     return (0 == stat(fn, &st));

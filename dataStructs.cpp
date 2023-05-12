@@ -1,8 +1,5 @@
 #include "dataStructs.h"
 
-#include "bootstrap.h"
-#include "em.h"
-
 void get_distanceMatrix_GL(argStruct *args, paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt) {
     readSites_GL(vcfd, args, pars, pairSt);
     if (1 == args->doEM) {
@@ -21,9 +18,9 @@ void get_distanceMatrix_GT(argStruct *args, paramStruct *pars, distanceMatrixStr
             exit(1);
         }
         if (args->squareDistance == 1) {
-            distanceMatrix->M[pidx] = (double)SQUARE(MATH::EST::Dij(vcfd->JointGenoCountDistGT[pidx], snSites));
+            distanceMatrix->M[pidx] = (double)SQUARE(MATH::Dij(vcfd->JointGenoCountDistGT[pidx], snSites));
         } else {
-            distanceMatrix->M[pidx] = (double)MATH::EST::Dij(vcfd->JointGenoCountDistGT[pidx], snSites);
+            distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->JointGenoCountDistGT[pidx], snSites);
         }
     }
     vcfd->print_JointGenoCountDist(args);
@@ -349,8 +346,6 @@ void metadataStruct::printAll() {
     print_groupKeys();
 }
 
-// void metadataStruct::resize()
-
 void metadataStruct::addLevelName(const char *levelName, const int level_idx) {
     IO::vprint(0, "\nFound hierarchical level: %s\n", levelName);
     levelNames[level_idx] = strdup(levelName);
@@ -588,10 +583,6 @@ distanceMatrixStruct::~distanceMatrixStruct() {
     FREE(idx2inds);
 }
 
-/// @brief read distance matrix file
-/// @param in_dm_fp input distance matrix file
-/// @param pars paramStruct parameters
-/// @return distance matrix double*
 distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *args) {
     int dm_vals_size = 1225;
     double *dm_vals = (double *)malloc((dm_vals_size) * sizeof(double));
@@ -611,7 +602,7 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *ar
             if (n_vals > dm_vals_size) {
                 dm_vals_size = dm_vals_size * 2;
                 dm_vals = (double *)realloc(dm_vals, (dm_vals_size) * sizeof(double));
-                ASSERT(NULL!=dm_vals);
+                ASSERT(NULL != dm_vals);
             }
             dm_vals[n_vals] = atof(tok);
             n_vals++;
@@ -635,6 +626,7 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *ar
                 if (n_vals > dm_vals_size) {
                     dm_vals_size = dm_vals_size * 2;
                     dm_vals = (double *)realloc(dm_vals, (dm_vals_size) * sizeof(double));
+                    ASSERT(dm_vals != NULL);
                 }
                 dm_vals[n_vals] = atof(tok);
                 n_vals++;
@@ -670,77 +662,12 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *ar
     return dMS;
 }
 
-// IO::print::Array
-/// @brief Print elements of an array to a file (or stream)
-/// @param fp file to print to
-/// @param arr the array to print
-/// @param N the number of rows, dimension 1
-/// @param M the number of columns, dimension 2
-/// @param sep the character to use as a separator
-/// @example IO::print::Array(stdout, myArray, DOUBLE, 3, 3, ',');
-void IO::print::Array(FILE *fp, double *arr, size_t N, size_t M, char sep) {
-    ASSERT(arr != NULL);
-
-    double *p = arr;
-    size_t n = 0;
-    size_t m = 0;
-
-    while (n < N && p < arr + N * M) {
-        fprintf(fp, "%f%blob", *p, (n == M - 1 && m == M - 1) ? '\n' : sep);
-
-        m++;
-
-        // If the column index m reaches the end of the row, reset it and increment the row index n
-        if (m == M) {
-            m = 0;
-            n++;
-        }
-
-        // Increment the pointer to the next element of the array
-        p++;
-    }
-}
-
-// IO::print::Array
-// :overload: int array
-void IO::print::Array(FILE *fp, int *arr, size_t N, size_t M, char sep) {
-    ASSERT(arr != NULL);
-
-    int *p = arr;
-    size_t n = 0;
-    size_t m = 0;
-
-    while (n < N && p < arr + N * M) {
-        fprintf(fp, "%d%blob", *p, (n == M - 1 && m == M - 1) ? '\n' : sep);
-
-        m++;
-
-        if (m == M) {
-            m = 0;
-            n++;
-        }
-
-        p++;
-    }
-}
-
-// Check if file exists
-// @param fn input filename
-// @return		1 if file exists; 0 otherwise
-
-/// @brief file_exists - check if file exists
-/// @param fn input filename
-/// @return 1 if file exists; 0 otherwise
-/// @credit angsd/aio.cpp
-int file_exists(const char *fn) {
-    struct stat buffer;
-    return (stat(fn, &buffer) == 0);
-}
-
 void trimSpaces(char *str) {
+    ASSERT(NULL != str);
+
     int len = strlen(str);
     if (len == 0) {
-        fprintf(stderr, "\n[ERROR][trimSpaces] Error: string is empty (len=0)\n");
+        ERROR("String is empty (len=0)");
     }
 
     // remove leading spaces
@@ -764,6 +691,6 @@ void trimSpaces(char *str) {
     // add null terminator
     str[end - start + 1] = '\0';
     if (strlen(str) == 0) {
-        fprintf(stderr, "\n[ERROR][trimSpaces] Error: string is empty (len=0)\n");
+        ERROR("String is empty (len=0)");
     }
 }

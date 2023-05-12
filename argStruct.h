@@ -6,7 +6,7 @@
 typedef struct argStruct argStruct;
 
 extern u_char VERBOSE;
-// extern argStruct *args;
+extern argStruct *args;
 
 /*
  * @typedef
@@ -199,6 +199,8 @@ struct argStruct {
     int seed = -1;
     int nBootstraps = 0;
 
+    int isSim = 0;
+
     void check_arg_dependencies();
 
     // TODO check below
@@ -207,6 +209,8 @@ struct argStruct {
     int windowSize = 0;
     int *keyCols = NULL;
     int printDev = 0;
+
+    void print(FILE *fp);
 };
 
 //
@@ -214,6 +218,5 @@ struct argStruct {
 /// @return pointer to the argStruct structure
 argStruct *argStruct_get(int argc, char **argv);
 void argStruct_destroy(argStruct *arg);
-void argStruct_print(FILE *fp, argStruct *arg);
 
 #endif  // __ARG_STRUCT__

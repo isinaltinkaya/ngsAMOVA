@@ -9,18 +9,16 @@
 
 /* FORWARD DECLARATIONS ----------------------------------------------------- */
 
+struct blobStruct;
 typedef struct vcfData vcfData;
 
 /* -------------------------------------------------------------------------- */
-
-struct blobStruct;
 
 extern const int get_3x3_idx[3][3];
 
 extern const int bcf_allele_charToInt[256];
 
 int bcf_alleles_get_gtidx(int a1, int a2);
-
 int bcf_alleles_get_gtidx(char a1, char a2);
 
 struct vcfData {

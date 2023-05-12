@@ -5,13 +5,15 @@
 //  default: 0 (verbose mode off)
 u_char VERBOSE = 0;
 
+argStruct *args = NULL;
+
 // TODO check multiple of same argument
 /// @brief argStruct_get read command line arguments
 /// @param argc
 /// @param argv
 /// @return pointer to argStruct
 argStruct *argStruct_get(int argc, char **argv) {
-    argStruct *args = new argStruct;
+    args = new argStruct;
 
     while (*argv) {
         // TODO check if given files exist here
@@ -366,14 +368,8 @@ argStruct *argStruct_get(int argc, char **argv) {
         else if (strcasecmp("--minInd", arv) == 0)
             args->minInd = atoi(val);
 
-        else if (strcasecmp("--mEmIter", arv) == 0)
-            args->maxEmIter = atoi(val);
-
         else if (strcasecmp("--em-tole", arv) == 0)
             args->tole = atof(val);
-
-        else if (strcasecmp("--gl2gt", arv) == 0)
-            args->gl2gt = atoi(val);
 
         else if ((strcasecmp("-ws", arv) == 0) || (strcasecmp("--windowSize", arv) == 0)) {
             args->windowSize = (int)atof(val);
@@ -387,14 +383,17 @@ argStruct *argStruct_get(int argc, char **argv) {
             args->minInd = atoi(val);
         else if (strcasecmp("--maxEmIter", arv) == 0)
             args->maxEmIter = atoi(val);
+
         else if (strcasecmp("-gl2gt", arv) == 0)
             args->gl2gt = atoi(val);
+        else if (strcasecmp("--gl2gt", arv) == 0)
+            args->gl2gt = atoi(val);
 
-        else if (strcasecmp("--nThreads", arv) == 0 || strcasecmp("-P", arv) == 0) {
+        else if (strcasecmp("--isSim", arv) == 0) {
+            args->isSim = atoi(val);
+        } else if (strcasecmp("--nThreads", arv) == 0 || strcasecmp("-P", arv) == 0) {
             args->nThreads = atoi(val);
-        }
-
-        else if (strcasecmp("-h", arv) == 0 || strcasecmp("--help", arv) == 0) {
+        } else if (strcasecmp("-h", arv) == 0 || strcasecmp("--help", arv) == 0) {
             print_help(stdout);
             exit(0);
         } else {
@@ -652,43 +651,45 @@ void argStruct_destroy(argStruct *args) {
     FREE(args->in_dm_fn);
     FREE(args->in_mtd_fn);
     FREE(args->in_dxy_fn);
-    FREE(args->out_fnp);
-    FREE(args->formula);
-    FREE(args->keyCols);
-    FREE(args->doDxyStr);
 
-    FREE(args->in_dxy_fn);
     FREE(args->in_region);
     FREE(args->in_regions_tab_fn);
     FREE(args->in_regions_bed_fn);
     FREE(args->in_blocks_tab_fn);
     FREE(args->in_blocks_bed_fn);
 
+    FREE(args->out_fnp);
+
+    FREE(args->formula);
+    FREE(args->keyCols);
+    FREE(args->doDxyStr);
+
     FREE(args->in_majorminor_fn);
     FREE(args->in_ancder_fn);
+
+    // check below
 
     delete args;
 }
 
-/// @brief argStruct_print - print the arguments to a file pointer
-/// @param fp	file pointer
-/// @param args	pointer to the argStruct
-void argStruct_print(FILE *fp, argStruct *args) {
+void argStruct::print(FILE *fp) {
     // fprintf(fp, "\nCommand: %s", args->command);//TODO
-    fprintf(fp, "\n\t-> -in_vcf_fn %s", args->in_vcf_fn);
+    // fprintf(fp, "\n\t-> -in_vcf_fn %s", args->in_vcf_fn);
 
-    // TODO use lut to store names and values and associatons (e.g. tole maxiter etc assoc with doEM)
-    // and if -formula is used, run formulaStruct_get()
-    fprintf(fp, "\nngsAMOVA -doAMOVA %d -i %s -out %s -minInd %d -printMatrix %d -m %s -doDist %d -nThreads %d", args->doAMOVA, args->in_vcf_fn, args->out_fnp, args->minInd, args->printDistanceMatrix, args->in_mtd_fn, args->doDist, args->nThreads);
-    if (args->doEM != 0) {
-        fprintf(fp, " -tole %e ", args->tole);
-        fprintf(fp, " -doEM %d ", args->doEM);
-        fprintf(fp, " -maxIter %d ", args->maxEmIter);
-    }
-    if (args->nBootstraps > 0) {
-        fprintf(fp, " --nBootstraps %d ", args->nBootstraps);
-        fprintf(fp, " --block-size %d ", args->blockSize);
-        fprintf(fp, " --seed %d ", args->seed);
-    }
+    // fprintf(fp, " --seed %d ", args->seed);
+
+    // // TODO use lut to store names and values and associatons (e.g. tole maxiter etc assoc with doEM)
+    // // and if -formula is used, run formulaStruct_get()
+
+    // fprintf(fp, "\nngsAMOVA -doAMOVA %d -i %s -out %s -minInd %d -printMatrix %d -m %s -doDist %d -nThreads %d", args->doAMOVA, args->in_vcf_fn, args->out_fnp, args->minInd, args->printDistanceMatrix, args->in_mtd_fn, args->doDist, args->nThreads);
+    // if (args->doEM != 0) {
+    //     fprintf(fp, " -tole %e ", args->tole);
+    //     fprintf(fp, " -doEM %d ", args->doEM);
+    //     fprintf(fp, " -maxIter %d ", args->maxEmIter);
+    // }
+    // if (args->nBootstraps > 0) {
+    //     fprintf(fp, " --nBootstraps %d ", args->nBootstraps);
+    //     fprintf(fp, " --block-size %d ", args->blockSize);
+    // }
     fprintf(fp, "\n");
 }

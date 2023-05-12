@@ -18,7 +18,7 @@ void eval_distanceMatrixStruct(paramStruct *pars, distanceMatrixStruct *dm) {
     }
 }
 
-void eval_amovaStruct(AMOVA::amovaStruct *amv) {
+void eval_amovaStruct(amovaStruct *amv) {
     // for(int i=0; i < amv->nAmovaLevels; i++){
     //     //df,ssd,msd
     // }
