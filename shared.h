@@ -5,7 +5,6 @@
 #include <float.h>
 #include <htslib/vcf.h>
 #include <htslib/vcfutils.h>
-#include <limits.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -13,6 +12,8 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <time.h>
+
+#include <limits>
 
 #include "argStruct.h"
 #include "dev.h"
