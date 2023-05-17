@@ -14,11 +14,12 @@
 #include <sys/stat.h>
 #include <time.h>
 
+#include "argStruct.h"
 #include "dev.h"
 #include "lookup.h"
 
-typedef struct argStruct argStruct;
-extern argStruct *args;
+// typedef struct argStruct argStruct;
+// extern argStruct *args;
 /* ========================================================================== */
 /* MACRO DEFINITIONS ======================================================== */
 /* ========================================================================== */
@@ -55,9 +56,8 @@ extern argStruct *args;
  * Macro:[NEVER]
  * indicates that a point in the code should never be reached
  */
-#define NEVER                                                                                                                                                   \
-    fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) Control should never reach this point; please report this to the developers.\n*******\n", __FILE__, __LINE__); \
-    exit(1);
+#define NEVER \
+    ERROR("Control should never reach this point; please report this to the developers.")
 
 /*
  * Macro:[ASSERT]

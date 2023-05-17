@@ -3,15 +3,19 @@
 
 #include <htslib/kstring.h>
 
+#include "argStruct.h"
+#include "bootstrap.h"
 #include "dataStructs.h"
 #include "io.h"
 #include "paramStruct.h"
 
 /* FORWARD DECLARATIONS ----------------------------------------------------- */
 
-struct blobStruct;
 typedef struct vcfData vcfData;
+typedef struct gtData gtData;
 
+struct bootstrapReplicate;
+struct blobStruct;
 /* -------------------------------------------------------------------------- */
 
 extern const int get_3x3_idx[3][3];
@@ -56,6 +60,15 @@ struct vcfData {
      * last element contains total number of sites shared
      */
     int **JointGenoCountDistGT = NULL;
+
+    // \def jgcd_gt[nBlocks][nIndCmb][nJointClasses]
+    //      jgcd_gt[b][i][j] == number of sites where the ith pair of individuals have the jth joint genotype class in block b
+    int ***jgcd_gt = NULL;
+
+    // \def pair_shared_nSites[nBlocks][nIndCmb]
+    //      pair_shared_nSites[b][i] == number of sites shared between the individuals in the ith pair in block b
+    int **pair_shared_nSites = NULL;
+
     double **JointGenoCountDistGL = NULL;
     double **JointGenoProbDistGL = NULL;
     int nJointClasses = 0;
@@ -82,8 +95,8 @@ struct vcfData {
     void init_JointGenoProbDistGL();
     void init_JointGenoCountDistGT();
 
-    void print_JointGenoCountDist(argStruct *args);
-    void print_JointGenoProbDist(argStruct *args);
+    void print_JointGenoCountDist();
+    void print_JointGenoProbDist();
 
     void lngl_init(int doEM);
     void lngl_expand();
@@ -92,12 +105,31 @@ struct vcfData {
     void _print();
 
     int records_next();
+    int records_next(hts_itr_t *block_itr);
 
-    void set_n_joint_categories(argStruct *args, paramStruct *pars);
+    void set_n_joint_categories(paramStruct *pars);
 };
 
-vcfData *vcfData_init(argStruct *args, paramStruct *pars);
+vcfData *vcfData_init(paramStruct *pars);
 void vcfData_destroy(vcfData *v);
+
+struct gtData {
+    int32_t *data = NULL;
+
+    int size_e = 0;
+    int n_alleles = 0;
+
+    int n_missing_ind = 0;
+
+    // TODO nvalues vs ploidy
+    int ploidy = 0;
+    int n_values = 0;
+
+    gtData(vcfData *vcfd);
+    ~gtData();
+
+    int32_t *ind_ptr(const int ind_i);
+};
 
 /*
  * @template struct get_data
@@ -139,17 +171,17 @@ struct get_data {
     }
 };
 
-void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairSt);
-void readSites_GL(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairSt, blobStruct *blobSt);
+void readSites_GL(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt);
 
-void readSites_GT(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairSt);
+void readSites_GT(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt);
+void readSites_GT(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct *blob);
 
-int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairs);
+int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, pairStruct **pairs);
 
-int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcf, paramStruct *pars, argStruct *args);
+int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcf, paramStruct *pars);
 
-int GLtoGT_1_JointGenoDist(vcfData *vcf, paramStruct *pars, argStruct *args);
+int GLtoGT_1_JointGenoDist(vcfData *vcf, paramStruct *pars);
 
-int parse_VCF_GL(paramStruct *pars, argStruct *args, vcfFile *in_fp, bcf_hdr_t *hdr, bcf1_t *bcf, blobStruct *blobSt);
+int parse_VCF_GL(paramStruct *pars, vcfFile *in_fp, bcf_hdr_t *hdr, bcf1_t *bcf, blobStruct *blobSt);
 
 #endif  // __VCF_READER__

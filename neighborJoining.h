@@ -1,15 +1,13 @@
 #ifndef __NEIGHBOR_JOINING__
 #define __NEIGHBOR_JOINING__
 
-#include "shared.h"
 #include "dataStructs.h"
-#include "io.h"
 #include "dxy.h"
+#include "io.h"
 #include "mathUtils.h"
+#include "shared.h"
 
-typedef struct njStruct
-{
-
+typedef struct njStruct {
     // TODO add treeStruct to store the tree in njStruct
 
     // /def nEdgesPerParentNode[nParentNodes]
@@ -66,7 +64,7 @@ typedef struct njStruct
     // calculated in the constructor
     int nTreeEdges = 0;
     int nTreeNodes = 0;
-    int nTreeIterations = 0; // number of neighbor joining iterations needed to build the tree
+    int nTreeIterations = 0;  // number of neighbor joining iterations needed to build the tree
     //--------------------------------------------------
 
     char **nodeLabels = NULL;
@@ -132,8 +130,8 @@ typedef struct njStruct
 
 } njStruct;
 
-njStruct *njStruct_get(argStruct *args, paramStruct *pars, distanceMatrixStruct *dms);
-njStruct *njStruct_get(argStruct *args, paramStruct *pars, dxyStruct *dxy);
+njStruct *njStruct_get(paramStruct *pars, distanceMatrixStruct *dms);
+njStruct *njStruct_get(paramStruct *pars, dxyStruct *dxy);
 
 /// @brief njIteration - perform one iteration of the neighbor joining algorithm
 /// @param nji - an instance of the njStruct at the current iteration

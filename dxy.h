@@ -52,7 +52,7 @@ typedef struct dxyStruct {
 } dxyStruct;
 
 // read dxyStruct from dxy file
-dxyStruct *dxyStruct_read(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd);
-dxyStruct *dxyStruct_get(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd);
+dxyStruct *dxyStruct_read(paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd);
+dxyStruct *dxyStruct_get(paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd);
 
 #endif

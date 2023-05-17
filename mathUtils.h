@@ -85,12 +85,18 @@ namespace MATH {
 
 double SUM(double M[3][3]);
 double SUM(double *M);
+
 double MEAN(double M[3][3]);
 double MEAN(double *M);
+
+double MEAN(double *arr, int size);
+
 double VAR(double M[3][3]);
 double VAR(double *M);
+
 double SD(double M[3][3]);
 double SD(double *M);
+double SD(double *arr, int size);
 
 double SUM(int *M);
 double MEAN(int *M);

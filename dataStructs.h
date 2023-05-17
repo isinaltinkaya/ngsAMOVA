@@ -1,6 +1,8 @@
 #ifndef __DATA_STRUCTS__
 #define __DATA_STRUCTS__
 
+#include "argStruct.h"
+#include "bootstrap.h"
 #include "io.h"
 #include "mathUtils.h"
 #include "paramStruct.h"
@@ -8,20 +10,29 @@
 
 /* FORWARD DECLARATIONS ----------------------------------------------------- */
 
+struct blobStruct;
+struct amovaStruct;
+
 typedef struct pairStruct pairStruct;
 typedef struct distanceMatrixStruct distanceMatrixStruct;
 typedef struct metadataStruct metadataStruct;
 typedef struct vcfData vcfData;
 typedef struct indPairThreads indPairThreads;
 
-void spawnThreads_pairEM(argStruct *args, paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, distanceMatrixStruct *distMatrix);
+void spawnThreads_pairEM(paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, distanceMatrixStruct *distMatrix);
 void setInputFileType(paramStruct *pars, int inFileType);
 /* -------------------------------------------------------------------------- */
 
+distanceMatrixStruct *distanceMatrixStruct_get(paramStruct *pars, vcfData *vcfd, pairStruct **pairSt, char **indNames, blobStruct *blob);
+
 // prepare distance matrix using genotype likelihoods
-void get_distanceMatrix_GL(argStruct *args, paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt);
+void get_distanceMatrix_GL(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt);
+
 // prepare distance matrix using genotypes
-void get_distanceMatrix_GT(argStruct *args, paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt);
+void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt);
+void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt, blobStruct *blob);
+// prepare distance matrix using genotypes + blocks for bootstrapping
+// void get_distanceMatrix_GT( paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt, blobStruct *blob);
 
 /// trim spaces from the beginning and end of a char* (inplace)
 /// @param str - char* to trim
@@ -125,7 +136,7 @@ struct distanceMatrixStruct {
     distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquared_, char **itemLabels_);
     ~distanceMatrixStruct();
 
-    void print(int printMatrix, IO::outputStruct *out_dm_fs);
+    void print();
 
     void set_item_labels(char **indNames);
     // TODO print in csv format
@@ -144,7 +155,7 @@ struct distanceMatrixStruct {
 /// @param in_dm_fp input distance matrix file
 /// @param pars paramStruct parameters
 /// @return distance matrix double*
-distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *args);
+distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars);
 
 // void print_SFS_GT(const char *TYPE, IO::outputStruct *out_sfs_fs, paramStruct *pars, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
 
@@ -366,7 +377,7 @@ struct metadataStruct {
     int whichLevel1(const char *levelName);
 };
 
-metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars);
+metadataStruct *metadataStruct_get(paramStruct *pars);
 void metadataStruct_destroy(metadataStruct *mtd);
 
 struct indPairThreads {
@@ -378,7 +389,7 @@ struct indPairThreads {
 
     size_t nSites;
 
-    indPairThreads(pairStruct *tPair, double **lngl, argStruct *args, paramStruct *pars) {
+    indPairThreads(pairStruct *tPair, double **lngl, paramStruct *pars) {
         pair = tPair;
         lngls = lngl;
         // args = args_;
@@ -390,14 +401,5 @@ struct indPairThreads {
         // tes = pars->nSites;
     }
 };
-
-// struct bootstrapThreads {
-//     amovaStruct **amova;
-//     double **lngls;
-//     size_t nSites;
-
-//     bootstrapThreads();
-//     ~bootstrapThreads();
-// };
 
 #endif  // __DATA_STRUCTS__

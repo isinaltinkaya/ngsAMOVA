@@ -1,20 +1,25 @@
 #ifndef __AMOVA__
 #define __AMOVA__
 
+#include <pthread.h>
+
+#include "dataStructs.h"
 #include "mathUtils.h"
 
+struct distanceMatrixStruct;
+struct metadataStruct;
+struct amovaBootstrapThreads;
+
 typedef struct amovaStruct amovaStruct;
+
+typedef struct amovaBootstrapThreads amovaBootstrapThreads;
 
 double calculate_SumOfSquares_Total(distanceMatrixStruct *dMS);
 
 /// @brief calculate_SumOfSquares_Within - calculate the sum of squares within a hierarchical level
 /// @param lvl hierarchical level
-/// @param aS  pointer to amovaStruct
-/// @param dMS pointer to distanceMatrixStruct
-/// @param metadata  pointer to metadataStruct
-/// @param pars pointer to paramstruct
 /// @return (double) sum of squares within a hierarchical level
-double calculate_SumOfSquares_Within(int lvl, amovaStruct *aS, distanceMatrixStruct *dMS, metadataStruct *metadata, paramStruct *pars);
+double calculate_SumOfSquares_Within(int lvl, amovaStruct *amova, distanceMatrixStruct *dm, metadataStruct *metadata);
 
 /// @brief amovaStruct - stores the results of the AMOVA analysis
 /// @details
@@ -73,7 +78,7 @@ struct amovaStruct {
     double *msd = NULL;
 
     double *ncoef = NULL;
-    double *sigmasq = NULL;  // variance component
+    double *sigmasq = NULL;
     double sigmasq_total = 0.0;
     double *phi = NULL;
 
@@ -92,6 +97,24 @@ struct amovaStruct {
     void print_as_csv(FILE *fp, metadataStruct *metadata);
 };
 
-amovaStruct *doAmova(distanceMatrixStruct *dMS, metadataStruct *MTD, paramStruct *pars);
+amovaStruct *amovaStruct_get(distanceMatrixStruct *dm, metadataStruct *metadata);
+int doAmova(amovaBootstrapThreads *THREAD);
+int doAmova(amovaStruct *amova, distanceMatrixStruct *distanceMatrix, metadataStruct *metadata);
+void *t_doAmova(void *p);
+void spawnThreads_amovaBootstrap(metadataStruct *metadata, blobStruct *blob);
 
-#endif
+struct amovaBootstrapThreads {
+    amovaStruct *amova = NULL;
+    distanceMatrixStruct *distanceMatrix = NULL;
+    metadataStruct *metadata = NULL;
+    amovaBootstrapThreads(amovaStruct *amova_, distanceMatrixStruct *distanceMatrix_, metadataStruct *metadata_) {
+        amova = amova_;
+        distanceMatrix = distanceMatrix_;
+        metadata = metadata_;
+    }
+
+    ~amovaBootstrapThreads() {
+    }
+};
+
+#endif  // __AMOVA__

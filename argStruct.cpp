@@ -45,6 +45,11 @@ argStruct *argStruct_get(int argc, char **argv) {
         //   -doNJ <int> : do neighbor-joining
         //   -doDist <int> : estimate pairwise distance matrix
 
+        // TODO idea multilayer argument reading using LUTs
+        // e.g. `-doAMOVA`  in lut1 -> "args->doAMOVA" in lut2 ->integer in lut3
+        // so if `doAMOVA` is used, use multilayer luts to determine the type of required val etc
+        // getArg("-doAMOVA", arv);
+
         if (strcasecmp("-doAMOVA", arv) == 0) {
             args->doAMOVA = atoi(val);
         } else if (strcasecmp("-doEM", arv) == 0) {

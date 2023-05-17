@@ -112,7 +112,6 @@ void paramStruct::printParams(FILE *fp) {
     fprintf(fp, "nSites: %li", nSites);
     fprintf(fp, "nInd: %i", nInd);
     fprintf(fp, "nIndCmb: %i", nIndCmb);
-    fprintf(fp, "nAmovaRuns: %i", nAmovaRuns);
     fprintf(fp, "in_ft: %i", in_ft);
     fprintf(fp, "DATETIME: %s", DATETIME);
 }
@@ -147,8 +146,6 @@ paramStruct *paramStruct_init(argStruct *args) {
 
     pars->nIndCmb = 0;
     pars->nInd = 0;
-
-    pars->nAmovaRuns = 0;
 
     return pars;
 }

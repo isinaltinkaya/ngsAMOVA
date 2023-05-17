@@ -54,6 +54,8 @@ void vprint(FILE *fp, const int verbose_threshold, const char *format, ...);
 /// @example vprint(1, "Hello %s", "World"); // will print to both stderr and fp if verbose >= 1
 void vvprint(FILE *fp, const int verbose_threshold, const char *format, ...);
 
+hts_idx_t *load_bcf_csi_idx(const char *fn);
+
 // TODO
 // int requireNCols(const char *fn, const int nCols, const char *delims);
 
@@ -211,10 +213,11 @@ typedef struct outFilesStruct {
     outputStruct *out_dxy_fs = NULL;
     outputStruct *out_nj_fs = NULL;
     outputStruct *out_blockstab_fs = NULL;
+    outputStruct *out_v_bootstrapRep_fs = NULL;
 
 } outFilesStruct;
 
-void outFilesStruct_set(argStruct *args, outFilesStruct *ofs);
+void outFilesStruct_set(outFilesStruct *ofs);
 void outFilesStruct_destroy(outFilesStruct *ofs);
 
 namespace print {
@@ -246,6 +249,5 @@ kstring_t *kbuf_init();
 void kbuf_destroy(kstring_t *kbuf);
 
 extern IO::outFilesStruct *outFiles;
-// todo extern argstruct paramstruct too?
 
 #endif  // __IO__

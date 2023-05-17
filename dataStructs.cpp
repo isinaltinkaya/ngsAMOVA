@@ -1,16 +1,125 @@
 #include "dataStructs.h"
 
-void get_distanceMatrix_GL(argStruct *args, paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt) {
-    readSites_GL(vcfd, args, pars, pairSt);
+distanceMatrixStruct *distanceMatrixStruct_get(paramStruct *pars, vcfData *vcfd, pairStruct **pairSt, char **indNames, blobStruct *blob) {
+    distanceMatrixStruct *dm = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, indNames);
+
+    if (NULL == blob) {  // no block bootstrapping
+        if (args->doDist == 1) {
+            // -> use genotype likelihoods
+            get_distanceMatrix_GL(pars, dm, vcfd, pairSt);
+        } else if (args->doDist == 2) {
+            // -> use genotypes
+            get_distanceMatrix_GT(pars, dm, vcfd, pairSt);
+        } else {
+            NEVER;
+        }
+
+    } else {  // do block bootstrapping
+        for (int rep = 0; rep < blob->bootstraps->nReplicates; ++rep) {
+            blob->bootstraps->replicates[rep]->distanceMatrix = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, indNames);
+        }
+        if (args->doDist == 1) {
+            // -> use genotype likelihoods
+            // get_distanceMatrix_GL( pars, dm, vcfd, pairSt, blob);
+        } else if (args->doDist == 2) {
+            ASSERT(blob != NULL);
+            // -> use genotypes
+            get_distanceMatrix_GT(pars, dm, vcfd, pairSt, blob);
+        } else {
+            NEVER;
+        }
+    }
+
+    dm->print();
+    return (dm);
+}
+
+void get_distanceMatrix_GL(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt) {
+    readSites_GL(vcfd, pars, pairSt);
     if (1 == args->doEM) {
-        spawnThreads_pairEM(args, pars, pairSt, vcfd, distanceMatrix);
+        spawnThreads_pairEM(pars, pairSt, vcfd, distanceMatrix);
         return;
     }
     NEVER;
 }
 
-void get_distanceMatrix_GT(argStruct *args, paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt) {
-    readSites_GT(vcfd, args, pars, pairSt);
+void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt, blobStruct *blob) {
+    const int nBlocks = blob->bootstraps->nBlocks;
+    const int nIndCmb = pars->nIndCmb;
+    ASSERT(vcfd->nJointClasses > 0);
+    ASSERT(nBlocks > 0);
+    vcfd->jgcd_gt = (int ***)malloc(sizeof(int **) * nBlocks);
+    vcfd->pair_shared_nSites = (int **)malloc(sizeof(int *) * nBlocks);
+    for (int b = 0; b < nBlocks; b++) {
+        vcfd->jgcd_gt[b] = (int **)malloc(nIndCmb * sizeof(int *));
+        for (int i = 0; i < nIndCmb; i++) {
+            vcfd->jgcd_gt[b][i] = (int *)calloc(vcfd->nJointClasses, sizeof(int));
+        }
+        vcfd->pair_shared_nSites[b] = (int *)calloc(nIndCmb, sizeof(int));
+    }
+
+    readSites_GT(vcfd, pars, pairSt, blob);
+    for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
+        for (int block_i = 0; block_i < blob->nBlocks; ++block_i) {
+            for (int j = 0; j < vcfd->nJointClasses; ++j) {
+                vcfd->JointGenoCountDistGT[pidx][j] += vcfd->jgcd_gt[block_i][pidx][j];
+            }
+            vcfd->JointGenoCountDistGT[pidx][vcfd->nJointClasses] = vcfd->pair_shared_nSites[block_i][pidx];
+        }
+        int snSites = vcfd->JointGenoCountDistGT[pidx][vcfd->nJointClasses];
+        if (snSites == 0) {
+            ERROR("No shared sites found for pair %d (snSites=%d). This is currently not allowed.\n", pidx, snSites);
+        }
+        if (args->squareDistance == 1) {
+            distanceMatrix->M[pidx] = (double)SQUARE(MATH::Dij(vcfd->JointGenoCountDistGT[pidx], snSites));
+        } else {
+            distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->JointGenoCountDistGT[pidx], snSites);
+        }
+    }
+
+    for (int rep = 0; rep < blob->bootstraps->nReplicates; ++rep) {
+        int r_JointGenoCountDistGT[pars->nIndCmb][vcfd->nJointClasses + 1];
+
+        for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
+            for (int i = 0; i < vcfd->nJointClasses + 1; i++) {
+                r_JointGenoCountDistGT[pidx][i] = 0;
+            }
+
+            for (int r_block = 0; r_block < blob->nBlocks; ++r_block) {
+                int chosen_block = blob->bootstraps->replicates[rep]->rBlocks[r_block];
+
+                for (int j = 0; j < vcfd->nJointClasses; ++j) {
+                    r_JointGenoCountDistGT[pidx][j] += vcfd->jgcd_gt[chosen_block][pidx][j];
+                }
+                r_JointGenoCountDistGT[pidx][vcfd->nJointClasses] += vcfd->pair_shared_nSites[chosen_block][pidx];
+            }
+            int snSites = r_JointGenoCountDistGT[pidx][vcfd->nJointClasses];
+
+            if (snSites == 0) {
+                ERROR("No shared sites found for pair %d (snSites=%d). This is currently not allowed.\n", pidx, snSites);
+            }
+
+            if (args->squareDistance == 1) {
+                blob->bootstraps->replicates[rep]->distanceMatrix->M[pidx] = (double)SQUARE(MATH::Dij(r_JointGenoCountDistGT[pidx], snSites));
+            } else {
+                blob->bootstraps->replicates[rep]->distanceMatrix->M[pidx] = (double)MATH::Dij(r_JointGenoCountDistGT[pidx], snSites);
+            }
+        }
+    }
+
+    for (int b = 0; b < nBlocks; b++) {
+        FREE(vcfd->pair_shared_nSites[b]);
+        for (int i = 0; i < nIndCmb; i++) {
+            FREE(vcfd->jgcd_gt[b][i]);
+        }
+        FREE(vcfd->jgcd_gt[b]);
+    }
+    FREE(vcfd->pair_shared_nSites);
+    FREE(vcfd->jgcd_gt);
+}
+
+void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt) {
+    readSites_GT(vcfd, pars, pairSt);
     for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
         int snSites = vcfd->JointGenoCountDistGT[pidx][vcfd->nJointClasses];
         if (snSites == 0) {
@@ -23,9 +132,8 @@ void get_distanceMatrix_GT(argStruct *args, paramStruct *pars, distanceMatrixStr
             distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->JointGenoCountDistGT[pidx], snSites);
         }
     }
-    vcfd->print_JointGenoCountDist(args);
+    // vcfd->print_JointGenoCountDist(args);
 }
-
 // TODO add check if discrapency in metadata e.g. pop3 is both in reg1 and reg2
 
 metadataStruct::metadataStruct(int nInd) {
@@ -116,7 +224,7 @@ metadataStruct::~metadataStruct() {
     FREE(idxToLvlg);
 }
 
-metadataStruct *metadataStruct_get(argStruct *args, paramStruct *pars) {
+metadataStruct *metadataStruct_get(paramStruct *pars) {
     ASSERT(pars->nInd > 0);
     ASSERT(args->formula != NULL);
     metadataStruct *mtd = new metadataStruct(pars->nInd);
@@ -492,8 +600,10 @@ void distanceMatrixStruct::set_item_labels(char **itemLabelArr) {
     }
 }
 
-void distanceMatrixStruct::print(int printMatrix, IO::outputStruct *out_dm_fs) {
-    if (0 == printMatrix)
+void distanceMatrixStruct::print() {
+    IO::outputStruct *out_dm_fs = outFiles->out_dm_fs;
+
+    if (0 == args->printDistanceMatrix)
         return;
 
     ASSERT(out_dm_fs != NULL);
@@ -583,7 +693,7 @@ distanceMatrixStruct::~distanceMatrixStruct() {
     FREE(idx2inds);
 }
 
-distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars, argStruct *args) {
+distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars) {
     int dm_vals_size = 1225;
     double *dm_vals = (double *)malloc((dm_vals_size) * sizeof(double));
 

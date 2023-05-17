@@ -1,18 +1,12 @@
 #include "em.h"
 
 /// @brief spawnThreads_pairEM spawn threads for running EM algorithm for each individual pair
-/// @param args
-/// @param pars
-/// @param pairSt
-/// @param vcfd
-/// @param outSt
-/// @param distMatrix
-void spawnThreads_pairEM(argStruct *args, paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, distanceMatrixStruct *distMatrix) {
+void spawnThreads_pairEM(paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, distanceMatrixStruct *distanceMatrix) {
     pthread_t pairThreads[pars->nIndCmb];
     indPairThreads **PTHREADS = new indPairThreads *[pars->nIndCmb];
 
     for (int i = 0; i < pars->nIndCmb; i++) {
-        PTHREADS[i] = new indPairThreads(pairSt[i], vcfd->lngl, args, pars);
+        PTHREADS[i] = new indPairThreads(pairSt[i], vcfd->lngl, pars);
     }
 
     int nJobs_sent = 0;
@@ -61,33 +55,29 @@ void spawnThreads_pairEM(argStruct *args, paramStruct *pars, pairStruct **pairSt
         vcfd->JointGenoProbDistGL[pidx][vcfd->nJointClasses] = pair->snSites;
 
         if (args->squareDistance == 1) {
-            distMatrix->M[pidx] = (double)SQUARE((MATH::Dij(vcfd->JointGenoProbDistGL[pidx])));
+            distanceMatrix->M[pidx] = (double)SQUARE((MATH::Dij(vcfd->JointGenoProbDistGL[pidx])));
         } else {
-            distMatrix->M[pidx] = (double)MATH::Dij(vcfd->JointGenoProbDistGL[pidx]);
+            distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->JointGenoProbDistGL[pidx]);
         }
         delete PTHREADS[pidx];
     }
-    vcfd->print_JointGenoProbDist(args);
-    vcfd->print_JointGenoCountDist(args);
+    vcfd->print_JointGenoProbDist();
+    vcfd->print_JointGenoCountDist();
 
     delete[] PTHREADS;
 }
 
 /// @brief thread handler for EM_optim_jgd_gl3
-/// @param p
-/// @return
 void *t_EM_optim_jgd_gl3(void *p) {
     indPairThreads *THREAD = (indPairThreads *)p;
 
     if (EM_optim_jgd_gl3(THREAD) != 0) {
         NEVER;
     }
-    return 0;
+    return (0);
 }
 
 /// @brief EM algorithm for 3x3 PGC (pairwise genotype categories)
-/// @param THREAD
-/// @return
 int EM_optim_jgd_gl3(indPairThreads *THREAD) {
     double **lngls = THREAD->lngls;
     pairStruct *pair = THREAD->pair;

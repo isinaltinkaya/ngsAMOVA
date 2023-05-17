@@ -1,6 +1,8 @@
 #include "bootstrap.h"
 
-blobStruct *blobStruct_get(vcfData *vcf, paramStruct *pars, argStruct *args) {
+#include <algorithm>
+
+blobStruct *blobStruct_get(vcfData *vcf, paramStruct *pars) {
     fprintf(stderr, "\n\t-> --nBootstraps %d is set, will perform %d bootstraps for AMOVA significance testing.\n", args->nBootstraps, args->nBootstraps);
 
     if (args->nBootstraps < 0) {
@@ -11,7 +13,7 @@ blobStruct *blobStruct_get(vcfData *vcf, paramStruct *pars, argStruct *args) {
 
     if (args->blockSize != 0) {
         fprintf(stderr, "\n\t-> blockSize is set, will perform block bootstrapping with blocks of size %d.\n", args->blockSize);
-        blob = blobStruct_populate_blocks_withSize(vcf, args);
+        blob = blobStruct_populate_blocks_withSize(vcf);
     } else if (args->in_blocks_tab_fn != NULL) {
         blob = blobStruct_read_tab(args->in_blocks_tab_fn);
     } else if (args->in_blocks_bed_fn != NULL) {
@@ -20,20 +22,27 @@ blobStruct *blobStruct_get(vcfData *vcf, paramStruct *pars, argStruct *args) {
         ERROR("--nBootstraps %d requires --block-size, --in_blocks_tab_fn or --in_blocks_bed_fn to be set.", args->nBootstraps);
     }
 
-    blob->bootstraps = bootstrapDataset_get(vcf, pars, args, blob);
+    blob->bootstraps = bootstrapDataset_get(vcf, pars, blob);
 
+    if (args->printBlocksTab == 1) {
+        blob->print(outFiles->out_blockstab_fs);
+    }
+
+    if (1 == DEV && NULL != blob) {
+        blob->bootstraps->print(outFiles->out_v_bootstrapRep_fs);
+    }
     return blob;
 }
 
-bootstrapDataset *bootstrapDataset_get(vcfData *vcfd, paramStruct *pars, argStruct *args, blobStruct *blobSt) {
-    bootstrapDataset *bootstraps = new bootstrapDataset(args, pars, args->nBootstraps, blobSt->nBlocks);
+bootstrapDataset *bootstrapDataset_get(vcfData *vcfd, paramStruct *pars, blobStruct *blobSt) {
+    bootstrapDataset *bootstraps = new bootstrapDataset(pars, args->nBootstraps, blobSt->nBlocks);
 
     int rblock = -1;
 
     for (int rep = 0; rep < args->nBootstraps; ++rep) {
         for (int block = 0; block < blobSt->nBlocks; ++block) {
             rblock = sample_with_replacement(blobSt->nBlocks);
-            bootstraps->bootRep[rep]->rBlocks[block] = rblock;
+            bootstraps->replicates[rep]->rBlocks[block] = rblock;
         }
     }
 
@@ -212,7 +221,7 @@ void blobStruct::print(IO::outputStruct *out_blockstab_fs) {
     kbuf_destroy(kbuf);
 }
 
-blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf, argStruct *args) {
+blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf) {
     // TODO make it work with region and regions, we need to get ncontigs from the region filtered vcf
     // maybe just add a lazy check afterwards to skip empty blocks due to site filtering?
     if (args->in_regions_tab_fn != NULL || args->in_regions_bed_fn != NULL || args->in_region != NULL) {
@@ -265,46 +274,67 @@ blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf, argStruct *args) {
     return blob;
 }
 
-bootstrapDataset::bootstrapDataset(argStruct *args, paramStruct *pars, int nBootstraps_, int nBlocks_) {
-    nBootstraps = nBootstraps_;
+void bootstrapDataset::print(IO::outputStruct *out_v_bootstrapRep_fs) {
+    ASSERT(out_v_bootstrapRep_fs != NULL);
+    fprintf(stderr, "\n[INFO]\t-> Writing bootstrap info file: %s\n", out_v_bootstrapRep_fs->fn);
+    kstring_t *kbuf = kbuf_init();
+
+    ksprintf(kbuf, "Replicate,ReplicateBlockIndex,BlockName\n");
+
+    for (int b = 0; b < nReplicates; ++b) {
+        for (int i = 0; i < nBlocks; ++i) {
+            ksprintf(kbuf, "%d,%d,%d\n", b, i, replicates[b]->rBlocks[i]);
+        }
+    }
+    out_v_bootstrapRep_fs->write(kbuf);
+    kbuf_destroy(kbuf);
+}
+
+bootstrapDataset::bootstrapDataset(paramStruct *pars, int nBootstraps_, int nBlocks_) {
+    nReplicates = nBootstraps_;
     nBlocks = nBlocks_;
-    bootRep = new bootstrapRep *[nBootstraps];
-    distanceMatrixRep = new distanceMatrixStruct *[nBootstraps];
-    for (int b = 0; b < nBootstraps; ++b) {
-        bootRep[b] = new bootstrapRep(nBlocks);
+    replicates = new bootstrapReplicate *[nReplicates];
+    for (int b = 0; b < nReplicates; ++b) {
+        replicates[b] = new bootstrapReplicate(nBlocks);
     }
 }
 
 bootstrapDataset::~bootstrapDataset() {
-    DELETE_ARRAY(bootRep, nBootstraps);
+    DELETE_ARRAY(replicates, nReplicates);
+    for (int i = 0; i < nPhiValues; ++i) {
+        FREE(phiValues[i]);
+    }
+    FREE(phiValues);
 }
 
-bootstrapRep::bootstrapRep(int nBlocks) {
+void bootstrapDataset::print_confidenceInterval(FILE *fp) {
+    double mean = 0.0;
+    double sd = 0.0;
+
+    double ci = 0.95;
+    int n_lower = floor((double)((double)(1 - ci) / 2) * nReplicates);
+    int n_upper = nReplicates - n_lower - 1;
+
+    fprintf(fp, "PhiStatistic,nReplicates,Mean,SD,CI_lower,CI_upper\n");
+    for (int i = 0; i < nPhiValues; i++) {
+        std::sort(phiValues[i], phiValues[i] + nReplicates);
+
+        mean = MATH::MEAN(phiValues[i], nReplicates);
+        sd = MATH::SD(phiValues[i], nReplicates);
+
+        fprintf(fp, "%d,%d,%f,%f,%f,%f\n", i, nReplicates, mean, sd, phiValues[i][n_lower], phiValues[i][n_upper]);
+    }
+}
+
+bootstrapReplicate::bootstrapReplicate(int nBlocks) {
     rBlocks = (int *)malloc(nBlocks * sizeof(int));
     for (int i = 0; i < nBlocks; ++i) {
         rBlocks[i] = -1;
     }
 }
 
-bootstrapRep::~bootstrapRep() {
+bootstrapReplicate::~bootstrapReplicate() {
     FREE(rBlocks);
-}
-
-distanceMatrixStruct *get_distanceMatrix_GT_bootstrapRep(const int nInd, const int nIndCmb, const int squareDistance, bootstrapRep *bRep, vcfData *vcfd) {
-    distanceMatrixStruct *distanceMatrix = new distanceMatrixStruct(nInd, nIndCmb, squareDistance, NULL);
-
-    return distanceMatrix;
-}
-
-distanceMatrixStruct *get_distanceMatrix_GL_bootstrapRep(const int nInd, const int nIndCmb, const int squareDistance, bootstrapRep *bRep, vcfData *vcfd) {
-    distanceMatrixStruct *distanceMatrix = new distanceMatrixStruct(nInd, nIndCmb, squareDistance, NULL);
-    // readSites_bootstrapReplicate(vcfd, args, pars, bRep);
-    // spawnThreads_amovaRep(args, pars, bRep->pairSt, vcfd, distanceMatrix);
-
-    // distanceMatrix->M[pidx] = (double)SQUARE(MATH::EST::Dij());
-    return distanceMatrix;
-}
-
-void readSites_bootstrapReplicate(vcfData *vcfd, argStruct *args, paramStruct *pars, pairStruct **pairSt, bootstrapRep *brep) {
-    return;
+    DELETE(amova);
+    DELETE(distanceMatrix);
 }

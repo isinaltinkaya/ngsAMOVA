@@ -1,5 +1,22 @@
 #include "mathUtils.h"
 
+double MATH::MEAN(double *arr, int size) {
+    double mean = 0.0;
+    for (int x = 0; x < size; x++) {
+        mean += arr[x];
+    }
+    return ((double)mean / (double)size);
+}
+
+double MATH::SD(double *arr, int size) {
+    double mean = MATH::MEAN(arr, size);
+    double sd = 0.0;
+    for (int x = 0; x < size; x++) {
+        sd += pow(arr[x] - mean, 2);
+    }
+    return sqrt(sd / size);
+}
+
 int nCk(int n, int k) {
     if (k == 0) {
         return 1;

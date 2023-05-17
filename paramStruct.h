@@ -70,9 +70,6 @@ void formulaStruct_destroy(formulaStruct *fos);
  * @field der					derived allele
  */
 struct paramStruct {
-    // TODO add argStruct ptr to paramStruct to avoid always passing both
-    // argStruct *args;
-
     // number of sites non skipped for all individuals
     // nSites may not be !=totSites if minInd is set
     // or if a site is missing for all inds
@@ -87,9 +84,6 @@ struct paramStruct {
 
     int nInd;
     int nIndCmb;
-
-    // TODO move this to amova analysis
-    int nAmovaRuns = 0;
 
     // input file type from enum
     int in_ft = 0;

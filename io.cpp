@@ -582,7 +582,7 @@ void IO::outputStruct::write(const kstring_t *kbuf) {
     }
 }
 
-void IO::outFilesStruct_set(argStruct *args, IO::outFilesStruct *ofs) {
+void IO::outFilesStruct_set(IO::outFilesStruct *ofs) {
     if (args->printDistanceMatrix != 0) {
         ofs->out_dm_fs = new IO::outputStruct(args->out_fnp, ".distance_matrix.csv", args->printDistanceMatrix - 1);
     }
@@ -609,15 +609,22 @@ void IO::outFilesStruct_set(argStruct *args, IO::outFilesStruct *ofs) {
     if (args->doAMOVA > 0) {
         ofs->out_amova_fs = new IO::outputStruct(args->out_fnp, ".amova.csv", 0);
     }
-    // TODO
-    if (args->printDev == 1) {
-        ofs->out_dev_fs = new IO::outputStruct(args->out_fnp, ".dev.csv", 1);
-    }
     if (args->printBlocksTab == 1) {
         ofs->out_blockstab_fs = new IO::outputStruct(args->out_fnp, ".blocks.tab", 0);
     }
     if (args->doNJ > 0) {
         ofs->out_nj_fs = new IO::outputStruct(args->out_fnp, ".newick", 0);
+    }
+
+    if (1 == DEV) {
+        if (args->nBootstraps > 0) {
+            ofs->out_v_bootstrapRep_fs = new IO::outputStruct(args->out_fnp, ".verbose_bootstrap_replicates.csv", 0);
+        }
+    }
+
+    // TODO DEPREC
+    if (args->printDev == 1) {
+        ofs->out_dev_fs = new IO::outputStruct(args->out_fnp, ".dev.csv", 1);
     }
 }
 
@@ -630,6 +637,7 @@ void IO::outFilesStruct_destroy(IO::outFilesStruct *ofs) {
     DELETE(ofs->out_jgpd_fs);
     DELETE(ofs->out_dxy_fs);
     DELETE(ofs->out_nj_fs);
+    DELETE(ofs->out_v_bootstrapRep_fs);
     DELETE(ofs);
 }
 
@@ -726,4 +734,14 @@ void IO::vvprint(FILE *fp, const int verbose_threshold, const char *format, ...)
         fprintf(fp, "\n[INFO][VERBOSE>=%d]\t%s\n", verbose_threshold, str);
         fprintf(stderr, "\n[INFO][VERBOSE>=%d]\t%s\n", verbose_threshold, str);
     }
+}
+
+hts_idx_t *IO::load_bcf_csi_idx(const char *fn) {
+    hts_idx_t *csi = bcf_index_load(fn);
+    if (NULL == csi) {
+        ERROR("Failed to load csi index file: %s.csi. Please make sure that the index file exists and is in the same directory as the input file (%s).", fn, fn);
+    } else {
+        IO::vprint("Loaded csi index file \'%s.csi\'", fn);
+    }
+    return (csi);
 }

@@ -399,7 +399,7 @@ int njStruct::newParentNode(int child1, int child2) {
     return totL;
 }
 
-njStruct *njStruct_get(argStruct *args, paramStruct *pars, dxyStruct *dxy) {
+njStruct *njStruct_get(paramStruct *pars, dxyStruct *dxy) {
     ASSERT(dxy != NULL);
     njStruct *nj = new njStruct(dxy);
 
@@ -414,7 +414,7 @@ njStruct *njStruct_get(argStruct *args, paramStruct *pars, dxyStruct *dxy) {
     return nj;
 }
 
-njStruct *njStruct_get(argStruct *args, paramStruct *pars, distanceMatrixStruct *dms) {
+njStruct *njStruct_get(paramStruct *pars, distanceMatrixStruct *dms) {
     ASSERT(dms != NULL);
     njStruct *nj = new njStruct(dms);
 

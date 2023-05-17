@@ -108,7 +108,7 @@ int dxyStruct::estimate_dxy_allLevels(distanceMatrixStruct *dMS, metadataStruct 
 
 // dxy file format: comma-separated list of pairwise dxy values
 // group1Name,group2Name,levelID,dxyValue
-dxyStruct *dxyStruct_read(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd) {
+dxyStruct *dxyStruct_read(paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd) {
     dxyStruct *dxyS = new dxyStruct();
 
     // number of lines in dxy file == number of pairwise dxy values
@@ -194,7 +194,7 @@ void dxyStruct::print(IO::outputStruct *out_dxy_fs) {
     kbuf_destroy(kbuf);
 }
 
-dxyStruct *dxyStruct_get(argStruct *args, paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd) {
+dxyStruct *dxyStruct_get(paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd) {
     dxyStruct *dxyS = new dxyStruct();
 
     int n_vals = 0;
