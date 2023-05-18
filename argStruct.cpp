@@ -431,8 +431,8 @@ void argStruct::check_arg_dependencies() {
         fprintf(stderr, "\n\t-> -out <output_prefix> not set; will use %s as a prefix for output files.\n", out_fnp);
     }
 
-    if (NULL == in_ancder_fn) {
-        ERROR("AncDer file is required\n");
+    if (NULL == in_ancder_fn && NULL == in_majorminor_fn) {
+        ERROR("Must supply either --majorMinorFile/-mmf <filename> or --ancDerFile/-adf <filename>.");
     }
     if (in_vcf_fn == NULL && in_dm_fn == NULL) {
         fprintf(stderr, "\n[ERROR] Must supply either --in-vcf <VCF_file> or --in-dm <Distance_matrix_file>.\n");
@@ -489,9 +489,8 @@ void argStruct::check_arg_dependencies() {
     //              3: read distance matrix from file
 
     if (0 == doDist) {
-        if (0 != printDistanceMatrix) {
-            ERROR("--printDistanceMatrix %d requires -doDist != 0.\n", printDistanceMatrix);
-        }
+        fprintf(stderr, "\n\n-doDist 0: Nothing to do; will exit.\n\n");
+        exit(0);
     } else if (1 == doDist) {
         LOG("-doDist 1, will estimate distance matrix from genotype likelihoods.");
 

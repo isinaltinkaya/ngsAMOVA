@@ -745,3 +745,13 @@ hts_idx_t *IO::load_bcf_csi_idx(const char *fn) {
     }
     return (csi);
 }
+
+tbx_t *IO::load_vcf_tabix_idx(const char *fn) {
+    tbx_t *tbi = tbx_index_load(fn);
+    if (NULL == tbi) {
+        ERROR("Failed to load tabix index file: %s.tbi. Please make sure that the index file exists and is in the same directory as the input file (%s).", fn, fn);
+    } else {
+        IO::vprint("Loaded the tabix index file \'%s.tbi\'", fn);
+    }
+    return (tbi);
+}

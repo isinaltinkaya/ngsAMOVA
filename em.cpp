@@ -1,12 +1,11 @@
 #include "em.h"
 
-/// @brief spawnThreads_pairEM spawn threads for running EM algorithm for each individual pair
 void spawnThreads_pairEM(paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, distanceMatrixStruct *distanceMatrix) {
     pthread_t pairThreads[pars->nIndCmb];
-    indPairThreads **PTHREADS = new indPairThreads *[pars->nIndCmb];
+    indPairThreads **THREADS = new indPairThreads *[pars->nIndCmb];
 
     for (int i = 0; i < pars->nIndCmb; i++) {
-        PTHREADS[i] = new indPairThreads(pairSt[i], vcfd->lngl, pars);
+        THREADS[i] = new indPairThreads(pairSt[i], vcfd->lngl, pars);
     }
 
     int nJobs_sent = 0;
@@ -24,7 +23,7 @@ void spawnThreads_pairEM(paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, 
                 }
             }
         }
-        if (pthread_create(&pairThreads[pidx], NULL, t_EM_optim_jgd_gl3, PTHREADS[pidx]) == 0) {
+        if (pthread_create(&pairThreads[pidx], NULL, t_EM_optim_jgd_gl3, THREADS[pidx]) == 0) {
             nJobs_sent++;
         } else {
             ERROR("Problem with spawning thread.");
@@ -43,7 +42,7 @@ void spawnThreads_pairEM(paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, 
     }
 
     for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
-        pairStruct *pair = PTHREADS[pidx]->pair;
+        pairStruct *pair = THREADS[pidx]->pair;
         ASSERT(pair->snSites > 0);
 
         for (int g = 0; g < vcfd->nJointClasses; g++) {
@@ -59,15 +58,14 @@ void spawnThreads_pairEM(paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, 
         } else {
             distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->JointGenoProbDistGL[pidx]);
         }
-        delete PTHREADS[pidx];
+        delete THREADS[pidx];
     }
     vcfd->print_JointGenoProbDist();
     vcfd->print_JointGenoCountDist();
 
-    delete[] PTHREADS;
+    delete[] THREADS;
 }
 
-/// @brief thread handler for EM_optim_jgd_gl3
 void *t_EM_optim_jgd_gl3(void *p) {
     indPairThreads *THREAD = (indPairThreads *)p;
 
@@ -77,7 +75,6 @@ void *t_EM_optim_jgd_gl3(void *p) {
     return (0);
 }
 
-/// @brief EM algorithm for 3x3 PGC (pairwise genotype categories)
 int EM_optim_jgd_gl3(indPairThreads *THREAD) {
     double **lngls = THREAD->lngls;
     pairStruct *pair = THREAD->pair;

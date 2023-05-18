@@ -34,13 +34,9 @@ void input_VCF(paramStruct *pars) {
         }
     }
 
-    if (args->doDist == 0) {
-        fprintf(stderr, "\n[INFO]\tNothing to do.\n");
-        exit(0);
-    }
-
     // TODO deprec
     char **indNames = NULL;
+
     metadataStruct *metadata = NULL;
     if (NULL != args->in_mtd_fn) {
         metadata = metadataStruct_get(pars);

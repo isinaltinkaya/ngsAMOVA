@@ -86,10 +86,15 @@ alleleStruct *alleleStruct_read(const char *fn) {
 
             } else if (2 == coli) {        // -> anc/major
                 ASSERT(1 == strlen(tok));  // expect a single character e.g. G
+                if (1 < strlen(tok)) {     // debug
+                    ERROR("Too many characters found in the 3rd column of file %s. Expected: 1", fn);
+                }
                 A->a1[contig_i][pos_i] = tok[0];
 
-            } else if (3 == coli) {  // -> der/minor
-                ASSERT(1 == strlen(tok));
+            } else if (3 == coli) {     // -> der/minor
+                if (1 < strlen(tok)) {  // debug
+                    ERROR("Too many characters found in the 4th column of file %s. Expected: 1", fn);
+                }
                 A->a2[contig_i][pos_i] = tok[0];
             } else {
                 ERROR("Too many columns in file %s. Expected: 4", fn);
@@ -160,7 +165,9 @@ void paramStruct_destroy(paramStruct *pars) {
         DELETE(pars->majmin);
     }
 
-    formulaStruct_destroy(pars->formula);
+    if (NULL != pars->formula) {
+        formulaStruct_destroy(pars->formula);
+    }
 
     delete pars;
 }

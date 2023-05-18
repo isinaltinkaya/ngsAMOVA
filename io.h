@@ -3,6 +3,7 @@
 
 #include <htslib/bgzf.h>
 #include <htslib/kstring.h>
+#include <htslib/tbx.h>
 #include <zlib.h>
 
 #include "argStruct.h"
@@ -55,6 +56,7 @@ void vprint(FILE *fp, const int verbose_threshold, const char *format, ...);
 void vvprint(FILE *fp, const int verbose_threshold, const char *format, ...);
 
 hts_idx_t *load_bcf_csi_idx(const char *fn);
+tbx_t *load_vcf_tabix_idx(const char *fn);
 
 // TODO
 // int requireNCols(const char *fn, const int nCols, const char *delims);

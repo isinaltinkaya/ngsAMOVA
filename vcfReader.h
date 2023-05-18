@@ -2,6 +2,7 @@
 #define __VCF_READER__
 
 #include <htslib/kstring.h>
+#include <htslib/tbx.h>
 
 #include "argStruct.h"
 #include "bootstrap.h"
@@ -13,6 +14,7 @@
 
 typedef struct vcfData vcfData;
 typedef struct gtData gtData;
+typedef struct glData glData;
 
 struct bootstrapReplicate;
 struct blobStruct;
@@ -34,7 +36,7 @@ struct vcfData {
     hts_idx_t *idx = NULL;
     hts_itr_t *itr = NULL;
 
-    int nseq = 0;
+    // tbx_t *tbx = NULL;
 
     int nContigs = 0;
     int nInd = 0;
@@ -117,18 +119,30 @@ struct gtData {
     int32_t *data = NULL;
 
     int size_e = 0;
-    int n_alleles = 0;
-
+    int n_values = 0;
     int n_missing_ind = 0;
 
     // TODO nvalues vs ploidy
     int ploidy = 0;
-    int n_values = 0;
 
     gtData(vcfData *vcfd);
     ~gtData();
 
     int32_t *ind_ptr(const int ind_i);
+};
+
+struct glData {
+    float *data = NULL;
+
+    int size_e = 0;
+    int n_values = 0;
+    int n_gls = 0;
+    int n_missing_ind = 0;
+
+    glData(vcfData *vcfd);
+    ~glData();
+
+    int *ind_ptr(const int ind_i);
 };
 
 /*
