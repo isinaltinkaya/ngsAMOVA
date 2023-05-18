@@ -12,9 +12,9 @@ glData::glData(vcfData *vcfd) {
     n_gls = n_values / vcfd->nInd;
 
     if (10 == n_gls) {
-        LOG("GL field has 10 values per individual.");
+        IO::vprint(3, "GL field has 10 values per individual.");
     } else if (3 == n_gls) {
-        LOG("GL field has 3 values per individual.");
+        IO::vprint(3, "GL field has 3 values per individual.");
     } else {
         ERROR("GL field has %d values per individual. Only 3 or 10 are supported.", n_gls);
     }
@@ -22,6 +22,10 @@ glData::glData(vcfData *vcfd) {
 
 glData::~glData() {
     FREE(data);
+}
+
+float *glData::ind_ptr(const int ind_i) {
+    return data + ind_i * n_gls;
 }
 
 gtData::gtData(vcfData *vcfd) {
@@ -39,6 +43,10 @@ gtData::gtData(vcfData *vcfd) {
 
 gtData::~gtData() {
     FREE(data);
+}
+
+int *gtData::ind_ptr(const int ind_i) {
+    return data + ind_i * ploidy;
 }
 
 // from angsd analysisFunction.cpp
@@ -110,10 +118,9 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
         // fprintf(stderr, "a1: %c, a2: %c\n", vcfd->bcf->d.allele[0][0], vcfd->bcf->d.allele[1][0]);
 
         for (int indi = 0; indi < nInd; indi++) {
-            // 3x3 we save 3 gls so nGT = 3
-            int indi3 = indi * vcfd->nGT;
+            const int lngls_ind_ptr = indi * vcfd->nGT;
 
-            if (isnan(lgls.data[(10 * indi) + 0])) {
+            if (isnan(lgls.ind_ptr(indi)[0])) {
                 // if only use sites shared across all individuals (minInd 0); skip site when you first encounter nan
                 if (args->minInd == 0) {
                     return 1;
@@ -161,9 +168,9 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
                 }
                 // TODO can this prev and latter check be checkin stuff twice?
 
-                vcfd->lngl[pars->nSites][indi3 + 0] = (double)LOG2LN(lgls.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a1)]);
-                vcfd->lngl[pars->nSites][indi3 + 1] = (double)LOG2LN(lgls.data[(10 * indi) + bcf_alleles_get_gtidx(a1, a2)]);
-                vcfd->lngl[pars->nSites][indi3 + 2] = (double)LOG2LN(lgls.data[(10 * indi) + bcf_alleles_get_gtidx(a2, a2)]);
+                vcfd->lngl[pars->nSites][lngls_ind_ptr + 0] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(a1, a1)]);
+                vcfd->lngl[pars->nSites][lngls_ind_ptr + 1] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(a1, a2)]);
+                vcfd->lngl[pars->nSites][lngls_ind_ptr + 2] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(a2, a2)]);
             }
         }
     } else {
@@ -207,7 +214,7 @@ int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, pa
 
         // --- minInd threshold check
         for (int i1 = 0; i1 < nInd; ++i1) {
-            int32_t *ptr1 = gts.data + (i1 * 2);
+            int *ptr1 = gts.ind_ptr(i1);
 
             if (1 == bcf_gt_is_missing(ptr1[0]) || 1 == bcf_gt_is_missing(ptr1[1])) {
                 // if arg=only use sites shared across all individuals (minInd 0); skip site when you first encounter nan
@@ -229,7 +236,7 @@ int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, pa
         }
 
         for (int i1 = 0; i1 < nInd; ++i1) {
-            int32_t *ptr1 = gts.data + (i1 * 2);
+            int *ptr1 = gts.ind_ptr(i1);
 
             if (1 == bcf_gt_is_missing(ptr1[0]) || 1 == bcf_gt_is_missing(ptr1[1]))
                 continue;
@@ -257,7 +264,7 @@ int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, pa
             int i1_state_gt = i1a1_state + i1a2_state;
 
             for (int i2 = i1 + 1; i2 < nInd; i2++) {
-                int32_t *ptr2 = gts.data + i2 * gts.ploidy;
+                int *ptr2 = gts.ind_ptr(i2);
 
                 if (1 == bcf_gt_is_missing(ptr2[0]) || 1 == bcf_gt_is_missing(ptr2[1]))
                     continue;
@@ -325,7 +332,7 @@ int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, pa
     gtData gts(vcfd);
 
     for (int i1 = 0; i1 < nInd; ++i1) {
-        int32_t *ptr1 = gts.data + (i1 * 2);
+        int *ptr1 = gts.ind_ptr(i1);
 
         if (1 == bcf_gt_is_missing(ptr1[0]) || 1 == bcf_gt_is_missing(ptr1[1])) {
             // if arg=only use sites shared across all individuals (minInd 0); skip site when you first encounter nan
@@ -347,7 +354,7 @@ int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, pa
     }
 
     for (int i1 = 0; i1 < nInd; ++i1) {
-        int32_t *ptr1 = gts.data + (i1 * 2);
+        int *ptr1 = gts.ind_ptr(i1);
 
         if (1 == bcf_gt_is_missing(ptr1[0]) || 1 == bcf_gt_is_missing(ptr1[1]))
             continue;
@@ -375,7 +382,7 @@ int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, pa
         int i1_state_gt = i1a1_state + i1a2_state;
 
         for (int i2 = i1 + 1; i2 < nInd; i2++) {
-            int32_t *ptr2 = gts.data + i2 * gts.ploidy;
+            int *ptr2 = gts.ind_ptr(i2);
 
             if (1 == bcf_gt_is_missing(ptr2[0]) || 1 == bcf_gt_is_missing(ptr2[1]))
                 continue;
@@ -557,9 +564,9 @@ void readSites_GL(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt) {
         if (NULL == vcfd->lngl[pars->nSites]) {
             vcfd->lngl[pars->nSites] = (double *)malloc(pars->nInd * vcfd->nGT * sizeof(double));
             for (int indi = 0; indi < pars->nInd; indi++) {
-                int indi3 = indi * vcfd->nGT;
+                const int lngls_ind_ptr = indi * vcfd->nGT;
                 for (int j = 0; j < vcfd->nGT; j++) {
-                    vcfd->lngl[pars->nSites][indi3 + j] = NEG_INF;
+                    vcfd->lngl[pars->nSites][lngls_ind_ptr + j] = NEG_INF;
                 }
             }
         }
@@ -595,7 +602,6 @@ void readSites_GL(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt) {
     vcfd->totSites = pars->totSites;
 
     fprintf(stderr, "\n\t-> Finished reading sites\n");
-    LOG("Finished reading sites. \n\tTotal number of sites processed: %lu. \n\tNumber of sites passing filters: %lu\n", pars->totSites, pars->nSites);
 }
 
 void readSites_GT(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt) {
@@ -806,9 +812,9 @@ void vcfData::lngl_init(int doEM) {
     for (size_t i = 0; i < _lngl; i++) {
         lngl[i] = (double *)malloc(nInd * nGT * sizeof(double));
         for (int indi = 0; indi < nInd; indi++) {
-            int indi3 = indi * nGT;
+            const int lngls_ind_ptr = indi * nGT;
             for (int j = 0; j < nGT; j++) {
-                lngl[i][indi3 + j] = NEG_INF;
+                lngl[i][lngls_ind_ptr + j] = NEG_INF;
             }
         }
     }
@@ -827,9 +833,9 @@ void vcfData::lngl_expand() {
         ASSERT(lngl[i] == NULL);
         lngl[i] = (double *)malloc(nInd * nGT * sizeof(double));
         for (int indi = 0; indi < nInd; indi++) {
-            int indi3 = indi * nGT;
+            const int lngls_ind_ptr = indi * nGT;
             for (int j = 0; j < nGT; j++) {
-                lngl[i][indi3 + j] = NEG_INF;
+                lngl[i][lngls_ind_ptr + j] = NEG_INF;
             }
         }
     }

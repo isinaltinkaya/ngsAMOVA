@@ -128,7 +128,10 @@ struct gtData {
     gtData(vcfData *vcfd);
     ~gtData();
 
-    int32_t *ind_ptr(const int ind_i);
+    /// @brief ind pointer
+    /// @param ind_i index of the individual
+    /// @return  pointer to the start of the GTs for the given individual
+    int *ind_ptr(const int ind_i);
 };
 
 struct glData {
@@ -142,7 +145,10 @@ struct glData {
     glData(vcfData *vcfd);
     ~glData();
 
-    int *ind_ptr(const int ind_i);
+    /// @brief ind pointer
+    /// @param ind_i index of the individual
+    /// @return  pointer to the start of the GLs for the given individual
+    float *ind_ptr(const int ind_i);
 };
 
 /*

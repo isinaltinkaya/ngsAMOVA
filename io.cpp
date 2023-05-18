@@ -25,7 +25,7 @@ int IO::fileExists(const char *fn) {
 
 void IO::requireArgFile(const char *fn, const char *requiredArg, const char *requiredFor) {
     if (NULL == fn) {
-        ERROR("'%s' is required for %s, but found NULL.", requiredArg, requiredFor);
+        ERROR("Could not find any file defined with %s. It is required for %s.", requiredArg, requiredFor);
     }
 
     if ('\0' == fn[0]) {
@@ -41,7 +41,7 @@ void IO::requireArgFile(const char *fn, const char *requiredArg, const char *req
 
 void IO::requireArgFile(const char *fn, const char *requiredArg) {
     if (NULL == fn) {
-        ERROR("'%s' is required, but found NULL.", requiredArg);
+        ERROR("Could not find any file defined with %s.", requiredArg);
     }
 
     if ('\0' == fn[0]) {

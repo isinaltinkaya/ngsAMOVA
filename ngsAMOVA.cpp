@@ -57,6 +57,7 @@ void input_VCF(paramStruct *pars) {
 
     fprintf(stderr, "Total number of sites processed: %lu\n", pars->totSites);
     fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", pars->totSites - pars->nSites);
+    fprintf(stderr, "Total number of sites retained: %lu\n", pars->nSites);
 
     // ---- ANALYSES ------------------------------------------------------------ //
 

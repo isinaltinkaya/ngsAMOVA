@@ -232,7 +232,9 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
     FILE *in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
 
     char *mtd_buf = (char *)malloc(FGETS_BUF_SIZE * sizeof(char));
-    ASSERT(fgets(mtd_buf, FGETS_BUF_SIZE, in_mtd_fp) != NULL);
+    if (NULL == fgets(mtd_buf, FGETS_BUF_SIZE, in_mtd_fp)) {
+        ERROR("Problem with reading metadata file \'%s\'.", args->in_mtd_fn);
+    }
 
     // check if the line was fully read
     if (mtd_buf[strlen(mtd_buf) - 1] != '\n') {
