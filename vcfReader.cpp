@@ -2,6 +2,35 @@
 
 #include "bootstrap.h"
 
+int glData::ind_data_isMissing(const int ind_i) {
+    float *ind_data = ind_ptr(ind_i);
+    if (ind_data == NULL) {
+        NEVER;
+        return 1;
+    }
+
+    if (isnan(ind_data[0])) {
+        return 1;
+    }
+
+#if DEBUG
+    for (int i = 1; i < n_gls; ++i) {
+        if (1 == isnan(ind_data[i]))
+            ERROR("nan found after a non-nan value at ind_i: %d, i: %d", ind_i, i);
+    }
+#endif
+
+    int z = 0;
+    for (int i = 0; i < n_gls; ++i) {
+        if (0 == ind_data[i])
+            z++;
+    }
+    if (z == n_gls)
+        return 1;
+
+    return 0;
+}
+
 glData::glData(vcfData *vcfd) {
     size_e = 0;
     n_values = bcf_get_format_float(vcfd->hdr, vcfd->bcf, "GL", &data, &size_e);
@@ -25,7 +54,7 @@ glData::~glData() {
 }
 
 float *glData::ind_ptr(const int ind_i) {
-    return data + ind_i * n_gls;
+    return (data + ind_i * n_gls);
 }
 
 gtData::gtData(vcfData *vcfd) {
@@ -46,7 +75,7 @@ gtData::~gtData() {
 }
 
 int *gtData::ind_ptr(const int ind_i) {
-    return data + ind_i * ploidy;
+    return (data + ind_i * ploidy);
 }
 
 // from angsd analysisFunction.cpp
@@ -113,14 +142,13 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
             NEVER;
         }
 
-        // ASSERT(a1 != a2); dbg
-
+        // ASSERT(a1 != a2); debug
         // fprintf(stderr, "a1: %c, a2: %c\n", vcfd->bcf->d.allele[0][0], vcfd->bcf->d.allele[1][0]);
 
         for (int indi = 0; indi < nInd; indi++) {
-            const int lngls_ind_ptr = indi * vcfd->nGT;
+            const int lngls_ind_start = indi * vcfd->nGT;
 
-            if (isnan(lgls.ind_ptr(indi)[0])) {
+            if (1 == lgls.ind_data_isMissing(indi)) {
                 // if only use sites shared across all individuals (minInd 0); skip site when you first encounter nan
                 if (args->minInd == 0) {
                     return 1;
@@ -168,9 +196,10 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
                 }
                 // TODO can this prev and latter check be checkin stuff twice?
 
-                vcfd->lngl[pars->nSites][lngls_ind_ptr + 0] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(a1, a1)]);
-                vcfd->lngl[pars->nSites][lngls_ind_ptr + 1] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(a1, a2)]);
-                vcfd->lngl[pars->nSites][lngls_ind_ptr + 2] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(a2, a2)]);
+                vcfd->lngl[pars->nSites][lngls_ind_start + 0] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(a1, a1)]);
+                vcfd->lngl[pars->nSites][lngls_ind_start + 1] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(a1, a2)]);
+                vcfd->lngl[pars->nSites][lngls_ind_start + 2] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(a2, a2)]);
+                // fprintf(stderr, "site: %d, indi: %d, a1: %c, a2: %c, lngl: %f, %f, %f, log10gl: %f, %f, %f\n", pars->nSites, indi, a1, a2, vcfd->lngl[pars->nSites][lngls_ind_start + 0], vcfd->lngl[pars->nSites][lngls_ind_start + 1], vcfd->lngl[pars->nSites][lngls_ind_start + 2], lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(a1, a1)], lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(a1, a2)], lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(a2, a2)]);
             }
         }
     } else {
@@ -564,9 +593,9 @@ void readSites_GL(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt) {
         if (NULL == vcfd->lngl[pars->nSites]) {
             vcfd->lngl[pars->nSites] = (double *)malloc(pars->nInd * vcfd->nGT * sizeof(double));
             for (int indi = 0; indi < pars->nInd; indi++) {
-                const int lngls_ind_ptr = indi * vcfd->nGT;
+                const int lngls_ind_start = indi * vcfd->nGT;
                 for (int j = 0; j < vcfd->nGT; j++) {
-                    vcfd->lngl[pars->nSites][lngls_ind_ptr + j] = NEG_INF;
+                    vcfd->lngl[pars->nSites][lngls_ind_start + j] = NEG_INF;
                 }
             }
         }
@@ -749,7 +778,7 @@ void vcfData::print_JointGenoCountDist() {
     if (outFiles->out_jgcd_fs != NULL) {
         kstring_t *kbuf = kbuf_init();
 
-        if (args->doAMOVA == 1) {
+        if (args->doDist == 1) {
             for (int i = 0; i < nIndCmb; i++) {
                 ksprintf(kbuf, "%i,", i);
                 for (int j = 0; j < nJointClasses + 1; j++) {
@@ -761,7 +790,7 @@ void vcfData::print_JointGenoCountDist() {
                     }
                 }
             }
-        } else if (args->doAMOVA == 2) {
+        } else if (args->doDist == 2) {
             for (int i = 0; i < nIndCmb; i++) {
                 ksprintf(kbuf, "%i,", i);
                 for (int j = 0; j < nJointClasses + 1; j++) {
@@ -782,7 +811,7 @@ void vcfData::print_JointGenoCountDist() {
 void vcfData::print_JointGenoProbDist() {
     if (args->printJointGenoProbDist != 0) {
         kstring_t *kbuf = kbuf_init();
-        if (args->doAMOVA == 1) {
+        if (args->doDist == 1) {
             for (int i = 0; i < nIndCmb; i++) {
                 ksprintf(kbuf, "%i,", i);
                 for (int j = 0; j < nJointClasses + 1; j++) {
@@ -794,9 +823,10 @@ void vcfData::print_JointGenoProbDist() {
                     }
                 }
             }
-        } else if (args->doAMOVA == 2) {
+        } else if (args->doDist == 2) {
             ASSERT(0 == 1);
         }
+        ASSERT(kbuf != NULL);
         outFiles->out_jgpd_fs->write(kbuf);
         kbuf_destroy(kbuf);
     }
@@ -812,9 +842,9 @@ void vcfData::lngl_init(int doEM) {
     for (size_t i = 0; i < _lngl; i++) {
         lngl[i] = (double *)malloc(nInd * nGT * sizeof(double));
         for (int indi = 0; indi < nInd; indi++) {
-            const int lngls_ind_ptr = indi * nGT;
+            const int lngls_ind_start = indi * nGT;
             for (int j = 0; j < nGT; j++) {
-                lngl[i][lngls_ind_ptr + j] = NEG_INF;
+                lngl[i][lngls_ind_start + j] = NEG_INF;
             }
         }
     }
@@ -833,9 +863,9 @@ void vcfData::lngl_expand() {
         ASSERT(lngl[i] == NULL);
         lngl[i] = (double *)malloc(nInd * nGT * sizeof(double));
         for (int indi = 0; indi < nInd; indi++) {
-            const int lngls_ind_ptr = indi * nGT;
+            const int lngls_ind_start = indi * nGT;
             for (int j = 0; j < nGT; j++) {
-                lngl[i][lngls_ind_ptr + j] = NEG_INF;
+                lngl[i][lngls_ind_start + j] = NEG_INF;
             }
         }
     }

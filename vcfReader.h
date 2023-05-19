@@ -134,16 +134,20 @@ struct gtData {
     int *ind_ptr(const int ind_i);
 };
 
+/// @brief  genotype likelihood data
+///
 struct glData {
     float *data = NULL;
 
     int size_e = 0;
     int n_values = 0;
-    int n_gls = 0;
+    int n_gls = 0;  // number of genotype likelihoods per individual (3 or 10)j
     int n_missing_ind = 0;
 
     glData(vcfData *vcfd);
     ~glData();
+
+    int ind_data_isMissing(const int ind_i);
 
     /// @brief ind pointer
     /// @param ind_i index of the individual

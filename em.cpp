@@ -47,10 +47,11 @@ void spawnThreads_pairEM(paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, 
 
         for (int g = 0; g < vcfd->nJointClasses; g++) {
             // vcfd->JointGenoCountDistGL[pidx][g] = pair->optim_jointGenoCountDist[g];
-            vcfd->JointGenoCountDistGL[pidx][g] = pair->optim_jointGenoProbDist[g] * pair->snSites;
+            // vcfd->JointGenoCountDistGL[pidx][g] = pair->optim_jointGenoProbDist[g] * pair->snSites;
+            // or should i multiply wih total nsites?
             vcfd->JointGenoProbDistGL[pidx][g] = pair->optim_jointGenoProbDist[g];
         }
-        vcfd->JointGenoCountDistGL[pidx][vcfd->nJointClasses] = pair->snSites;
+        // vcfd->JointGenoCountDistGL[pidx][vcfd->nJointClasses] = pair->snSites;
         vcfd->JointGenoProbDistGL[pidx][vcfd->nJointClasses] = pair->snSites;
 
         if (args->squareDistance == 1) {
@@ -61,7 +62,7 @@ void spawnThreads_pairEM(paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, 
         delete THREADS[pidx];
     }
     vcfd->print_JointGenoProbDist();
-    vcfd->print_JointGenoCountDist();
+    // vcfd->print_JointGenoCountDist();
 
     delete[] THREADS;
 }
@@ -117,7 +118,10 @@ int EM_optim_jgd_gl3(indPairThreads *THREAD) {
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
                     TMP[i][j] = pair->optim_jointGenoProbDist[i * 3 + j] * exp(lngls[s][(3 * i1) + i] + lngls[s][(3 * i2) + j]);
+                    // fprintf(stderr, "TMP[%d][%d] = %f * exp(%f + %f)\n", i, j, pair->optim_jointGenoProbDist[i * 3 + j], lngls[s][(3 * i1) + i], lngls[s][(3 * i2) + j]);
+                    // fprintf(stderr, "TMP[%d][%d] = %f\n", i, j, TMP[i][j]);
                     sum += TMP[i][j];
+                    // fprintf(stderr, "sum += TMP[%d][%d]; sum = %f\n", i, j, sum);
                 }
             }
 
@@ -138,12 +142,6 @@ int EM_optim_jgd_gl3(indPairThreads *THREAD) {
         }
 
         pair->n_em_iter++;
-
-#if 0
-		fprintf(stdout,"%d,%d,",pair->idx,pair->n_em_iter);
-		fprintf(stdout,"%f,", log10(d));
-		IO::print::Array(stdout,pair->optim_jointGenoProbDist, 3, 3, ',');
-#endif
 
     } while (d > tole);
 

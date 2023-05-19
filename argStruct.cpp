@@ -431,9 +431,12 @@ void argStruct::check_arg_dependencies() {
         fprintf(stderr, "\n\t-> -out <output_prefix> not set; will use %s as a prefix for output files.\n", out_fnp);
     }
 
-    if (NULL == in_ancder_fn && NULL == in_majorminor_fn) {
-        ERROR("Must supply either --majorMinorFile/-mmf <filename> or --ancDerFile/-adf <filename>.");
+    if (0 == isSim) {
+        if (NULL == in_ancder_fn && NULL == in_majorminor_fn) {
+            ERROR("Must supply either --majorMinorFile/-mmf <filename> or --ancDerFile/-adf <filename>.");
+        }
     }
+
     if (in_vcf_fn == NULL && in_dm_fn == NULL) {
         fprintf(stderr, "\n[ERROR] Must supply either --in-vcf <VCF_file> or --in-dm <Distance_matrix_file>.\n");
         exit(1);
