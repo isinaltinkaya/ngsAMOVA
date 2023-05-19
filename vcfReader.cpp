@@ -861,7 +861,6 @@ void vcfData::lngl_expand() {
     lngl = (double **)realloc(lngl, _lngl * sizeof(double *));
     ASSERT(lngl != NULL);
     for (int i = prev_lngl; i < (int)_lngl; i++) {
-        ASSERT(lngl[i] == NULL);
         lngl[i] = (double *)malloc(nInd * nGT * sizeof(double));
         for (int indi = 0; indi < nInd; indi++) {
             const int lngls_ind_start = indi * nGT;

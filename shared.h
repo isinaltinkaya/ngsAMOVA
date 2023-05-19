@@ -265,36 +265,13 @@
 // maximum number of tokens allowed in amova formula string
 #define MAX_N_FORMULA_TOKENS 10
 
-// maximum number of characters allowed in amova formula string
-#define MAX_FORMULA_LEN 300
-
-#define MAX_N_AMOVA_LEVELS 5
 #define MAX_N_HIER_LEVELS 5
 #define MAX_N_GROUPS_PER_LEVEL 5
-#define MAX_NAME_LENGTH 100
 
 #define MAX_N_BITS 64
 
 // maximum level of verbosity allowed
 #define MAX_VERBOSE_LEVEL 7
-
-/*
- * Macro:[MAXDIG_PER_HLEVEL]
- * Defines the maximum number of digits that can be used to
- * represent a single strata in a hierarchical level
- * e.g. MAXDIG_PER_HLEVEL= 2
- *      strata0 = 00 (min)
- * 		...
- *      strata99 = 99 (max)
- *      nStrata = 100
- *
- * Macro:[MAXSIZE_HLEVEL]
- * Defines the maximum number of strata allowed in a hierarchical level
- * e.g. MAXDIG_PER_HLEVEL = 2
- * 		MAXSIZE_HLEVEL = 100
- */
-#define MAXDIG_PER_HLEVEL 2
-#define MAXSIZE_HLEVEL 100
 
 /*
  * Macro:[DBL_MAXDIG10]
@@ -309,13 +286,7 @@
  */
 #define DBL_MAXDIG10 ((int)(2 + (DBL_MANT_DIG * 30103UL) / 100000UL))
 
-#define DELIMS "\t ,\n"
-
 #define METADATA_DELIMS "\t ,\n"
-
-// for growing buffer memory
-#define N_INDIVIDUALS_BUF 100
-#define BLOCKSFILE_BUFSIZE_PERLINE 256
 
 // dragon
 #define BUF_NSITES 4096

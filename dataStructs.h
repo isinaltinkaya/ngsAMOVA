@@ -30,9 +30,8 @@ void get_distanceMatrix_GL(paramStruct *pars, distanceMatrixStruct *distanceMatr
 
 // prepare distance matrix using genotypes
 void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt);
+// prepare distance matrix using genotypes + construct block bootstrapping distance matrix at the same time
 void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt, blobStruct *blob);
-// prepare distance matrix using genotypes + blocks for bootstrapping
-// void get_distanceMatrix_GT( paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt, blobStruct *blob);
 
 /// trim spaces from the beginning and end of a char* (inplace)
 /// @param str - char* to trim
@@ -88,7 +87,7 @@ struct pairStruct {
     // }
 
     void sharedSites_add(size_t site_i) {
-        if (snSites > _sharedSites) {
+        if (snSites >= _sharedSites) {
             sharedSites_expand();
         }
         sharedSites[snSites] = site_i;
@@ -392,13 +391,9 @@ struct indPairThreads {
     indPairThreads(pairStruct *tPair, double **lngl, paramStruct *pars) {
         pair = tPair;
         lngls = lngl;
-        // args = args_;
-        // pars = pars_;
         tole = args->tole;
         maxEmIter = args->maxEmIter;
         nSites = pars->nSites;
-        // ASSERT(pars->nSites > 0);
-        // tes = pars->nSites;
     }
 };
 
