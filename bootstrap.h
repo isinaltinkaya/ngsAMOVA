@@ -65,7 +65,7 @@ struct blobStruct {
     void _print();
 
     // todo no need to explicitly give outputstruct, outFiles is already extern
-    void print(IO::outputStruct *out_blockstab_fs);
+    void print();
 
     void get_bootstrap_replicates(vcfData *vcfd, bootstrapReplicate *bRep);
 };
@@ -111,7 +111,7 @@ struct bootstrapDataset {
 
     void print_confidenceInterval(FILE *fp);
 
-    void print(IO::outputStruct *out_v_bootstrapRep_fs);
+    void print();
 
     bootstrapDataset(paramStruct *pars, int nBootstraps_, int nBlocks_);
     ~bootstrapDataset();

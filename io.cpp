@@ -9,6 +9,23 @@ const char *IO::FILE_EXTENSIONS[] = {"", ".gz", ".bgz"};
 
 IO::outFilesStruct *outFiles = new IO::outFilesStruct();
 
+void IO::append_argsFile(const char *format, ...) {
+    ASSERT(outFiles->out_args_fs != NULL);
+    if (NULL == outFiles->out_args_fs->kbuf) {
+        outFiles->out_args_fs->kbuf = kbuf_init();
+    }
+    kstring_t *kbuf = outFiles->out_args_fs->kbuf;
+
+    char str[1024];
+    va_list args;
+    va_start(args, format);
+    vsprintf(str, format, args);
+    va_end(args);
+
+    kputs(str, kbuf);
+    kputc('\n', kbuf);
+}
+
 void IO::validateString(const char *str) {
     ASSERTM(str != NULL, "Found NULL string.");
     ASSERTM(str[0] != '\0', "Found empty string.");
@@ -539,8 +556,99 @@ kstring_t *kbuf_init() {
 }
 
 void kbuf_destroy(kstring_t *kbuf) {
-    FREE(kbuf->s);
-    DELETE(kbuf);
+    if (NULL != kbuf) {
+        FREE(kbuf->s);
+        delete kbuf;
+    }
+}
+
+IO::outputStruct::outputStruct(const char *fn_, const char *suffix, int fc_) {
+    fc = OUTFC(fc_);
+    switch (fc) {
+    case OUTFC::NONE:
+        fn = setFileName(fn_, suffix, FILE_EXTENSIONS[fc]);
+        fp = openFileW(fn);
+        break;
+    case OUTFC::GZ:
+        NEVER;
+        fn = setFileName(fn_, suffix, FILE_EXTENSIONS[fc]);
+        gzfp = openGzFileW(fn);
+        break;
+    case OUTFC::BBGZ:
+        fn = setFileName(fn_, suffix, FILE_EXTENSIONS[fc]);
+        bgzfp = bgzf_open(fn, "wb");
+        break;
+    default:
+        fprintf(stderr, "\n[ERROR] Unknown file compression type (%d)\n", fc);
+        exit(1);
+        break;
+    }
+    fprintf(stderr, "\n[INFO] Opening output file: %s with compression type: %d (%s)\n", fn, fc, OUTFC_LUT[(OUTFC)fc]);
+}
+
+IO::outputStruct::~outputStruct() {
+    // flush();
+
+    fprintf(stderr, "\n[INFO] Closing output file: %s with compression type: %d (%s)\n", fn, fc, OUTFC_LUT[(OUTFC)fc]);
+
+    if (NULL != kbuf) {
+        ASSERT(kbuf->l > 0 && kbuf->s != NULL);
+        kbuf_write();
+    }
+
+    switch (fc) {
+    case OUTFC::NONE:
+        FCLOSE(fp);
+        break;
+    case OUTFC::GZ:
+        GZCLOSE(gzfp);
+        break;
+    case OUTFC::BBGZ:
+        BGZCLOSE(bgzfp);
+        break;
+    default:
+        fprintf(stderr, "\n[ERROR] Unknown file compression type (%d)\n", fc);
+        exit(1);
+        break;
+    }
+
+    FREE(fn);
+}
+
+void IO::outputStruct::flush() {
+    switch (fc) {
+    case OUTFC::NONE:
+        fflush(fp);
+        break;
+    case OUTFC::GZ:
+        gzflush(gzfp, Z_SYNC_FLUSH);
+        break;
+    case OUTFC::BBGZ:
+        ASSERT(bgzf_flush(bgzfp) == 0);
+        break;
+    default:
+        fprintf(stderr, "\n[ERROR] Unknown file compression type (%d)\n", fc);
+        exit(1);
+        break;
+    }
+}
+
+void *IO::outputStruct::get_fp() {
+    switch (fc) {
+    case OUTFC::NONE:
+        return fp;
+        break;
+    case OUTFC::GZ:
+        return gzfp;
+        break;
+    case OUTFC::BBGZ:
+        return bgzfp;
+        break;
+    default:
+        fprintf(stderr, "\n[ERROR] Unknown file compression type (%d)\n", fc);
+        exit(1);
+        break;
+    }
 }
 
 void IO::outputStruct::write(const char *buf) {
@@ -560,7 +668,16 @@ void IO::outputStruct::write(const char *buf) {
     }
 }
 
-void IO::outputStruct::write(const kstring_t *kbuf) {
+void IO::outputStruct::kbuf_destroy_buffer() {
+    if (NULL != this->kbuf) {
+        FREE(this->kbuf->s);
+        delete this->kbuf;
+        this->kbuf = NULL;
+    }
+}
+
+void IO::outputStruct::kbuf_write() {
+    ASSERT(NULL != this->kbuf);
     switch (fc) {
     case OUTFC::NONE:
         ASSERT(fprintf(fp, "%s", kbuf->s) > 0);
@@ -580,9 +697,39 @@ void IO::outputStruct::write(const kstring_t *kbuf) {
         exit(1);
         break;
     }
+    this->kbuf_destroy_buffer();
+    this->kbuf = NULL;
 }
 
-void IO::outFilesStruct_set(IO::outFilesStruct *ofs) {
+void IO::outputStruct::write(kstring_t *kbuf_i) {
+    ASSERT(NULL != kbuf_i);
+    switch (fc) {
+    case OUTFC::NONE:
+        ASSERT(kbuf_i->s != NULL);
+        ASSERT(fprintf(fp, "%s", kbuf_i->s) > 0);
+        break;
+    case OUTFC::GZ:
+        fprintf(stderr, "%s", kbuf_i->s);
+        ASSERT(gzprintf(gzfp, "%s", kbuf_i->s) > 0);
+        break;
+    case OUTFC::BBGZ:
+        if (bgzf_write(bgzfp, kbuf_i->s, kbuf_i->l) != (ssize_t)kbuf_i->l) {
+            fprintf(stderr, "\n[ERROR:%d] Could not write %ld bytes\n", bgzfp->errcode, kbuf_i->l);
+            exit(1);
+        }
+        break;
+    default:
+        fprintf(stderr, "\n[ERROR] Unknown output file type (%d)\n", fc);
+        exit(1);
+        break;
+    }
+    kbuf_destroy(kbuf_i);
+    kbuf_i = NULL;
+}
+
+void IO::outFilesStruct_init(IO::outFilesStruct *ofs) {
+    ofs->out_args_fs = new IO::outputStruct(args->out_fnp, ".args", OUTFC::NONE);
+
     if (args->printDistanceMatrix != 0) {
         ofs->out_dm_fs = new IO::outputStruct(args->out_fnp, ".distance_matrix.csv", args->printDistanceMatrix - 1);
     }
@@ -607,18 +754,18 @@ void IO::outFilesStruct_set(IO::outFilesStruct *ofs) {
     }
 
     if (args->doAMOVA > 0) {
-        ofs->out_amova_fs = new IO::outputStruct(args->out_fnp, ".amova.csv", 0);
+        ofs->out_amova_fs = new IO::outputStruct(args->out_fnp, ".amova.csv", OUTFC::NONE);
     }
     if (args->printBlocksTab == 1) {
-        ofs->out_blockstab_fs = new IO::outputStruct(args->out_fnp, ".blocks.tab", 0);
+        ofs->out_blockstab_fs = new IO::outputStruct(args->out_fnp, ".blocks.tab", OUTFC::NONE);
     }
     if (args->doNJ > 0) {
-        ofs->out_nj_fs = new IO::outputStruct(args->out_fnp, ".newick", 0);
+        ofs->out_nj_fs = new IO::outputStruct(args->out_fnp, ".newick", OUTFC::NONE);
     }
 
     if (1 == DEV) {
         if (args->nBootstraps > 0) {
-            ofs->out_v_bootstrapRep_fs = new IO::outputStruct(args->out_fnp, ".verbose_bootstrap_replicates.csv", 0);
+            ofs->out_v_bootstrapRep_fs = new IO::outputStruct(args->out_fnp, ".verbose_bootstrap_replicates.csv", OUTFC::NONE);
         }
     }
 
@@ -630,6 +777,7 @@ void IO::outFilesStruct_set(IO::outFilesStruct *ofs) {
 
 void IO::outFilesStruct_destroy(IO::outFilesStruct *ofs) {
     // flushAll();
+    DELETE(ofs->out_args_fs);
     DELETE(ofs->out_dm_fs);
     DELETE(ofs->out_amova_fs);
     DELETE(ofs->out_dev_fs);
@@ -638,7 +786,8 @@ void IO::outFilesStruct_destroy(IO::outFilesStruct *ofs) {
     DELETE(ofs->out_dxy_fs);
     DELETE(ofs->out_nj_fs);
     DELETE(ofs->out_v_bootstrapRep_fs);
-    DELETE(ofs);
+
+    delete ofs;
 }
 
 // void flushAll()

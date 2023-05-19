@@ -24,13 +24,10 @@ blobStruct *blobStruct_get(vcfData *vcf, paramStruct *pars) {
 
     blob->bootstraps = bootstrapDataset_get(vcf, pars, blob);
 
-    if (args->printBlocksTab == 1) {
-        blob->print(outFiles->out_blockstab_fs);
-    }
+    blob->print();
 
-    if (1 == DEV && NULL != blob) {
-        blob->bootstraps->print(outFiles->out_v_bootstrapRep_fs);
-    }
+    blob->bootstraps->print();
+
     return blob;
 }
 
@@ -207,18 +204,20 @@ blobStruct *blobStruct_read_bed(const char *fn) {
     return blob;
 }
 
-void blobStruct::print(IO::outputStruct *out_blockstab_fs) {
-    fprintf(stderr, "\n[INFO]\t-> Writing blocks tab file: %s\n", out_blockstab_fs->fn);
-    kstring_t *kbuf = kbuf_init();
+void blobStruct::print() {
+    if (0 == args->printBlocksTab)
+        return;
+
+    fprintf(stderr, "\n[INFO]\t-> Writing blocks tab file: %s\n", outFiles->out_blockstab_fs->fn);
+    outFiles->out_blockstab_fs->kbuf = kbuf_init();
 
     // blocks tab file = 1-based, inclusive start, inclusive end
     // internal representation = 0-based, inclusive start, exclusive end
     // convert internal representation to blocks tab file representation
     for (int bi = 0; bi < nBlocks; ++bi) {
-        ksprintf(kbuf, "%s\t%d\t%d\n", blocks[bi]->chr, blocks[bi]->start + 1, blocks[bi]->end);
+        ksprintf(outFiles->out_blockstab_fs->kbuf, "%s\t%d\t%d\n", blocks[bi]->chr, blocks[bi]->start + 1, blocks[bi]->end);
     }
-    out_blockstab_fs->write(kbuf);
-    kbuf_destroy(kbuf);
+    outFiles->out_blockstab_fs->kbuf_write();
 }
 
 blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf) {
@@ -274,20 +273,21 @@ blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf) {
     return blob;
 }
 
-void bootstrapDataset::print(IO::outputStruct *out_v_bootstrapRep_fs) {
-    ASSERT(out_v_bootstrapRep_fs != NULL);
-    fprintf(stderr, "\n[INFO]\t-> Writing bootstrap info file: %s\n", out_v_bootstrapRep_fs->fn);
-    kstring_t *kbuf = kbuf_init();
+void bootstrapDataset::print() {
+    if (1 != DEV)
+        return;
 
-    ksprintf(kbuf, "Replicate,ReplicateBlockIndex,BlockName\n");
+    fprintf(stderr, "\n[INFO]\t-> Writing bootstrap info file: %s\n", outFiles->out_v_bootstrapRep_fs->fn);
+    outFiles->out_v_bootstrapRep_fs->kbuf = kbuf_init();
+
+    ksprintf(outFiles->out_v_bootstrapRep_fs->kbuf, "Replicate,ReplicateBlockIndex,BlockName\n");
 
     for (int b = 0; b < nReplicates; ++b) {
         for (int i = 0; i < nBlocks; ++i) {
-            ksprintf(kbuf, "%d,%d,%d\n", b, i, replicates[b]->rBlocks[i]);
+            ksprintf(outFiles->out_v_bootstrapRep_fs->kbuf, "%d,%d,%d\n", b, i, replicates[b]->rBlocks[i]);
         }
     }
-    out_v_bootstrapRep_fs->write(kbuf);
-    kbuf_destroy(kbuf);
+    outFiles->out_v_bootstrapRep_fs->kbuf_write();
 }
 
 bootstrapDataset::bootstrapDataset(paramStruct *pars, int nBootstraps_, int nBlocks_) {

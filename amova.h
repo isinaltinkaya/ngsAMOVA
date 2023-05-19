@@ -94,7 +94,7 @@ struct amovaStruct {
     void _print(FILE *fp);
 
     void print_as_table(FILE *fp, metadataStruct *metadata);
-    void print_as_csv(FILE *fp, metadataStruct *metadata);
+    void print_as_csv(metadataStruct *metadata);
 };
 
 amovaStruct *amovaStruct_get(distanceMatrixStruct *dm, metadataStruct *metadata);

@@ -180,9 +180,10 @@ void dxyStruct::print_struct() {
     }
 }
 
-void dxyStruct::print(IO::outputStruct *out_dxy_fs) {
-    fprintf(stderr, "\n[INFO]\t-> Writing the dxy results to %s.\n", out_dxy_fs->fn);
-    kstring_t *kbuf = kbuf_init();
+void dxyStruct::print() {
+    fprintf(stderr, "\n[INFO]\t-> Writing the dxy results to %s.\n", outFiles->out_dxy_fs->fn);
+    outFiles->out_dxy_fs->kbuf = kbuf_init();
+    kstring_t *kbuf = outFiles->out_dxy_fs->kbuf;
     ksprintf(kbuf, "group1_id,group2_id,hierarchical_level,dxy\n");
 
     ASSERT(nDxy > 0);
@@ -190,8 +191,7 @@ void dxyStruct::print(IO::outputStruct *out_dxy_fs) {
         ksprintf(kbuf, "%s,%s,%s", groupNames1[i], groupNames2[i], levelNames[i]);
         ksprintf(kbuf, ",%.*f\n", DBL_MAXDIG10, dxyArr[i]);
     }
-    out_dxy_fs->write(kbuf);
-    kbuf_destroy(kbuf);
+    outFiles->out_dxy_fs->kbuf_write();
 }
 
 dxyStruct *dxyStruct_get(paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd) {
@@ -287,7 +287,7 @@ dxyStruct *dxyStruct_get(paramStruct *pars, distanceMatrixStruct *dMS, metadataS
 
     ASSERT(dxyS->nDxy == n_vals);
 
-    dxyS->print(outFiles->out_dxy_fs);
+    dxyS->print();
 
 #if DEV
     dxyS->print_struct();

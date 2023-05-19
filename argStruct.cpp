@@ -2,6 +2,7 @@
 
 #include "io.h"
 
+// IO::outFilesStruct *outFiles;
 //  default: 0 (verbose mode off)
 u_char VERBOSE = 0;
 
@@ -405,10 +406,21 @@ argStruct *argStruct_get(int argc, char **argv) {
             fprintf(stderr, "[ERROR]\tUnknown argument: %s\n", arv);
             exit(1);
         }
+
         ++argv;
     }
 
+    if (NULL == args->out_fnp) {
+        args->out_fnp = strdup("amovaput");
+        fprintf(stderr, "\n\t-> -out <output_prefix> not set; will use %s as a prefix for output files.\n", args->out_fnp);
+    } else {
+        fprintf(stderr, "\n\t-> -out <output_prefix> is set to %s. Output files will have this prefix.\n", args->out_fnp);
+    }
+    IO::outFilesStruct_init(outFiles);
+
     args->check_arg_dependencies();
+    args->print();
+    args->print(stderr);
 
     return args;
 }
@@ -424,11 +436,6 @@ void argStruct::check_arg_dependencies() {
     } else if (minInd == 1 || minInd < -1) {
         fprintf(stderr, "\n[ERROR]\tMinimum value allowed for minInd is 2.\n");
         exit(1);
-    }
-
-    if (out_fnp == NULL) {
-        out_fnp = strdup("amovaput");
-        fprintf(stderr, "\n\t-> -out <output_prefix> not set; will use %s as a prefix for output files.\n", out_fnp);
     }
 
     if (0 == isSim) {
@@ -522,15 +529,16 @@ void argStruct::check_arg_dependencies() {
     //             default: 0
     //             0: do not perform AMOVA
     //             1: perform AMOVA on all groups in each hierarchical level defined in the metadata file (requires: method to obtain distance matrix, metadata file)
+    WARNING("TEST");
 
     if (0 == doAMOVA) {
         //
         if (NULL != in_mtd_fn) {
-            ERROR("-m/--metadata is provided but no analysis requires it. Please remove -m/--metadata or set -doAMOVA != 0.");
+            WARNING("-m/--metadata is provided but no analysis requires it; will ignore -m/--metadata.");
         }
 
         if (NULL != formula) {
-            ERROR("-f/--formula is provided but no analysis requires it. Please remove -f/--formula or set -doAMOVA != 0.");
+            WARNING("-f/--formula is provided but no analysis requires it; will ignore -f/--formula.");
         }
 
     } else if (1 == doAMOVA) {
@@ -677,6 +685,17 @@ void argStruct_destroy(argStruct *args) {
     // check below
 
     delete args;
+}
+
+// TODO
+void argStruct::print() {
+    if (NULL == outFiles->out_args_fs->kbuf) {
+        outFiles->out_args_fs->kbuf = kbuf_init();
+    }
+    kstring_t *kbuf = outFiles->out_args_fs->kbuf;
+
+    kputs("\nCommand: ", kbuf);
+    // ksprintf(kbuf, "%s", args->command);
 }
 
 void argStruct::print(FILE *fp) {

@@ -196,6 +196,7 @@ struct get_data {
 };
 
 void readSites_GL(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt);
+void readSites_GL(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct *blob);
 
 void readSites_GT(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt);
 void readSites_GT(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct *blob);
@@ -203,6 +204,7 @@ void readSites_GT(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStr
 int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, pairStruct **pairs);
 
 int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcf, paramStruct *pars);
+int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, const int block_i);
 
 int GLtoGT_1_JointGenoDist(vcfData *vcf, paramStruct *pars);
 

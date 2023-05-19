@@ -603,14 +603,13 @@ void distanceMatrixStruct::set_item_labels(char **itemLabelArr) {
 }
 
 void distanceMatrixStruct::print() {
-    IO::outputStruct *out_dm_fs = outFiles->out_dm_fs;
-
     if (0 == args->printDistanceMatrix)
         return;
 
-    ASSERT(out_dm_fs != NULL);
-    fprintf(stderr, "\n[INFO]\t-> Writing distance matrix to %s.\n", out_dm_fs->fn);
-    kstring_t *kbuf = kbuf_init();
+    fprintf(stderr, "\n[INFO]\t-> Writing distance matrix to %s.\n", outFiles->out_dm_fs->fn);
+    ASSERT(outFiles->out_dm_fs->kbuf == NULL);
+
+    outFiles->out_dm_fs->kbuf = kbuf_init();
 
     for (int px = 0; px < nIndCmb; px++) {
         if (px != 0 && px != nIndCmb - 1) {
@@ -618,26 +617,25 @@ void distanceMatrixStruct::print() {
             //  bufptr += sprintf(bufptr, ",%.*f", DBL_MAXDIG10, M[px]);
             //  bufptr += snprintf(bufptr, max_buf_size, ",%.*f", DBL_MAXDIG10, M[px]);
             //  bufptr += snprintf(bufptr, max_digits+1, ",%.*f", DBL_MAXDIG10, M[px]);
-            ksprintf(kbuf, ",");
-            ksprintf(kbuf, "%.*f", DBL_MAXDIG10, M[px]);
+            ksprintf(outFiles->out_dm_fs->kbuf, ",");
+            ksprintf(outFiles->out_dm_fs->kbuf, "%.*f", DBL_MAXDIG10, M[px]);
         } else if (px == 0) {
             // bufptr += sprintf(bufptr, "%.*f", DBL_MAXDIG10, M[px]);
             // bufptr += snprintf(bufptr, max_buf_size, "%.*f", DBL_MAXDIG10, M[px]);
             // bufptr += snprintf(bufptr, max_digits, "%.*f", DBL_MAXDIG10, M[px]);
-            ksprintf(kbuf, "%.*f", DBL_MAXDIG10, M[px]);
+            ksprintf(outFiles->out_dm_fs->kbuf, "%.*f", DBL_MAXDIG10, M[px]);
         } else if (px == nIndCmb - 1) {
             // sprintf(bufptr, ",%.*f\n", DBL_MAXDIG10, M[px]);
             // snprintf(bufptr, max_buf_size, ",%.*f\n", DBL_MAXDIG10, M[px]);
             // snprintf(bufptr, max_digits+2, ",%.*f\n", DBL_MAXDIG10, M[px]);
-            ksprintf(kbuf, ",");
-            ksprintf(kbuf, "%.*f", DBL_MAXDIG10, M[px]);
-            ksprintf(kbuf, "\n");
+            ksprintf(outFiles->out_dm_fs->kbuf, ",");
+            ksprintf(outFiles->out_dm_fs->kbuf, "%.*f", DBL_MAXDIG10, M[px]);
+            ksprintf(outFiles->out_dm_fs->kbuf, "\n");
         } else {
             NEVER;
         }
     }
-    out_dm_fs->write(kbuf);
-    kbuf_destroy(kbuf);
+    outFiles->out_dm_fs->kbuf_write();
 }
 
 distanceMatrixStruct::distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquared_, char **itemLabels_) {

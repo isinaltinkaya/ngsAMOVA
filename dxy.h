@@ -30,7 +30,7 @@ typedef struct dxyStruct {
     char **groupNames2;
     char **levelNames;
 
-    void print(IO::outputStruct *out_dxy_fs);
+    void print();
     void print_struct();
     void expand();
 

@@ -211,7 +211,7 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
     return 0;
 }
 
-int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, blobStruct *blob, const int block_i) {
+int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, const int block_i) {
     const int nInd = pars->nInd;
 
     if (1 == bcf_is_snp(vcfd->bcf)) {
@@ -325,8 +325,14 @@ int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, pa
                 // vcfd->JointGenoCountDistGT[pair_idx][get_3x3_idx[i1_state_gt][i2_state_gt]]++;
                 // vcfd->JointGenoCountDistGT[pair_idx][9]++;  // #shared sites
 
-                vcfd->jgcd_gt[block_i][pair_idx][get_3x3_idx[i1_state_gt][i2_state_gt]]++;
-                vcfd->pair_shared_nSites[block_i][pair_idx]++;
+                // no block bootstrapping
+                if (-1 == block_i) {
+                    vcfd->JointGenoCountDistGT[pair_idx][get_3x3_idx[i1_state_gt][i2_state_gt]]++;
+                    vcfd->JointGenoCountDistGT[pair_idx][9]++;  // #shared sites
+                } else {
+                    vcfd->jgcd_gt[block_i][pair_idx][get_3x3_idx[i1_state_gt][i2_state_gt]]++;
+                    vcfd->pair_shared_nSites[block_i][pair_idx]++;
+                }
             }
         }
 
@@ -334,115 +340,6 @@ int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, pa
         // TODO skip nonsnp data?
         fprintf(stderr, "\n\nbcf_IS_SNP==0!!!\n\n");
         exit(1);
-    }
-
-    return 0;
-}
-
-// // TODO this would only work with my simulated data, consider removing
-// see the same in get_jointgenodist_gl
-// a1 = bcf_allele_charToInt[(int)(unsigned char)vcfd->bcf->d.allele[0][0]];
-// a2 = bcf_allele_charToInt[(int)(unsigned char)vcfd->bcf->d.allele[1][0]];
-// ASSERT(a1 != a2);
-
-int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars) {
-    const int nInd = pars->nInd;
-
-    ASSERT(NULL != pars->ancder->a1[contig_i]);
-    // assume: ancderfile contains all contigs in vcf
-    const char a1 = bcf_allele_charToInt[(int)pars->ancder->a1[contig_i][site_i]];
-    const char a2 = bcf_allele_charToInt[(int)pars->ancder->a2[contig_i][site_i]];
-    // ACGT
-    int alleles_lut[4] = {-1, -1, -1, -1};
-    alleles_lut[(int)a1] = 0;  // major/ancestral
-    alleles_lut[(int)a2] = 1;  // minor/derived
-    // rest is -1 == not ancestral or derived
-
-    gtData gts(vcfd);
-
-    for (int i1 = 0; i1 < nInd; ++i1) {
-        int *ptr1 = gts.ind_ptr(i1);
-
-        if (1 == bcf_gt_is_missing(ptr1[0]) || 1 == bcf_gt_is_missing(ptr1[1])) {
-            // if arg=only use sites shared across all individuals (minInd 0); skip site when you first encounter nan
-            if (args->minInd == 0) {
-                return 1;
-            }
-
-            gts.n_missing_ind++;
-            if (nInd == gts.n_missing_ind) {
-                return 1;
-            }
-
-            // skip site if minInd is defined and #non-missing inds=<nInd
-            if (args->minInd != 2 && (nInd - gts.n_missing_ind) < args->minInd) {
-                return 1;
-            }
-            continue;
-        }
-    }
-
-    for (int i1 = 0; i1 < nInd; ++i1) {
-        int *ptr1 = gts.ind_ptr(i1);
-
-        if (1 == bcf_gt_is_missing(ptr1[0]) || 1 == bcf_gt_is_missing(ptr1[1]))
-            continue;
-
-        // index in the bcf->d.allele array
-        int i1_1 = bcf_gt_allele(ptr1[0]);
-        int i1_2 = bcf_gt_allele(ptr1[1]);
-
-        // corresponding allele char
-        char *i1a1 = vcfd->bcf->d.allele[i1_1];
-        char *i1a2 = vcfd->bcf->d.allele[i1_2];
-
-        // index in ACGT
-        int i1a1i = bcf_allele_charToInt[(int)*i1a1];
-        int i1a2i = bcf_allele_charToInt[(int)*i1a2];
-
-        int i1a1_state = alleles_lut[i1a1i];
-        int i1a2_state = alleles_lut[i1a2i];
-
-        // if any allele in i1's gt is not in the allelic state list, skip
-        if (i1a1_state == -1 && i1a2_state == -1) {
-            continue;
-        }
-
-        int i1_state_gt = i1a1_state + i1a2_state;
-
-        for (int i2 = i1 + 1; i2 < nInd; i2++) {
-            int *ptr2 = gts.ind_ptr(i2);
-
-            if (1 == bcf_gt_is_missing(ptr2[0]) || 1 == bcf_gt_is_missing(ptr2[1]))
-                continue;
-
-            // index in the bcf->d.allele array
-            int i2_1 = bcf_gt_allele(ptr2[0]);
-            int i2_2 = bcf_gt_allele(ptr2[1]);
-
-            // corresponding allele char
-            char *i2a1 = vcfd->bcf->d.allele[i2_1];
-            char *i2a2 = vcfd->bcf->d.allele[i2_2];
-
-            // index in ACGT
-            int i2a1i = bcf_allele_charToInt[(int)*i2a1];
-            int i2a2i = bcf_allele_charToInt[(int)*i2a2];
-
-            int i2a1_state = alleles_lut[i2a1i];
-            int i2a2_state = alleles_lut[i2a2i];
-
-            // if any allele in i2's gt is not in the allelic state list, skip
-            if (i2a1_state == -1 && i2a2_state == -1) {
-                continue;
-            }
-
-            int pair_idx = nCk_idx(nInd, i1, i2);
-
-            int i2_state_gt = i2a1_state + i2a2_state;
-
-            vcfd->JointGenoCountDistGT[pair_idx][get_3x3_idx[i1_state_gt][i2_state_gt]]++;
-            vcfd->JointGenoCountDistGT[pair_idx][9]++;  // #shared sites
-        }
     }
 
     return 0;
@@ -579,6 +476,61 @@ void vcfData_destroy(vcfData *v) {
     delete v;
 }
 
+void readSites_GL(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct *blob) {
+    int skip_site = 0;
+    int contig_i = 0;
+    int site_i = 0;
+    char prev_contig[100];
+
+    while (vcfd->records_next()) {
+        while (pars->nSites >= vcfd->_lngl) {
+            vcfd->lngl_expand();
+        }
+
+        // if cleared in the previous loop to skip the site, allocate memory again
+        if (NULL == vcfd->lngl[pars->nSites]) {
+            vcfd->lngl[pars->nSites] = (double *)malloc(pars->nInd * vcfd->nGT * sizeof(double));
+            for (int indi = 0; indi < pars->nInd; indi++) {
+                const int lngls_ind_start = indi * vcfd->nGT;
+                for (int j = 0; j < vcfd->nGT; j++) {
+                    vcfd->lngl[pars->nSites][lngls_ind_start + j] = NEG_INF;
+                }
+            }
+        }
+
+        const char *contig_id = bcf_seqname(vcfd->hdr, vcfd->bcf);
+        if (0 != contig_i && 0 != strcmp(contig_id, prev_contig)) {
+            strcpy(prev_contig, contig_id);
+            ++contig_i;
+            if (contig_i >= vcfd->nContigs) {
+                ERROR("Number of contigs in the VCF file header is larger than the number of contigs in the VCF file");
+            }
+            site_i = 0;
+        }
+
+        skip_site = site_read_GL(contig_i, site_i, vcfd, pars, pairSt);
+
+        if (skip_site == 1) {
+            fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
+            pars->totSites++;
+
+            //  next loop will skip this and use the same pars->nSites
+            FREE(vcfd->lngl[pars->nSites]);
+            continue;
+        }
+
+        // check if contig changed
+        pars->nSites++;
+        ++site_i;
+        pars->totSites++;
+    }
+
+    vcfd->nSites = pars->nSites;
+    vcfd->totSites = pars->totSites;
+
+    fprintf(stderr, "\n\t-> Finished reading sites\n");
+}
+
 void readSites_GL(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt) {
     int skip_site = 0;
     int contig_i = 0;
@@ -654,7 +606,7 @@ void readSites_GT(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt) {
     int site_i = 0;
 
     while (vcfd->records_next()) {
-        skip_site = get_JointGenoDist_GT(contig_i, site_i, vcfd, pars);
+        skip_site = get_JointGenoDist_GT(contig_i, site_i, vcfd, pars, -1);
 
         if (skip_site == 1) {
             fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
@@ -723,7 +675,7 @@ void readSites_GT(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStr
                 }
             }
 
-            skip_site = get_JointGenoDist_GT(contig_i, site_i, vcfd, pars, blob, block_i);
+            skip_site = get_JointGenoDist_GT(contig_i, site_i, vcfd, pars, block_i);
 
             if (skip_site == 1) {
                 fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
@@ -777,8 +729,8 @@ void vcfData::init_JointGenoCountDistGT() {
 
 void vcfData::print_JointGenoCountDist() {
     if (outFiles->out_jgcd_fs != NULL) {
-        kstring_t *kbuf = kbuf_init();
-
+        outFiles->out_jgcd_fs->kbuf = kbuf_init();
+        kstring_t *kbuf = outFiles->out_jgcd_fs->kbuf;
         if (args->doDist == 1) {
             for (int i = 0; i < nIndCmb; i++) {
                 ksprintf(kbuf, "%i,", i);
@@ -804,14 +756,14 @@ void vcfData::print_JointGenoCountDist() {
                 }
             }
         }
-        outFiles->out_jgcd_fs->write(kbuf);
-        kbuf_destroy(kbuf);
+        outFiles->out_jgcd_fs->kbuf_write();
     }
 }
 
 void vcfData::print_JointGenoProbDist() {
     if (args->printJointGenoProbDist != 0) {
-        kstring_t *kbuf = kbuf_init();
+        outFiles->out_jgpd_fs->kbuf = kbuf_init();
+        kstring_t *kbuf = outFiles->out_jgpd_fs->kbuf;
         if (args->doDist == 1) {
             for (int i = 0; i < nIndCmb; i++) {
                 ksprintf(kbuf, "%i,", i);
@@ -828,8 +780,7 @@ void vcfData::print_JointGenoProbDist() {
             ASSERT(0 == 1);
         }
         ASSERT(kbuf != NULL);
-        outFiles->out_jgpd_fs->write(kbuf);
-        kbuf_destroy(kbuf);
+        outFiles->out_jgpd_fs->kbuf_write();
     }
 }
 

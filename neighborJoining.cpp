@@ -1,8 +1,9 @@
 #include "neighborJoining.h"
 
-void njStruct::print(IO::outputStruct *out_nj_fs) {
-    fprintf(stderr, "\n[INFO]\t-> Writing the Neighbor-Joining tree to the output file %s (format: Newick)", out_nj_fs->fn);
-    kstring_t *kbuf = kbuf_init();
+void njStruct::print() {
+    fprintf(stderr, "\n[INFO]\t-> Writing the Neighbor-Joining tree to the output file %s (format: Newick)", outFiles->out_nj_fs->fn);
+    outFiles->out_nj_fs->kbuf = kbuf_init();
+    kstring_t *kbuf = outFiles->out_nj_fs->kbuf;
 
     // if unrooted tree, choose an arbitrary node as the root for printing
     int node = nTreeNodes - 1;
@@ -11,8 +12,7 @@ void njStruct::print(IO::outputStruct *out_nj_fs) {
     // close the tree
     ksprintf(kbuf, ";\n");
 
-    out_nj_fs->write(kbuf);
-    kbuf_destroy(kbuf);
+    outFiles->out_nj_fs->kbuf_write();
 }
 
 void njStruct::print_leaf_newick(int node, kstring_t *kbuf) {
@@ -422,6 +422,7 @@ njStruct *njStruct_get(paramStruct *pars, distanceMatrixStruct *dms) {
         njIteration(nj);
     }
 
+    nj->print();
     return nj;
 }
 

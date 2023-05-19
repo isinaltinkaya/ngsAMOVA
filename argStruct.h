@@ -1,6 +1,7 @@
 #ifndef __ARG_STRUCT__
 #define __ARG_STRUCT__
 
+// #include "io.h"
 #include "shared.h"
 
 typedef struct argStruct argStruct;
@@ -211,6 +212,7 @@ struct argStruct {
     int printDev = 0;
 
     void print(FILE *fp);
+    void print();
 };
 
 //

@@ -16,6 +16,8 @@ struct pairStruct;
 
 namespace IO {
 
+void append_argsFile(const char *format, ...);
+
 /// @brief validateString - check if string is valid
 void validateString(const char *str);
 
@@ -109,6 +111,21 @@ int count_nRows(char *fn, int HAS_COLNAMES);
 int count_nRows(FILE *fp, int HAS_COLNAMES);
 };  // namespace inspectFile
 
+/// @brief outputStruct - struct for output files
+///
+/// @param kbuf - kstring buffer for output file contents
+///                 -> if kbuf will only be used once,
+///                 memory is allocated and deallocated inplace
+///                 (inside the specific writing function)
+///                 e.g. see amovaStruct::print_as_csv()
+///                 -> if kbuf will be used multiple times
+///                 i.e. appending to kbuf from different functions
+///                 memory is allocated and deallocated in the constructor
+///                 and destructor respectively
+///                 e.g. see out_args_fs
+///                 for thread safety, use a separate kstring_t within each thread
+///                 and append to the main kbuf after joining the threads
+///
 typedef struct outputStruct {
     char *fn = NULL;
 
@@ -118,95 +135,24 @@ typedef struct outputStruct {
     gzFile gzfp = NULL;
     BGZF *bgzfp = NULL;
 
-    outputStruct(const char *fn_, const char *suffix, int fc_) {
-        fc = OUTFC(fc_);
-        switch (fc) {
-        case OUTFC::NONE:
-            fn = setFileName(fn_, suffix, FILE_EXTENSIONS[fc]);
-            fp = openFileW(fn);
-            break;
-        case OUTFC::GZ:
-            NEVER;
-            fn = setFileName(fn_, suffix, FILE_EXTENSIONS[fc]);
-            gzfp = openGzFileW(fn);
-            break;
-        case OUTFC::BBGZ:
-            fn = setFileName(fn_, suffix, FILE_EXTENSIONS[fc]);
-            bgzfp = bgzf_open(fn, "wb");
-            break;
-        default:
-            fprintf(stderr, "\n[ERROR] Unknown file compression type (%d)\n", fc);
-            exit(1);
-            break;
-        }
-        fprintf(stderr, "\n[INFO] Opening output file: %s with compression type: %d (%s)\n", fn, fc, OUTFC_LUT[(OUTFC)fc]);
-    }
+    kstring_t *kbuf = NULL;
 
-    ~outputStruct() {
-        // flush();
+    outputStruct(const char *fn_, const char *suffix, int fc_);
+    ~outputStruct();
 
-        fprintf(stderr, "\n[INFO] Closing output file: %s with compression type: %d (%s)\n", fn, fc, OUTFC_LUT[(OUTFC)fc]);
+    void flush();
 
-        switch (fc) {
-        case OUTFC::NONE:
-            FCLOSE(fp);
-            break;
-        case OUTFC::GZ:
-            GZCLOSE(gzfp);
-            break;
-        case OUTFC::BBGZ:
-            BGZCLOSE(bgzfp);
-            break;
-        default:
-            fprintf(stderr, "\n[ERROR] Unknown file compression type (%d)\n", fc);
-            exit(1);
-            break;
-        }
-        FREE(fn);
-    }
-
-    void flush() {
-        switch (fc) {
-        case OUTFC::NONE:
-            fflush(fp);
-            break;
-        case OUTFC::GZ:
-            gzflush(gzfp, Z_SYNC_FLUSH);
-            break;
-        case OUTFC::BBGZ:
-            ASSERT(bgzf_flush(bgzfp) == 0);
-            break;
-        default:
-            fprintf(stderr, "\n[ERROR] Unknown file compression type (%d)\n", fc);
-            exit(1);
-            break;
-        }
-    }
-
-    void *get_fp() {
-        switch (fc) {
-        case OUTFC::NONE:
-            return fp;
-            break;
-        case OUTFC::GZ:
-            return gzfp;
-            break;
-        case OUTFC::BBGZ:
-            return bgzfp;
-            break;
-        default:
-            fprintf(stderr, "\n[ERROR] Unknown file compression type (%d)\n", fc);
-            exit(1);
-            break;
-        }
-    }
+    void *get_fp();
 
     void write(const char *buf);
-    void write(const kstring_t *kbuf);
+    void write(kstring_t *kbuf);
+    void kbuf_write();  // write internal kbuf
+    void kbuf_destroy_buffer();
 
 } outputStruct;
 
 typedef struct outFilesStruct {
+    outputStruct *out_args_fs = NULL;
     outputStruct *out_dm_fs = NULL;
     outputStruct *out_amova_fs = NULL;
     outputStruct *out_dev_fs = NULL;
@@ -219,7 +165,7 @@ typedef struct outFilesStruct {
 
 } outFilesStruct;
 
-void outFilesStruct_set(outFilesStruct *ofs);
+void outFilesStruct_init(outFilesStruct *ofs);
 void outFilesStruct_destroy(outFilesStruct *ofs);
 
 namespace print {
@@ -242,14 +188,12 @@ void Array(FILE *fp, double *arr, size_t N, size_t M, char sep);
 // :overload: int array
 void Array(FILE *fp, int *arr, size_t N, size_t M, char sep);
 
-void M_PWD(const char *TYPE, IO::outputStruct *out_dm_fs, int nIndCmb, double *M_PWD);
-
 }  // namespace print
 
 }  // namespace IO
+extern IO::outFilesStruct *outFiles;
+
 kstring_t *kbuf_init();
 void kbuf_destroy(kstring_t *kbuf);
-
-extern IO::outFilesStruct *outFiles;
 
 #endif  // __IO__

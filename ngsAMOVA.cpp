@@ -92,12 +92,10 @@ void input_VCF(paramStruct *pars) {
     if (args->doNJ != 0) {
         if (args->doNJ == 1) {
             njSt = njStruct_get(pars, distanceMatrix);
-            njSt->print(outFiles->out_nj_fs);
         } else if (args->doNJ == 2) {
             if (args->doDxy != 0) {
                 ASSERT(dxySt != NULL);
                 njSt = njStruct_get(pars, dxySt);
-                njSt->print(outFiles->out_nj_fs);
             } else {
                 ERROR("-doNJ 2 requires -doDxy");
             }
@@ -152,11 +150,9 @@ void input_DM(paramStruct *pars) {
     if (args->doNJ == 1) {
         ASSERT(distanceMatrix != NULL);
         njSt = njStruct_get(pars, distanceMatrix);
-        njSt->print(outFiles->out_nj_fs);
     } else if (args->doNJ == 2) {
         ASSERT(dxySt != NULL);
         njSt = njStruct_get(pars, dxySt);
-        njSt->print(outFiles->out_nj_fs);
     }
 
     delete metadata;
@@ -180,7 +176,6 @@ int main(int argc, char **argv) {
 
     argStruct *args = argStruct_get(--argc, ++argv);
     paramStruct *pars = paramStruct_init(args);
-    IO::outFilesStruct_set(outFiles);
 
     char *DATETIME = pars->DATETIME;
     DATETIME = get_time();

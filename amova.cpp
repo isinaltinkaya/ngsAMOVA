@@ -88,7 +88,7 @@ amovaStruct *amovaStruct_get(distanceMatrixStruct *dm, metadataStruct *metadata)
         if (args->printAmovaTable == 1) {
             amova->print_as_table(stdout, metadata);
         }
-        amova->print_as_csv(outFiles->out_amova_fs->fp, metadata);
+        amova->print_as_csv(metadata);
     }
     return (amova);
 }
@@ -460,52 +460,59 @@ void amovaStruct::print_as_table(FILE *fp, metadataStruct *metadata) {
     fprintf(fp, "\n\n");
 }
 
-void amovaStruct::print_as_csv(FILE *fp, metadataStruct *metadata) {
+void amovaStruct::print_as_csv(metadataStruct *metadata) {
     // TODO add percentage total?
     // header
     //  type,label,value
     //  SSD,Among_region,0.1234
     //  fprintf(fp, "type,label,value\n");
-    ASSERT(fp != NULL);
-    fprintf(fp, "df,Total,%d\n", df[nAmovaLevels - 1]);
-    fprintf(fp, "SSD,Total,%f\n", ssd[nAmovaLevels - 1]);
-    fprintf(fp, "MSD,Total,%f\n", msd[nAmovaLevels - 1]);
+
+    outFiles->out_amova_fs->kbuf = kbuf_init();
+    kstring_t *kbuf = outFiles->out_amova_fs->kbuf;
+
+    ksprintf(kbuf, "df,Total,%d\n", df[nAmovaLevels - 1]);
+    ksprintf(kbuf, "SSD,Total,%f\n", ssd[nAmovaLevels - 1]);
+    ksprintf(kbuf, "MSD,Total,%f\n", msd[nAmovaLevels - 1]);
 
     int x = 1;
-    fprintf(fp, "df,Among_%s_within_%s,%d\n", metadata->levelNames[x], "Total", df[0]);
-    fprintf(fp, "SSD,Among_%s_within_%s,%f\n", metadata->levelNames[x], "Total", ssd[0]);
-    fprintf(fp, "MSD,Among_%s_within_%s,%f\n", metadata->levelNames[x], "Total", msd[0]);
+    ksprintf(kbuf, "df,Among_%s_within_%s,%d\n", metadata->levelNames[x], "Total", df[0]);
+    ksprintf(kbuf, "SSD,Among_%s_within_%s,%f\n", metadata->levelNames[x], "Total", ssd[0]);
+    ksprintf(kbuf, "MSD,Among_%s_within_%s,%f\n", metadata->levelNames[x], "Total", msd[0]);
     while (x < metadata->nLevels + 1) {
         if (x == metadata->nLevels) {
-            fprintf(fp, "df,Among_%s_within_%s,%d\n", metadata->levelNames[0], metadata->levelNames[metadata->nLevels], df[x]);
-            fprintf(fp, "SSD,Among_%s_within_%s,%f\n", metadata->levelNames[0], metadata->levelNames[metadata->nLevels], ssd[x]);
-            fprintf(fp, "MSD,Among_%s_within_%s,%f\n", metadata->levelNames[0], metadata->levelNames[metadata->nLevels], msd[x]);
+            ksprintf(kbuf, "df,Among_%s_within_%s,%d\n", metadata->levelNames[0], metadata->levelNames[metadata->nLevels], df[x]);
+            ksprintf(kbuf, "SSD,Among_%s_within_%s,%f\n", metadata->levelNames[0], metadata->levelNames[metadata->nLevels], ssd[x]);
+            ksprintf(kbuf, "MSD,Among_%s_within_%s,%f\n", metadata->levelNames[0], metadata->levelNames[metadata->nLevels], msd[x]);
         } else {
-            fprintf(fp, "df,Among_%s_within_%s,%d\n", metadata->levelNames[x + 1], metadata->levelNames[x], df[x]);
-            fprintf(fp, "SSD,Among_%s_within_%s,%f\n", metadata->levelNames[x + 1], metadata->levelNames[x], ssd[x]);
-            fprintf(fp, "MSD,Among_%s_within_%s,%f\n", metadata->levelNames[x + 1], metadata->levelNames[x], msd[x]);
+            ksprintf(kbuf, "df,Among_%s_within_%s,%d\n", metadata->levelNames[x + 1], metadata->levelNames[x], df[x]);
+            ksprintf(kbuf, "SSD,Among_%s_within_%s,%f\n", metadata->levelNames[x + 1], metadata->levelNames[x], ssd[x]);
+            ksprintf(kbuf, "MSD,Among_%s_within_%s,%f\n", metadata->levelNames[x + 1], metadata->levelNames[x], msd[x]);
         }
         x++;
     }
 
     if (nLevels == 1) {
-        fprintf(fp, "Phi,%s_in_%s,%f\n", metadata->levelNames[1], "Total", phi[0]);
-        fprintf(fp, "Variance_coefficient,a,%f\n", ncoef[0]);
-        fprintf(fp, "Variance_component,%s,%f\n", metadata->levelNames[1], sigmasq[0]);
-        fprintf(fp, "Variance_component,%s,%f\n", metadata->levelNames[0], sigmasq[1]);
+        ksprintf(kbuf, "Phi,%s_in_%s,%f\n", metadata->levelNames[1], "Total", phi[0]);
+        ksprintf(kbuf, "Variance_coefficient,a,%f\n", ncoef[0]);
+        ksprintf(kbuf, "Variance_component,%s,%f\n", metadata->levelNames[1], sigmasq[0]);
+        ksprintf(kbuf, "Variance_component,%s,%f\n", metadata->levelNames[0], sigmasq[1]);
     } else if (nLevels == 2) {
-        fprintf(fp, "Phi,%s_in_%s,%f\n", metadata->levelNames[1], "Total", phi[0]);
-        fprintf(fp, "Phi,%s_in_%s,%f\n", metadata->levelNames[2], metadata->levelNames[1], phi[1]);
-        fprintf(fp, "Phi,%s_in_%s,%f\n", metadata->levelNames[2], "Total", phi[2]);
-        fprintf(fp, "Variance_coefficient,a,%f\n", ncoef[0]);
-        fprintf(fp, "Variance_coefficient,b,%f\n", ncoef[1]);
-        fprintf(fp, "Variance_coefficient,c,%f\n", ncoef[2]);
-        fprintf(fp, "Variance_component,%s,%f\n", metadata->levelNames[1], sigmasq[0]);
-        fprintf(fp, "Variance_component,%s,%f\n", metadata->levelNames[2], sigmasq[1]);
-        fprintf(fp, "Variance_component,%s,%f\n", metadata->levelNames[0], sigmasq[2]);
+        ksprintf(kbuf, "Phi,%s_in_%s,%f\n", metadata->levelNames[1], "Total", phi[0]);
+        ksprintf(kbuf, "Phi,%s_in_%s,%f\n", metadata->levelNames[2], metadata->levelNames[1], phi[1]);
+        ksprintf(kbuf, "Phi,%s_in_%s,%f\n", metadata->levelNames[2], "Total", phi[2]);
+        ksprintf(kbuf, "Variance_coefficient,a,%f\n", ncoef[0]);
+        ksprintf(kbuf, "Variance_coefficient,b,%f\n", ncoef[1]);
+        ksprintf(kbuf, "Variance_coefficient,c,%f\n", ncoef[2]);
+        ksprintf(kbuf, "Variance_component,%s,%f\n", metadata->levelNames[1], sigmasq[0]);
+        ksprintf(kbuf, "Variance_component,%s,%f\n", metadata->levelNames[2], sigmasq[1]);
+        ksprintf(kbuf, "Variance_component,%s,%f\n", metadata->levelNames[0], sigmasq[2]);
+
     } else {
         fprintf(stderr, "[ERROR]: nLevels > 2 not supported yet\n");
     }
+
+    outFiles->out_amova_fs->kbuf_write();
+    ASSERT(outFiles->out_amova_fs->kbuf == NULL);  // TODO delme
 }
 
 amovaStruct::amovaStruct(metadataStruct *metadata) {

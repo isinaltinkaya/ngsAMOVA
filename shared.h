@@ -84,6 +84,15 @@
     exit(1);
 
 /*
+ * Macro:[WARNING]
+ * print a custom warning message
+ */
+#define WARNING(...)                                                              \
+    fprintf(stderr, "\n[WARNING](%s/%s:%d)\t", __FILE__, __FUNCTION__, __LINE__); \
+    fprintf(stderr, __VA_ARGS__);                                                 \
+    IO::append_argsFile("\n[WARNING](%s/%s:%d)\t%s", __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__);
+
+/*
  * Macro:[LOG]
  */
 #define LOG(...)                                                              \

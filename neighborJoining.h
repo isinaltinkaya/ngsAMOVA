@@ -96,8 +96,7 @@ typedef struct njStruct {
     int *neighborIdx = NULL;
 
     /// @brief print - print the neighbor-joining tree in newick format to the output file
-    /// @param out_nj_fs - outputStruct instance for this analysis
-    void print(IO::outputStruct *out_nj_fs);
+    void print();
 
     /// @brief _print - print the internal representation of the tree
     void _print(void);
