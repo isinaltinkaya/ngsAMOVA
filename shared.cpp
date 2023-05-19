@@ -112,19 +112,6 @@ extern const int get_3x3_idx[3][3] = {
 
 // TODO check this
 using size_t = decltype(sizeof(int));
-
-int find_n_given_nC2(int nC2_res) {
-    int n = 0;
-    while (NC2_LUT[n] < nC2_res) {
-        n++;
-    }
-    if (NC2_LUT[n] != nC2_res) {
-        fprintf(stderr, "[%s:%s()]\t->Error: nC2_res:%d not found in NC2_LUT[]\n", __FILE__, __FUNCTION__, nC2_res);
-        exit(1);
-    }
-    return n;
-}
-
 // TODO
 //  extract digits using bit masking
 //  int extractDigits(int num, int digits)

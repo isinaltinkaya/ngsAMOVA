@@ -33,6 +33,26 @@ int nCk_idx(int nInd, int i1, int i2) {
     }
 }
 
+int find_n_given_nC2(int nC2_res) {
+    int n = 0;
+    while (NC2_LUT[n] < nC2_res) {
+        n++;
+    }
+    if (NC2_LUT[n] != nC2_res) {
+        fprintf(stderr, "[%s:%s()]\t->Error: nC2_res:%d not found in NC2_LUT[]\n", __FILE__, __FUNCTION__, nC2_res);
+        exit(1);
+    }
+    return n;
+}
+
+int nC2(const int n) {
+    if (n < 301) {
+        return (NC2_LUT[n]);
+    } else {
+        return (nCk(n, 2));
+    }
+}
+
 // for (int i1 = 0; i1 < nInd - 1; i1++)
 // {
 // 	for (int i2 = i1 + 1; i2 < nInd; i2++)

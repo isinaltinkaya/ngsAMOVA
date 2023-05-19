@@ -81,6 +81,9 @@ int nCk_idx(int nInd, int i1, int i2);
  *
  */
 
+int find_n_given_nC2(int nC2_res);
+int nC2(int n);
+
 namespace MATH {
 
 double SUM(double M[3][3]);

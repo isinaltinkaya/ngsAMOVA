@@ -504,8 +504,9 @@ vcfData *vcfData_init(paramStruct *pars) {
     }
 
     pars->nInd = bcf_hdr_nsamples(vcfd->hdr);
+    // TODO unnecessary
     vcfd->nInd = pars->nInd;
-    pars->nIndCmb = NC2_LUT[pars->nInd];
+    pars->nIndCmb = nC2(pars->nInd);
     vcfd->nIndCmb = pars->nIndCmb;
 
     if (1 == args->doDist) {

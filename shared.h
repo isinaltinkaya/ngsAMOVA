@@ -271,7 +271,6 @@
 #define MAX_N_AMOVA_LEVELS 5
 #define MAX_N_HIER_LEVELS 5
 #define MAX_N_GROUPS_PER_LEVEL 5
-#define MAX_N_INDIVIDUALS 200
 #define MAX_NAME_LENGTH 100
 
 #define MAX_N_BITS 64
@@ -329,8 +328,6 @@
 
 // 1/9
 #define FRAC_1_9 0.1111111111111111
-
-int find_n_given_nC2(int nC2_res);
 
 /* ========================================================================== */
 /* ENUMERATIONS ============================================================= */
