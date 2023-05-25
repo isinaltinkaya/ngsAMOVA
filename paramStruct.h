@@ -87,10 +87,10 @@ struct paramStruct {
 
     // input file type from enum
     int in_ft = 0;
+
     char *DATETIME = NULL;
 
     // PRINT FUNCTIONS
-    void printParams(FILE *fp);
     void printLut(FILE *fp);
 
     void init_LUTs();

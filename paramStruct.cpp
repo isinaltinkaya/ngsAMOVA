@@ -113,16 +113,11 @@ alleleStruct *alleleStruct_read(const char *fn) {
     return A;
 }
 
-void paramStruct::printParams(FILE *fp) {
-    fprintf(fp, "nSites: %li", nSites);
-    fprintf(fp, "nInd: %i", nInd);
-    fprintf(fp, "nIndCmb: %i", nIndCmb);
-    fprintf(fp, "in_ft: %i", in_ft);
-    fprintf(fp, "DATETIME: %s", DATETIME);
-}
-
 paramStruct *paramStruct_init(argStruct *args) {
     paramStruct *pars = new paramStruct;
+
+    pars->DATETIME = (char *)malloc(1024 * sizeof(char));
+    sprintf(pars->DATETIME, "%s", get_time());
 
     if (NULL != args->in_vcf_fn) {
         fprintf(stderr, "\n[INFO]\tFound input VCF file: %s\n", args->in_vcf_fn);

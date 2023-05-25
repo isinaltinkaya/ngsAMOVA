@@ -112,17 +112,6 @@ extern const int get_3x3_idx[3][3] = {
 
 // TODO check this
 using size_t = decltype(sizeof(int));
-// TODO
-//  extract digits using bit masking
-//  int extractDigits(int num, int digits)
-//  {
-//  	uint32_t x = 100101;
-//  	uint32_t y = 100102;
-//  	for(int i=0;i<sizeof(uint32_t);i++){
-//  		fprintf(stderr,"\n\n\n\n -> x: %d y: %d\n",(x>>i)&0xF,(y>>i)&0xF);
-//  	}
-//  	exit(0);
-//  }
 
 /// @brief get current time
 /// @return time as char*

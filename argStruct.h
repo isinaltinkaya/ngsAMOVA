@@ -19,7 +19,7 @@ extern argStruct *args;
  * @field *in_blb_fn     input block bed filename
  * @field *in_dxy_fn     input dxy filename
  *
- * @field *out_fn		pointer to output file prefix [angsdput]
+ * @field *out_fnp		pointer to output file prefix [angsdput]
  *
  * @field minInd		[-1 = not set]
  * 						minimum number of individuals needed

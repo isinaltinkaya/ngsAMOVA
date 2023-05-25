@@ -2,6 +2,29 @@
 
 #include "bootstrap.h"
 
+// TODO .vcf vcf.gz .bcf .bcf.gz .*.csi .*.tbi
+int require_index(paramStruct *pars) {
+    if (pars->in_ft & IN_VCF) {
+        if (NULL != args->in_region) {
+            return (IDX_CSI);
+        }
+    }
+    if (pars->in_ft & IN_DM) {
+        return (IDX_NONE);
+    }
+    return (IDX_NONE);
+}
+
+int require_unpack() {
+    // use GT
+    if (2 == args->doDist) {
+        // BCF_UN_STR unpack is needed to use bcf->d.allele with bcf_get_genotypes
+        return (BCF_UN_STR);
+    }
+
+    return (0);  // no unpacking needed
+}
+
 int glData::ind_data_isMissing(const int ind_i) {
     float *ind_data = ind_ptr(ind_i);
     if (ind_data == NULL) {
@@ -380,19 +403,21 @@ vcfData *vcfData_init(paramStruct *pars) {
     vcfd->hdr = bcf_hdr_read(vcfd->in_fp);
     vcfd->bcf = bcf_init();
 
-    if (NULL != args->in_region) {
-        // vcfd->tbx = IO::load_vcf_tabix_idx(args->in_vcf_fn);
-        // vcfd->itr = tbx_itr_querys(vcfd->tbx, args->in_region);
-
+    if (require_index(pars) & IDX_CSI) {
         vcfd->idx = IO::load_bcf_csi_idx(args->in_vcf_fn);
+    }
 
+    // if (require_index(pars) & IDX_TBI) {
+    // vcfd->tbx = IO::load_vcf_tabix_idx(args->in_vcf_fn);
+    // vcfd->itr = tbx_itr_querys(vcfd->tbx, args->in_region);
+    // }
+
+    if (NULL != args->in_region) {
         vcfd->itr = bcf_itr_querys(vcfd->idx, vcfd->hdr, args->in_region);
         if (NULL == vcfd->itr) {
             ERROR("Could not parse region: %s. Please make sure region exists and defined in the correct format.", args->in_region);
         }
-        ASSERT(vcfd->itr != NULL);
     }
-
     if (NULL != args->in_regions_bed_fn) {
         ERROR("Not implemented yet");
     }
@@ -831,36 +856,35 @@ void vcfData::_print() {
     _print(stderr);
 }
 
+void vcfData::unpack() {
+    int unpack = require_unpack();
+    if (0 != unpack) {
+        bcf_unpack(bcf, unpack);
+    }
+}
+
 int vcfData::records_next() {
     int ret = -42;
-
-    // at least BCF_UN_STR unpack is needed to use bcf->d.allele with bcf_get_genotypes
 
     if (NULL == itr) {
         // no region specified
         ret = bcf_read(in_fp, hdr, bcf);
-        bcf_unpack(bcf, BCF_UN_ALL);
     } else {
         // region reading using iterator
         ret = bcf_itr_next(in_fp, itr, bcf);
 
-        // TODO is this check necessary? htslib might be doing it already
-        // if ( -1 > ret ){
-        // 	// error
-        // 	fprintf(stderr, "\n[ERROR:%d]\tError reading from VCF file",ret);
-        // 	exit(1);
-        // }
-
-        bcf_unpack(bcf, BCF_UN_ALL);
+        if (-1 > ret) {
+            ERROR("An error occurred while reading the VCF file.");
+        }
     }
+
+    unpack();
+
+    ASSERT(0 == bcf->errcode);
 
     if (-1 == ret) {
         // no more data
         return 0;
-    }
-
-    if (bcf->rlen != 1) {
-        ERROR("VCF file has a REF allele of length %ld. This is currently not allowed.", bcf->rlen);
     }
 
     return 1;

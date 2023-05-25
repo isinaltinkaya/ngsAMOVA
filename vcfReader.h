@@ -13,6 +13,7 @@
 /* FORWARD DECLARATIONS ----------------------------------------------------- */
 
 typedef struct vcfData vcfData;
+// typedef struct vcfIndex vcfIndex;
 typedef struct gtData gtData;
 typedef struct glData glData;
 
@@ -27,6 +28,21 @@ extern const int bcf_allele_charToInt[256];
 int bcf_alleles_get_gtidx(int a1, int a2);
 int bcf_alleles_get_gtidx(char a1, char a2);
 
+// index file types
+#define IDX_NONE 0
+#define IDX_CSI (1 << 0)  // 1
+#define IDX_TBI (1 << 1)  // 2
+
+/// @brief require_index - check if the analysis requires loading an index file
+/// @param pars
+/// @return 0 if no index file is required, otherwise return an IDX_* value
+///         indicating which index file type is required given the input file type
+int require_index(paramStruct *pars);
+
+/// @brief require_unpack - check if the analysis requires unpacking
+/// @return 0 if no unpacking is required, otherwise return a BCF_UN_* value
+int require_unpack();
+
 struct vcfData {
     vcfFile *in_fp = NULL;
     bcf1_t *bcf = NULL;
@@ -35,8 +51,9 @@ struct vcfData {
 
     hts_idx_t *idx = NULL;
     hts_itr_t *itr = NULL;
-
     // tbx_t *tbx = NULL;
+
+    int require_index = 0;
 
     int nContigs = 0;
     int nInd = 0;
@@ -110,6 +127,9 @@ struct vcfData {
     int records_next(hts_itr_t *block_itr);
 
     void set_n_joint_categories(paramStruct *pars);
+
+    /// @brief unpack - unpack the bcf record based on the value from require_unpack()
+    void unpack();
 };
 
 vcfData *vcfData_init(paramStruct *pars);

@@ -64,7 +64,6 @@ struct blobStruct {
 
     void _print();
 
-    // todo no need to explicitly give outputstruct, outFiles is already extern
     void print();
 
     void get_bootstrap_replicates(vcfData *vcfd, bootstrapReplicate *bRep);

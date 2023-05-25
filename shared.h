@@ -68,7 +68,7 @@
  * if the expression evaluates to false
  */
 #define ASSERT(expr)                                                                                              \
-    if (!(expr)) {                                                                                                \
+    if (!((expr))) {                                                                                              \
         fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d) %s\n*******\n", __FILE__, __FUNCTION__, __LINE__, #expr); \
         exit(1);                                                                                                  \
     }

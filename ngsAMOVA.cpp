@@ -20,8 +20,6 @@
 // TODO check size_t
 using size_t = decltype(sizeof(int));
 
-// TODO delete passing outputstruct since thats extern too
-
 void input_VCF(paramStruct *pars) {
     vcfData *vcfd = vcfData_init(pars);
 
@@ -40,7 +38,6 @@ void input_VCF(paramStruct *pars) {
     metadataStruct *metadata = NULL;
     if (NULL != args->in_mtd_fn) {
         metadata = metadataStruct_get(pars);
-
         indNames = metadata->indNames;
     }
 
@@ -102,7 +99,6 @@ void input_VCF(paramStruct *pars) {
         }
     }
     DELETE(njSt);
-
     DELETE_ARRAY(pairSt, pars->nIndCmb);
     DELETE(distanceMatrix);
     DELETE(metadata);
@@ -114,8 +110,6 @@ void input_DM(paramStruct *pars) {
     if (args->blockSize != 0) {
         ERROR("-blockSize is not supported for distance matrix input.");
     }
-
-    IO::vprint(1, "input_DM is running\n");
 
     distanceMatrixStruct *distanceMatrix = distanceMatrixStruct_read(pars);
 
@@ -176,12 +170,6 @@ int main(int argc, char **argv) {
 
     argStruct *args = argStruct_get(--argc, ++argv);
     paramStruct *pars = paramStruct_init(args);
-
-    char *DATETIME = pars->DATETIME;
-    DATETIME = get_time();
-    fprintf(stderr, "\n%s", DATETIME);
-
-    args->print(stderr);
 
     if (pars->in_ft & IN_VCF) {
         input_VCF(pars);

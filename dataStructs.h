@@ -156,8 +156,6 @@ struct distanceMatrixStruct {
 /// @return distance matrix double*
 distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars);
 
-// void print_SFS_GT(const char *TYPE, IO::outputStruct *out_sfs_fs, paramStruct *pars, int *SFS_GT3, int snSites, const char *sample1, const char *sample2);
-
 struct metadataStruct {
     // total number of individuals in the entire dataset
     int nInd = 0;
