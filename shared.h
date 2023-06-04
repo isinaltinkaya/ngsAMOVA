@@ -115,14 +115,54 @@
  * Macro:[FREE]
  * shortcut to free memory and set pointer to NULL
  * and catch double free
+ * throw error if pointer is NULL
  */
-#define FREE(x)      \
+#define FREE(x)                                 \
+    if (NULL != x) {                            \
+        free(x);                                \
+        x = NULL;                               \
+    } else {                                    \
+        ERROR("Trying to free a NULL pointer"); \
+    }
+
+/*
+ * Macro:[IFFREE]
+ * if x exists; free memory and set pointer to NULL
+ * do NOT throw error if pointer is NULL
+ */
+#define IFFREE(x)    \
     if (NULL != x) { \
         free(x);     \
         x = NULL;    \
     }
 
-#define FREE_ARRAY(x, size)                         \
+/*
+ * Macro:[FREE2D]
+ * free 2D array
+ * throw error if pointer is NULL
+ */
+#define FREE2D(x, size)                                 \
+    if (NULL != x) {                                    \
+        for (size_t i = 0; i < (size_t)size; i++) {     \
+            if (NULL != x[i]) {                         \
+                free(x[i]);                             \
+                x[i] = NULL;                            \
+            } else {                                    \
+                ERROR("Trying to free a NULL pointer"); \
+            }                                           \
+        }                                               \
+        free(x);                                        \
+        x = NULL;                                       \
+    } else {                                            \
+        ERROR("Trying to free a NULL pointer");         \
+    }
+
+/*
+ * Macro:[IFFREE2D]
+ * if x exists; free 2D array
+ * do NOT throw error if pointer is NULL
+ */
+#define IFFREE2D(x, size)                           \
     if (NULL != x) {                                \
         for (size_t i = 0; i < (size_t)size; i++) { \
             if (NULL != x[i]) {                     \
@@ -134,13 +174,103 @@
         x = NULL;                                   \
     }
 
-#define DELETE(x)    \
+/*
+ * Macro:[DEL]
+ * delete memory and set pointer to NULL
+ * throw error if pointer is NULL
+ *
+ * for variables declared as:
+ * type *x = new type;
+ */
+#define DEL(x)                                    \
+    if (NULL != x) {                              \
+        delete x;                                 \
+        x = NULL;                                 \
+    } else {                                      \
+        ERROR("Trying to delete a NULL pointer"); \
+    }
+
+/*
+ * Macro:[IFDEL]
+ * if x exists; delete memory and set pointer to NULL
+ * do NOT throw error if pointer is NULL
+ *
+ * for variables declared as:
+ * type *x = new type;
+ */
+#define IFDEL(x)     \
     if (NULL != x) { \
         delete x;    \
         x = NULL;    \
     }
 
-#define DELETE_ARRAY(x, size)                       \
+/*
+ * Macro:[DEL1D]
+ * delete memory and set pointer to NULL
+ * throw error if pointer is NULL
+ *
+ * for 1D arrays declared as:
+ * type *x = new type[size];
+ *
+ */
+#define DEL1D(x)                                  \
+    if (NULL != x) {                              \
+        delete[] x;                               \
+        x = NULL;                                 \
+    } else {                                      \
+        ERROR("Trying to delete a NULL pointer"); \
+    }
+
+/*
+ * Macro:[IFDEL1D]
+ * if x exists; delete memory and set pointer to NULL
+ * do NOT throw error if pointer is NULL
+ *
+ * for 1D arrays declared as:
+ * type *x = new type[size];
+ *
+ */
+#define IFDEL1D(x)   \
+    if (NULL != x) { \
+        delete[] x;  \
+        x = NULL;    \
+    }
+
+/*
+ * Macro:[DEL2D]
+ * shortcut to delete memory and set pointer to NULL
+ * for 2D arrays declared as:
+ * type **x = new type*[size];
+ * for (size_t i = 0; i < size; i++) {
+ *   x[i] = new type[size];
+ * }
+ */
+#define DEL2D(x, size)                              \
+    if (NULL != x) {                                \
+        for (size_t i = 0; i < (size_t)size; i++) { \
+            if (NULL != x[i]) {                     \
+                delete x[i];                        \
+                x[i] = NULL;                        \
+            }                                       \
+        }                                           \
+        delete[] x;                                 \
+        x = NULL;                                   \
+    } else {                                        \
+        ERROR("Trying to delete a NULL pointer");   \
+    }
+
+/*
+ * Macro:[IFDEL2D]
+ * shortcut to delete memory and set pointer to NULL
+ * for 2D arrays declared as:
+ * type **x = new type*[size];
+ * for (size_t i = 0; i < size; i++) {
+ *   x[i] = new type[size];
+ * }
+ *
+ * do NOT throw error if pointer is NULL
+ */
+#define IFDEL2D(x, size)                            \
     if (NULL != x) {                                \
         for (size_t i = 0; i < (size_t)size; i++) { \
             if (NULL != x[i]) {                     \
@@ -323,6 +453,11 @@ enum OUTFC {
 #define IN_VCF (1 << 0)  // 1
 #define IN_DM (1 << 1)   // 2
 #define IN_DXY (1 << 2)  // 4
+
+#define A_BASE_IDX 0
+#define C_BASE_IDX 1
+#define G_BASE_IDX 2
+#define T_BASE_IDX 3
 
 /* ========================================================================== */
 

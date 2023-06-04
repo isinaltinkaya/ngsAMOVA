@@ -777,15 +777,17 @@ void IO::outFilesStruct_init(IO::outFilesStruct *ofs) {
 
 void IO::outFilesStruct_destroy(IO::outFilesStruct *ofs) {
     // flushAll();
-    DELETE(ofs->out_args_fs);
-    DELETE(ofs->out_dm_fs);
-    DELETE(ofs->out_amova_fs);
-    DELETE(ofs->out_dev_fs);
-    DELETE(ofs->out_jgcd_fs);
-    DELETE(ofs->out_jgpd_fs);
-    DELETE(ofs->out_dxy_fs);
-    DELETE(ofs->out_nj_fs);
-    DELETE(ofs->out_v_bootstrapRep_fs);
+
+    IFDEL(ofs->out_args_fs);
+    IFDEL(ofs->out_dm_fs);
+    IFDEL(ofs->out_amova_fs);
+    IFDEL(ofs->out_dev_fs);
+    IFDEL(ofs->out_jgcd_fs);
+    IFDEL(ofs->out_jgpd_fs);
+    IFDEL(ofs->out_dxy_fs);
+    IFDEL(ofs->out_nj_fs);
+    IFDEL(ofs->out_blockstab_fs);
+    IFDEL(ofs->out_v_bootstrapRep_fs);
 
     delete ofs;
 }

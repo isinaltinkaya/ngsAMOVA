@@ -199,10 +199,10 @@ metadataStruct::~metadataStruct() {
     for (size_t lvl = 0; lvl < (size_t)MAX_N_HIER_LEVELS; lvl++) {
         // for(size_t g = 0; g < (size_t) nGroups[lvl]; g++)
         for (size_t g = 0; g < (size_t)MAX_N_GROUPS_PER_LEVEL; g++) {
-            FREE(groupNames[lvl][g]);
+            IFFREE(groupNames[lvl][g]);  // TODO del?
         }
-        FREE(groupNames[lvl]);
-        FREE(levelNames[lvl]);
+        IFFREE(groupNames[lvl]);  // TODO del?
+        IFFREE(levelNames[lvl]);  // TODO del?
         FREE(lvlgToIdx[lvl]);
     }
     for (size_t lvl = 0; lvl < (size_t)nLevels; lvl++) {

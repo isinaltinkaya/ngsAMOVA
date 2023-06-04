@@ -14,6 +14,8 @@ alleleStruct::alleleStruct() {
         a1[i] = (char *)malloc(BUF_NSITES * sizeof(char));
         a2[i] = (char *)malloc(BUF_NSITES * sizeof(char));
     }
+
+    contigNames = (char **)malloc(1 * sizeof(char *));
 }
 
 alleleStruct::~alleleStruct() {
@@ -25,20 +27,21 @@ alleleStruct::~alleleStruct() {
     }
     FREE(a1);
     FREE(a2);
+
+    FREE2D(contigNames, nContigs);
 }
 
 //     - 1-based
 //     - [start:included, end:included]
 // just like vcf
 alleleStruct *alleleStruct_read(const char *fn) {
-    alleleStruct *A = new alleleStruct;
+    alleleStruct *alleles = new alleleStruct;
 
     FILE *fp = IO::getFile(fn, "r");
 
     int n_sites = BUF_NSITES;
 
     int pos_i = 0;
-    // int pos_int = -1;
     int coli = 0;
     int contig_i = 0;
 
@@ -58,28 +61,45 @@ alleleStruct *alleleStruct_read(const char *fn) {
                 // TODO maybe set a debug mode for these, so it doesn't slow down the program if the user doesn't want to validate
                 // IO::validateString(tok);
 
-                if (0 == contig_i) {
-                    // if first contig; set last_contig to current contig
+                if (0 == contig_i && 0 == pos_i) {
+                    // if the very beginning of the file, first contig first site
+                    // set last_contig to current contig
                     strcpy(last_contig, tok);
-                } else if (0 != strcmp(last_contig, tok)) {
-                    // if chr is changed; move to next contig index
-                    ++contig_i;
-                    pos_i = 0;
-                    strcpy(last_contig, tok);
-                    n_sites = BUF_NSITES;
+
+                    alleles->contigNames[contig_i] = strdup(tok);
+
+                } else {
+                    // not the very beginning of the file
+
+                    // check if contig is changed
+                    if (0 != strcmp(last_contig, tok)) {
+                        // if contig is changed; move to next contig index
+                        ++contig_i;
+
+                        pos_i = 0;
+
+                        // and set last_contig to current contig
+                        strcpy(last_contig, tok);
+
+                        // initialize buffer nSites for the new contig
+                        n_sites = BUF_NSITES;
+
+                        alleles->contigNames = (char **)realloc(alleles->contigNames, (contig_i + 1) * sizeof(char *));
+                        alleles->contigNames[contig_i] = strdup(tok);
+                    }
                 }
-                A->nSites[contig_i]++;
 
                 if (pos_i == n_sites) {
                     n_sites *= 2;
                     // dragon unnecessary space can be allocated
-                    A->a1[contig_i] = (char *)realloc(A->a1[contig_i], n_sites * sizeof(char));
-                    A->a2[contig_i] = (char *)realloc(A->a2[contig_i], n_sites * sizeof(char));
+                    alleles->a1[contig_i] = (char *)realloc(alleles->a1[contig_i], n_sites * sizeof(char));
+                    alleles->a2[contig_i] = (char *)realloc(alleles->a2[contig_i], n_sites * sizeof(char));
                     for (int i = pos_i; i < n_sites; ++i) {
-                        A->a1[contig_i][i] = 0;
-                        A->a2[contig_i][i] = 0;
+                        alleles->a1[contig_i][i] = 0;
+                        alleles->a2[contig_i][i] = 0;
                     }
                 }
+
             } else if (1 == coli) {  // -> position
                 // ASSERTM(strIsNumeric(tok), "Position must be numeric.");
                 // pos_int = atoi(tok);
@@ -89,13 +109,13 @@ alleleStruct *alleleStruct_read(const char *fn) {
                 if (1 < strlen(tok)) {     // debug
                     ERROR("Too many characters found in the 3rd column of file %s. Expected: 1", fn);
                 }
-                A->a1[contig_i][pos_i] = tok[0];
+                alleles->a1[contig_i][pos_i] = *tok;
 
             } else if (3 == coli) {     // -> der/minor
                 if (1 < strlen(tok)) {  // debug
                     ERROR("Too many characters found in the 4th column of file %s. Expected: 1", fn);
                 }
-                A->a2[contig_i][pos_i] = tok[0];
+                alleles->a2[contig_i][pos_i] = *tok;
             } else {
                 ERROR("Too many columns in file %s. Expected: 4", fn);
             }
@@ -103,14 +123,15 @@ alleleStruct *alleleStruct_read(const char *fn) {
             ++coli;
         }
         ++pos_i;
+        alleles->nSites[contig_i]++;
     }
 
-    A->nContigs = contig_i + 1;
+    alleles->nContigs = contig_i + 1;
 
     FREE(buf);
     FCLOSE(fp);
 
-    return A;
+    return alleles;
 }
 
 paramStruct *paramStruct_init(argStruct *args) {
@@ -154,10 +175,10 @@ void paramStruct_destroy(paramStruct *pars) {
     FREE(pars->DATETIME);
 
     if (NULL != pars->ancder) {
-        DELETE(pars->ancder);
+        DEL(pars->ancder);
     }
     if (NULL != pars->majmin) {
-        DELETE(pars->majmin);
+        DEL(pars->majmin);
     }
 
     if (NULL != pars->formula) {

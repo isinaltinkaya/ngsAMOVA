@@ -61,7 +61,7 @@ void blobStruct::_print() {
 }
 
 blobStruct::~blobStruct() {
-    DELETE(bootstraps);
+    DEL(bootstraps);
     for (int i = 0; i < nBlocks; ++i) {
         FREE(blocks[i]->chr);
         FREE(blocks[i]);
@@ -300,11 +300,8 @@ bootstrapDataset::bootstrapDataset(paramStruct *pars, int nBootstraps_, int nBlo
 }
 
 bootstrapDataset::~bootstrapDataset() {
-    DELETE_ARRAY(replicates, nReplicates);
-    for (int i = 0; i < nPhiValues; ++i) {
-        FREE(phiValues[i]);
-    }
-    FREE(phiValues);
+    DEL2D(replicates, nReplicates);
+    FREE2D(phiValues, nPhiValues);
 }
 
 void bootstrapDataset::print_confidenceInterval(FILE *fp) {
@@ -335,6 +332,6 @@ bootstrapReplicate::bootstrapReplicate(int nBlocks) {
 
 bootstrapReplicate::~bootstrapReplicate() {
     FREE(rBlocks);
-    DELETE(amova);
-    DELETE(distanceMatrix);
+    DEL1D(amova);
+    DEL1D(distanceMatrix);
 }

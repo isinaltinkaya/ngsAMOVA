@@ -426,6 +426,15 @@ argStruct *argStruct_get(int argc, char **argv) {
 }
 
 void argStruct::check_arg_dependencies() {
+    if (0 != printJointGenoCountDist) {
+        // TODO decide if we should have this
+        ERROR("printJointGenoCountDist is not available.");
+    }
+
+    if (0 != printJointGenoProbDist && 2 == doDist) {
+        ERROR("printJointGenoProbDist is not available when doDist is set to 2.");
+    }
+
     if (minInd == 0) {
         fprintf(stderr, "\n\t-> -minInd 0; will use sites with data for all individuals.\n");
     } else if (minInd == -1) {
@@ -442,6 +451,12 @@ void argStruct::check_arg_dependencies() {
         if (NULL == in_ancder_fn && NULL == in_majorminor_fn) {
             ERROR("Must supply either --majorMinorFile/-mmf <filename> or --ancDerFile/-adf <filename>.");
         }
+    } else if (1 == isSim) {
+        if (NULL != in_ancder_fn || NULL != in_majorminor_fn) {
+            ERROR("Cannot use --majorMinorFile/-mmf <filename> or --ancDerFile/-adf <filename> with --isSim 1.");
+        }
+    } else {
+        ERROR("isSim must be 0 or 1.");
     }
 
     if (in_vcf_fn == NULL && in_dm_fn == NULL) {
@@ -529,7 +544,6 @@ void argStruct::check_arg_dependencies() {
     //             default: 0
     //             0: do not perform AMOVA
     //             1: perform AMOVA on all groups in each hierarchical level defined in the metadata file (requires: method to obtain distance matrix, metadata file)
-    WARNING("TEST");
 
     if (0 == doAMOVA) {
         //
@@ -662,25 +676,25 @@ void argStruct::check_arg_dependencies() {
 }
 
 void argStruct_destroy(argStruct *args) {
-    FREE(args->in_vcf_fn);
-    FREE(args->in_dm_fn);
-    FREE(args->in_mtd_fn);
-    FREE(args->in_dxy_fn);
+    IFFREE(args->in_vcf_fn);
+    IFFREE(args->in_dm_fn);
+    IFFREE(args->in_mtd_fn);
+    IFFREE(args->in_dxy_fn);
 
-    FREE(args->in_region);
-    FREE(args->in_regions_tab_fn);
-    FREE(args->in_regions_bed_fn);
-    FREE(args->in_blocks_tab_fn);
-    FREE(args->in_blocks_bed_fn);
+    IFFREE(args->in_region);
+    IFFREE(args->in_regions_tab_fn);
+    IFFREE(args->in_regions_bed_fn);
+    IFFREE(args->in_blocks_tab_fn);
+    IFFREE(args->in_blocks_bed_fn);
 
-    FREE(args->out_fnp);
+    IFFREE(args->out_fnp);
 
-    FREE(args->formula);
-    FREE(args->keyCols);
-    FREE(args->doDxyStr);
+    IFFREE(args->formula);
+    IFFREE(args->keyCols);
+    IFFREE(args->doDxyStr);
 
-    FREE(args->in_majorminor_fn);
-    FREE(args->in_ancder_fn);
+    IFFREE(args->in_majorminor_fn);
+    IFFREE(args->in_ancder_fn);
 
     // check below
 

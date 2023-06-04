@@ -125,6 +125,8 @@ struct alleleStruct {
     //      a2 can be derived or minor allele
     char **a2 = NULL;
 
+    char **contigNames = NULL;
+
     alleleStruct();
     ~alleleStruct();
 };

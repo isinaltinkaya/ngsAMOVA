@@ -62,15 +62,15 @@ void input_VCF(paramStruct *pars) {
     amovaStruct *amova = NULL;
     if (args->doAMOVA != 0) {
         amova = amovaStruct_get(distanceMatrix, metadata);
-    }
 
-    if (0 < args->nBootstraps) {
-        spawnThreads_amovaBootstrap(metadata, blobSt);
-        blobSt->bootstraps->print_confidenceInterval(stderr);
-    }
+        if (0 < args->nBootstraps) {
+            spawnThreads_amovaBootstrap(metadata, blobSt);
+            blobSt->bootstraps->print_confidenceInterval(stderr);
+            DEL(blobSt);
+        }
 
-    DELETE(amova);
-    DELETE(blobSt);
+        DEL(amova);
+    }
 
     // ---- dXY
     dxyStruct *dxySt = NULL;
@@ -81,8 +81,8 @@ void input_VCF(paramStruct *pars) {
             setInputFileType(pars, IN_DXY);
             dxySt = dxyStruct_read(pars, distanceMatrix, metadata);
         }
+        DEL(dxySt);
     }
-    DELETE(dxySt);
 
     // ---- NEIGHBOR JOINING
     njStruct *njSt = NULL;
@@ -97,11 +97,12 @@ void input_VCF(paramStruct *pars) {
                 ERROR("-doNJ 2 requires -doDxy");
             }
         }
+        DEL(njSt);
     }
-    DELETE(njSt);
-    DELETE_ARRAY(pairSt, pars->nIndCmb);
-    DELETE(distanceMatrix);
-    DELETE(metadata);
+
+    DEL(metadata);
+    DEL2D(pairSt, pars->nIndCmb);
+    DEL(distanceMatrix);
 
     vcfData_destroy(vcfd);
 }
@@ -128,7 +129,7 @@ void input_DM(paramStruct *pars) {
 
     if (args->doAMOVA != 0) {
         amovaStruct *amova = amovaStruct_get(distanceMatrix, metadata);
-        DELETE(amova);
+        DEL(amova);
     }
 
     dxyStruct *dxySt = NULL;
@@ -138,28 +139,24 @@ void input_DM(paramStruct *pars) {
         } else {
             dxySt = dxyStruct_read(pars, distanceMatrix, metadata);
         }
+        DEL(dxySt);
     }
 
     njStruct *njSt = NULL;
-    if (args->doNJ == 1) {
-        ASSERT(distanceMatrix != NULL);
-        njSt = njStruct_get(pars, distanceMatrix);
-    } else if (args->doNJ == 2) {
-        ASSERT(dxySt != NULL);
-        njSt = njStruct_get(pars, dxySt);
+    if (args->doNJ != 0) {
+        if (args->doNJ == 1) {
+            ASSERT(distanceMatrix != NULL);
+            njSt = njStruct_get(pars, distanceMatrix);
+        } else if (args->doNJ == 2) {
+            ASSERT(dxySt != NULL);
+            njSt = njStruct_get(pars, dxySt);
+        }
+        DEL(njSt);
     }
 
-    delete metadata;
-
-    for (int i = 0; i < pars->nIndCmb; i++) {
-        delete pairSt[i];
-    }
-    delete[] pairSt;
-
-    DELETE(dxySt);
-    DELETE(njSt);
-
-    delete distanceMatrix;
+    DEL(metadata);
+    DEL2D(pairSt, pars->nIndCmb);
+    DEL(distanceMatrix);
 }
 
 int main(int argc, char **argv) {

@@ -92,20 +92,7 @@ void print_help_formula(FILE *fp) {
     fprintf(fp, "  -f 'Individual ~ Region / Population'\n");
 }
 
-//
-// 0 1 2
-// 00 01 02
-// MMMM MMMm MMmm
-//
-// 3 4 5
-// 10 11 12
-// MmMM MmMm Mmmm
-//
-// 6 7 8
-// 20 21 22
-// mmMM mmMm mmmm
-// TODO rename and consider change format
-extern const int get_3x3_idx[3][3] = {
+extern const int nDerToM33Idx[3][3] = {
     {0, 1, 2},
     {3, 4, 5},
     {6, 7, 8}};
