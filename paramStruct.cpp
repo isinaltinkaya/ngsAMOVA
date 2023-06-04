@@ -10,9 +10,13 @@ alleleStruct::alleleStruct() {
     nSites = (int *)calloc(BUF_NCONTIGS, sizeof(int));
     a1 = (char **)malloc(BUF_NCONTIGS * sizeof(char *));
     a2 = (char **)malloc(BUF_NCONTIGS * sizeof(char *));
+    pos = (int **)malloc(BUF_NCONTIGS * sizeof(int *));
+    nSkippedSites = (int *)calloc(BUF_NCONTIGS, sizeof(int));
     for (int i = 0; i < BUF_NCONTIGS; ++i) {
         a1[i] = (char *)malloc(BUF_NSITES * sizeof(char));
         a2[i] = (char *)malloc(BUF_NSITES * sizeof(char));
+        pos[i] = (int *)malloc(BUF_NSITES * sizeof(int));
+        nSkippedSites[i] = 0;
     }
 
     contigNames = (char **)malloc(1 * sizeof(char *));
@@ -24,16 +28,17 @@ alleleStruct::~alleleStruct() {
     for (int i = 0; i < n_contigs; ++i) {
         FREE(a1[i]);
         FREE(a2[i]);
+        FREE(pos[i]);
     }
     FREE(a1);
     FREE(a2);
+    FREE(pos);
+
+    FREE(nSkippedSites);
 
     FREE2D(contigNames, nContigs);
 }
 
-//     - 1-based
-//     - [start:included, end:included]
-// just like vcf
 alleleStruct *alleleStruct_read(const char *fn) {
     alleleStruct *alleles = new alleleStruct;
 
@@ -98,11 +103,13 @@ alleleStruct *alleleStruct_read(const char *fn) {
                         alleles->a1[contig_i][i] = 0;
                         alleles->a2[contig_i][i] = 0;
                     }
+                    alleles->pos[contig_i] = (int *)realloc(alleles->pos[contig_i], n_sites * sizeof(int));
                 }
 
             } else if (1 == coli) {  // -> position
-                // ASSERTM(strIsNumeric(tok), "Position must be numeric.");
+                ASSERTM(strIsNumeric(tok), "Position must be numeric.");
                 // pos_int = atoi(tok);
+                alleles->pos[contig_i][pos_i] = atoi(tok);
 
             } else if (2 == coli) {        // -> anc/major
                 ASSERT(1 == strlen(tok));  // expect a single character e.g. G

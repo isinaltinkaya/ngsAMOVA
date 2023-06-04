@@ -264,6 +264,70 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2) {
     return bcf_alleles2gt(acgt_charToInt[(int)a1], acgt_charToInt[(int)a2]);
 }
 
+// TODO if
+
+// TODO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+// if the site is skipped, it should be removed from ancder, too
+
+void site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2) {
+    if (NULL != pars->ancder) {
+        *a1 = acgt_charToInt[(int)pars->ancder->a1[contig_i][site_i]];
+        *a2 = acgt_charToInt[(int)pars->ancder->a2[contig_i][site_i]];
+
+        if (pars->ancder->nContigs < contig_i + 1) {
+            ERROR("Could not find contig %s (index: %d) in ancderFile.", bcf_seqname_safe(vcfd->hdr, vcfd->bcf), contig_i);
+        }
+
+        if (strcmp(pars->ancder->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf)) != 0) {
+            ERROR("Contig name mismatch: %s != %s", pars->ancder->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf));
+        }
+
+        if (pars->ancder->nSites[contig_i] < site_i + 1) {
+            ERROR("Could not find site %d in contig %s (index: %d) in ancderFile.", site_i, bcf_seqname_safe(vcfd->hdr, vcfd->bcf), contig_i);
+        }
+
+        if (pars->ancder->pos[contig_i][site_i + pars->ancder->nSkippedSites[contig_i]] != vcfd->bcf->pos + 1) {
+            ERROR("Position mismatch: %d != %ld", pars->ancder->pos[contig_i][site_i], vcfd->bcf->pos + 1);
+        }
+
+    } else if (NULL != pars->majmin) {
+        *a1 = acgt_charToInt[(int)pars->majmin->a1[contig_i][site_i]];
+        *a2 = acgt_charToInt[(int)pars->majmin->a2[contig_i][site_i]];
+
+        if (pars->majmin->nContigs < contig_i + 1) {
+            ERROR("Could not find contig %s (index: %d) in majminFile.", bcf_seqname_safe(vcfd->hdr, vcfd->bcf), contig_i);
+        }
+
+        if (strcmp(pars->majmin->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf)) != 0) {
+            ERROR("Contig name mismatch: %s != %s", pars->majmin->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf));  // dragon
+        }
+
+        if (pars->majmin->nSites[contig_i] < site_i + 1) {
+            ERROR("Could not find site %d in contig %s (index: %d) in majminFile.", site_i, bcf_seqname_safe(vcfd->hdr, vcfd->bcf), contig_i);
+        }
+
+        if (pars->majmin->pos[contig_i][site_i + pars->majmin->nSkippedSites[contig_i]] != vcfd->bcf->pos + 1) {
+            ERROR("Position mismatch: %d != %ld", pars->majmin->pos[contig_i][site_i], vcfd->bcf->pos + 1);
+        }
+
+    } else if (1 == args->isSim) {
+        // reference allele == 0 in d.allele
+        ASSERT(1 == strlen(vcfd->bcf->d.allele[0]));
+        *a1 = acgt_charToInt[(int)*vcfd->bcf->d.allele[0]];
+        // first alternative allele == 1 in d.allele
+        ASSERT(1 == strlen(vcfd->bcf->d.allele[1]));
+        *a2 = acgt_charToInt[(int)*vcfd->bcf->d.allele[1]];
+
+    } else {
+        NEVER;
+    }
+    ASSERT(-1 != *a1);
+    ASSERT(-1 != *a2);
+    // debug
+    ASSERT(*a1 != *a2);
+}
+
 // return 1: skip site for all individuals
 int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, pairStruct **pairs) {
     const int nInd = pars->nInd;
@@ -275,49 +339,11 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
         cmbArr[i] = 0;
     }
 
+    int *a1 = new int;
+    int *a2 = new int;
+
     if (1 == bcf_is_snp(vcfd->bcf)) {
-        int a1 = -1;
-        int a2 = -1;
-
-        if (NULL != pars->ancder) {
-            a1 = acgt_charToInt[(int)pars->ancder->a1[contig_i][site_i]];
-            a2 = acgt_charToInt[(int)pars->ancder->a2[contig_i][site_i]];
-
-            if (pars->ancder->nContigs < contig_i + 1) {
-                ERROR("Could not find contig %s (index: %d) in ancderFile.", bcf_seqname_safe(vcfd->hdr, vcfd->bcf), contig_i);
-            }
-            if (strcmp(pars->ancder->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf)) != 0) {
-                ERROR("Contig name mismatch: %s != %s", pars->ancder->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf));
-            }
-
-        } else if (NULL != pars->majmin) {
-            a1 = acgt_charToInt[(int)pars->majmin->a1[contig_i][site_i]];
-            a2 = acgt_charToInt[(int)pars->majmin->a2[contig_i][site_i]];
-
-            if (pars->majmin->nContigs < contig_i + 1) {
-                ERROR("Could not find contig %s (index: %d) in majminFile.", bcf_seqname_safe(vcfd->hdr, vcfd->bcf), contig_i);
-            }
-            if (strcmp(pars->majmin->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf)) != 0) {
-                ERROR("Contig name mismatch: %s != %s", pars->majmin->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf));  // dragon
-            }
-
-        } else if (1 == args->isSim) {
-            // reference allele == 0 in d.allele
-            ASSERT(1 == strlen(vcfd->bcf->d.allele[0]));
-            a1 = acgt_charToInt[(int)*vcfd->bcf->d.allele[0]];
-            // first alternative allele == 1 in d.allele
-            ASSERT(1 == strlen(vcfd->bcf->d.allele[1]));
-            a2 = acgt_charToInt[(int)*vcfd->bcf->d.allele[1]];
-
-        } else {
-            NEVER;
-        }
-
-        ASSERT(-1 != a1);
-        ASSERT(-1 != a2);
-
-        // debug
-        ASSERT(a1 != a2);
+        site_read_allelic_states(contig_i, site_i, vcfd, pars, a1, a2);
 
         for (int indi = 0; indi < nInd; indi++) {
             const int lngls_ind_start = indi * vcfd->nGT;
@@ -370,9 +396,9 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
                 }
                 // TODO can this prev and latter check be checkin stuff twice?
 
-                vcfd->lngl[pars->nSites][lngls_ind_start + 0] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(a1, a1)]);
-                vcfd->lngl[pars->nSites][lngls_ind_start + 1] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(a1, a2)]);
-                vcfd->lngl[pars->nSites][lngls_ind_start + 2] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(a2, a2)]);
+                vcfd->lngl[pars->nSites][lngls_ind_start + 0] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a1, *a1)]);
+                vcfd->lngl[pars->nSites][lngls_ind_start + 1] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a1, *a2)]);
+                vcfd->lngl[pars->nSites][lngls_ind_start + 2] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a2, *a2)]);
             }
         }
     } else {
@@ -380,54 +406,21 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
         // TODO skip non-SNPs
     }
 
+    DEL(a1);
+    DEL(a2);
+
     return 0;
 }
 
 int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, const int block_i) {
     const int nInd = pars->nInd;
+    int *a1 = new int;
+    int *a2 = new int;
 
     if (1 == bcf_is_snp(vcfd->bcf)) {
-        int a1 = -1;
-        int a2 = -1;
+        site_read_allelic_states(contig_i, site_i, vcfd, pars, a1, a2);
 
-        if (NULL != pars->ancder) {
-            a1 = acgt_charToInt[(int)pars->ancder->a1[contig_i][site_i]];
-            a2 = acgt_charToInt[(int)pars->ancder->a2[contig_i][site_i]];
-
-            if (pars->ancder->nContigs < contig_i + 1) {
-                ERROR("Could not find contig %s (index: %d) in ancderFile.", pars->ancder->contigNames[contig_i], contig_i);
-            }
-            if (strcmp(pars->ancder->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf)) != 0) {
-                ERROR("Contig name mismatch: %s != %s", pars->ancder->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf));
-            }
-
-        } else if (NULL != pars->majmin) {
-            a1 = acgt_charToInt[(int)pars->majmin->a1[contig_i][site_i]];
-            a2 = acgt_charToInt[(int)pars->majmin->a2[contig_i][site_i]];
-
-            if (pars->majmin->nContigs < contig_i + 1) {
-                ERROR("Could not find contig %s (index: %d) in majminFile.", pars->majmin->contigNames[contig_i], contig_i);  // dragon
-            }
-            if (strcmp(pars->majmin->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf)) != 0) {
-                ERROR("Contig name mismatch: %s != %s", pars->majmin->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf));  // dragon
-            }
-
-        } else if (1 == args->isSim) {
-            // reference allele == 0 in d.allele
-            ASSERT(1 == strlen(vcfd->bcf->d.allele[0]));
-            a1 = acgt_charToInt[(int)*vcfd->bcf->d.allele[0]];
-            // first alternative allele == 1 in d.allele
-            ASSERT(1 == strlen(vcfd->bcf->d.allele[1]));
-            a2 = acgt_charToInt[(int)*vcfd->bcf->d.allele[1]];
-
-        } else {
-            NEVER;
-        }
-
-        ASSERT(-1 != a1);
-        ASSERT(-1 != a2);
-
-        vcfd->site_gts_get(a1, a2);
+        vcfd->site_gts_get(*a1, *a2);
 
         if (!vcfd->gts->pass_minInd_threshold(nInd)) {
             return 1;
@@ -458,9 +451,14 @@ int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, pa
             }
         }
     } else {
-        LOG("Skipping non-SNP position at site %d in contig %d", site_i, contig_i);
-        return 1;
+        ERROR("Only SNPs are supported at the moment");
+        // TODO skip non-SNPs
+        // LOG("Skipping non-SNP position at site %d in contig %d", site_i, contig_i);
+        // return 1;
     }
+
+    DEL(a1);
+    DEL(a2);
 
     return 0;
 }
@@ -695,6 +693,12 @@ void readSites_GL(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt) {
         }
 
         skip_site = site_read_GL(contig_i, site_i, vcfd, pars, pairSt);
+        if (NULL != pars->ancder) {
+            pars->ancder->nSkippedSites[contig_i] += skip_site;
+        }
+        if (NULL != pars->majmin) {
+            pars->majmin->nSkippedSites[contig_i] += skip_site;
+        }
 
         if (skip_site == 1) {
             fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);

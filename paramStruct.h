@@ -108,6 +108,10 @@ void paramStruct_destroy(paramStruct *p);
 
 void check_consistency_args_pars(argStruct *args, paramStruct *pars);
 
+// alleleStruct files:
+//     - 1-based
+//     - [start:included, end:included]
+// just like vcf
 struct alleleStruct {
     // \def nSites[nContigs]
     //      nSites[contig_i] == number of sites with a1 a2 data in contig_i
@@ -125,7 +129,17 @@ struct alleleStruct {
     //      a2 can be derived or minor allele
     char **a2 = NULL;
 
+    // \def contigNames[nContigs]
+    //      contigNames[contig_i] == name of contig_i
     char **contigNames = NULL;
+
+    // \def pos[nContigs][nSites[contig_i]]
+    //      pos[contig_i][site_j] == position of site_j in contig_i
+    int **pos = NULL;
+
+    // \def nSkippedSites[nContigs]
+    //      nSkippedSites[contig_i] == number of sites skipped for contig_i
+    int *nSkippedSites = NULL;
 
     alleleStruct();
     ~alleleStruct();
