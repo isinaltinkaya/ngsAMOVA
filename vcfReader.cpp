@@ -343,11 +343,6 @@ int site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd
         //     }
         // }
     }
-
-    if (alleles->nSites[contig_i] < site_i + 1) {
-        NEVER;
-    }
-
     // -> match positions
     // ------------------
 
@@ -360,6 +355,11 @@ int site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd
         // try finding the vcf_pos in alleleStruct by moving forward
         while (vcf_pos > alleleStruct_pos) {
             ++alleleStruct_site_i;
+            if (alleleStruct_site_i > alleles->nSites[contig_i]) {
+                // site in VCF could not be found in alleleStruct
+                return (1);
+            }
+
             alleleStruct_pos = alleles->pos[contig_i][alleleStruct_site_i];
             if (alleleStruct_pos == vcf_pos) {
                 break;
@@ -368,13 +368,16 @@ int site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd
                 // site in VCF could not be found in alleleStruct
                 return (1);
             }
-            // WARNING("Skipping site in allelesFile at index %d:%ld. Reason: site in allelesFile could not be found in the VCF file.", contig_i, vcfd->bcf->pos + 1);
-            WARNING("alleleStruct_pos: %d, vcf_pos: %d", alleleStruct_pos, vcf_pos);
+            WARNING("Skipping site in allelesFile at index %d:%ld. Reason: site in allelesFile could not be found in the VCF file.", contig_i, vcfd->bcf->pos + 1);
         }
     } else if (vcf_pos < alleleStruct_pos) {
         // try rewinding the alleleStruct to find the vcf_pos
         while (vcf_pos < alleleStruct_pos) {
             --alleleStruct_site_i;
+            if (-1 == alleleStruct_site_i) {
+                // site in VCF could not be found in alleleStruct
+                return (1);
+            }
             alleleStruct_pos = alleles->pos[contig_i][alleleStruct_site_i];
             if (alleleStruct_pos == vcf_pos) {
                 break;
@@ -383,7 +386,7 @@ int site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd
                 // site in VCF could not be found in alleleStruct
                 return (1);
             }
-            // WARNING("Skipping site in allelesFile at index %d:%ld. Reason: site in allelesFile could not be found in the VCF file.", contig_i, vcfd->bcf->pos + 1);
+            WARNING("Skipping site in allelesFile at index %d:%ld. Reason: site in allelesFile could not be found in the VCF file.", contig_i, vcfd->bcf->pos + 1);
         }
     }  // else OK
 
