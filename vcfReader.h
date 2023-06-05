@@ -285,13 +285,11 @@ struct get_data {
     }
 };
 
-void readSites_GL(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt);
-void readSites_GL(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct *blob);
-
-void readSites_GT(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt);
-void readSites_GT(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct *blob);
+void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct *blob);
+void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt);
 
 int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, pairStruct **pairs);
+int site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2);
 
 // return 1 if skipped
 // block_i  -1 if block bootstrapping is disabled

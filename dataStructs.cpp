@@ -35,7 +35,8 @@ distanceMatrixStruct *distanceMatrixStruct_get(paramStruct *pars, vcfData *vcfd,
 }
 
 void get_distanceMatrix_GL(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt) {
-    readSites_GL(vcfd, pars, pairSt);
+    // readSites(vcfd, pars, pairSt, NULL);
+    readSites(vcfd, pars, pairSt);
     if (1 == args->doEM) {
         spawnThreads_pairEM(pars, pairSt, vcfd, distanceMatrix);
         return;
@@ -58,7 +59,7 @@ void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatr
         vcfd->pair_shared_nSites[b] = (int *)calloc(nIndCmb, sizeof(int));
     }
 
-    readSites_GT(vcfd, pars, pairSt, blob);
+    readSites(vcfd, pars, pairSt, blob);
     for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
         for (int block_i = 0; block_i < blob->nBlocks; ++block_i) {
             for (int j = 0; j < vcfd->nJointClasses; ++j) {
@@ -119,7 +120,8 @@ void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatr
 }
 
 void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt) {
-    readSites_GT(vcfd, pars, pairSt);
+    // readSites(vcfd, pars, pairSt, NULL);
+    readSites(vcfd, pars, pairSt);
     for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
         int snSites = vcfd->JointGenoCountDistGT[pidx][vcfd->nJointClasses];
         if (snSites == 0) {

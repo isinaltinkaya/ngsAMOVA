@@ -11,12 +11,10 @@ alleleStruct::alleleStruct() {
     a1 = (char **)malloc(BUF_NCONTIGS * sizeof(char *));
     a2 = (char **)malloc(BUF_NCONTIGS * sizeof(char *));
     pos = (int **)malloc(BUF_NCONTIGS * sizeof(int *));
-    nSkippedSites = (int *)calloc(BUF_NCONTIGS, sizeof(int));
     for (int i = 0; i < BUF_NCONTIGS; ++i) {
         a1[i] = (char *)malloc(BUF_NSITES * sizeof(char));
         a2[i] = (char *)malloc(BUF_NSITES * sizeof(char));
         pos[i] = (int *)malloc(BUF_NSITES * sizeof(int));
-        nSkippedSites[i] = 0;
     }
 
     contigNames = (char **)malloc(1 * sizeof(char *));
@@ -33,8 +31,6 @@ alleleStruct::~alleleStruct() {
     FREE(a1);
     FREE(a2);
     FREE(pos);
-
-    FREE(nSkippedSites);
 
     FREE2D(contigNames, nContigs);
 }
@@ -138,6 +134,8 @@ alleleStruct *alleleStruct_read(const char *fn) {
     FREE(buf);
     FCLOSE(fp);
 
+    ASSERT(alleles->contigNames != NULL);
+
     return alleles;
 }
 
@@ -161,7 +159,7 @@ paramStruct *paramStruct_init(argStruct *args) {
     }
     if (NULL != args->in_majorminor_fn) {
         pars->majmin = alleleStruct_read(args->in_majorminor_fn);
-        ASSERT(pars->majmin->a1 != NULL);
+        ASSERT(pars->majmin != NULL);
     }
 
     pars->nSites = 0;

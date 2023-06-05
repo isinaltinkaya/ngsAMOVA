@@ -73,7 +73,7 @@ struct paramStruct {
     // number of sites non skipped for all individuals
     // nSites may not be !=totSites if minInd is set
     // or if a site is missing for all inds
-    size_t nSites;
+    size_t nSites;    // number of sites not-skipped for all individuals
     size_t totSites;  // total number of sites processed
 
     int nContigs;
@@ -136,10 +136,6 @@ struct alleleStruct {
     // \def pos[nContigs][nSites[contig_i]]
     //      pos[contig_i][site_j] == position of site_j in contig_i
     int **pos = NULL;
-
-    // \def nSkippedSites[nContigs]
-    //      nSkippedSites[contig_i] == number of sites skipped for contig_i
-    int *nSkippedSites = NULL;
 
     alleleStruct();
     ~alleleStruct();

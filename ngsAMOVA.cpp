@@ -36,9 +36,19 @@ void input_VCF(paramStruct *pars) {
     char **indNames = NULL;
 
     metadataStruct *metadata = NULL;
-    if (NULL != args->in_mtd_fn) {
-        metadata = metadataStruct_get(pars);
-        indNames = metadata->indNames;
+    // if analyses requiring metadata are requested
+    // TODO update the list of analyses requiring metadata
+    if (0 != args->doAMOVA || 0 != args->doDxy || 0 != args->doNJ) {
+        if (NULL != args->in_mtd_fn) {
+            if (NULL != args->formula) {
+                metadata = metadataStruct_get(pars);
+                indNames = metadata->indNames;
+            } else {
+                ERROR("Requested analyses requiring metadata but no formula was provided.");
+            }
+        } else {
+            ERROR("Requested analyses requiring metadata but no metadata file was provided.");
+        }
     }
 
     // ---- GET DISTANCE MATRIX ------------------------------------------------- //
@@ -100,7 +110,7 @@ void input_VCF(paramStruct *pars) {
         DEL(njSt);
     }
 
-    DEL(metadata);
+    IFDEL(metadata);
     DEL2D(pairSt, pars->nIndCmb);
     DEL(distanceMatrix);
 

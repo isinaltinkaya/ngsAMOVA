@@ -264,152 +264,249 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2) {
     return bcf_alleles2gt(acgt_charToInt[(int)a1], acgt_charToInt[(int)a2]);
 }
 
-// TODO if
+// @return
+// 0    if positions match and everything works fine
+// 1    if 'contig:site' in VCF cannot be found in alleles file
+// 2    if an a1 is not a single character
+// 3    if an a2 is not a single character
+//
+// site_i (index in vcf) is always <= alleleStruct_site_i (index in alleles file)
+// contig_i (index in vcf) is always <= alleleStruct_contigIdx (index in alleles file)
+int site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2) {
+    if (1 == args->isSim) {
+        // [simulation mode]
+        // in simulation mode, assume that:
+        //      - the first allele (REF, idx:0) is the ancestral allele
+        //      - the second allele (ALT, idx:1) is the derived allele in d.allele array
+        // where d.allele = {REF, ALT1, ALT2, ...}
 
-// TODO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-// if the site is skipped, it should be removed from ancder, too
-
-void site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2) {
-    if (NULL != pars->ancder) {
-        *a1 = acgt_charToInt[(int)pars->ancder->a1[contig_i][site_i]];
-        *a2 = acgt_charToInt[(int)pars->ancder->a2[contig_i][site_i]];
-
-        if (pars->ancder->nContigs < contig_i + 1) {
-            ERROR("Could not find contig %s (index: %d) in ancderFile.", bcf_seqname_safe(vcfd->hdr, vcfd->bcf), contig_i);
+        // a1=REF
+        if (1 != strlen(vcfd->bcf->d.allele[0])) {
+            return (2);
         }
 
-        if (strcmp(pars->ancder->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf)) != 0) {
-            ERROR("Contig name mismatch: %s != %s", pars->ancder->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf));
-        }
+        ///////////////////////////////////////////////
+        // TODO delme
+        //  vcfd->bcf->rlen
+        // if (1 != vcfd->bcf->rlen) {
+        //     WARNING("Skipping site at index %d:%ld. Reason: REF allele (%s) is not a single character.", contig_i, vcfd->bcf->pos + 1, vcfd->bcf->d.allele[0]);
+        //     return (2);
+        // }
+        ///////////////////////////////////////////////
 
-        if (pars->ancder->nSites[contig_i] < site_i + 1) {
-            ERROR("Could not find site %d in contig %s (index: %d) in ancderFile.", site_i, bcf_seqname_safe(vcfd->hdr, vcfd->bcf), contig_i);
-        }
-
-        if (pars->ancder->pos[contig_i][site_i + pars->ancder->nSkippedSites[contig_i]] != vcfd->bcf->pos + 1) {
-            ERROR("Position mismatch: %d != %ld", pars->ancder->pos[contig_i][site_i], vcfd->bcf->pos + 1);
-        }
-
-    } else if (NULL != pars->majmin) {
-        *a1 = acgt_charToInt[(int)pars->majmin->a1[contig_i][site_i]];
-        *a2 = acgt_charToInt[(int)pars->majmin->a2[contig_i][site_i]];
-
-        if (pars->majmin->nContigs < contig_i + 1) {
-            ERROR("Could not find contig %s (index: %d) in majminFile.", bcf_seqname_safe(vcfd->hdr, vcfd->bcf), contig_i);
-        }
-
-        if (strcmp(pars->majmin->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf)) != 0) {
-            ERROR("Contig name mismatch: %s != %s", pars->majmin->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf));  // dragon
-        }
-
-        if (pars->majmin->nSites[contig_i] < site_i + 1) {
-            ERROR("Could not find site %d in contig %s (index: %d) in majminFile.", site_i, bcf_seqname_safe(vcfd->hdr, vcfd->bcf), contig_i);
-        }
-
-        if (pars->majmin->pos[contig_i][site_i + pars->majmin->nSkippedSites[contig_i]] != vcfd->bcf->pos + 1) {
-            ERROR("Position mismatch: %d != %ld", pars->majmin->pos[contig_i][site_i], vcfd->bcf->pos + 1);
-        }
-
-    } else if (1 == args->isSim) {
-        // reference allele == 0 in d.allele
-        ASSERT(1 == strlen(vcfd->bcf->d.allele[0]));
         *a1 = acgt_charToInt[(int)*vcfd->bcf->d.allele[0]];
-        // first alternative allele == 1 in d.allele
-        ASSERT(1 == strlen(vcfd->bcf->d.allele[1]));
+
+        // a2=ALT1
+        if (1 != strlen(vcfd->bcf->d.allele[1])) {
+            return (3);
+        }
         *a2 = acgt_charToInt[(int)*vcfd->bcf->d.allele[1]];
 
+        ASSERT(-1 != *a1);
+        ASSERT(-1 != *a2);
+        // debug
+        ASSERT(*a1 != *a2);
+
+        return (0);
+    }
+
+    alleleStruct *alleles = NULL;
+
+    if (NULL != pars->ancder) {
+        alleles = pars->ancder;
+    } else if (NULL != pars->majmin) {
+        alleles = pars->majmin;
     } else {
         NEVER;
     }
+
+    // -> match contig names
+    // ---------------------
+    int alleleStruct_contig_i = contig_i;
+
+    if (alleleStruct_contig_i >= alleles->nContigs) {
+        // contig in VCF could not be found in alleleStruct
+        return (1);
+    }
+
+    if (0 != strcmp(bcf_seqname_safe(vcfd->hdr, vcfd->bcf), alleles->contigNames[contig_i])) {
+        ERROR("Could not find contig %s (index: %d) in allelesStruct.", bcf_seqname_safe(vcfd->hdr, vcfd->bcf), contig_i);
+        // TODO!!!
+        //  TODO change contig and rewind or forward alleles->pos[contig_i] to find the vcf_pos
+        ERROR("Contig name mismatch: %s != %s", alleles->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf));
+
+        // // try finding the vcf_contig in alleleStruct by moving forward
+        // while (0 != strcmp(bcf_seqname_safe(vcfd->hdr, vcfd->bcf), alleles->contigNames[alleleStruct_contig_i])) {
+        //     ++alleleStruct_contig_i;
+        //     if (0 == strcmp(bcf_seqname_safe(vcfd->hdr, vcfd->bcf), alleles->contigNames[alleleStruct_contig_i])) {
+        //         break;
+        //     }
+        // }
+    }
+
+    if (alleles->nSites[contig_i] < site_i + 1) {
+        NEVER;
+    }
+
+    // -> match positions
+    // ------------------
+
+    int alleleStruct_site_i = site_i;
+    int alleleStruct_pos = alleles->pos[contig_i][alleleStruct_site_i];
+    int vcf_pos = vcfd->bcf->pos + 1;
+
+    if (vcf_pos > alleleStruct_pos) {
+        // ignore/skip the sites in the alleleStruct that are not in the VCF
+        // try finding the vcf_pos in alleleStruct by moving forward
+        while (vcf_pos > alleleStruct_pos) {
+            ++alleleStruct_site_i;
+            alleleStruct_pos = alleles->pos[contig_i][alleleStruct_site_i];
+            if (alleleStruct_pos == vcf_pos) {
+                break;
+            }
+            if (vcf_pos < alleleStruct_pos) {
+                // site in VCF could not be found in alleleStruct
+                return (1);
+            }
+            // WARNING("Skipping site in allelesFile at index %d:%ld. Reason: site in allelesFile could not be found in the VCF file.", contig_i, vcfd->bcf->pos + 1);
+            WARNING("alleleStruct_pos: %d, vcf_pos: %d", alleleStruct_pos, vcf_pos);
+        }
+    } else if (vcf_pos < alleleStruct_pos) {
+        // try rewinding the alleleStruct to find the vcf_pos
+        while (vcf_pos < alleleStruct_pos) {
+            --alleleStruct_site_i;
+            alleleStruct_pos = alleles->pos[contig_i][alleleStruct_site_i];
+            if (alleleStruct_pos == vcf_pos) {
+                break;
+            }
+            if (vcf_pos > alleleStruct_pos) {
+                // site in VCF could not be found in alleleStruct
+                return (1);
+            }
+            // WARNING("Skipping site in allelesFile at index %d:%ld. Reason: site in allelesFile could not be found in the VCF file.", contig_i, vcfd->bcf->pos + 1);
+        }
+    }  // else OK
+
+    *a1 = acgt_charToInt[(int)alleles->a1[contig_i][site_i]];
+    *a2 = acgt_charToInt[(int)alleles->a2[contig_i][site_i]];
+
     ASSERT(-1 != *a1);
     ASSERT(-1 != *a2);
     // debug
     ASSERT(*a1 != *a2);
+
+    return (0);
 }
 
 // return 1: skip site for all individuals
 int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, pairStruct **pairs) {
+    if (1 != bcf_is_snp(vcfd->bcf)) {
+        // TODO skip non-SNPs instead?
+        ERROR("Only SNPs are supported at the moment");
+    }
+
+    int skip_site = 0;
     const int nInd = pars->nInd;
 
     glData lgls(vcfd);
+
+    int *a1 = new int;
+    int *a2 = new int;
 
     int cmbArr[pars->nIndCmb];
     for (int i = 0; i < pars->nIndCmb; i++) {
         cmbArr[i] = 0;
     }
 
-    int *a1 = new int;
-    int *a2 = new int;
+    do {
+        int ret = site_read_allelic_states(contig_i, site_i, vcfd, pars, a1, a2);
 
-    if (1 == bcf_is_snp(vcfd->bcf)) {
-        site_read_allelic_states(contig_i, site_i, vcfd, pars, a1, a2);
+        if (0 == ret) {
+            skip_site = 0;
+        } else if (1 == ret) {
+            // 1    if 'contig:site' in VCF cannot be found in alleles file
+            WARNING("Skipping site at index %d:%ld. Reason: site in VCF could not be found in alleleStruct.", contig_i, vcfd->bcf->pos + 1);
+            skip_site = 1;
+            break;
+        } else if (2 == ret) {
+            // 2    if an a1 is not a single character
+            WARNING("Skipping site at index %d:%ld. Reason: REF allele (%s) is not a single character.", contig_i, vcfd->bcf->pos + 1, vcfd->bcf->d.allele[0]);
+            skip_site = 1;
+            break;
+        } else if (3 == ret) {
+            // 3    if an a2 is not a single character
+            WARNING("Skipping site at index %d:%ld. Reason: ALT allele (%s) is not a single character.", contig_i, vcfd->bcf->pos + 1, vcfd->bcf->d.allele[1]);
+            skip_site = 1;
+            break;
+        } else {
+            NEVER;
+        }
 
         for (int indi = 0; indi < nInd; indi++) {
-            const int lngls_ind_start = indi * vcfd->nGT;
-
             if (1 == lgls.ind_data_isMissing(indi)) {
                 // if only use sites shared across all individuals (minInd 0); skip site when you first encounter nan
                 if (args->minInd == 0) {
-                    return 1;
-                } else {
-                    // if there are only 2 individuals any missing will skip the site
-                    if (nInd == 2) {
-                        return 1;
-                    }
-
-                    lgls.n_missing_ind++;
-
-                    if (nInd == lgls.n_missing_ind) {
-                        return 1;
-                    }
-
-                    if (args->minInd != 2) {
-                        // skip site if minInd is defined and #non-missing inds=<nInd
-                        if ((nInd - lgls.n_missing_ind) < args->minInd) {
-                            // fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,pars->nInd-n_missing_ind,site);
-                            return 1;
-                        }
-                    }
+                    skip_site = 1;
+                    break;
                 }
-            } else {
-                int pidx = -1;
-                // if not first individual, check previous individuals pairing with current ind
-                if (indi != 0) {
-                    for (int indi2 = indi - 1; indi2 > -1; indi2--) {
-                        // both inds has data
-                        pidx = nCk_idx(nInd, indi, indi2);
-
-                        if (cmbArr[pidx]) {
-                            // append site to sharedSites shared sites list
-                            pairs[pidx]->sharedSites_add(pars->nSites);
-                        }
-                    }
+                // if there are only 2 individuals any missing will skip the site
+                if (nInd == 2) {
+                    skip_site = 1;
+                    break;
                 }
 
-                // if not last individual, check latter individuals pairing with current ind
-                if (indi != nInd - 1) {
-                    for (int indi2 = indi + 1; indi2 < nInd; indi2++) {
-                        pidx = nCk_idx(nInd, indi, indi2);
-                        cmbArr[pidx]++;
+                lgls.n_missing_ind++;
+
+                if (nInd == lgls.n_missing_ind) {
+                    skip_site = 1;
+                    break;
+                }
+
+                // skip site if minInd is defined and #non-missing inds=<nInd
+                if (args->minInd != 2) {
+                    if ((nInd - lgls.n_missing_ind) < args->minInd) {
+                        // fprintf(stderr,"\n\nMinimum number of individuals -minInd is set to %d, but nInd-n_missing_ind==n_nonmissing_ind is %d at site %d\n\n",args->minInd,pars->nInd-n_missing_ind,site);
+                        skip_site = 1;
+                        break;
                     }
                 }
-                // TODO can this prev and latter check be checkin stuff twice?
-
-                vcfd->lngl[pars->nSites][lngls_ind_start + 0] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a1, *a1)]);
-                vcfd->lngl[pars->nSites][lngls_ind_start + 1] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a1, *a2)]);
-                vcfd->lngl[pars->nSites][lngls_ind_start + 2] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a2, *a2)]);
+                continue;
             }
+
+            int pidx = -1;
+            // if not first individual, check previous individuals pairing with current ind
+            if (indi != 0) {
+                for (int indi2 = indi - 1; indi2 > -1; indi2--) {
+                    // both inds has data
+                    pidx = nCk_idx(nInd, indi, indi2);
+
+                    if (cmbArr[pidx]) {
+                        // append site to sharedSites shared sites list
+                        pairs[pidx]->sharedSites_add(pars->nSites);
+                    }
+                }
+            }
+
+            // if not last individual, check latter individuals pairing with current ind
+            if (indi != nInd - 1) {
+                for (int indi2 = indi + 1; indi2 < nInd; indi2++) {
+                    pidx = nCk_idx(nInd, indi, indi2);
+                    cmbArr[pidx]++;
+                }
+            }
+            // TODO can this prev and latter check be checkin stuff twice?
+
+            const int lngls_ind_start = indi * vcfd->nGT;
+            vcfd->lngl[pars->nSites][lngls_ind_start + 0] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a1, *a1)]);
+            vcfd->lngl[pars->nSites][lngls_ind_start + 1] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a1, *a2)]);
+            vcfd->lngl[pars->nSites][lngls_ind_start + 2] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a2, *a2)]);
         }
-    } else {
-        ERROR("Only SNPs are supported at the moment");
-        // TODO skip non-SNPs
-    }
+    } while (0);
 
     DEL(a1);
     DEL(a2);
 
-    return 0;
+    return (skip_site);
 }
 
 int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, const int block_i) {
@@ -601,152 +698,72 @@ void vcfData_destroy(vcfData *v) {
         DEL(v->gls);
     }
 
-    DEL(v);
+    delete v;
 }
 
-void readSites_GL(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct *blob) {
-    NEVER;
-    // int skip_site = 0;
-    // int contig_i = 0;
-    // int site_i = 0;
-    // char prev_contig[100];
-
-    // while (vcfd->records_next()) {
-    //     while (pars->nSites >= vcfd->_lngl) {
-    //         vcfd->lngl_expand();
-    //     }
-
-    //     // if cleared in the previous loop to skip the site, allocate memory again
-    //     if (NULL == vcfd->lngl[pars->nSites]) {
-    //         vcfd->lngl[pars->nSites] = (double *)malloc(pars->nInd * vcfd->nGT * sizeof(double));
-    //         for (int indi = 0; indi < pars->nInd; indi++) {
-    //             const int lngls_ind_start = indi * vcfd->nGT;
-    //             for (int j = 0; j < vcfd->nGT; j++) {
-    //                 vcfd->lngl[pars->nSites][lngls_ind_start + j] = NEG_INF;
-    //             }
-    //         }
-    //     }
-
-    //     const char *contig_id = bcf_seqname(vcfd->hdr, vcfd->bcf);
-    //     if (0 != contig_i && 0 != strcmp(contig_id, prev_contig)) {
-    //         strcpy(prev_contig, contig_id);
-    //         ++contig_i;
-    //         if (contig_i >= vcfd->nContigs) {
-    //             ERROR("Number of contigs in the VCF file header is larger than the number of contigs in the VCF file");
-    //         }
-    //         site_i = 0;
-    //     }
-
-    //     skip_site = site_read_GL(contig_i, site_i, vcfd, pars, pairSt);
-
-    //     if (skip_site == 1) {
-    //         fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
-    //         pars->totSites++;
-
-    //         //  next loop will skip this and use the same pars->nSites
-    //         FREE(vcfd->lngl[pars->nSites]);
-    //         continue;
-    //     }
-
-    //     // check if contig changed
-    //     pars->nSites++;
-    //     ++site_i;
-    //     pars->totSites++;
-    // }
-
-    // vcfd->nSites = pars->nSites;
-    // vcfd->totSites = pars->totSites;
-
-    // fprintf(stderr, "\n\t-> Finished reading sites\n");
-}
-
-void readSites_GL(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt) {
+void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt) {
     int skip_site = 0;
     int contig_i = -1;
     int site_i = 0;
-    char prev_contig[100];
+
+    int tmp_len_contigName = 100;
+    char prev_contig[tmp_len_contigName];
 
     while (vcfd->records_next()) {
-        while (pars->nSites >= vcfd->_lngl) {
-            vcfd->lngl_expand();
-        }
+        // TODO dragon
+        if (vcfd->lngl != NULL) {
+            while (pars->nSites >= vcfd->_lngl) {
+                vcfd->lngl_expand();
+            }
 
-        // if cleared in the previous loop to skip the site, allocate memory again
-        if (NULL == vcfd->lngl[pars->nSites]) {
-            vcfd->lngl[pars->nSites] = (double *)malloc(pars->nInd * vcfd->nGT * sizeof(double));
-            for (int indi = 0; indi < pars->nInd; indi++) {
-                const int lngls_ind_start = indi * vcfd->nGT;
-                for (int j = 0; j < vcfd->nGT; j++) {
-                    vcfd->lngl[pars->nSites][lngls_ind_start + j] = NEG_INF;
+            // if cleared in the previous loop to skip the site, allocate memory again
+            if (NULL == vcfd->lngl[pars->nSites]) {
+                vcfd->lngl[pars->nSites] = (double *)malloc(pars->nInd * vcfd->nGT * sizeof(double));
+                for (int indi = 0; indi < pars->nInd; indi++) {
+                    const int lngls_ind_start = indi * vcfd->nGT;
+                    for (int j = 0; j < vcfd->nGT; j++) {
+                        vcfd->lngl[pars->nSites][lngls_ind_start + j] = NEG_INF;
+                    }
                 }
             }
         }
 
-        const char *contig_id = bcf_seqname(vcfd->hdr, vcfd->bcf);
-        if (0 != strcmp(contig_id, prev_contig)) {
-            strcpy(prev_contig, contig_id);
+        ASSERT((size_t)tmp_len_contigName > strlen(bcf_seqname(vcfd->hdr, vcfd->bcf)));
+
+        if (-1 == contig_i) {
             ++contig_i;
-            if (contig_i >= vcfd->nContigs) {
-                ERROR("Number of contigs in the VCF file header is larger than the number of contigs in the VCF file");
-            }
+            strncpy(prev_contig, bcf_seqname(vcfd->hdr, vcfd->bcf), sizeof(prev_contig));
+            prev_contig[sizeof(prev_contig) - 1] = '\0';
             site_i = 0;
         }
 
-        skip_site = site_read_GL(contig_i, site_i, vcfd, pars, pairSt);
-        if (NULL != pars->ancder) {
-            pars->ancder->nSkippedSites[contig_i] += skip_site;
+        if (0 != strcmp(bcf_seqname(vcfd->hdr, vcfd->bcf), prev_contig)) {
+            if (contig_i >= vcfd->nContigs) {
+                ERROR("Number of contigs in the VCF file header is larger than the number of contigs in the VCF file");
+            }
+
+            ++contig_i;
+            strncpy(prev_contig, bcf_seqname(vcfd->hdr, vcfd->bcf), sizeof(prev_contig));
+            prev_contig[sizeof(prev_contig) - 1] = '\0';
+            site_i = 0;
         }
-        if (NULL != pars->majmin) {
-            pars->majmin->nSkippedSites[contig_i] += skip_site;
+
+        if (vcfd->lngl != NULL) {
+            skip_site = site_read_GL(contig_i, site_i, vcfd, pars, pairSt);
+        } else {
+            // TODOdragon
+            skip_site = get_JointGenoDist_GT(contig_i, site_i, vcfd, pars, -1);
         }
 
         if (skip_site == 1) {
             fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
             pars->totSites++;
+            site_i++;
 
             //  next loop will skip this and use the same pars->nSites
-            FREE(vcfd->lngl[pars->nSites]);
-            continue;
-        }
-
-        // check if contig changed
-        pars->nSites++;
-        ++site_i;
-        pars->totSites++;
-    }
-
-    vcfd->nSites = pars->nSites;
-    vcfd->totSites = pars->totSites;
-
-    fprintf(stderr, "\n\t-> Finished reading sites\n");
-}
-
-void readSites_GT(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt) {
-    int skip_site = 0;
-    /*
-     * [START] Reading sites
-     *
-     * nSites=0; totSites=0
-     *
-     * if minInd is set
-     * 		nSites==where minInd threshold can be passed
-     * 		totSites==all sites processed
-     *
-     */
-
-    ASSERT(0 == pars->nSites);
-    ASSERT(0 == pars->nContigs);
-
-    int contig_i = 0;
-    int site_i = 0;
-
-    while (vcfd->records_next()) {
-        skip_site = get_JointGenoDist_GT(contig_i, site_i, vcfd, pars, -1);
-
-        if (skip_site == 1) {
-            fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
-            pars->totSites++;
-
+            if (vcfd->lngl != NULL) {
+                FREE(vcfd->lngl[pars->nSites]);
+            }
             continue;
         }
 
@@ -761,59 +778,122 @@ void readSites_GT(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt) {
 	fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",pars->nSites);
 	fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu) totSites:%d\n\n",pars->nSites,vcfd->bcf->pos,vcfd->bcf->pos+1,pars->totSites);
 #endif
-
     fprintf(stderr, "\n\t-> Finished reading sites\n");
 }
 
-void readSites_GT(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct *blob) {
-    const int nBlocks = blob->bootstraps->nBlocks;
-
-    int contig_i = 0;
-    int site_i = 0;
+void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct *blob) {
     int skip_site = 0;
+    int contig_i = -1;
+    int site_i = 0;
+
+    int tmp_len_contigName = 100;
+    char prev_contig[tmp_len_contigName];
+
+    int nBlocks = 0;
+    if (NULL != blob) {
+        nBlocks = blob->bootstraps->nBlocks;
+
+    } else {
+        // if block reading is disabled, read everything in one block
+        nBlocks = 1;
+    }
 
     // read vcf records block by block
     // assume blocks are sorted in the same order as the vcf file
     for (int block_i = 0; block_i < nBlocks; block_i++) {
-        int block_start = blob->blocks[block_i]->start;
-        int block_end = blob->blocks[block_i]->end;
-
+        int block_start = 0;
+        int block_end = 0;
         int nSites_block_i = 0;
+
+        if (NULL != blob) {
+            block_start = blob->blocks[block_i]->start;
+            block_end = blob->blocks[block_i]->end;
+            nSites_block_i = 0;
+        }
 
         // read vcf records until the end of the block (or the end of the vcf file)
         // int ret = vcfd->records_next();
         while (1 == (vcfd->records_next())) {
-            // if site is in block_i
-            if (0 == strcmp(blob->blocks[block_i]->chr, bcf_seqname(vcfd->hdr, vcfd->bcf)) && block_start <= vcfd->bcf->pos && block_end > vcfd->bcf->pos) {
-                nSites_block_i++;
-
-            } else {
-                // dragon
-                //  if site is not in the block and the block is empty
-                if (nSites_block_i == 0) {
-                    ERROR("Block %d is empty", block_i);
-                }
-
-                // block change
-                block_i++;
-                block_start = blob->blocks[block_i]->start;
-                block_end = blob->blocks[block_i]->end;
-                nSites_block_i = 0;
-
+            if (NULL != blob) {
+                // if site is in block_i
                 if (0 == strcmp(blob->blocks[block_i]->chr, bcf_seqname(vcfd->hdr, vcfd->bcf)) && block_start <= vcfd->bcf->pos && block_end > vcfd->bcf->pos) {
                     nSites_block_i++;
+
                 } else {
-                    // skip the site
-                    continue;
+                    // dragon
+                    //  if site is not in the block and the block is empty
+                    if (nSites_block_i == 0) {
+                        ERROR("Block %d is empty", block_i);
+                    }
+
+                    // block change
+                    block_i++;
+                    block_start = blob->blocks[block_i]->start;
+                    block_end = blob->blocks[block_i]->end;
+                    nSites_block_i = 0;
+
+                    if (0 == strcmp(blob->blocks[block_i]->chr, bcf_seqname(vcfd->hdr, vcfd->bcf)) && block_start <= vcfd->bcf->pos && block_end > vcfd->bcf->pos) {
+                        nSites_block_i++;
+                    } else {
+                        // skip the site
+                        continue;
+                    }
                 }
             }
 
-            skip_site = get_JointGenoDist_GT(contig_i, site_i, vcfd, pars, block_i);
+            if (vcfd->lngl != NULL) {
+                while (pars->nSites >= vcfd->_lngl) {
+                    vcfd->lngl_expand();
+                }
+
+                // if cleared in the previous loop to skip the site, allocate memory again
+                if (NULL == vcfd->lngl[pars->nSites]) {
+                    vcfd->lngl[pars->nSites] = (double *)malloc(pars->nInd * vcfd->nGT * sizeof(double));
+                    for (int indi = 0; indi < pars->nInd; indi++) {
+                        const int lngls_ind_start = indi * vcfd->nGT;
+                        for (int j = 0; j < vcfd->nGT; j++) {
+                            vcfd->lngl[pars->nSites][lngls_ind_start + j] = NEG_INF;
+                        }
+                    }
+                }
+            }
+
+            ASSERT((size_t)tmp_len_contigName > strlen(bcf_seqname(vcfd->hdr, vcfd->bcf)));
+
+            if (-1 == contig_i) {
+                ++contig_i;
+                strncpy(prev_contig, bcf_seqname(vcfd->hdr, vcfd->bcf), sizeof(prev_contig));
+                prev_contig[sizeof(prev_contig) - 1] = '\0';
+                site_i = 0;
+            }
+
+            if (0 != strcmp(bcf_seqname(vcfd->hdr, vcfd->bcf), prev_contig)) {
+                if (contig_i >= vcfd->nContigs) {
+                    ERROR("Number of contigs in the VCF file header is larger than the number of contigs in the VCF file");
+                }
+
+                ++contig_i;
+                strncpy(prev_contig, bcf_seqname(vcfd->hdr, vcfd->bcf), sizeof(prev_contig));
+                prev_contig[sizeof(prev_contig) - 1] = '\0';
+                site_i = 0;
+            }
+
+            if (vcfd->lngl != NULL) {
+                skip_site = site_read_GL(contig_i, site_i, vcfd, pars, pairSt);
+            } else {
+                // TODOdragon
+                skip_site = get_JointGenoDist_GT(contig_i, site_i, vcfd, pars, -1);
+            }
 
             if (skip_site == 1) {
                 fprintf(stderr, "\n->\tSkipping site %lu for all individuals\n\n", pars->totSites);
                 pars->totSites++;
+                site_i++;
 
+                //  next loop will skip this and use the same pars->nSites
+                if (vcfd->lngl != NULL) {
+                    FREE(vcfd->lngl[pars->nSites]);
+                }
                 continue;
             }
 
@@ -822,6 +902,13 @@ void readSites_GT(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStr
             pars->totSites++;
         }
     }
+    vcfd->nSites = pars->nSites;
+    vcfd->totSites = pars->totSites;
+#if 0
+	fprintf(stderr,"\n\n\t-> Printing at site %d\n\n",pars->nSites);
+	fprintf(stderr,"\nPrinting at (idx: %lu, pos: %lu 1based %lu) totSites:%d\n\n",pars->nSites,vcfd->bcf->pos,vcfd->bcf->pos+1,pars->totSites);
+#endif
+    fprintf(stderr, "\n\t-> Finished reading sites\n");
 }
 
 // dragon
