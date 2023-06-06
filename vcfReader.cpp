@@ -348,50 +348,48 @@ int site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd
 
     int alleleStruct_site_i = site_i;
     int alleleStruct_pos = alleles->pos[contig_i][alleleStruct_site_i];
-    int vcf_pos = vcfd->bcf->pos + 1;
+    const int vcf_pos = vcfd->bcf->pos + 1;
 
-    if (vcf_pos > alleleStruct_pos) {
-        // ignore/skip the sites in the alleleStruct that are not in the VCF
-        // try finding the vcf_pos in alleleStruct by moving forward
-        while (vcf_pos > alleleStruct_pos) {
-            ++alleleStruct_site_i;
-            if (alleleStruct_site_i > alleles->nSites[contig_i]) {
-                // site in VCF could not be found in alleleStruct
-                return (1);
-            }
+    // ignore/skip the sites in the alleleStruct that are not in the VCF
+    // try finding the vcf_pos in alleleStruct by moving forward
+    while (vcf_pos > alleleStruct_pos) {
+        ++alleleStruct_site_i;
 
-            alleleStruct_pos = alleles->pos[contig_i][alleleStruct_site_i];
-            if (alleleStruct_pos == vcf_pos) {
-                break;
-            }
-            if (vcf_pos < alleleStruct_pos) {
-                // site in VCF could not be found in alleleStruct
-                return (1);
-            }
-            WARNING("Skipping site in allelesFile at index %d:%ld. Reason: site in allelesFile could not be found in the VCF file.", contig_i, vcfd->bcf->pos + 1);
+        alleleStruct_pos = alleles->pos[contig_i][alleleStruct_site_i];
+        if (alleleStruct_pos == vcf_pos) {
+            break;
         }
-    } else if (vcf_pos < alleleStruct_pos) {
-        // try rewinding the alleleStruct to find the vcf_pos
-        while (vcf_pos < alleleStruct_pos) {
-            --alleleStruct_site_i;
-            if (-1 == alleleStruct_site_i) {
-                // site in VCF could not be found in alleleStruct
-                return (1);
-            }
-            alleleStruct_pos = alleles->pos[contig_i][alleleStruct_site_i];
-            if (alleleStruct_pos == vcf_pos) {
-                break;
-            }
-            if (vcf_pos > alleleStruct_pos) {
-                // site in VCF could not be found in alleleStruct
-                return (1);
-            }
+        if (vcf_pos < alleleStruct_pos) {
+            // site in VCF could not be found in alleleStruct
             WARNING("Skipping site in allelesFile at index %d:%ld. Reason: site in allelesFile could not be found in the VCF file.", contig_i, vcfd->bcf->pos + 1);
+            return (1);
         }
-    }  // else OK
+    }
 
-    *a1 = acgt_charToInt[(int)alleles->a1[contig_i][site_i]];
-    *a2 = acgt_charToInt[(int)alleles->a2[contig_i][site_i]];
+    // while not run if already found the match
+    // try rewinding the alleleStruct to find the vcf_pos
+    while (vcf_pos < alleleStruct_pos) {
+        --alleleStruct_site_i;
+
+        if (-1 == alleleStruct_site_i) {
+            // site in VCF could not be found in alleleStruct
+            WARNING("Skipping site in allelesFile at index %d:%ld. Reason: site in allelesFile could not be found in the VCF file.", contig_i, vcfd->bcf->pos + 1);
+            return (1);
+        }
+
+        alleleStruct_pos = alleles->pos[contig_i][alleleStruct_site_i];
+        if (alleleStruct_pos == vcf_pos) {
+            break;
+        }
+        if (vcf_pos > alleleStruct_pos) {
+            // site in VCF could not be found in alleleStruct
+            WARNING("Skipping site in allelesFile at index %d:%ld. Reason: site in allelesFile could not be found in the VCF file.", contig_i, vcfd->bcf->pos + 1);
+            return (1);
+        }
+    }
+
+    *a1 = acgt_charToInt[(int)alleles->a1[contig_i][alleleStruct_site_i]];
+    *a2 = acgt_charToInt[(int)alleles->a2[contig_i][alleleStruct_site_i]];
 
     ASSERT(-1 != *a1);
     ASSERT(-1 != *a2);
@@ -404,8 +402,8 @@ int site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd
 // return 1: skip site for all individuals
 int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, pairStruct **pairs) {
     if (1 != bcf_is_snp(vcfd->bcf)) {
-        // TODO skip non-SNPs instead?
-        ERROR("Only SNPs are supported at the moment");
+        LOG("Skipping non-SNP position at site %d in contig %d", site_i, contig_i);
+        return (1);
     }
 
     int skip_site = 0;
@@ -497,7 +495,6 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
                     cmbArr[pidx]++;
                 }
             }
-            // TODO can this prev and latter check be checkin stuff twice?
 
             const int lngls_ind_start = indi * vcfd->nGT;
             vcfd->lngl[pars->nSites][lngls_ind_start + 0] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a1, *a1)]);
@@ -513,17 +510,24 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
 }
 
 int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, const int block_i) {
+    if (1 != bcf_is_snp(vcfd->bcf)) {
+        LOG("Skipping non-SNP position at site %d in contig %d", site_i, contig_i);
+        return (1);
+    }
+
     const int nInd = pars->nInd;
     int *a1 = new int;
     int *a2 = new int;
+    int skip_site = 0;
 
-    if (1 == bcf_is_snp(vcfd->bcf)) {
-        site_read_allelic_states(contig_i, site_i, vcfd, pars, a1, a2);
+    site_read_allelic_states(contig_i, site_i, vcfd, pars, a1, a2);
 
-        vcfd->site_gts_get(*a1, *a2);
+    vcfd->site_gts_get(*a1, *a2);
 
+    do {
         if (!vcfd->gts->pass_minInd_threshold(nInd)) {
-            return 1;
+            skip_site = 1;
+            break;
         }
 
         for (int i1 = 0; i1 < nInd; ++i1) {
@@ -550,17 +554,12 @@ int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, pa
                 }
             }
         }
-    } else {
-        ERROR("Only SNPs are supported at the moment");
-        // TODO skip non-SNPs
-        // LOG("Skipping non-SNP position at site %d in contig %d", site_i, contig_i);
-        // return 1;
-    }
+
+    } while (0);
 
     DEL(a1);
     DEL(a2);
-
-    return 0;
+    return (skip_site);
 }
 
 void vcfData::set_n_joint_categories(paramStruct *pars) {

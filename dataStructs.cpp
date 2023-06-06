@@ -3,40 +3,28 @@
 distanceMatrixStruct *distanceMatrixStruct_get(paramStruct *pars, vcfData *vcfd, pairStruct **pairSt, char **indNames, blobStruct *blob) {
     distanceMatrixStruct *dm = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, indNames);
 
-    if (NULL == blob) {  // no block bootstrapping
-        if (args->doDist == 1) {
-            // -> use genotype likelihoods
-            get_distanceMatrix_GL(pars, dm, vcfd, pairSt);
-        } else if (args->doDist == 2) {
-            // -> use genotypes
-            get_distanceMatrix_GT(pars, dm, vcfd, pairSt);
-        } else {
-            NEVER;
-        }
-
-    } else {  // do block bootstrapping
+    if (NULL != blob) {
         for (int rep = 0; rep < blob->bootstraps->nReplicates; ++rep) {
             blob->bootstraps->replicates[rep]->distanceMatrix = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, indNames);
         }
-        if (args->doDist == 1) {
-            // -> use genotype likelihoods
-            // get_distanceMatrix_GL( pars, dm, vcfd, pairSt, blob);
-        } else if (args->doDist == 2) {
-            ASSERT(blob != NULL);
-            // -> use genotypes
-            get_distanceMatrix_GT(pars, dm, vcfd, pairSt, blob);
-        } else {
-            NEVER;
-        }
+    }
+
+    if (args->doDist == 1) {
+        // -> use genotype likelihoods
+        get_distanceMatrix_GL(pars, dm, vcfd, pairSt, NULL);
+    } else if (args->doDist == 2) {
+        // -> use genotypes
+        get_distanceMatrix_GT(pars, dm, vcfd, pairSt, NULL);
+    } else {
+        NEVER;
     }
 
     dm->print();
     return (dm);
 }
 
-void get_distanceMatrix_GL(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt) {
-    // readSites(vcfd, pars, pairSt, NULL);
-    readSites(vcfd, pars, pairSt);
+void get_distanceMatrix_GL(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt, blobStruct *blob) {
+    readSites(vcfd, pars, pairSt, blob);
     if (1 == args->doEM) {
         spawnThreads_pairEM(pars, pairSt, vcfd, distanceMatrix);
         return;
@@ -45,98 +33,96 @@ void get_distanceMatrix_GL(paramStruct *pars, distanceMatrixStruct *distanceMatr
 }
 
 void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt, blobStruct *blob) {
-    const int nBlocks = blob->bootstraps->nBlocks;
-    const int nIndCmb = pars->nIndCmb;
-    ASSERT(vcfd->nJointClasses > 0);
-    ASSERT(nBlocks > 0);
-    vcfd->jgcd_gt = (int ***)malloc(sizeof(int **) * nBlocks);
-    vcfd->pair_shared_nSites = (int **)malloc(sizeof(int *) * nBlocks);
-    for (int b = 0; b < nBlocks; b++) {
-        vcfd->jgcd_gt[b] = (int **)malloc(nIndCmb * sizeof(int *));
-        for (int i = 0; i < nIndCmb; i++) {
-            vcfd->jgcd_gt[b][i] = (int *)calloc(vcfd->nJointClasses, sizeof(int));
-        }
-        vcfd->pair_shared_nSites[b] = (int *)calloc(nIndCmb, sizeof(int));
-    }
-
-    readSites(vcfd, pars, pairSt, blob);
-    for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
-        for (int block_i = 0; block_i < blob->nBlocks; ++block_i) {
-            for (int j = 0; j < vcfd->nJointClasses; ++j) {
-                vcfd->JointGenoCountDistGT[pidx][j] += vcfd->jgcd_gt[block_i][pidx][j];
-            }
-            vcfd->JointGenoCountDistGT[pidx][vcfd->nJointClasses] = vcfd->pair_shared_nSites[block_i][pidx];
-        }
-        int snSites = vcfd->JointGenoCountDistGT[pidx][vcfd->nJointClasses];
-        if (snSites == 0) {
-            ERROR("No shared sites found for pair %d (snSites=%d). This is currently not allowed.\n", pidx, snSites);
-        }
-        if (args->squareDistance == 1) {
-            distanceMatrix->M[pidx] = (double)SQUARE(MATH::Dij(vcfd->JointGenoCountDistGT[pidx], snSites));
-        } else {
-            distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->JointGenoCountDistGT[pidx], snSites);
-        }
-    }
-
-    for (int rep = 0; rep < blob->bootstraps->nReplicates; ++rep) {
-        int r_JointGenoCountDistGT[pars->nIndCmb][vcfd->nJointClasses + 1];
-
+    if (NULL == blob) {
+        readSites(vcfd, pars, pairSt, blob);
         for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
-            for (int i = 0; i < vcfd->nJointClasses + 1; i++) {
-                r_JointGenoCountDistGT[pidx][i] = 0;
+            int snSites = vcfd->JointGenoCountDistGT[pidx][vcfd->nJointClasses];
+            if (snSites == 0) {
+                fprintf(stderr, "\n[ERROR]\t-> No shared sites found for pair %d (snSites=%d). This is currently not allowed.\n", pidx, snSites);
+                exit(1);
             }
+            if (args->squareDistance == 1) {
+                distanceMatrix->M[pidx] = (double)SQUARE(MATH::Dij(vcfd->JointGenoCountDistGT[pidx], snSites));
+            } else {
+                distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->JointGenoCountDistGT[pidx], snSites);
+            }
+        }
 
-            for (int r_block = 0; r_block < blob->nBlocks; ++r_block) {
-                int chosen_block = blob->bootstraps->replicates[rep]->rBlocks[r_block];
+    } else {
+        const int nBlocks = blob->bootstraps->nBlocks;
+        const int nIndCmb = pars->nIndCmb;
+        ASSERT(vcfd->nJointClasses > 0);
+        ASSERT(nBlocks > 0);
+        vcfd->jgcd_gt = (int ***)malloc(sizeof(int **) * nBlocks);
+        vcfd->pair_shared_nSites = (int **)malloc(sizeof(int *) * nBlocks);
+        for (int b = 0; b < nBlocks; b++) {
+            vcfd->jgcd_gt[b] = (int **)malloc(nIndCmb * sizeof(int *));
+            for (int i = 0; i < nIndCmb; i++) {
+                vcfd->jgcd_gt[b][i] = (int *)calloc(vcfd->nJointClasses, sizeof(int));
+            }
+            vcfd->pair_shared_nSites[b] = (int *)calloc(nIndCmb, sizeof(int));
+        }
 
+        readSites(vcfd, pars, pairSt, blob);
+        for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
+            for (int block_i = 0; block_i < blob->nBlocks; ++block_i) {
                 for (int j = 0; j < vcfd->nJointClasses; ++j) {
-                    r_JointGenoCountDistGT[pidx][j] += vcfd->jgcd_gt[chosen_block][pidx][j];
+                    vcfd->JointGenoCountDistGT[pidx][j] += vcfd->jgcd_gt[block_i][pidx][j];
                 }
-                r_JointGenoCountDistGT[pidx][vcfd->nJointClasses] += vcfd->pair_shared_nSites[chosen_block][pidx];
+                vcfd->JointGenoCountDistGT[pidx][vcfd->nJointClasses] = vcfd->pair_shared_nSites[block_i][pidx];
             }
-            int snSites = r_JointGenoCountDistGT[pidx][vcfd->nJointClasses];
-
+            int snSites = vcfd->JointGenoCountDistGT[pidx][vcfd->nJointClasses];
             if (snSites == 0) {
                 ERROR("No shared sites found for pair %d (snSites=%d). This is currently not allowed.\n", pidx, snSites);
             }
-
             if (args->squareDistance == 1) {
-                blob->bootstraps->replicates[rep]->distanceMatrix->M[pidx] = (double)SQUARE(MATH::Dij(r_JointGenoCountDistGT[pidx], snSites));
+                distanceMatrix->M[pidx] = (double)SQUARE(MATH::Dij(vcfd->JointGenoCountDistGT[pidx], snSites));
             } else {
-                blob->bootstraps->replicates[rep]->distanceMatrix->M[pidx] = (double)MATH::Dij(r_JointGenoCountDistGT[pidx], snSites);
+                distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->JointGenoCountDistGT[pidx], snSites);
             }
         }
-    }
 
-    for (int b = 0; b < nBlocks; b++) {
-        FREE(vcfd->pair_shared_nSites[b]);
-        for (int i = 0; i < nIndCmb; i++) {
-            FREE(vcfd->jgcd_gt[b][i]);
-        }
-        FREE(vcfd->jgcd_gt[b]);
-    }
-    FREE(vcfd->pair_shared_nSites);
-    FREE(vcfd->jgcd_gt);
-}
+        for (int rep = 0; rep < blob->bootstraps->nReplicates; ++rep) {
+            int r_JointGenoCountDistGT[pars->nIndCmb][vcfd->nJointClasses + 1];
 
-void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt) {
-    // readSites(vcfd, pars, pairSt, NULL);
-    readSites(vcfd, pars, pairSt);
-    for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
-        int snSites = vcfd->JointGenoCountDistGT[pidx][vcfd->nJointClasses];
-        if (snSites == 0) {
-            fprintf(stderr, "\n[ERROR]\t-> No shared sites found for pair %d (snSites=%d). This is currently not allowed.\n", pidx, snSites);
-            exit(1);
+            for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
+                for (int i = 0; i < vcfd->nJointClasses + 1; i++) {
+                    r_JointGenoCountDistGT[pidx][i] = 0;
+                }
+
+                for (int r_block = 0; r_block < blob->nBlocks; ++r_block) {
+                    int chosen_block = blob->bootstraps->replicates[rep]->rBlocks[r_block];
+
+                    for (int j = 0; j < vcfd->nJointClasses; ++j) {
+                        r_JointGenoCountDistGT[pidx][j] += vcfd->jgcd_gt[chosen_block][pidx][j];
+                    }
+                    r_JointGenoCountDistGT[pidx][vcfd->nJointClasses] += vcfd->pair_shared_nSites[chosen_block][pidx];
+                }
+                int snSites = r_JointGenoCountDistGT[pidx][vcfd->nJointClasses];
+
+                if (snSites == 0) {
+                    ERROR("No shared sites found for pair %d (snSites=%d). This is currently not allowed.\n", pidx, snSites);
+                }
+
+                if (args->squareDistance == 1) {
+                    blob->bootstraps->replicates[rep]->distanceMatrix->M[pidx] = (double)SQUARE(MATH::Dij(r_JointGenoCountDistGT[pidx], snSites));
+                } else {
+                    blob->bootstraps->replicates[rep]->distanceMatrix->M[pidx] = (double)MATH::Dij(r_JointGenoCountDistGT[pidx], snSites);
+                }
+            }
         }
-        if (args->squareDistance == 1) {
-            distanceMatrix->M[pidx] = (double)SQUARE(MATH::Dij(vcfd->JointGenoCountDistGT[pidx], snSites));
-        } else {
-            distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->JointGenoCountDistGT[pidx], snSites);
+
+        for (int b = 0; b < nBlocks; b++) {
+            FREE(vcfd->pair_shared_nSites[b]);
+            for (int i = 0; i < nIndCmb; i++) {
+                FREE(vcfd->jgcd_gt[b][i]);
+            }
+            FREE(vcfd->jgcd_gt[b]);
         }
+        FREE(vcfd->pair_shared_nSites);
+        FREE(vcfd->jgcd_gt);
     }
-    // vcfd->print_JointGenoCountDist(args);
 }
-// TODO add check if discrapency in metadata e.g. pop3 is both in reg1 and reg2
 
 metadataStruct::metadataStruct(int nInd) {
     ASSERT(nInd > 0);

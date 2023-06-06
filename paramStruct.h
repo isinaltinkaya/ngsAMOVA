@@ -3,8 +3,6 @@
 
 #include "shared.h"
 
-struct argStruct;
-
 typedef struct alleleStruct alleleStruct;
 typedef struct paramStruct paramStruct;
 typedef struct formulaStruct formulaStruct;

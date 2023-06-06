@@ -5,9 +5,7 @@
 #include <htslib/tbx.h>
 #include <stdbool.h>
 
-#include "argStruct.h"
 #include "bootstrap.h"
-#include "dataStructs.h"
 #include "io.h"
 #include "paramStruct.h"
 
@@ -17,7 +15,6 @@ typedef struct vcfData vcfData;
 typedef struct gtData gtData;
 typedef struct glData glData;
 
-struct bootstrapReplicate;
 struct blobStruct;
 /* -------------------------------------------------------------------------- */
 
@@ -288,6 +285,8 @@ struct get_data {
 void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct *blob);
 void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt);
 
+// @return
+// 1    skip site
 int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, pairStruct **pairs);
 int site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2);
 
@@ -296,7 +295,5 @@ int site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd
 int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, const int block_i);
 
 int GLtoGT_1_JointGenoDist(vcfData *vcf, paramStruct *pars);
-
-int parse_VCF_GL(paramStruct *pars, vcfFile *in_fp, bcf_hdr_t *hdr, bcf1_t *bcf, blobStruct *blobSt);
 
 #endif  // __VCF_READER__

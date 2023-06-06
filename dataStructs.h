@@ -26,10 +26,9 @@ void setInputFileType(paramStruct *pars, int inFileType);
 distanceMatrixStruct *distanceMatrixStruct_get(paramStruct *pars, vcfData *vcfd, pairStruct **pairSt, char **indNames, blobStruct *blob);
 
 // prepare distance matrix using genotype likelihoods
-void get_distanceMatrix_GL(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt);
+void get_distanceMatrix_GL(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt, blobStruct *blob);
 
 // prepare distance matrix using genotypes
-void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt);
 // prepare distance matrix using genotypes + construct block bootstrapping distance matrix at the same time
 void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt, blobStruct *blob);
 
