@@ -35,12 +35,22 @@ int nCk_idx(int nInd, int i1, int i2) {
 
 int find_n_given_nC2(int nC2_res) {
     int n = 0;
+
+    if (NC2_LUT[300] < nC2_res) {
+        // cannot be found in LUT
+        n = 301;
+        while (nCk(n, 2) < nC2_res) {
+            n++;
+            ASSERT(n < 500);
+        }
+        return n;
+    }
+
     while (NC2_LUT[n] < nC2_res) {
         n++;
     }
     if (NC2_LUT[n] != nC2_res) {
-        fprintf(stderr, "[%s:%s()]\t->Error: nC2_res:%d not found in NC2_LUT[]\n", __FILE__, __FUNCTION__, nC2_res);
-        exit(1);
+        ERROR("nC2_res:%d not found in NC2_LUT[]\n", nC2_res);
     }
     return n;
 }

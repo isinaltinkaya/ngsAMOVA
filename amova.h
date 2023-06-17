@@ -81,6 +81,7 @@ struct amovaStruct {
     double *sigmasq = NULL;
     double sigmasq_total = 0.0;
     double *phi = NULL;
+    double *pct_sigmasq = NULL;
 
     int nAmovaLevels = 0;
     int nLevels = 0;
@@ -116,5 +117,7 @@ struct amovaBootstrapThreads {
     ~amovaBootstrapThreads() {
     }
 };
+
+void calculate_PercentageTotalVariance(amovaStruct *amova);
 
 #endif  // __AMOVA__

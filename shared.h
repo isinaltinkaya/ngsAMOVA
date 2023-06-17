@@ -113,6 +113,8 @@
 
 /*
  * Macro:[FREE]
+ * force free
+ *
  * shortcut to free memory and set pointer to NULL
  * and catch double free
  * throw error if pointer is NULL
@@ -126,11 +128,11 @@
     }
 
 /*
- * Macro:[IFFREE]
+ * Macro:[FFREE]
  * if x exists; free memory and set pointer to NULL
  * do NOT throw error if pointer is NULL
  */
-#define IFFREE(x)    \
+#define FFREE(x)     \
     if (NULL != x) { \
         free(x);     \
         x = NULL;    \
@@ -430,9 +432,10 @@
 // dragon
 #define BUF_NSITES 4096
 #define BUF_NCONTIGS 256
+#define BUF_NTOTSITES 4096
 
 #define FREAD_BUF_SIZE 4096
-#define FGETS_BUF_SIZE 4096
+#define FGETS_BUF_SIZE 25600
 
 /* CONSTANTS -----------------------------------------------------------------*/
 

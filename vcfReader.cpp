@@ -1,5 +1,9 @@
 #include "vcfReader.h"
 
+// TODO
+// #when REF : A ALT : C allelesfile : T A you should skip
+// TODO replace "distribution" by "expectation"
+
 #include "bootstrap.h"
 
 bool gtData::pass_minInd_threshold(const int nInd) {
@@ -36,18 +40,19 @@ int gtData::get_alleleidx2state(const int alleleidx) {
         ERROR("Allele index is negative");
     }
     int state = alleleidx2state[alleleidx];
-    if (state == -1) {
-        ERROR("Allele not found in the alleleidx2state list");
-    }
+
     return (state);
 }
 
+// -1   missing
+// -2
 int gtData::get_n_derived_alleles_ind(const int ind_i) {
     int *p = this->ind_ptr(ind_i);
 
     if (1 == bcf_gt_is_missing(p[0]) || 1 == bcf_gt_is_missing(p[1]))
         return (-1);
 
+    // 0, 1, 2, 3 (e.g. 0|0)
     int ind_a1 = bcf_gt_allele(p[0]);
     int ind_a2 = bcf_gt_allele(p[1]);
 
@@ -64,7 +69,9 @@ int gtData::get_n_derived_alleles_ind(const int ind_i) {
 
     int s1 = get_alleleidx2state(ind_a1);
     int s2 = get_alleleidx2state(ind_a2);
-    ASSERT(-1 != s1 && -1 != s2);
+    if (-1 == s1 || -1 == s2) {
+        return (-2);
+    }
 
     return (s1 + s2);
 }
@@ -148,7 +155,7 @@ float *glData::ind_ptr(const int ind_i) {
 }
 
 void vcfData::site_gts_get(const int a1, const int a2) {
-    if (a1 == a2) {
+    if (a1 == a2) {  // debug
         ERROR("Ancestral/Major allele cannot be the same as the derived/minor allele.");
     }
 
@@ -176,11 +183,6 @@ void vcfData::site_gts_get(const int a1, const int a2) {
         // this->gts->alleleidx2intbase[a] = acgt_charToInt[(int)*bcf->d.allele[a]];
         this->gts->alleleidx2state[a] = gts->intbase2state[acgt_charToInt[(int)*bcf->d.allele[a]]];
     }
-    // TODO allow multiallelic/or has multiple alleles in alt column but actually all individuals are biallelic?
-    // TODO should we only skip individuals with genotype alleles not in {0,1}?
-    //  if (2 < bcf->n_allele) {
-    //      NEVER;
-    //  }
 }
 
 void gtData::site_gts_clear() {
@@ -270,6 +272,7 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2) {
 // 2    if an a1 is not a single character
 // 3    if an a2 is not a single character
 //
+// TODO delme below2
 // site_i (index in vcf) is always <= alleleStruct_site_i (index in alleles file)
 // contig_i (index in vcf) is always <= alleleStruct_contigIdx (index in alleles file)
 int site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2) {
@@ -310,7 +313,7 @@ int site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd
         return (0);
     }
 
-    alleleStruct *alleles = NULL;
+    allelesStruct *alleles = NULL;
 
     if (NULL != pars->ancder) {
         alleles = pars->ancder;
@@ -325,17 +328,17 @@ int site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd
     int alleleStruct_contig_i = contig_i;
 
     if (alleleStruct_contig_i >= alleles->nContigs) {
-        // contig in VCF could not be found in alleleStruct
+        // contig in VCF could not be found in allelesStruct
         return (1);
     }
 
-    if (0 != strcmp(bcf_seqname_safe(vcfd->hdr, vcfd->bcf), alleles->contigNames[contig_i])) {
+    if (0 != strcmp(bcf_seqname(vcfd->hdr, vcfd->bcf), alleles->contigNames[contig_i])) {
         ERROR("Could not find contig %s (index: %d) in allelesStruct.", bcf_seqname_safe(vcfd->hdr, vcfd->bcf), contig_i);
         // TODO!!!
         //  TODO change contig and rewind or forward alleles->pos[contig_i] to find the vcf_pos
         ERROR("Contig name mismatch: %s != %s", alleles->contigNames[contig_i], bcf_seqname_safe(vcfd->hdr, vcfd->bcf));
 
-        // // try finding the vcf_contig in alleleStruct by moving forward
+        // // try finding the vcf_contig in allelesStruct by moving forward
         // while (0 != strcmp(bcf_seqname_safe(vcfd->hdr, vcfd->bcf), alleles->contigNames[alleleStruct_contig_i])) {
         //     ++alleleStruct_contig_i;
         //     if (0 == strcmp(bcf_seqname_safe(vcfd->hdr, vcfd->bcf), alleles->contigNames[alleleStruct_contig_i])) {
@@ -347,49 +350,53 @@ int site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd
     // ------------------
 
     int alleleStruct_site_i = site_i;
-    int alleleStruct_pos = alleles->pos[contig_i][alleleStruct_site_i];
-    const int vcf_pos = vcfd->bcf->pos + 1;
+    int alleleStruct_pos = alleles->get_pos(contig_i, alleleStruct_site_i);
+    const int vcf_pos = vcfd->bcf->pos;
 
-    // ignore/skip the sites in the alleleStruct that are not in the VCF
-    // try finding the vcf_pos in alleleStruct by moving forward
+    // ignore/skip the sites in the allelesStruct that are not in the VCF
+    // try finding the vcf_pos in allelesStruct by moving forward
     while (vcf_pos > alleleStruct_pos) {
         ++alleleStruct_site_i;
 
-        alleleStruct_pos = alleles->pos[contig_i][alleleStruct_site_i];
+        alleleStruct_pos = alleles->get_pos(contig_i, alleleStruct_site_i);
         if (alleleStruct_pos == vcf_pos) {
             break;
         }
         if (vcf_pos < alleleStruct_pos) {
-            // site in VCF could not be found in alleleStruct
+            // site in VCF could not be found in allelesStruct
             WARNING("Skipping site in allelesFile at index %d:%ld. Reason: site in allelesFile could not be found in the VCF file.", contig_i, vcfd->bcf->pos + 1);
             return (1);
         }
+        NEVER;
     }
 
     // while not run if already found the match
-    // try rewinding the alleleStruct to find the vcf_pos
+    // try rewinding the allelesStruct to find the vcf_pos
     while (vcf_pos < alleleStruct_pos) {
         --alleleStruct_site_i;
 
         if (-1 == alleleStruct_site_i) {
-            // site in VCF could not be found in alleleStruct
+            // site in VCF could not be found in allelesStruct
             WARNING("Skipping site in allelesFile at index %d:%ld. Reason: site in allelesFile could not be found in the VCF file.", contig_i, vcfd->bcf->pos + 1);
             return (1);
         }
 
-        alleleStruct_pos = alleles->pos[contig_i][alleleStruct_site_i];
+        alleleStruct_pos = alleles->get_pos(contig_i, alleleStruct_site_i);
         if (alleleStruct_pos == vcf_pos) {
             break;
         }
         if (vcf_pos > alleleStruct_pos) {
-            // site in VCF could not be found in alleleStruct
+            // site in VCF could not be found in allelesStruct
             WARNING("Skipping site in allelesFile at index %d:%ld. Reason: site in allelesFile could not be found in the VCF file.", contig_i, vcfd->bcf->pos + 1);
             return (1);
         }
     }
 
-    *a1 = acgt_charToInt[(int)alleles->a1[contig_i][alleleStruct_site_i]];
-    *a2 = acgt_charToInt[(int)alleles->a2[contig_i][alleleStruct_site_i]];
+    // int representation (== index in {A,C,G,T}) of a1 (ancestral/major allele)
+    *a1 = acgt_charToInt[(int)alleles->get_a1(contig_i, alleleStruct_site_i)];
+
+    // int representation (== index in {A,C,G,T}) of a2 (derived/minor allele)
+    *a2 = acgt_charToInt[(int)alleles->get_a2(contig_i, alleleStruct_site_i)];
 
     ASSERT(-1 != *a1);
     ASSERT(-1 != *a2);
@@ -421,12 +428,20 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
 
     do {
         int ret = site_read_allelic_states(contig_i, site_i, vcfd, pars, a1, a2);
+        // DEVPRINT("bcf_alleles_get_gtidx(%d,%d)=%d", *a1, *a2, bcf_alleles_get_gtidx(*a1, *a2));
+        // vcfd->gts->n_values
+
+        // try finding a1 a2 in bcf->d.allele
+
+        // check if a1,a2 in bcf alleles
+        // DEVPRINTX("%d", vcfd->bcf->n_allele);
+        // if (*a1->vcfd->bcf->n_allele)
 
         if (0 == ret) {
             skip_site = 0;
         } else if (1 == ret) {
             // 1    if 'contig:site' in VCF cannot be found in alleles file
-            WARNING("Skipping site at index %d:%ld. Reason: site in VCF could not be found in alleleStruct.", contig_i, vcfd->bcf->pos + 1);
+            WARNING("Skipping site at index %d:%ld. Reason: site in VCF could not be found in allelesStruct.", contig_i, vcfd->bcf->pos + 1);
             skip_site = 1;
             break;
         } else if (2 == ret) {
@@ -501,6 +516,7 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
             vcfd->lngl[pars->nSites][lngls_ind_start + 1] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a1, *a2)]);
             vcfd->lngl[pars->nSites][lngls_ind_start + 2] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a2, *a2)]);
         }
+
     } while (0);
 
     DEL(a1);
@@ -520,11 +536,32 @@ int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, pa
     int *a2 = new int;
     int skip_site = 0;
 
-    site_read_allelic_states(contig_i, site_i, vcfd, pars, a1, a2);
-
-    vcfd->site_gts_get(*a1, *a2);
-
     do {
+        int ret = site_read_allelic_states(contig_i, site_i, vcfd, pars, a1, a2);
+
+        if (0 == ret) {
+            skip_site = 0;
+        } else if (1 == ret) {
+            // 1    if 'contig:site' in VCF cannot be found in alleles file
+            WARNING("Skipping site at index %d:%ld. Reason: site in VCF could not be found in allelesStruct.", contig_i, vcfd->bcf->pos + 1);
+            skip_site = 1;
+            break;
+        } else if (2 == ret) {
+            // 2    if an a1 is not a single character
+            WARNING("Skipping site at index %d:%ld. Reason: REF allele (%s) is not a single character.", contig_i, vcfd->bcf->pos + 1, vcfd->bcf->d.allele[0]);
+            skip_site = 1;
+            break;
+        } else if (3 == ret) {
+            // 3    if an a2 is not a single character
+            WARNING("Skipping site at index %d:%ld. Reason: ALT allele (%s) is not a single character.", contig_i, vcfd->bcf->pos + 1, vcfd->bcf->d.allele[1]);
+            skip_site = 1;
+            break;
+        } else {
+            NEVER;
+        }
+
+        vcfd->site_gts_get(*a1, *a2);
+
         if (!vcfd->gts->pass_minInd_threshold(nInd)) {
             skip_site = 1;
             break;
@@ -532,6 +569,12 @@ int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, pa
 
         for (int i1 = 0; i1 < nInd; ++i1) {
             int i1_nder = vcfd->gts->get_n_derived_alleles_ind(i1);
+            if (-2 == i1_nder) {
+                WARNING("Skipping site at index %d:%ld. Reason: Ancestral/Major or Derived/Minor allelic state at the site cannot be matched with the allelic states in REF/ALT fields.", contig_i, vcfd->bcf->pos + 1);
+                // individual's allelic state cannot be found in d.allele
+                continue;
+            }
+
             if (-1 == i1_nder) {
                 continue;
             }
@@ -712,8 +755,8 @@ void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt) {
     char prev_contig[tmp_len_contigName];
 
     while (vcfd->records_next()) {
-        // TODO dragon
         if (vcfd->lngl != NULL) {
+            // TODO dragon
             while (pars->nSites >= vcfd->_lngl) {
                 vcfd->lngl_expand();
             }

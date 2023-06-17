@@ -13,6 +13,7 @@
 struct blobStruct;
 struct amovaStruct;
 
+typedef struct allelesStruct allelesStruct;
 typedef struct pairStruct pairStruct;
 typedef struct distanceMatrixStruct distanceMatrixStruct;
 typedef struct metadataStruct metadataStruct;
@@ -22,6 +23,144 @@ typedef struct indPairThreads indPairThreads;
 void spawnThreads_pairEM(paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, distanceMatrixStruct *distMatrix);
 void setInputFileType(paramStruct *pars, int inFileType);
 /* -------------------------------------------------------------------------- */
+
+// TODO do not store contig names, but match the contig names list with the contig names in the VCF file and store the indices instead
+
+/// @brief allelesStruct    structure to hold alleles data
+struct allelesStruct {
+    int nContigs = 0;  // 4
+
+    // \def nSites[nContigs]
+    //      nSites[contig_i] == number of sites with a1 a2 data in contig_i
+    int *nSites = NULL;  // 12
+
+    // \def allele1s[for contig_i in nContigs sum(nSites[contig_i])]
+    char *allele1s = NULL;  // 20
+
+    // \def allele2s[for contig_i in nContigs sum(nSites[contig_i])]
+    char *allele2s = NULL;  // 28
+
+    // \def positions[for contig_i in nContigs sum(nSites[contig_i])
+    int *positions = NULL;  // 36
+
+    // \def contigNames[nContigs]
+    //      contigNames[contig_i] == name of contig_i
+    char **contigNames = NULL;  // 44
+
+    // \def contigOffsets[nContigs]
+    //      contigOffsets[contig_i] == offset of contig_i (i.e. where it starts in the allele1s and allele2s arrays)
+    int *contigOffsets = NULL;  // 52
+
+    allelesStruct();
+    ~allelesStruct();
+
+    /// @brief get_pos       get position
+    /// @param contig_i      index of the contig to get position from
+    /// @param site_j        index of the site to get position from
+    /// @return              int position at site_j in contig_i
+    /// e.g.  positions = { 21,22,23,0,100,101,102 }
+    ///     positions == { {21,22,23}, {0,100,101,102} }
+    ///     contig_i_0 = { 21,22,23 }
+    ///     contig_i_1 = { 0,100,101,102 }
+    ///
+    /// alleles->get_pos(1,1) == 100
+    /// get_pos(contig_i, site_j) == positions[sum(nSites[0:contig_i-1]) + site_j]
+    int get_pos(const int contig_i, const int site_j);
+
+    void set_pos(const int contig_i, const int site_j, const int setToPosition);
+
+    /// @brief add_new_contig add a new contig
+    /// @param contig_i index of the new contig to add
+    /// @param contig_id name of the new contig to add
+    /// @param contig_i_offset offset of the new contig to add (i.e. where it starts in the allele1s and allele2s arrays)
+    void add_new_contig(const int contig_i, const char *contig_id, const int contig_i_offset);
+
+    void expand(const int contig_i, const int new_size);
+
+    /// @brief get_a1           get allele 1
+    /// @param contig_i     index of the contig to get allele from
+    /// @param site_j       index of the site to get allele from
+    /// @return             char allele 1 at site_j in contig_i
+    /// @details
+    /// e.g. allele1s = { G,C,T,T,G,C,A }
+    ///     allele1s == { {G,C,T,T,G}, {C,A} }
+    ///     contig_i_0 = { G,C,T,T,G }
+    ///     contig_i_1 = { C,A }
+    ///
+    /// alleles->a1(1,1) == 'A'
+    /// a1(contig_i, site_j) == allele1s[sum(nSites[0:contig_i-1]) + site_j]
+    char get_a1(const int contig_i, const int site_j);
+
+    void set_a1(const int contig_i, const int site_j, const char setToAllele);
+    void set_a1(const int contig_i, const int site_j, const char *setToAllele);
+
+    /// @brief get_a2           get allele 2
+    /// @param contig_i     index of the contig to get allele from
+    /// @param site_j       index of the site to get allele from
+    /// @return             char allele 2 at site_j in contig_i
+    char get_a2(const int contig_i, const int site_j);
+
+    void set_a2(const int contig_i, const int site_j, const char setToAllele);
+    void set_a2(const int contig_i, const int site_j, const char *setToAllele);
+};
+
+/// @brief allelesStruct_read read alleles file
+/// @param fn alleles file name
+/// @return pointer to a new allelesStruct
+/// @details alleles files are tab delimited files with 4 columns:
+/// 1. contig name
+/// 2. position
+/// 3. a1 (e.g. ancestral or major allele)
+/// 4. a2 (e.g. derived or minor allele)
+allelesStruct *allelesStruct_read(const char *fn);
+
+/// @brief alleleStruct_destroy destroy allelesStruct
+/// @param as pointer to allelesStruct
+void alleleStruct_destroy(allelesStruct *A);
+
+struct formulaStruct {
+    // @nTokens number of tokens in the formula
+    // e.g. formula: "Individual ~ Region/Population/Subpopulation"
+    // 		nTokens = 4
+    // 		corresponds to 3 hierarchical levels (Region, Population, Subpopulation)
+    // 		thus nTokens == nLevels + 1
+    int nTokens = 0;
+
+    // the formula in the raw text form as it is in the argument
+    // e.g. "Individual ~ Region/Population/Subpopulation"
+    char *formula = NULL;
+
+    // @formulaTokens
+    // array of tokens in the formula
+    // e.g. formula: "Individual ~ Region/Population/Subpopulation"
+    // 		formulaTokens = {"Individual","Region","Population","Subpopulation"}
+    char **formulaTokens;
+
+    // @formulaTokenIdx[nTokens]
+    //
+    // maps index of the token in formula to index of the corresponding column in metadata file
+    // formulaTokenIdx[indexOfTokenInFormula] = indexOfTokenInMetadataFile
+    //
+    // e.g. metadata file header: "Individual,Population,Etc,Region,Subpopulation"
+    // 		formula: "Individual ~ Region/Population/Subpopulation"
+    // 		formulaTokenIdx = {0,3,1,2}
+    int *formulaTokenIdx;
+
+    void print(FILE *fp);
+
+    /// match the given metadata token with formula tokens
+    /// @param mtd_tok 		- metadata token to match
+    /// @param mtd_col_idx	- index of the metadata column containing mtd_tok
+    /// @return int			- index if found any match, -1 otherwise
+    int setFormulaTokenIdx(const char *mtd_tok, const int mtd_col_idx);
+
+    // TODO deprec
+    //  @brief shrink - shrink the size of the arrays defined with default max values to the actual size needed
+    void shrink();
+};
+formulaStruct *formulaStruct_get(const char *formula);
+void formulaStruct_validate(formulaStruct *fos, const int nLevels);
+void formulaStruct_destroy(formulaStruct *fos);
 
 distanceMatrixStruct *distanceMatrixStruct_get(paramStruct *pars, vcfData *vcfd, pairStruct **pairSt, char **indNames, blobStruct *blob);
 

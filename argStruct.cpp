@@ -84,7 +84,6 @@ argStruct *argStruct_get(int argc, char **argv) {
         //   --in-vcf <filename> : VCF file input
         //   --in-dm <filename> : distance matrix input
         //   --in-dxy <filename> : Dxy file input
-        //   --in-jgcd <filename> : joint genotype count distribution input
 
         else if ((strcasecmp("--in-vcf", arv) == 0) || (strcasecmp("--input", arv) == 0) || (strcasecmp("-i", arv) == 0)) {
             args->in_vcf_fn = strdup(val);
@@ -676,25 +675,25 @@ void argStruct::check_arg_dependencies() {
 }
 
 void argStruct_destroy(argStruct *args) {
-    IFFREE(args->in_vcf_fn);
-    IFFREE(args->in_dm_fn);
-    IFFREE(args->in_mtd_fn);
-    IFFREE(args->in_dxy_fn);
+    FFREE(args->in_vcf_fn);
+    FFREE(args->in_dm_fn);
+    FFREE(args->in_mtd_fn);
+    FFREE(args->in_dxy_fn);
 
-    IFFREE(args->in_region);
-    IFFREE(args->in_regions_tab_fn);
-    IFFREE(args->in_regions_bed_fn);
-    IFFREE(args->in_blocks_tab_fn);
-    IFFREE(args->in_blocks_bed_fn);
+    FFREE(args->in_region);
+    FFREE(args->in_regions_tab_fn);
+    FFREE(args->in_regions_bed_fn);
+    FFREE(args->in_blocks_tab_fn);
+    FFREE(args->in_blocks_bed_fn);
 
-    IFFREE(args->out_fnp);
+    FFREE(args->out_fnp);
 
-    IFFREE(args->formula);
-    IFFREE(args->keyCols);
-    IFFREE(args->doDxyStr);
+    FFREE(args->formula);
+    FFREE(args->keyCols);
+    FFREE(args->doDxyStr);
 
-    IFFREE(args->in_majorminor_fn);
-    IFFREE(args->in_ancder_fn);
+    FFREE(args->in_majorminor_fn);
+    FFREE(args->in_ancder_fn);
 
     // check below
 

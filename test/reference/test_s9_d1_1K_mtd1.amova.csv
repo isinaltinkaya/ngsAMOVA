@@ -11,3 +11,5 @@ Phi,Population_in_Total,0.123789
 Variance_coefficient,a,3.000000
 Variance_component,Population,0.000475
 Variance_component,Individual,0.003365
+Percentage_variance,Population,12.378908
+Percentage_variance,Individual,87.621092

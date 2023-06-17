@@ -332,9 +332,14 @@ void get_varianceCoefficients(amovaStruct *amova, metadataStruct *metadata, dist
 // calculate variance components (sigma squared)
 void get_varianceComponents(amovaStruct *amova, metadataStruct *metadata) {
     if (metadata->nLevels == 1) {
-        amova->sigmasq_total = amova->sigmasq[0] + amova->sigmasq[1];
         amova->sigmasq[0] = (amova->msd[0] - amova->msd[1]) / amova->ncoef[0];
         amova->sigmasq[1] = amova->msd[1];
+        amova->sigmasq_total = amova->sigmasq[0] + amova->sigmasq[1];
+
+        // TODO add more warnings for all levels and explain
+        // if(amova->sigmasq[0] <= 0){
+        //     WARNING("Sigma squared 0 is %f.");
+        // }
 
     } else if (metadata->nLevels == 2) {
         amova->sigmasq[2] = amova->msd[2];
@@ -344,8 +349,17 @@ void get_varianceComponents(amovaStruct *amova, metadataStruct *metadata) {
     } else {
         NEVER;
     }
+
+    calculate_PercentageTotalVariance(amova);
 }
 
+void calculate_PercentageTotalVariance(amovaStruct *amova) {
+    for (int i = 0; i < (int)amova->_ncoef; i++) {
+        amova->pct_sigmasq[i] = (amova->sigmasq[i] / amova->sigmasq_total) * 100.0;
+    }
+}
+
+// TODO rm metadata and use amova->nLevels instead
 void get_phiStatistics(amovaStruct *amova, metadataStruct *metadata) {
     if (metadata->nLevels == 1) {
         amova->phi[0] = amova->sigmasq[0] / (amova->sigmasq[0] + amova->sigmasq[1]);
@@ -395,6 +409,7 @@ void amovaStruct::_print(FILE *fp) {
         fprintf(fp, "ss[%zu] = %f\n", i, ss[i]);
         fprintf(fp, "ncoef[%zu] = %f\n", i, ncoef[i]);
         fprintf(fp, "sigmasq[%zu] = %f\n", i, sigmasq[i]);
+        fprintf(fp, "pct_sigmasq[%zu] = %f\n", i, pct_sigmasq[i]);
     }
     for (size_t i = 0; i < _phi; i++) {
         fprintf(fp, "phi[%zu] = %f\n", i, phi[i]);
@@ -432,14 +447,16 @@ void amovaStruct::print_as_table(FILE *fp, metadataStruct *metadata) {
     fprintf(fp, "\n");
     fprintf(fp, "Total\t\t\t\t\t\t\t%d\t%f\t%f", df[nAmovaLevels - 1], ssd[nAmovaLevels - 1], msd[nAmovaLevels - 1]);
     fprintf(fp, "\n\n\n");
-    fprintf(fp, "Variance components:\n\n");
+    fprintf(fp, "Variance components:\n\n\tVariance Component\tSigma^2\t\t%% of total");
     for (size_t i = 0; i < _ncoef - 1; i++) {
         fprintf(fp, "\n\t%-20s", metadata->levelNames[i + 1]);
         fprintf(fp, "\t%f", sigmasq[i]);
+        fprintf(fp, "\t%f", pct_sigmasq[i]);
     }
     // Lowest level (i.e. Individual)
     fprintf(fp, "\n\t%-20s", metadata->levelNames[0]);
     fprintf(fp, "\t%f", sigmasq[_ncoef - 1]);
+    fprintf(fp, "\t%f", pct_sigmasq[_ncoef - 1]);
 
     fprintf(fp, "\n\n\n");
     fprintf(fp, "\nVariance coefficients:\n\n\t");
@@ -460,8 +477,9 @@ void amovaStruct::print_as_table(FILE *fp, metadataStruct *metadata) {
     fprintf(fp, "\n\n");
 }
 
+// TODO add pct variance to output table and csv
+// TODO add hdr to output
 void amovaStruct::print_as_csv(metadataStruct *metadata) {
-    // TODO add percentage total?
     // header
     //  type,label,value
     //  SSD,Among_region,0.1234
@@ -496,6 +514,8 @@ void amovaStruct::print_as_csv(metadataStruct *metadata) {
         ksprintf(kbuf, "Variance_coefficient,a,%f\n", ncoef[0]);
         ksprintf(kbuf, "Variance_component,%s,%f\n", metadata->levelNames[1], sigmasq[0]);
         ksprintf(kbuf, "Variance_component,%s,%f\n", metadata->levelNames[0], sigmasq[1]);
+        ksprintf(kbuf, "Percentage_variance,%s,%f\n", metadata->levelNames[1], pct_sigmasq[0]);
+        ksprintf(kbuf, "Percentage_variance,%s,%f\n", metadata->levelNames[0], pct_sigmasq[1]);
     } else if (nLevels == 2) {
         ksprintf(kbuf, "Phi,%s_in_%s,%f\n", metadata->levelNames[1], "Total", phi[0]);
         ksprintf(kbuf, "Phi,%s_in_%s,%f\n", metadata->levelNames[2], metadata->levelNames[1], phi[1]);
@@ -506,6 +526,9 @@ void amovaStruct::print_as_csv(metadataStruct *metadata) {
         ksprintf(kbuf, "Variance_component,%s,%f\n", metadata->levelNames[1], sigmasq[0]);
         ksprintf(kbuf, "Variance_component,%s,%f\n", metadata->levelNames[2], sigmasq[1]);
         ksprintf(kbuf, "Variance_component,%s,%f\n", metadata->levelNames[0], sigmasq[2]);
+        ksprintf(kbuf, "Percentage_variance,%s,%f\n", metadata->levelNames[1], pct_sigmasq[0]);
+        ksprintf(kbuf, "Percentage_variance,%s,%f\n", metadata->levelNames[2], pct_sigmasq[1]);
+        ksprintf(kbuf, "Percentage_variance,%s,%f\n", metadata->levelNames[0], pct_sigmasq[2]);
 
     } else {
         fprintf(stderr, "[ERROR]: nLevels > 2 not supported yet\n");
@@ -542,10 +565,12 @@ amovaStruct::amovaStruct(metadataStruct *metadata) {
     ss = new double[_ncoef];
     ncoef = new double[_ncoef];
     sigmasq = new double[_ncoef];
+    pct_sigmasq = new double[_ncoef];
     for (size_t i = 0; i < _ncoef; i++) {
         ncoef[i] = 0.0;
         sigmasq[i] = 0.0;
         ss[i] = 0.0;
+        pct_sigmasq[i] = 0.0;
     }
 
     phi = new double[_phi];
@@ -555,13 +580,14 @@ amovaStruct::amovaStruct(metadataStruct *metadata) {
 }
 
 amovaStruct::~amovaStruct() {
-    delete[] df;
-    delete[] ss;
-    delete[] ssd;
-    delete[] msd;
-    delete[] ncoef;
-    delete[] sigmasq;
-    delete[] phi;
+    DEL1D(df);
+    DEL1D(ss);
+    DEL1D(ssd);
+    DEL1D(msd);
+    DEL1D(ncoef);
+    DEL1D(sigmasq);
+    DEL1D(phi);
+    DEL1D(pct_sigmasq);
 }
 
 double calculate_SumOfSquares_Total(distanceMatrixStruct *dm) {

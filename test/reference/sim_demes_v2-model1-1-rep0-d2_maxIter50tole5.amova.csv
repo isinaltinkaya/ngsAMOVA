@@ -19,3 +19,6 @@ Variance_coefficient,c,20.000000
 Variance_component,Region,0.038745
 Variance_component,Population,0.000734
 Variance_component,Individual,0.008393
+Percentage_variance,Region,80.934441
+Percentage_variance,Population,1.534215
+Percentage_variance,Individual,17.531344
