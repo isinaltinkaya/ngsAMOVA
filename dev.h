@@ -1,4 +1,4 @@
-#define DEV 1
+#define DEV 0
 
 /* -> DEVELOPMENT/DEBUGGING MACROS --------------------------------------------*/
 // enabled if `make dev` is used

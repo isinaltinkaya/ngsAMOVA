@@ -168,6 +168,7 @@ njStruct::njStruct(distanceMatrixStruct *dms) {
     // number of neighbors identified in the previous iterations == nNodes-2
     // since we terminate the iterations when nNodes==2, so we don't need to
     // save the 2 neighbors identified in the last iteration
+    ASSERT(nTreeNodes > 2);
     neighborIdx = (int *)malloc((nTreeNodes - 2) * sizeof(int));
     for (int i = 0; i < (nTreeNodes - 2); ++i) {
         neighborIdx[i] = -1;

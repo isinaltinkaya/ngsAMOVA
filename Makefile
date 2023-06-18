@@ -6,7 +6,6 @@ CXX ?= g++
 
 #  -g     add debugging info to the executable 
 #  -Wall  turn on compiler warnings
-#CXXFLAGS  := -g -Wall
 LIBS = -lz -lm -lbz2 -llzma -lcurl -lpthread
 
 
@@ -19,7 +18,9 @@ LIBS = -lz -lm -lbz2 -llzma -lcurl -lpthread
 DEV_MODE=0
 ifeq ($(filter dev,$(MAKECMDGOALS)),dev)
 	DEV_MODE=1
-	CXXFLAGS  := -g -Wall
+	CXXFLAGS := -g -Wall -O0
+	CXXFLAGS := $(filter-out -DNDEBUG,$(CXXFLAGS))
+	CXXFLAGS := $(filter-out -O3,$(CXXFLAGS))
 endif
 
 DEV_VAL=$(shell grep "define DEV [0,1]" dev.h | cut -d " " -f 3)
@@ -31,6 +32,12 @@ else
 $(info [INFO] Changing DEV_MODE)
 $(shell sed -i "s/define DEV [0-1]/define DEV $(DEV_MODE)/g" dev.h)
 endif
+
+ifeq ($(DEV_MODE),0)
+$(info [INFO] Compiling in release mode)
+CXXFLAGS := $(CXXFLAGS) -O3
+endif
+
 
 dev: all
 
