@@ -24,50 +24,53 @@ void spawnThreads_pairEM(paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, 
 void setInputFileType(paramStruct *pars, int inFileType);
 /* -------------------------------------------------------------------------- */
 
-// TODO do not store contig names, but match the contig names list with the contig names in the VCF file and store the indices instead
-
 /// @brief allelesStruct    structure to hold alleles data
 struct allelesStruct {
     int nContigs = 0;  // 4
 
+    // total number of sites with a1 a2 data
+    // equal to sum(nSites[contig_i] for contig_i in nContigs)
+    // also equal to the total number of lines in the alleles file
+    int nTotSites = 0;  // 8
+
     // \def nSites[nContigs]
     //      nSites[contig_i] == number of sites with a1 a2 data in contig_i
-    int *nSites = NULL;  // 12
+    int *nSites = NULL;  // 16
 
     // \def allele1s[for contig_i in nContigs sum(nSites[contig_i])]
-    char *allele1s = NULL;  // 20
+    char *allele1s = NULL;  // 24
 
     // \def allele2s[for contig_i in nContigs sum(nSites[contig_i])]
-    char *allele2s = NULL;  // 28
+    char *allele2s = NULL;  // 32
 
     // \def positions[for contig_i in nContigs sum(nSites[contig_i])
-    int *positions = NULL;  // 36
+    int *positions = NULL;  // 40
 
     // \def contigNames[nContigs]
     //      contigNames[contig_i] == name of contig_i
-    char **contigNames = NULL;  // 44
+    char **contigNames = NULL;  // 48
 
     // \def contigOffsets[nContigs]
     //      contigOffsets[contig_i] == offset of contig_i (i.e. where it starts in the allele1s and allele2s arrays)
-    int *contigOffsets = NULL;  // 52
+    int *contigOffsets = NULL;  // 56
 
     allelesStruct();
     ~allelesStruct();
 
     /// @brief get_pos       get position
     /// @param contig_i      index of the contig to get position from
-    /// @param site_j        index of the site to get position from
-    /// @return              int position at site_j in contig_i
+    /// @param site_i        index of the site to get position from
+    /// @return              int position at site_i in contig_i
     /// e.g.  positions = { 21,22,23,0,100,101,102 }
     ///     positions == { {21,22,23}, {0,100,101,102} }
     ///     contig_i_0 = { 21,22,23 }
     ///     contig_i_1 = { 0,100,101,102 }
     ///
     /// alleles->get_pos(1,1) == 100
-    /// get_pos(contig_i, site_j) == positions[sum(nSites[0:contig_i-1]) + site_j]
-    int get_pos(const int contig_i, const int site_j);
+    /// get_pos(contig_i, site_i) == positions[sum(nSites[0:contig_i-1]) + site_i]
+    int get_pos(const int contig_i, const int site_i);
 
-    void set_pos(const int contig_i, const int site_j, const int setToPosition);
+    void set_pos(const int contig_i, const int site_i, const int setToPosition);
 
     /// @brief add_new_contig add a new contig
     /// @param contig_i index of the new contig to add
@@ -79,8 +82,8 @@ struct allelesStruct {
 
     /// @brief get_a1           get allele 1
     /// @param contig_i     index of the contig to get allele from
-    /// @param site_j       index of the site to get allele from
-    /// @return             char allele 1 at site_j in contig_i
+    /// @param site_i       index of the site to get allele from
+    /// @return             char allele 1 at site_i in contig_i
     /// @details
     /// e.g. allele1s = { G,C,T,T,G,C,A }
     ///     allele1s == { {G,C,T,T,G}, {C,A} }
@@ -88,20 +91,23 @@ struct allelesStruct {
     ///     contig_i_1 = { C,A }
     ///
     /// alleles->a1(1,1) == 'A'
-    /// a1(contig_i, site_j) == allele1s[sum(nSites[0:contig_i-1]) + site_j]
-    char get_a1(const int contig_i, const int site_j);
+    /// a1(contig_i, site_i) == allele1s[sum(nSites[0:contig_i-1]) + site_i]
+    char get_a1(const int contig_i, const int site_i);
 
-    void set_a1(const int contig_i, const int site_j, const char setToAllele);
-    void set_a1(const int contig_i, const int site_j, const char *setToAllele);
+    void set_a1(const int contig_i, const int site_i, const char setToAllele);
+    void set_a1(const int contig_i, const int site_i, const char *setToAllele);
 
     /// @brief get_a2           get allele 2
     /// @param contig_i     index of the contig to get allele from
-    /// @param site_j       index of the site to get allele from
-    /// @return             char allele 2 at site_j in contig_i
-    char get_a2(const int contig_i, const int site_j);
+    /// @param site_i       index of the site to get allele from
+    /// @return             char allele 2 at site_i in contig_i
+    char get_a2(const int contig_i, const int site_i);
 
-    void set_a2(const int contig_i, const int site_j, const char setToAllele);
-    void set_a2(const int contig_i, const int site_j, const char *setToAllele);
+    void set_a2(const int contig_i, const int site_i, const char setToAllele);
+    void set_a2(const int contig_i, const int site_i, const char *setToAllele);
+
+    int get_contig_offset(const int contig_i);
+    int get_contig_site_index(const int contig_i, const int site_i);
 };
 
 /// @brief allelesStruct_read read alleles file
@@ -113,10 +119,6 @@ struct allelesStruct {
 /// 3. a1 (e.g. ancestral or major allele)
 /// 4. a2 (e.g. derived or minor allele)
 allelesStruct *allelesStruct_read(const char *fn);
-
-/// @brief alleleStruct_destroy destroy allelesStruct
-/// @param as pointer to allelesStruct
-void alleleStruct_destroy(allelesStruct *A);
 
 struct formulaStruct {
     // @nTokens number of tokens in the formula
@@ -190,8 +192,8 @@ struct pairStruct {
     double d;
     int n_em_iter;
 
-    double *optim_jointGenoCountDist = NULL;
-    double *optim_jointGenoProbDist = NULL;
+    double *optim_jointGenotypeCountMatrix = NULL;
+    double *optim_jointGenotypeProbMatrix = NULL;
 
     pairStruct(paramStruct *pars_, int pidx, int i1_, int i2_) {
         idx = pidx;
@@ -205,24 +207,14 @@ struct pairStruct {
             sharedSites[i] = -1;
         }
 
-        optim_jointGenoCountDist = (double *)malloc(9 * sizeof(double));
-        optim_jointGenoProbDist = (double *)malloc(9 * sizeof(double));
+        optim_jointGenotypeCountMatrix = (double *)malloc(9 * sizeof(double));
+        optim_jointGenotypeProbMatrix = (double *)malloc(9 * sizeof(double));
     }
     ~pairStruct() {
         FREE(sharedSites);
-        FREE(optim_jointGenoCountDist);
-        FREE(optim_jointGenoProbDist);
+        FREE(optim_jointGenotypeCountMatrix);
+        FREE(optim_jointGenotypeProbMatrix);
     }
-
-    // void print(FILE *fp, bcf_hdr_t *hdr)
-    // {
-    // 	fprintf(fp, "%d,%d,%d,%s,%s", pars->lut_idxToInds[idx][0], pars->lut_idxToInds[idx][1], idx, hdr->samples[pars->lut_idxToInds[idx][0]], hdr->samples[pars->lut_idxToInds[idx][1]]);
-    // }
-
-    // void print(FILE *fp)
-    // {
-    // 	fprintf(fp, "%d,%d,%d", pars->lut_idxToInds[idx][0], pars->lut_idxToInds[idx][1], idx);
-    // }
 
     void sharedSites_add(size_t site_i) {
         if (snSites >= _sharedSites) {

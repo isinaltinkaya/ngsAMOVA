@@ -136,19 +136,8 @@ extern argStruct *args;
  *                              [0] do NOT use sliding window
  *                              [VALUE] use sliding window of size VALUE
  *
- * @field printJointGenoDist    [default = 0]
- *                              [0] do NOT print
- *                              [VALUE] print joint genotype distributions of pairs of individuals
  *
  *
- *
- * printing options
- * ----------------
- * VALUE = 0: do NOT print
- * VALUE = 1: print in human-readable format
- * VALUE = 2: print in gzipped format
- * VALUE = 3: print in bgzipped format
- * VALUE = 4: print in binary bgzipped format
  */
 
 struct argStruct {
@@ -182,8 +171,7 @@ struct argStruct {
 
     int printAmovaTable = 0;
     int printDistanceMatrix = 0;
-    int printJointGenoCountDist = 0;
-    int printJointGenoProbDist = 0;
+    int printJointGenotypeCountMatrix = 0;
     int printBlocksTab = 0;
 
     int squareDistance = 1;
@@ -206,7 +194,6 @@ struct argStruct {
 
     // TODO check below
     char *doDxyStr = NULL;  // TODO maybe not needed
-    int gl2gt = -1;
     int windowSize = 0;
     int *keyCols = NULL;
     int printDev = 0;

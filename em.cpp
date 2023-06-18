@@ -1,5 +1,6 @@
 #include "em.h"
 
+// TODO add better thread management
 void spawnThreads_pairEM(paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, distanceMatrixStruct *distanceMatrix) {
     pthread_t pairThreads[pars->nIndCmb];
     indPairThreads **THREADS = new indPairThreads *[pars->nIndCmb];
@@ -46,23 +47,22 @@ void spawnThreads_pairEM(paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, 
         ASSERT(pair->snSites > 0);
 
         for (int g = 0; g < vcfd->nJointClasses; g++) {
-            // vcfd->JointGenoCountDistGL[pidx][g] = pair->optim_jointGenoCountDist[g];
-            // vcfd->JointGenoCountDistGL[pidx][g] = pair->optim_jointGenoProbDist[g] * pair->snSites;
+            // vcfd->JointGenotypeCountMatrixGL[pidx][g] = pair->optim_jointGenotypeCountMatrix[g];
+            // vcfd->JointGenotypeCountMatrixGL[pidx][g] = pair->optim_jointGenotypeProbMatrix[g] * pair->snSites;
             // or should i multiply wih total nsites?
-            vcfd->JointGenoProbDistGL[pidx][g] = pair->optim_jointGenoProbDist[g];
+            vcfd->JointGenotypeProbMatrixGL[pidx][g] = pair->optim_jointGenotypeProbMatrix[g];
         }
-        // vcfd->JointGenoCountDistGL[pidx][vcfd->nJointClasses] = pair->snSites;
-        vcfd->JointGenoProbDistGL[pidx][vcfd->nJointClasses] = pair->snSites;
+        // vcfd->JointGenotypeCountMatrixGL[pidx][vcfd->nJointClasses] = pair->snSites;
+        vcfd->JointGenotypeProbMatrixGL[pidx][vcfd->nJointClasses] = pair->snSites;
 
         if (args->squareDistance == 1) {
-            distanceMatrix->M[pidx] = (double)SQUARE((MATH::Dij(vcfd->JointGenoProbDistGL[pidx])));
+            distanceMatrix->M[pidx] = (double)SQUARE((MATH::Dij(vcfd->JointGenotypeProbMatrixGL[pidx])));
         } else {
-            distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->JointGenoProbDistGL[pidx]);
+            distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->JointGenotypeProbMatrixGL[pidx]);
         }
         delete THREADS[pidx];
     }
-    vcfd->print_JointGenoProbDist();
-    // vcfd->print_JointGenoCountDist();
+    vcfd->print_JointGenotypeCountMatrix();
 
     delete[] THREADS;
 }
@@ -92,7 +92,7 @@ int EM_optim_jgd_gl3(indPairThreads *THREAD) {
 
     // set initial guess: 1/9 flat prior
     for (int i = 0; i < 9; i++) {
-        pair->optim_jointGenoProbDist[i] = FRAC_1_9;
+        pair->optim_jointGenotypeProbMatrix[i] = FRAC_1_9;
     }
 
     do {
@@ -117,8 +117,8 @@ int EM_optim_jgd_gl3(indPairThreads *THREAD) {
             // lngls3 (anc,anc),(anc,der),(der,der)
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
-                    TMP[i][j] = pair->optim_jointGenoProbDist[i * 3 + j] * exp(lngls[s][(3 * i1) + i] + lngls[s][(3 * i2) + j]);
-                    // fprintf(stderr, "TMP[%d][%d] = %f * exp(%f + %f)\n", i, j, pair->optim_jointGenoProbDist[i * 3 + j], lngls[s][(3 * i1) + i], lngls[s][(3 * i2) + j]);
+                    TMP[i][j] = pair->optim_jointGenotypeProbMatrix[i * 3 + j] * exp(lngls[s][(3 * i1) + i] + lngls[s][(3 * i2) + j]);
+                    // fprintf(stderr, "TMP[%d][%d] = %f * exp(%f + %f)\n", i, j, pair->optim_jointGenotypeProbMatrix[i * 3 + j], lngls[s][(3 * i1) + i], lngls[s][(3 * i2) + j]);
                     // fprintf(stderr, "TMP[%d][%d] = %f\n", i, j, TMP[i][j]);
                     sum += TMP[i][j];
                     // fprintf(stderr, "sum += TMP[%d][%d]; sum = %f\n", i, j, sum);
@@ -136,8 +136,8 @@ int EM_optim_jgd_gl3(indPairThreads *THREAD) {
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
                 tmp_jointGenoProb = ESFS[i][j] / (double)pair->snSites;
-                d += fabs(tmp_jointGenoProb - pair->optim_jointGenoProbDist[i * 3 + j]);
-                pair->optim_jointGenoProbDist[i * 3 + j] = tmp_jointGenoProb;
+                d += fabs(tmp_jointGenoProb - pair->optim_jointGenotypeProbMatrix[i * 3 + j]);
+                pair->optim_jointGenotypeProbMatrix[i * 3 + j] = tmp_jointGenoProb;
             }
         }
 

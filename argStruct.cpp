@@ -118,8 +118,7 @@ argStruct *argStruct_get(int argc, char **argv) {
         //   and the file type to be printed.
         //
         // The following printing commands are available:
-        //   --printJointGenoCountDist/-pJGCD <int> : print joint genotype count distribution
-        //   --printJointGenoProbDist/-pJGPD <int> : print joint genotype probability distribution
+        //   --printJointGenotypeCountMatrix/-pJGCD <int> : print joint genotype count distribution
         //   --printAmovaTable/-pAT <int> : print AMOVA table
         //   --printDistanceMatrix/-pDM <int> : print distance matrix
         //   --printBlocksTab <0|1> : print tab-delimited blocks file defining the start and end
@@ -135,10 +134,8 @@ argStruct *argStruct_get(int argc, char **argv) {
         // TODO maybe use hypen style here --print-joint-geno-count-dist to be consistent with other commands
         // TODO maybe make <int> optional and choose a default one, most people won't care about this
 
-        else if ((strcasecmp("--printJointGenoCountDist", arv) == 0) || (strcasecmp("--printJGCD", arv) == 0) || (strcasecmp("-pJGCD", arv) == 0)) {
-            args->printJointGenoCountDist = atoi(val);
-        } else if ((strcasecmp("--printJointGenoProbDist", arv) == 0) || (strcasecmp("--printJGPD", arv) == 0) || (strcasecmp("-pJGPD", arv) == 0)) {
-            args->printJointGenoProbDist = atoi(val);
+        else if ((strcasecmp("--printJointGenotypeCountMatrix", arv) == 0) || (strcasecmp("--printJGCD", arv) == 0) || (strcasecmp("-pJGCD", arv) == 0)) {
+            args->printJointGenotypeCountMatrix = atoi(val);
         } else if ((strcasecmp("--printAmovaTable", arv) == 0) || (strcasecmp("--printAT", arv) == 0) || (strcasecmp("-pAT", arv) == 0)) {
             args->printAmovaTable = atoi(val);
         } else if (strcasecmp("--printDistanceMatrix", arv) == 0 || strcasecmp("-pDM", arv) == 0) {
@@ -384,26 +381,20 @@ argStruct *argStruct_get(int argc, char **argv) {
             args->nBootstraps = (int)atof(val);
         }
 
-        else if (strcasecmp("-minInd", arv) == 0)
-            args->minInd = atoi(val);
         else if (strcasecmp("--maxEmIter", arv) == 0)
             args->maxEmIter = atoi(val);
 
-        else if (strcasecmp("-gl2gt", arv) == 0)
-            args->gl2gt = atoi(val);
-        else if (strcasecmp("--gl2gt", arv) == 0)
-            args->gl2gt = atoi(val);
-
         else if (strcasecmp("--isSim", arv) == 0) {
             args->isSim = atoi(val);
+
         } else if (strcasecmp("--nThreads", arv) == 0 || strcasecmp("-P", arv) == 0) {
             args->nThreads = atoi(val);
+
         } else if (strcasecmp("-h", arv) == 0 || strcasecmp("--help", arv) == 0) {
             print_help(stdout);
             exit(0);
         } else {
-            fprintf(stderr, "[ERROR]\tUnknown argument: %s\n", arv);
-            exit(1);
+            ERROR("Unknown argument: \'%s\'\n", arv);
         }
 
         ++argv;
@@ -425,25 +416,21 @@ argStruct *argStruct_get(int argc, char **argv) {
 }
 
 void argStruct::check_arg_dependencies() {
-    if (0 != printJointGenoCountDist) {
-        // TODO decide if we should have this
-        ERROR("printJointGenoCountDist is not available.");
-    }
-
-    if (0 != printJointGenoProbDist && 2 == doDist) {
-        ERROR("printJointGenoProbDist is not available when doDist is set to 2.");
+    if (0 != printJointGenotypeCountMatrix) {
+        // TODO implement this
+        ERROR("printJointGenotypeCountMatrix is not available.");
     }
 
     if (minInd == 0) {
-        fprintf(stderr, "\n\t-> -minInd 0; will use sites with data for all individuals.\n");
+        ARGLOG("minInd is set to 0; will use sites with data for all individuals.")
+
     } else if (minInd == -1) {
-        fprintf(stderr, "\n\t-> -minInd not set; will use sites that is nonmissing for both individuals in a pair.\n");
+        ARGLOG("minInd is not set. Default is setting minInd to 2; will use sites that is nonmissing for both individuals in each individual pair.")
         minInd = 2;
     } else if (minInd == 2) {
-        fprintf(stderr, "\n\t-> -minInd 2; will use sites that is nonmissing for both individuals in a pair.\n");
+        ARGLOG("minInd is set to 2; will use sites that is nonmissing for both individuals in a pair.")
     } else if (minInd == 1 || minInd < -1) {
-        fprintf(stderr, "\n[ERROR]\tMinimum value allowed for minInd is 2.\n");
-        exit(1);
+        ERROR("minInd is set to %d. Minimum value allowed for minInd is 2.", minInd);
     }
 
     if (0 == isSim) {
@@ -477,11 +464,12 @@ void argStruct::check_arg_dependencies() {
 
     if (seed == -1) {
         seed = time(NULL);
-        fprintf(stderr, "\n[INFO]\tSeed is not set, will use current time as seed for random number generator: %d.\n", seed);
         srand48(seed);
+        ARGLOG("Seed is not defined, will use current time as random seed for the random number generator. Seed is now set to: %d.\n", seed);
+        WARNING("Used the current time as random seed for random number generator. For parallel runs this may cause seed collisions. Hence, it is recommended to set the seed manually using `--seed <INTEGER>`.");
     } else {
-        fprintf(stderr, "\n[INFO]\tSeed is set to %d, will use this seed for random number generator.\n", seed);
         srand48(seed);
+        ARGLOG("Seed is set to: %d.\n", seed);
     }
 
     if (in_dm_fn != NULL) {

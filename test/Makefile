@@ -5,37 +5,37 @@ all:
 	@printf "\n\n\n";
 	@printf "===============================================================================\n";
 	@printf "\n\n\n[TEST 1]: EM, then AMOVA with 1 levels in metadata, print distance matrix\n";
-	../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf --printDistanceMatrix 1 -minInd 2 -doDist 1 --maxEmIter 100 --em-tole 1e-10 -m metadata_with_header_1lvl.tsv --ancDerFile test_s9_d1_1K_ancder.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1 2> testwd/logs/test_s9_d1_1K_mtd1.log;
+	../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf --printDistanceMatrix 1 --minInd 2 -doDist 1 --maxEmIter 100 --em-tole 1e-10 -m metadata_with_header_1lvl.tsv --ancDerFile test_s9_d1_1K_ancder.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1 2> testwd/logs/test_s9_d1_1K_mtd1.log;
 	bash -c "diff testwd/test_s9_d1_1K_mtd1.amova.csv reference/test_s9_d1_1K_mtd1.amova.csv";
 #
 	@printf "\n\n\n";
 	@printf "===============================================================================\n";
 	@printf "\n\n\n[TEST 2]: Read the data from distance matrix file, then AMOVA with 1 levels in metadata\n";
-	../ngsAMOVA -doEM 0 -doAMOVA 1 --in-dm testwd/test_s9_d1_1K_mtd1.distance_matrix.csv -minInd 2 -doDist 3 -m metadata_with_header_1lvl.tsv --ancDerFile test_s9_d1_1K_ancder.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1_indm 2> testwd/logs/test_s9_d1_1K_mtd1_indm.log;
+	../ngsAMOVA -doEM 0 -doAMOVA 1 --in-dm testwd/test_s9_d1_1K_mtd1.distance_matrix.csv --minInd 2 -doDist 3 -m metadata_with_header_1lvl.tsv --ancDerFile test_s9_d1_1K_ancder.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1_indm 2> testwd/logs/test_s9_d1_1K_mtd1_indm.log;
 	bash -c "diff testwd/test_s9_d1_1K_mtd1_indm.amova.csv reference/test_s9_d1_1K_mtd1.amova.csv";
 #
 	@printf "\n\n\n";
 	@printf "===============================================================================\n";
 	@printf "\n\n\n[TEST 3]: EM, then AMOVA with 2 levels in metadata\n";
-	../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf -minInd 2 -doDist 1 --maxEmIter 100 --em-tole 1e-10 -m metadata_with_header_2lvl.tsv --ancDerFile test_s9_d1_1K_ancder.tsv -f "Individual~Region/Population" -out testwd/test_s9_d1_1K_mtd2 2> testwd/logs/test_s9_d1_1K_mtd2.log;
+	../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf --minInd 2 -doDist 1 --maxEmIter 100 --em-tole 1e-10 -m metadata_with_header_2lvl.tsv --ancDerFile test_s9_d1_1K_ancder.tsv -f "Individual~Region/Population" -out testwd/test_s9_d1_1K_mtd2 2> testwd/logs/test_s9_d1_1K_mtd2.log;
 	bash -c "diff testwd/test_s9_d1_1K_mtd2.amova.csv reference/test_s9_d1_1K_mtd2.amova.csv";
 #
 	@printf "\n\n\n";
 	@printf "===============================================================================\n";
 	@printf "\n\n\n[TEST 4]: Read the data from distance matrix file, then do 1-level AMOVA using formula from metadata with 2 levels\n";
-	../ngsAMOVA -doEM 0 -doAMOVA 1 --in-dm test_s9_d1_1K_mtd1_maxIter100_tole10.distance_matrix.csv -minInd 2 -doDist 3 --nThreads 0 -m metadata_with_header_2lvl.tsv --ancDerFile test_s9_d1_1K_ancder.tsv -f "Individual~Population" -out testwd/indm_test_s9_d1_1K_mtd1 2> testwd/logs/indm_test_s9_d1_1K_mtd1.log;
+	../ngsAMOVA -doEM 0 -doAMOVA 1 --in-dm test_s9_d1_1K_mtd1_maxIter100_tole10.distance_matrix.csv --minInd 2 -doDist 3 --nThreads 0 -m metadata_with_header_2lvl.tsv --ancDerFile test_s9_d1_1K_ancder.tsv -f "Individual~Population" -out testwd/indm_test_s9_d1_1K_mtd1 2> testwd/logs/indm_test_s9_d1_1K_mtd1.log;
 	bash -c "diff testwd/indm_test_s9_d1_1K_mtd1.amova.csv testwd/test_s9_d1_1K_mtd1.amova.csv";
 #
 	@printf "\n\n\n";
 	@printf "===============================================================================\n";
 	@printf "\n\n\n[TEST 5]: Use genotypes in VCF file to perform AMOVA\n";
-	../ngsAMOVA -doEM 0 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf -minInd 2 -doDist 2 -m metadata_with_header_1lvl.tsv --ancDerFile test_s9_d1_1K_ancder.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1_gt 2> testwd/logs/test_s9_d1_1K_mtd1_gt.log;
+	../ngsAMOVA -doEM 0 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf --minInd 2 -doDist 2 -m metadata_with_header_1lvl.tsv --ancDerFile test_s9_d1_1K_ancder.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1_gt 2> testwd/logs/test_s9_d1_1K_mtd1_gt.log;
 	bash -c "diff testwd/test_s9_d1_1K_mtd1_gt.amova.csv reference/test_s9_d1_1K_mtd1_gt.amova.csv";
 #
 	@printf "\n\n\n";
 	@printf "===============================================================================\n";
 	@printf "\n\n\n[TEST 6]: Same as test 5, but use bcf input with more data and specify regions to use to get the same results as test 5\n";
-	../ngsAMOVA -doEM 0 -doAMOVA 1 --in-vcf test_s9_d1_1K_extra.bcf -minInd 2 -doDist 2 -m metadata_with_header_1lvl.tsv --ancDerFile test_s9_d1_1K_ancder.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1_gt --region "chr22" 2> testwd/logs/test_s9_d1_1K_mtd1_gt.log;
+	../ngsAMOVA -doEM 0 -doAMOVA 1 --in-vcf test_s9_d1_1K_extra.bcf --minInd 2 -doDist 2 -m metadata_with_header_1lvl.tsv --ancDerFile test_s9_d1_1K_ancder.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1_gt --region "chr22" 2> testwd/logs/test_s9_d1_1K_mtd1_gt.log;
 	bash -c "diff testwd/test_s9_d1_1K_mtd1_gt.amova.csv reference/test_s9_d1_1K_mtd1_gt.amova.csv";
 #
 	@printf "\n\n\n";
@@ -53,7 +53,7 @@ all:
 	@printf "\n\n\n";
 	@printf "===============================================================================\n";
 	@printf "\n\n\n[TEST 9]: Same as TEST1 but with same sites divided into 2 contigs\n";
-	../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K_2contigs.vcf --printDistanceMatrix 1 -minInd 2 -doDist 1 --maxEmIter 100 --em-tole 1e-10 -m metadata_with_header_1lvl.tsv -f "Individual~Population" --ancDerFile test_s9_d1_1K_2contigs_ancder.tsv -out testwd/test_s9_d1_1K_2contigs_mtd1 2> testwd/logs/test_s9_d1_1K_2contigs_mtd1.log;
+	../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K_2contigs.vcf --printDistanceMatrix 1 --minInd 2 -doDist 1 --maxEmIter 100 --em-tole 1e-10 -m metadata_with_header_1lvl.tsv -f "Individual~Population" --ancDerFile test_s9_d1_1K_2contigs_ancder.tsv -out testwd/test_s9_d1_1K_2contigs_mtd1 2> testwd/logs/test_s9_d1_1K_2contigs_mtd1.log;
 	bash -c "diff testwd/test_s9_d1_1K_2contigs_mtd1.amova.csv reference/test_s9_d1_1K_mtd1.amova.csv";
 	@printf "\n\n\n";
 #
@@ -66,13 +66,13 @@ all:
 #
 	@printf "===============================================================================\n";
 	@printf "\n\n\n[TEST 11]: Same as test 1, use --isSim 1 switch instead of ancderfile\n";
-	../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf --printDistanceMatrix 1 -minInd 2 -doDist 1 --maxEmIter 100 --em-tole 0.0000000001 -m metadata_with_header_1lvl.tsv --isSim 1 -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1_isSim 2> testwd/logs/test_s9_d1_1K_mtd1_isSim.log;
+	../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf --printDistanceMatrix 1 --minInd 2 -doDist 1 --maxEmIter 100 --em-tole 0.0000000001 -m metadata_with_header_1lvl.tsv --isSim 1 -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1_isSim 2> testwd/logs/test_s9_d1_1K_mtd1_isSim.log;
 	bash -c "diff testwd/test_s9_d1_1K_mtd1_isSim.amova.csv reference/test_s9_d1_1K_mtd1.amova.csv";
 #
 	@printf "\n\n\n";
 	@printf "===============================================================================\n";
 	@printf "\n\n\n[TEST 12]: Same as test 5, but use --isSim 1 switch instead of ancderfile\n";
-	../ngsAMOVA -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf -minInd 2 -doDist 2 -m metadata_with_header_1lvl.tsv --isSim 1 -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1_gt_isSim 2> testwd/logs/test_s9_d1_1K_mtd1_gt_isSim.log;
+	../ngsAMOVA -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf --minInd 2 -doDist 2 -m metadata_with_header_1lvl.tsv --isSim 1 -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1_gt_isSim 2> testwd/logs/test_s9_d1_1K_mtd1_gt_isSim.log;
 	bash -c "diff testwd/test_s9_d1_1K_mtd1_gt_isSim.amova.csv reference/test_s9_d1_1K_mtd1_gt.amova.csv";
 #
 	@printf "\n\n\n";

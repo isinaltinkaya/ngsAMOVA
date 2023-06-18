@@ -57,9 +57,11 @@ int require_index(paramStruct *pars);
 /// @return 0 if no unpacking is required, otherwise return a BCF_UN_* value
 int require_unpack();
 
+void set_contig_vcfToAlleles(vcfData *vcfd, int **contig_vcfToAlleles, allelesStruct *alleles);
+
 struct vcfData {
     vcfFile *in_fp = NULL;
-    bcf1_t *bcf = NULL;
+    bcf1_t *rec = NULL;
 
     bcf_hdr_t *hdr = NULL;
 
@@ -69,10 +71,19 @@ struct vcfData {
     int require_index = 0;
 
     int nContigs = 0;
+    int *skipContigs = NULL;
+
     int nInd = 0;
     int nIndCmb = 0;
-    int nSites = 0;
-    int totSites = 0;
+
+    int *contig_vcfToAncDer = NULL;
+    int *contig_vcfToMajMin = NULL;
+
+    /// @brief get_contigIdx_in_alleles - get the index of a given contig in the allelesStruct
+    /// @param contig_vcfToAlleles
+    /// @param alleles
+    /// @return index of the contig_i in the allelesStruct if found, otherwise -1
+    const int get_contigIdx_in_alleles(int **contig_vcfToAlleles, allelesStruct *alleles);
 
     /*
      * lngl[nSites][nInd*nGT*double]
@@ -91,7 +102,7 @@ struct vcfData {
      * [nIndCmb][9+1]
      * last element contains total number of sites shared
      */
-    int **JointGenoCountDistGT = NULL;
+    int **JointGenotypeCountMatrixGT = NULL;
 
     // \def jgcd_gt[nBlocks][nIndCmb][nJointClasses]
     //      jgcd_gt[b][i][j] == number of sites where the ith pair of individuals have the jth joint genotype class in block b
@@ -101,8 +112,8 @@ struct vcfData {
     //      pair_shared_nSites[b][i] == number of sites shared between the individuals in the ith pair in block b
     int **pair_shared_nSites = NULL;
 
-    double **JointGenoCountDistGL = NULL;
-    double **JointGenoProbDistGL = NULL;
+    double **JointGenotypeCountMatrixGL = NULL;
+    double **JointGenotypeProbMatrixGL = NULL;
     int nJointClasses = 0;
 
     // TODO instead of copying the names, just store the order
@@ -123,12 +134,11 @@ struct vcfData {
     // set nGT to given nGT, set nJointClasses to nGT*nGT
     // void set_nGT(const int nGT_);
 
-    void init_JointGenoCountDistGL();
-    void init_JointGenoProbDistGL();
-    void init_JointGenoCountDistGT();
+    void init_JointGenotypeCountMatrixGL();
+    void init_JointGenotypeProbMatrixGL();
+    void init_JointGenotypeCountMatrixGT();
 
-    void print_JointGenoCountDist();
-    void print_JointGenoProbDist();
+    void print_JointGenotypeCountMatrix();
 
     void lngl_init(int doEM);
     void lngl_expand();
@@ -136,8 +146,9 @@ struct vcfData {
     void _print(FILE *fp);
     void _print();
 
+    /// @brief records_next - get the next record
+    /// @return 0 if there are no more records, otherwise return 1
     int records_next();
-    int records_next(hts_itr_t *block_itr);
 
     void set_n_joint_categories(paramStruct *pars);
 
@@ -149,6 +160,12 @@ struct vcfData {
 
     void site_gts_get(const int a1, const int a2);
     void site_get_gls(void);
+
+    /// @brief get_rec_contig_id - get the contig id of the current record
+    const char *get_contig_name(void);
+
+    /// @brief get_rec_contig_id(i) - get the contig id of the contig with id i
+    const char *get_contig_name(const int32_t i);
 };
 
 vcfData *vcfData_init(paramStruct *pars);
@@ -288,12 +305,18 @@ void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt);
 // @return
 // 1    skip site
 int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, pairStruct **pairs);
-int site_read_allelic_states(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2);
 
 // return 1 if skipped
 // block_i  -1 if block bootstrapping is disabled
-int get_JointGenoDist_GT(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, const int block_i);
+int get_JointGenotypeMatrix_GT(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, const int block_i);
 
-int GLtoGT_1_JointGenoDist(vcfData *vcf, paramStruct *pars);
+int GLtoGT_1_JointGenotypeMatrix(vcfData *vcf, paramStruct *pars);
+
+/// @brief read_site_with_alleles - for a given site fetch the alleles at site from allelesStruct
+/// @return
+/// 0    if positions match and everything works fine
+/// 1    if 'contig:site' in VCF cannot be found in alleles file
+/// 2    if a1 or a2 is not a single character
+int read_site_with_alleles(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2);
 
 #endif  // __VCF_READER__

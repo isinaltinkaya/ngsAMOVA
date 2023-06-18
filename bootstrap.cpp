@@ -78,9 +78,11 @@ void blobStruct::addBlock() {
         ASSERT(blocks != NULL);
         blockPtrs = (int **)realloc(blockPtrs, nBlocks * sizeof(int *));
         ASSERT(blockPtrs != NULL);
-    } else {
+    } else if (nBlocks == 1) {
         blocks = (blockStruct **)malloc(nBlocks * sizeof(blockStruct *));
         blockPtrs = (int **)malloc(nBlocks * sizeof(int *));
+    } else {
+        NEVER;
     }
     blocks[nBlocks - 1] = (blockStruct *)malloc(sizeof(blockStruct));
     blockPtrs[nBlocks - 1] = (int *)malloc(sizeof(int));
@@ -244,10 +246,14 @@ blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf) {
                 // +1 to account for the remainder (last block)
                 nBlocks_perContig = (contigSize / blockSize) + 1;
             }
+            ASSERT(nBlocks_perContig > 0);
+            ASSERT(nBlocks_perContig != 0);
 
         } else {
             ERROR("Contig \'%s\' is smaller than the given block size (%d). Please use a smaller block size or exclude this contig from the analysis.", vcf->hdr->id[BCF_DT_CTG][ci].key, blockSize);
         }
+
+        ASSERT(nBlocks_perContig > 1);
 
         for (int bi = 0; bi < nBlocks_perContig; bi++) {
             blob->addBlock();
@@ -269,6 +275,12 @@ blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf) {
         nBlocks += nBlocks_perContig;
     }
     ASSERT(nBlocks == blob->nBlocks);
+
+    ASSERT(nBlocks != 0);
+    ASSERT(nBlocks != 1);
+    if (nBlocks == 1) {
+        WARNING("Only 1 block was created. Please use a smaller block size or exclude this contig from the analysis.");
+    }
 
     return blob;
 }

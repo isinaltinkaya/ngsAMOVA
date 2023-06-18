@@ -25,9 +25,9 @@ void input_VCF(paramStruct *pars) {
 
     // TODO deprec
     pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
-    for (int i1 = 0; i1 < vcfd->nInd - 1; i1++) {
-        for (int i2 = i1 + 1; i2 < vcfd->nInd; i2++) {
-            int pidx = nCk_idx(vcfd->nInd, i1, i2);
+    for (int i1 = 0; i1 < pars->nInd - 1; i1++) {
+        for (int i2 = i1 + 1; i2 < pars->nInd; i2++) {
+            int pidx = nCk_idx(pars->nInd, i1, i2);
             pairSt[pidx] = new pairStruct(pars, pidx, i1, i2);
         }
     }
@@ -37,8 +37,7 @@ void input_VCF(paramStruct *pars) {
 
     metadataStruct *metadata = NULL;
     // if analyses requiring metadata are requested
-    // TODO update the list of analyses requiring metadata
-    if (0 != args->doAMOVA || 0 != args->doDxy || 0 != args->doNJ) {
+    if (0 != args->doAMOVA || 0 != args->doDxy || 2 == args->doNJ) {
         if (NULL != args->in_mtd_fn) {
             if (NULL != args->formula) {
                 metadata = metadataStruct_get(pars);
@@ -61,10 +60,6 @@ void input_VCF(paramStruct *pars) {
     }
 
     distanceMatrix = distanceMatrixStruct_get(pars, vcfd, pairSt, indNames, blobSt);
-
-    fprintf(stderr, "Total number of sites processed: %lu\n", pars->totSites);
-    fprintf(stderr, "Total number of sites skipped for all individual pairs: %lu\n", pars->totSites - pars->nSites);
-    fprintf(stderr, "Total number of sites retained: %lu\n", pars->nSites);
 
     // ---- ANALYSES ------------------------------------------------------------ //
 

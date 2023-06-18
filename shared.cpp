@@ -22,31 +22,6 @@ void print_help(FILE *fp) {
             "\n"
             "Tool for performing the Analysis of Molecular Variance [AMOVA]\n"
             "\n"
-            "Commands:\n"
-            "\t-- Analyses\n"
-            "\n"
-            "Options:\n"
-            " -i\n"
-            "\n"
-            "\t-s\n"
-            "\t-m\n"
-            "\t-out/o\n"
-            "\n"
-
-            "\t-bs/bSize\n"
-            "\t-mCol\n"
-            "\t-seed\n"
-            "\t-doAMOVA\n"
-            "\t-printMatrix\n"
-
-            "\t-doDist\n"
-            "\t-sqDist (default: 1)\n"
-
-            "\t-minInd\n"
-            "\t-doTest\n"
-            "\t-maxIter/maxEmIter/mEmIter\n"
-            "\t-P/nThreads (default: 1)\n"
-            "\t-gl2gt\n"
             "\n");
 
     // fprintf(fp, "\n");

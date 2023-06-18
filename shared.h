@@ -54,6 +54,16 @@
 #define AT __FILE__ ":" ASSTR(__LINE__)
 
 /*
+ * Macro:[ERROR]
+ * print a custom error message and exit the program
+ */
+#define ERROR(...)                                                                           \
+    fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, __FUNCTION__, __LINE__); \
+    fprintf(stderr, __VA_ARGS__);                                                            \
+    fprintf(stderr, "\n*******\n");                                                          \
+    exit(1);
+
+/*
  * Macro:[NEVER]
  * indicates that a point in the code should never be reached
  */
@@ -74,30 +84,33 @@
     }
 
 /*
- * Macro:[ERROR]
- * print a custom error message and exit the program
- */
-#define ERROR(...)                                                                           \
-    fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, __FUNCTION__, __LINE__); \
-    fprintf(stderr, __VA_ARGS__);                                                            \
-    fprintf(stderr, "\n*******\n");                                                          \
-    exit(1);
-
-/*
  * Macro:[WARNING]
  * print a custom warning message
  */
-#define WARNING(...)                                                              \
-    fprintf(stderr, "\n[WARNING](%s/%s:%d)\t", __FILE__, __FUNCTION__, __LINE__); \
-    fprintf(stderr, __VA_ARGS__);                                                 \
-    IO::append_argsFile("\n[WARNING](%s/%s:%d)\t%s", __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__);
+#define WARNING(...)                                                                \
+    fprintf(stderr, "\n\n[WARNING](%s/%s:%d): ", __FILE__, __FUNCTION__, __LINE__); \
+    fprintf(stderr, __VA_ARGS__);                                                   \
+    fprintf(stderr, "\n");                                                          \
+    IO::append_argsFile("\n[WARNING](%s/%s:%d): %s\n", __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__);
 
 /*
  * Macro:[LOG]
  */
-#define LOG(...)                                                              \
-    fprintf(stderr, "\n[LOG](%s/%s:%d)\t", __FILE__, __FUNCTION__, __LINE__); \
+#define LOG(...)                                    \
+    fprintf(stderr, "\n[LOG](%s)\t", __FUNCTION__); \
     fprintf(stderr, __VA_ARGS__);
+
+#define BEGIN_LOGSECTION                                             \
+    fprintf(stderr, "\n________________________________________\n"); \
+    fprintf(stderr, "[LOG]\t-> Program is now at <%s/%s>\n", __FILE__, __FUNCTION__);
+
+#define END_LOGSECTION \
+    fprintf(stderr, "\n________________________________________\n");
+
+#define ARGLOG(...)                                 \
+    fprintf(stderr, "\n[LOG](%s)\t", __FUNCTION__); \
+    fprintf(stderr, __VA_ARGS__);                   \
+    IO::append_argsFile("\n[LOG](%s): %s\n", __FUNCTION__, __VA_ARGS__);
 
 /*
  * Macro:[ASSERTM]
@@ -406,8 +419,9 @@
 // maximum number of tokens allowed in amova formula string
 #define MAX_N_FORMULA_TOKENS 10
 
-#define MAX_N_HIER_LEVELS 5
-#define MAX_N_GROUPS_PER_LEVEL 5
+#define MAX_N_HIER_LEVELS 20
+// TODO
+#define MAX_N_GROUPS_PER_LEVEL 20
 
 #define MAX_N_BITS 64
 

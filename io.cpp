@@ -105,12 +105,10 @@ void IO::requireArgStr(const char *str, const char *requiredArg) {
 FILE *IO::getFile(const char *fn, const char *mode) {
     FILE *fp = NULL;
     if (strcmp(mode, "r") == 0) {
-        fprintf(stderr, "\n\t-> Reading file: %s\n", fn);
+        LOG("Reading file: %s", fn);
     }
     if (NULL == (fp = fopen(fn, mode))) {
-        // fprintf(stderr, "[%s:%s()]\t->Error opening FILE handle for file:%s exiting\n", __FILE__, __FUNCTION__, fn);
-        fprintf(stderr, "\n[ERROR]\tFailed to open file: %s\n", fn);
-        exit(1);
+        ERROR("Failed to open file: %s", fn);
     }
     return fp;
 }
@@ -142,11 +140,10 @@ int IO::isGzFile(const char *fn) {
 gzFile IO::getGzFile(const char *fn, const char *mode) {
     gzFile fp = Z_NULL;
     if (strcmp(mode, "r") == 0) {
-        fprintf(stderr, "\n\t-> Reading file: %s\n", fn);
+        LOG("Reading gzFile: %s", fn);
     }
     if (Z_NULL == (fp = gzopen(fn, mode))) {
-        fprintf(stderr, "[%s:%s()]\t->Error opening FILE handle for file:%s exiting\n", __FILE__, __FUNCTION__, fn);
-        exit(1);
+        ERROR("Failed to open gzFile: %s", fn);
     }
     return fp;
 }
@@ -583,7 +580,8 @@ IO::outputStruct::outputStruct(const char *fn_, const char *suffix, int fc_) {
         exit(1);
         break;
     }
-    fprintf(stderr, "\n[INFO] Opening output file: %s with compression type: %d (%s)\n", fn, fc, OUTFC_LUT[(OUTFC)fc]);
+    // fprintf(stderr, "\n[INFO] Opening output file: %s with compression type: %d (%s)\n", fn, fc, OUTFC_LUT[(OUTFC)fc]);
+    LOG("Opening output file: %s with compression type: %d (%s)\n", fn, fc, OUTFC_LUT[(OUTFC)fc]);
 }
 
 IO::outputStruct::~outputStruct() {
@@ -735,21 +733,14 @@ void IO::outFilesStruct_init(IO::outFilesStruct *ofs) {
     }
 
     if (args->doEM == 1) {
-        if (args->printJointGenoCountDist != 0) {
-            ofs->out_jgcd_fs = new IO::outputStruct(args->out_fnp, ".joint_geno_count_dist.csv", args->printJointGenoCountDist - 1);
-        }
-        if (args->printJointGenoProbDist != 0) {
-            ofs->out_jgpd_fs = new IO::outputStruct(args->out_fnp, ".joint_geno_prob_dist.csv", args->printJointGenoProbDist - 1);
+        if (args->printJointGenotypeCountMatrix != 0) {
+            ofs->out_jgcd_fs = new IO::outputStruct(args->out_fnp, ".joint_geno_count_dist.csv", args->printJointGenotypeCountMatrix - 1);
         }
     }
 
     if (args->doAMOVA == 2) {
-        if (args->printJointGenoCountDist != 0) {
-            ofs->out_jgcd_fs = new IO::outputStruct(args->out_fnp, ".joint_geno_count_dist.csv", args->printJointGenoCountDist - 1);
-        }
-        if (args->printJointGenoProbDist != 0) {
-            fprintf(stderr, "\n[ERROR] Joint genotype probability distribution output is not yet supported for -doAMOVA 2\n");
-            exit(1);
+        if (args->printJointGenotypeCountMatrix != 0) {
+            ofs->out_jgcd_fs = new IO::outputStruct(args->out_fnp, ".joint_geno_count_dist.csv", args->printJointGenotypeCountMatrix - 1);
         }
     }
 
@@ -783,7 +774,6 @@ void IO::outFilesStruct_destroy(IO::outFilesStruct *ofs) {
     IFDEL(ofs->out_amova_fs);
     IFDEL(ofs->out_dev_fs);
     IFDEL(ofs->out_jgcd_fs);
-    IFDEL(ofs->out_jgpd_fs);
     IFDEL(ofs->out_dxy_fs);
     IFDEL(ofs->out_nj_fs);
     IFDEL(ofs->out_blockstab_fs);
@@ -801,10 +791,6 @@ void IO::outFilesStruct_destroy(IO::outFilesStruct *ofs) {
 //     if (out_jgcd_fs != NULL)
 //     {
 //         out_jgcd_fs->flush();
-//     }
-//     if (out_jgpd_fs != NULL)
-//     {
-//         out_jgpd_fs->flush();
 //     }
 //     if (out_amova_fs != NULL)
 //     {
