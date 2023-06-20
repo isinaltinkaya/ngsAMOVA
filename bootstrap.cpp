@@ -74,10 +74,8 @@ blobStruct::~blobStruct() {
 void blobStruct::addBlock() {
     ++nBlocks;
     if (nBlocks > 1) {
-        blocks = (blockStruct **)realloc(blocks, nBlocks * sizeof(blockStruct *));
-        ASSERT(blocks != NULL);
-        blockPtrs = (int **)realloc(blockPtrs, nBlocks * sizeof(int *));
-        ASSERT(blockPtrs != NULL);
+        blocks = (blockStruct **)REALLOC(blocks, nBlocks * sizeof(blockStruct *));
+        blockPtrs = (int **)REALLOC(blockPtrs, nBlocks * sizeof(int *));
     } else if (nBlocks == 1) {
         blocks = (blockStruct **)malloc(nBlocks * sizeof(blockStruct *));
         blockPtrs = (int **)malloc(nBlocks * sizeof(int *));

@@ -378,7 +378,7 @@ void njStruct::addEdge(int parentNode, int childNode, double edgeLength) {
     edgeNodes[nEdges][1] = childNode;
 
     int parentNodeParentIdx = parentNode - L;
-    parentToEdgeIdx[parentNodeParentIdx] = (int *)realloc(parentToEdgeIdx[parentNodeParentIdx], (nEdgesPerParentNode[parentNodeParentIdx] + 1) * sizeof(int));
+    parentToEdgeIdx[parentNodeParentIdx] = (int *)REALLOC(parentToEdgeIdx[parentNodeParentIdx], (nEdgesPerParentNode[parentNodeParentIdx] + 1) * sizeof(int));
     parentToEdgeIdx[parentNodeParentIdx][nEdgesPerParentNode[parentNodeParentIdx]] = nEdges;
     nEdgesPerParentNode[parentNodeParentIdx]++;
 

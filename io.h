@@ -82,7 +82,7 @@ FILE *openFileW(char *c);
 gzFile openGzFileW(const char *a, const char *b);
 gzFile openGzFileW(char *c);
 
-int isGzFile(const char *fn);
+bool isGzFile(const char *fn);
 
 namespace readFile {
 char *getFirstLine(const char *fn);
@@ -90,9 +90,6 @@ char *getFirstLine(FILE *fp);
 
 char *readToBuffer(const char *fn);
 
-// TODO this is only for the first line!! consider rm and migrate to macrodef sizes
-int getBufferSize(FILE *fp);
-int getBufferSize(char *fn);
 };  // namespace readFile
 
 namespace readGzFile {

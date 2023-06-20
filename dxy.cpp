@@ -6,15 +6,10 @@ dxyStruct::dxyStruct() {
     dxyArr = (double *)malloc(_dxyArr * sizeof(double));
     groupNames1 = (char **)malloc(_dxyArr * sizeof(char *));
     groupNames2 = (char **)malloc(_dxyArr * sizeof(char *));
-
-    // TODO changethis
     levelNames = (char **)malloc(_dxyArr * sizeof(char *));
 
     for (size_t i = 0; i < _dxyArr; i++) {
         dxyArr[i] = -1;
-        groupNames1[i] = NULL;
-        groupNames2[i] = NULL;
-        levelNames[i] = NULL;
     }
 }
 
@@ -32,15 +27,12 @@ dxyStruct::~dxyStruct() {
 
 void dxyStruct::expand() {
     _dxyArr = _dxyArr * 2;
-    dxyArr = (double *)realloc(dxyArr, _dxyArr * sizeof(double));
-    groupNames1 = (char **)realloc(groupNames1, _dxyArr * sizeof(char *));
-    groupNames2 = (char **)realloc(groupNames2, _dxyArr * sizeof(char *));
-    levelNames = (char **)realloc(levelNames, _dxyArr * sizeof(char *));
+    dxyArr = (double *)REALLOC(dxyArr, _dxyArr * sizeof(double));
+    groupNames1 = (char **)REALLOC(groupNames1, _dxyArr * sizeof(char *));
+    groupNames2 = (char **)REALLOC(groupNames2, _dxyArr * sizeof(char *));
+    levelNames = (char **)REALLOC(levelNames, _dxyArr * sizeof(char *));
     for (size_t i = _dxyArr / 2; i < _dxyArr; i++) {
         dxyArr[i] = -1;
-        groupNames1[i] = NULL;
-        groupNames2[i] = NULL;
-        levelNames[i] = NULL;
     }
 }
 
@@ -77,7 +69,7 @@ int dxyStruct::estimate_dxy_2groups(const int local_idx1, const int local_idx2, 
     dxyArr[nDxy] = dxy;
     groupNames1[nDxy] = strdup(mtd->groupNames[lvl][local_idx1]);
     groupNames2[nDxy] = strdup(mtd->groupNames[lvl][local_idx2]);
-    levelNames[nDxy] = strdup(mtd->levelNames[lvl + 1]);  // +1 since [0] is "Individual"
+    levelNames[nDxy] = strdup(mtd->levelNames[lvl + 1]);  // +1 since levelNames[0] is "Individual"
     nDxy++;
 
     return 1;
@@ -218,7 +210,7 @@ dxyStruct *dxyStruct_get(paramStruct *pars, distanceMatrixStruct *dMS, metadataS
                 for (int i = 0; i < mtd->nLevels; i++) {
                     for (int j = 0; j < mtd->nGroups[i]; j++) {
                         if (strcmp(dxyGroup, mtd->groupNames[i][j]) == 0) {
-                            dxyGroups = (char **)realloc(dxyGroups, (nDxyGroups + 1) * sizeof(char *));
+                            dxyGroups = (char **)REALLOC(dxyGroups, (nDxyGroups + 1) * sizeof(char *));
                             dxyGroups[nDxyGroups] = strdup(dxyGroup);
                             nDxyGroups++;
                             group_exists = 1;

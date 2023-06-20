@@ -163,7 +163,6 @@ struct vcfData {
     glData *gls = NULL;
 
     void site_gts_get(const int a1, const int a2);
-    void site_get_gls(void);
 
     /// @brief get_rec_contig_id - get the contig id of the current record
     const char *get_contig_name(void);

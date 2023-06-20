@@ -228,8 +228,7 @@ struct pairStruct {
         size_t oldSize = _sharedSites;
 
         _sharedSites *= 2;
-        sharedSites = (int *)realloc(sharedSites, _sharedSites * sizeof(int));
-        ASSERT(NULL != sharedSites);
+        sharedSites = (int *)REALLOC(sharedSites, _sharedSites * sizeof(int));
         for (size_t i = oldSize; i < _sharedSites; i++) {
             sharedSites[i] = -1;
         }

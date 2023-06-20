@@ -124,6 +124,10 @@
         exit(1);                                                                                         \
     }
 
+#define REALLOC(ptr, size) \
+    realloc(ptr, size);    \
+    ASSERTM(NULL != ptr, "Could not reallocate memory");
+
 /*
  * Macro:[FREE]
  * force free

@@ -126,15 +126,15 @@ const char *IO::getFileExtension(const char *fn) {
     return dot + 1;
 }
 
-int IO::isGzFile(const char *fn) {
+bool IO::isGzFile(const char *fn) {
     const char *ext = IO::getFileExtension(fn);
     if (ext == NULL) {
-        return -1;
+        ERROR("Could not read the file extension for %s", fn);
     }
-    if (strcmp(ext, "gz") != 0) {
-        return 0;
+    if (strcmp(ext, "gz") == 0) {
+        return (true);
     }
-    return 1;
+    return (false);
 }
 
 gzFile IO::getGzFile(const char *fn, const char *mode) {
@@ -254,22 +254,19 @@ char *IO::readFile::getFirstLine(const char *fn) {
         // check if the line was fully read
         if (line[strlen(line) - 1] == '\n') {  // line was fully read
             full_line_size += strlen(line);
-            full_line = (char *)realloc(full_line, full_line_size + 1);
-            ASSERT(full_line != NULL);
+            full_line = (char *)REALLOC(full_line, full_line_size + 1);
             strcat(full_line, line);
             break;
         } else {  // line was not fully read
             fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
 
             full_line_size += strlen(line);
-            full_line = (char *)realloc(full_line, full_line_size + 1);
-            ASSERT(full_line != NULL);
+            full_line = (char *)REALLOC(full_line, full_line_size + 1);
             full_line[full_line_size - 1] = '\0';
             strcat(full_line, line);
 
             buf_size *= 2;
-            line = (char *)realloc(line, buf_size * sizeof(char));
-            ASSERT(line != NULL);
+            line = (char *)REALLOC(line, buf_size * sizeof(char));
         }
     }
 
@@ -297,22 +294,19 @@ char *IO::readFile::getFirstLine(FILE *fp) {
         // check if the line was fully read
         if (line[strlen(line) - 1] == '\n') {  // line was fully read
             full_line_size += strlen(line);
-            full_line = (char *)realloc(full_line, full_line_size + 1);
-            ASSERT(full_line != NULL);
+            full_line = (char *)REALLOC(full_line, full_line_size + 1);
             strcat(full_line, line);
             break;
         } else {  // line was not fully read
             fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
 
             full_line_size += strlen(line);
-            full_line = (char *)realloc(full_line, full_line_size + 1);
-            ASSERT(full_line != NULL);
+            full_line = (char *)REALLOC(full_line, full_line_size + 1);
             full_line[full_line_size - 1] = '\0';
             strcat(full_line, line);
 
             buf_size *= 2;
-            line = (char *)realloc(line, buf_size * sizeof(char));
-            ASSERT(line != NULL);
+            line = (char *)REALLOC(line, buf_size * sizeof(char));
         }
     }
 
@@ -358,8 +352,7 @@ int IO::readGzFile::readToBuffer(char *fn, char **buffer_p, size_t *buf_size_p) 
         if (tok[tmp - 1] != '\n') {
             rlen += tmp;
             *buf_size_p *= 2;
-            char *new_buf = (char *)realloc(*buffer_p, *buf_size_p);
-            ASSERT(new_buf != NULL);
+            char *new_buf = (char *)REALLOC(*buffer_p, *buf_size_p);
             *buffer_p = new_buf;
         } else {
             rlen += tmp;
@@ -367,54 +360,6 @@ int IO::readGzFile::readToBuffer(char *fn, char **buffer_p, size_t *buf_size_p) 
             return rlen;
         }
     }
-}
-
-int IO::readFile::getBufferSize(FILE *fp) {
-    ASSERT(fseek(fp, 0, SEEK_SET) == 0);
-    size_t buf_size = FGETS_BUF_SIZE;
-    char *line = (char *)malloc(buf_size);
-    ASSERT(line != NULL);
-
-    while (fgets(line, buf_size, fp) != NULL) {
-        // check if the line was fully read
-        size_t line_len = strlen(line);
-        if (line[line_len - 1] == '\n') {
-            // line was fully read
-            break;
-        } else {
-            fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
-            // line was not fully read; increase buffer size
-            buf_size *= 2;
-            line = (char *)realloc(line, buf_size);
-            ASSERT(line != NULL);
-        }
-    }
-    FREE(line);
-    return buf_size;
-}
-
-int IO::readFile::getBufferSize(char *fn) {
-    FILE *fp = IO::getFile(fn, "r");
-    size_t buf_size = FGETS_BUF_SIZE;
-    char *line = (char *)malloc(buf_size);
-    ASSERT(line != NULL);
-    while (fgets(line, buf_size, fp) != NULL) {
-        // check if the line was fully read
-        size_t line_len = strlen(line);
-        if (line[line_len - 1] == '\n') {
-            // line was fully read
-            break;
-        } else {
-            fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
-            // line was not fully read; increase buffer size
-            buf_size *= 2;
-            line = (char *)realloc(line, buf_size);
-            ASSERT(line != NULL);
-        }
-    }
-    FCLOSE(fp);
-    FREE(line);
-    return buf_size;
 }
 
 /// @brief count number of columns in a line

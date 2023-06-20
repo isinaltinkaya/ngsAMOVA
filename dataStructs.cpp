@@ -67,13 +67,13 @@ void allelesStruct::add_new_contig(const int contig_i, const char *contig_id, co
     this->nContigs = contig_i + 1;
 
     if (this->nContigs > 1) {
-        this->nSites = (int *)realloc(this->nSites, (this->nContigs) * sizeof(int));
+        this->nSites = (int *)REALLOC(this->nSites, (this->nContigs) * sizeof(int));
         this->nSites[contig_i] = 0;
 
-        this->contigOffsets = (int *)realloc(this->contigOffsets, (this->nContigs) * sizeof(int));
+        this->contigOffsets = (int *)REALLOC(this->contigOffsets, (this->nContigs) * sizeof(int));
         this->contigOffsets[contig_i] = contig_i_offset;
 
-        this->contigNames = (char **)realloc(this->contigNames, (this->nContigs) * sizeof(char *));
+        this->contigNames = (char **)REALLOC(this->contigNames, (this->nContigs) * sizeof(char *));
     }
     this->contigNames[contig_i] = strdup(contig_id);
     ASSERT(this->contigNames[contig_i] != NULL);
@@ -82,12 +82,9 @@ void allelesStruct::add_new_contig(const int contig_i, const char *contig_id, co
 }
 
 void allelesStruct::expand(const int contig_i, const int new_size) {
-    allele1s = (char *)realloc(allele1s, new_size * sizeof(char));
-    ASSERT(allele1s != NULL);
-    allele2s = (char *)realloc(allele2s, new_size * sizeof(char));
-    ASSERT(allele2s != NULL);
-    positions = (int *)realloc(positions, new_size * sizeof(int));
-    ASSERT(positions != NULL);
+    allele1s = (char *)REALLOC(allele1s, new_size * sizeof(char));
+    allele2s = (char *)REALLOC(allele2s, new_size * sizeof(char));
+    positions = (int *)REALLOC(positions, new_size * sizeof(int));
 }
 
 allelesStruct::allelesStruct() {
@@ -909,8 +906,7 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars) {
         while (tok != NULL) {
             if (n_vals > dm_vals_size) {
                 dm_vals_size = dm_vals_size * 2;
-                dm_vals = (double *)realloc(dm_vals, (dm_vals_size) * sizeof(double));
-                ASSERT(NULL != dm_vals);
+                dm_vals = (double *)REALLOC(dm_vals, (dm_vals_size) * sizeof(double));
             }
             dm_vals[n_vals] = atof(tok);
             n_vals++;
@@ -933,8 +929,7 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars) {
             while (tok != NULL) {
                 if (n_vals > dm_vals_size) {
                     dm_vals_size = dm_vals_size * 2;
-                    dm_vals = (double *)realloc(dm_vals, (dm_vals_size) * sizeof(double));
-                    ASSERT(dm_vals != NULL);
+                    dm_vals = (double *)REALLOC(dm_vals, (dm_vals_size) * sizeof(double));
                 }
                 dm_vals[n_vals] = atof(tok);
                 n_vals++;
@@ -1055,10 +1050,8 @@ int formulaStruct::setFormulaTokenIdx(const char *mtd_tok, const int mtd_col_idx
 
 // @brief shrink - shrink the size of the arrays defined with default max values to the actual size needed
 void formulaStruct::shrink() {
-    formulaTokens = (char **)realloc(formulaTokens, nTokens * sizeof(char *));
-    ASSERT(formulaTokens != NULL)
-    formulaTokenIdx = (int *)realloc(formulaTokenIdx, nTokens * sizeof(int));
-    ASSERT(formulaTokenIdx != NULL)
+    formulaTokens = (char **)REALLOC(formulaTokens, nTokens * sizeof(char *));
+    formulaTokenIdx = (int *)REALLOC(formulaTokenIdx, nTokens * sizeof(int));
 }
 
 /// @brief formulaStruct_get initialize the formulaStruct
