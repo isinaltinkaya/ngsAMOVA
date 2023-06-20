@@ -34,9 +34,13 @@ struct blobStruct;
 // mmMM mmMm mmmm
 extern const int nDerToM33Idx[3][3];
 
-// a,c,g,t,n
-// A,C,G,T,N
-// 0,1,2,3,4
+/// @brief acgt_charToInt - convert a char base to int acgt index (internal representation)
+/// @details
+/// bases are internally represented as integers
+///
+/// a,c,g,t,n
+/// A,C,G,T,N
+/// 0,1,2,3,4
 extern const int acgt_charToInt[256];
 
 int bcf_alleles_get_gtidx(int a1, int a2);

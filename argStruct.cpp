@@ -2,7 +2,6 @@
 
 #include "io.h"
 
-// IO::outFilesStruct *outFiles;
 //  default: 0 (verbose mode off)
 u_char VERBOSE = 0;
 
@@ -701,22 +700,5 @@ void argStruct::print() {
 
 void argStruct::print(FILE *fp) {
     // fprintf(fp, "\nCommand: %s", args->command);//TODO
-    // fprintf(fp, "\n\t-> -in_vcf_fn %s", args->in_vcf_fn);
-
-    // fprintf(fp, " --seed %d ", args->seed);
-
-    // // TODO use lut to store names and values and associatons (e.g. tole maxiter etc assoc with doEM)
-    // // and if -formula is used, run formulaStruct_get()
-
-    // fprintf(fp, "\nngsAMOVA -doAMOVA %d -i %s -out %s -minInd %d -printMatrix %d -m %s -doDist %d -nThreads %d", args->doAMOVA, args->in_vcf_fn, args->out_fnp, args->minInd, args->printDistanceMatrix, args->in_mtd_fn, args->doDist, args->nThreads);
-    // if (args->doEM != 0) {
-    //     fprintf(fp, " -tole %e ", args->tole);
-    //     fprintf(fp, " -doEM %d ", args->doEM);
-    //     fprintf(fp, " -maxIter %d ", args->maxEmIter);
-    // }
-    // if (args->nBootstraps > 0) {
-    //     fprintf(fp, " --nBootstraps %d ", args->nBootstraps);
-    //     fprintf(fp, " --block-size %d ", args->blockSize);
-    // }
     fprintf(fp, "\n");
 }

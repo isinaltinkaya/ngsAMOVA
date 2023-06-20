@@ -330,22 +330,40 @@ void get_varianceCoefficients(amovaStruct *amova, metadataStruct *metadata, dist
 }
 
 // calculate variance components (sigma squared)
-void get_varianceComponents(amovaStruct *amova, metadataStruct *metadata) {
-    if (metadata->nLevels == 1) {
-        amova->sigmasq[0] = (amova->msd[0] - amova->msd[1]) / amova->ncoef[0];
-        amova->sigmasq[1] = amova->msd[1];
-        amova->sigmasq_total = amova->sigmasq[0] + amova->sigmasq[1];
+void get_varianceComponents(amovaStruct *amova) {
+    // if (amova->nAmovaLevels == 4) {
+    // amova->sigmasq[2] = amova->msd[2];
+    // amova->sigmasq[1] = (amova->msd[1] - amova->msd[2]) / amova->ncoef[0];
+    // amova->sigmasq[0] = (amova->msd[0] - amova->msd[2] - (amova->ncoef[1] * amova->sigmasq[1])) / amova->ncoef[2];
+    // amova->sigmasq[amova->_ncoef] = amova->sigmasq[0] + amova->sigmasq[1] + amova->sigmasq[2];
 
-        // TODO add more warnings for all levels and explain
-        // if(amova->sigmasq[0] <= 0){
-        //     WARNING("Sigma squared 0 is %f.");
-        // }
-
-    } else if (metadata->nLevels == 2) {
+    if (amova->nAmovaLevels > 3) {
         amova->sigmasq[2] = amova->msd[2];
         amova->sigmasq[1] = (amova->msd[1] - amova->sigmasq[2]) / amova->ncoef[0];
-        amova->sigmasq[0] = (amova->msd[0] - amova->msd[2] - (amova->ncoef[1] * amova->sigmasq[1])) / amova->ncoef[2];
-        amova->sigmasq_total = amova->sigmasq[0] + amova->sigmasq[1] + amova->sigmasq[2];
+
+        double sum = 0.0;
+        int x = 1;
+        for (int i = 0; i < amova->_ncoef - 2; i++) {
+            sum = 0.0;
+            for (int j = 1; j < 2; j++) {
+                sum += amova->ncoef[x] * amova->sigmasq[j];
+                ++x;
+            }
+            amova->sigmasq[i] = amova->msd[i] - amova->sigmasq[amova->_ncoef - 1] - sum;
+            amova->sigmasq[i] = amova->sigmasq[i] / amova->ncoef[x];
+            ++x;
+        }
+
+        // sigmasq total
+        for (int i = 0; i < amova->_ncoef; ++i) {
+            amova->sigmasq[amova->_ncoef] += amova->sigmasq[i];
+        }
+
+    } else if (amova->nAmovaLevels == 3) {
+        amova->sigmasq[0] = (amova->msd[0] - amova->msd[1]) / amova->ncoef[0];
+        amova->sigmasq[1] = amova->msd[1];
+        amova->sigmasq[amova->_ncoef] = amova->sigmasq[0] + amova->sigmasq[1];
+
     } else {
         NEVER;
     }
@@ -355,26 +373,25 @@ void get_varianceComponents(amovaStruct *amova, metadataStruct *metadata) {
 
 void calculate_PercentageTotalVariance(amovaStruct *amova) {
     for (int i = 0; i < (int)amova->_ncoef; i++) {
-        amova->pct_sigmasq[i] = (amova->sigmasq[i] / amova->sigmasq_total) * 100.0;
+        amova->pct_sigmasq[i] = (amova->sigmasq[i] / amova->sigmasq[amova->_ncoef]) * 100.0;
     }
 }
 
-// TODO rm metadata and use amova->nLevels instead
-void get_phiStatistics(amovaStruct *amova, metadataStruct *metadata) {
-    if (metadata->nLevels == 1) {
+void get_phiStatistics(amovaStruct *amova) {
+    if (amova->nAmovaLevels == 3) {
         amova->phi[0] = amova->sigmasq[0] / (amova->sigmasq[0] + amova->sigmasq[1]);
 
-    } else if (metadata->nLevels == 2) {
+    } else if (amova->nAmovaLevels == 4) {
         // Individual,Region,Population,Total
 
         // lvl0 (i.e. reg) in TOTAL
         // Phi_CT
-        if (amova->sigmasq_total <= 0) {
-            fprintf(stderr, "\n[ERROR]\tTotal variance is %f (sigmasq_total is <= 0). Please check your analysis settings and make sure you have enough data.\n", amova->sigmasq_total);
+        if (amova->sigmasq[amova->_ncoef] <= 0) {
+            fprintf(stderr, "\n[ERROR]\tTotal variance is %f (sigmasq_total is <= 0). Please check your analysis settings and make sure you have enough data.\n", amova->sigmasq[amova->_ncoef]);
             exit(1);
         }
 
-        amova->phi[0] = amova->sigmasq[0] / (amova->sigmasq_total);
+        amova->phi[0] = amova->sigmasq[0] / (amova->sigmasq[amova->_ncoef]);
 
         // lvl1 in lvl0
         // Phi_SC
@@ -382,7 +399,9 @@ void get_phiStatistics(amovaStruct *amova, metadataStruct *metadata) {
 
         // lvl1 (i.e. pop) in TOTAL
         // Phi_ST
-        amova->phi[2] = (amova->sigmasq[0] + amova->sigmasq[1]) / (amova->sigmasq_total);
+        amova->phi[2] = (amova->sigmasq[0] + amova->sigmasq[1]) / (amova->sigmasq[amova->_ncoef]);
+    } else {
+        NEVER;
     }
 }
 
@@ -390,14 +409,13 @@ int doAmova(amovaStruct *amova, distanceMatrixStruct *dm, metadataStruct *metada
     get_degreesOfFreedom(amova, metadata);
     get_sumOfSquares(amova, metadata, dm);
     get_varianceCoefficients(amova, metadata, dm);
-    get_varianceComponents(amova, metadata);
-    get_phiStatistics(amova, metadata);
+    get_varianceComponents(amova);
+    get_phiStatistics(amova);
     return (0);
 }
 
 void amovaStruct::_print(FILE *fp) {
     fprintf(fp, "\nnAmovaLevels = %d\n", nAmovaLevels);
-    fprintf(fp, "nLevels = %d\n", nLevels);
     fprintf(fp, "\n_ncoef = %zu\n", _ncoef);
     fprintf(fp, "_phi = %zu\n", _phi);
     for (size_t i = 0; i < (size_t)nAmovaLevels; i++) {
@@ -460,7 +478,7 @@ void amovaStruct::print_as_table(FILE *fp, metadataStruct *metadata) {
 
     fprintf(fp, "\n\n\n");
     fprintf(fp, "\nVariance coefficients:\n\n\t");
-    if (nLevels == 1) {
+    if (nAmovaLevels == 3) {
         fprintf(fp, "%f", ncoef[0]);
     } else {
         for (size_t i = 0; i < _ncoef; i++) {
@@ -509,14 +527,14 @@ void amovaStruct::print_as_csv(metadataStruct *metadata) {
         x++;
     }
 
-    if (nLevels == 1) {
+    if (this->nAmovaLevels == 3) {
         ksprintf(kbuf, "Phi,%s_in_%s,%f\n", metadata->levelNames[1], "Total", phi[0]);
         ksprintf(kbuf, "Variance_coefficient,a,%f\n", ncoef[0]);
         ksprintf(kbuf, "Variance_component,%s,%f\n", metadata->levelNames[1], sigmasq[0]);
         ksprintf(kbuf, "Variance_component,%s,%f\n", metadata->levelNames[0], sigmasq[1]);
         ksprintf(kbuf, "Percentage_variance,%s,%f\n", metadata->levelNames[1], pct_sigmasq[0]);
         ksprintf(kbuf, "Percentage_variance,%s,%f\n", metadata->levelNames[0], pct_sigmasq[1]);
-    } else if (nLevels == 2) {
+    } else if (this->nAmovaLevels == 4) {
         ksprintf(kbuf, "Phi,%s_in_%s,%f\n", metadata->levelNames[1], "Total", phi[0]);
         ksprintf(kbuf, "Phi,%s_in_%s,%f\n", metadata->levelNames[2], metadata->levelNames[1], phi[1]);
         ksprintf(kbuf, "Phi,%s_in_%s,%f\n", metadata->levelNames[2], "Total", phi[2]);
@@ -544,13 +562,10 @@ amovaStruct::amovaStruct(metadataStruct *metadata) {
     // where level1 is the highest level
     // (e.g. region in Individual ~ Region/Population/Subpopulation)
 
-    nLevels = metadata->nLevels;
-    ASSERT(nLevels > 0);
-
     // set number of amova levels
     // number of metadata levels + 2
-    nAmovaLevels = nLevels + 2;
-    _ncoef = nLevels + 1;
+    nAmovaLevels = metadata->nLevels + 2;
+    _ncoef = metadata->nLevels + 1;
     _phi = nCk(_ncoef, 2);
 
     ssd = new double[nAmovaLevels];
@@ -564,7 +579,7 @@ amovaStruct::amovaStruct(metadataStruct *metadata) {
 
     ss = new double[_ncoef];
     ncoef = new double[_ncoef];
-    sigmasq = new double[_ncoef];
+    sigmasq = new double[_ncoef + 1];
     pct_sigmasq = new double[_ncoef];
     for (size_t i = 0; i < _ncoef; i++) {
         ncoef[i] = 0.0;
@@ -572,6 +587,7 @@ amovaStruct::amovaStruct(metadataStruct *metadata) {
         ss[i] = 0.0;
         pct_sigmasq[i] = 0.0;
     }
+    sigmasq[_ncoef] = 0.0;  // sigmasq total
 
     phi = new double[_phi];
     for (size_t i = 0; i < _phi; i++) {
@@ -594,7 +610,6 @@ double calculate_SumOfSquares_Total(distanceMatrixStruct *dm) {
     double ssd_TOTAL = 0.0;
 
     for (int px = 0; px < dm->nIndCmb; px++) {
-        // the distance is already stored in squared form
         ssd_TOTAL += dm->M[px];
     }
 
@@ -612,7 +627,6 @@ double calculate_SumOfSquares_Within(int lvl, amovaStruct *amova, distanceMatrix
         double ssd = 0.0;
         int n = 0;
 
-        // for (int g = 0; g < metadata->hierArr[lvl]->nStrata; g++)
         for (int g = 0; g < metadata->nGroups[lvl]; g++) {
             sum = 0.0;
             n = metadata->countIndsInGroup(lvl, g);

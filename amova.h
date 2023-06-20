@@ -11,7 +11,6 @@ struct metadataStruct;
 struct amovaBootstrapThreads;
 
 typedef struct amovaStruct amovaStruct;
-
 typedef struct amovaBootstrapThreads amovaBootstrapThreads;
 
 double calculate_SumOfSquares_Total(distanceMatrixStruct *dMS);
@@ -79,12 +78,10 @@ struct amovaStruct {
 
     double *ncoef = NULL;
     double *sigmasq = NULL;
-    double sigmasq_total = 0.0;
     double *phi = NULL;
     double *pct_sigmasq = NULL;
 
     int nAmovaLevels = 0;
-    int nLevels = 0;
 
     size_t _ncoef = 0;
     size_t _phi = 0;

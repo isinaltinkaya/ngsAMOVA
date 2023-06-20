@@ -231,6 +231,7 @@ void vcfData::site_gts_get(const int a1, const int a2) {
         ERROR("Ploidy %d not supported.", gts->ploidy);
     }
 
+    // intbase = int representation of internal acgt base
     this->gts->intbase2state[a1] = 0;  // major/ancestral
     this->gts->intbase2state[a2] = 1;  // minor/derived
 
@@ -530,10 +531,9 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
     do {
         int ret = read_site_with_alleles(contig_i, site_i, vcfd, pars, a1, a2);
 
-        // TODO
-        //  try finding a1 a2 in bcf->d.allele
-        //  check if a1,a2 in bcf alleles
-        //  if (*a1->vcfd->bcf->n_allele)
+        int a1a1 = bcf_alleles_get_gtidx(*a1, *a1);
+        int a1a2 = bcf_alleles_get_gtidx(*a1, *a2);
+        int a2a2 = bcf_alleles_get_gtidx(*a2, *a2);
 
         if (0 == ret) {
             skip_site = 0;
@@ -604,9 +604,12 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
             }
 
             const int lngls_ind_start = indi * vcfd->nGT;
-            vcfd->lngl[pars->nSites][lngls_ind_start + 0] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a1, *a1)]);
-            vcfd->lngl[pars->nSites][lngls_ind_start + 1] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a1, *a2)]);
-            vcfd->lngl[pars->nSites][lngls_ind_start + 2] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a2, *a2)]);
+            // vcfd->lngl[pars->nSites][lngls_ind_start + 0] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a1, *a1)]);
+            // vcfd->lngl[pars->nSites][lngls_ind_start + 1] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a1, *a2)]);
+            // vcfd->lngl[pars->nSites][lngls_ind_start + 2] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a2, *a2)]);
+            vcfd->lngl[pars->nSites][lngls_ind_start + 0] = (double)LOG2LN(lgls.ind_ptr(indi)[a1a1]);
+            vcfd->lngl[pars->nSites][lngls_ind_start + 1] = (double)LOG2LN(lgls.ind_ptr(indi)[a1a2]);
+            vcfd->lngl[pars->nSites][lngls_ind_start + 2] = (double)LOG2LN(lgls.ind_ptr(indi)[a2a2]);
         }
 
     } while (0);
