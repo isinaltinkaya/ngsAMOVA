@@ -19,8 +19,6 @@
 #include "dev.h"
 #include "lookup.h"
 
-// typedef struct argStruct argStruct;
-// extern argStruct *args;
 /* ========================================================================== */
 /* MACRO DEFINITIONS ======================================================== */
 /* ========================================================================== */
@@ -124,9 +122,46 @@
         exit(1);                                                                                         \
     }
 
-#define REALLOC(ptr, size) \
-    realloc(ptr, size);    \
-    ASSERTM(NULL != ptr, "Could not reallocate memory");
+/*
+ * Macro:[CREALLOC] - check if realloc was successful
+ *
+ * if so, set original pointer to new memory
+ * otherwise print error message and exit
+ *
+ * e.g. int **rc_p = realloc(p, sizeof(int) * 10);
+ *     CREALLOC(p);
+ *
+ */
+#define CREALLOC(p)                                                                              \
+    if (NULL == rc_##p) {                                                                        \
+        fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, __FUNCTION__, __LINE__); \
+        fprintf(stderr, "Failed to reallocate memory\n");                                        \
+        fprintf(stderr, "\n*******\n");                                                          \
+        exit(1);                                                                                 \
+    } else {                                                                                     \
+        p = rc_##p;                                                                              \
+    }
+
+/*
+ * Macro:[CCREALLOC] - check if realloc was successful
+ *
+ * if so, set original pointer to new memory
+ * otherwise print error message and exit
+ *
+ * e.g. int **r_p = realloc(p, sizeof(int) * 10);
+ *     CREALLOC(r_p, p);
+ *
+ *
+ */
+#define CCREALLOC(rp, p)                                                                         \
+    if (NULL == rp) {                                                                            \
+        fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, __FUNCTION__, __LINE__); \
+        fprintf(stderr, "Failed to reallocate memory\n");                                        \
+        fprintf(stderr, "\n*******\n");                                                          \
+        exit(1);                                                                                 \
+    } else {                                                                                     \
+        p = rp;                                                                                  \
+    }
 
 /*
  * Macro:[FREE]
@@ -423,9 +458,9 @@
 // maximum number of tokens allowed in amova formula string
 #define MAX_N_FORMULA_TOKENS 10
 
-#define MAX_N_HIER_LEVELS 20
+#define MAX_N_HIER_LEVELS 10
 // TODO
-#define MAX_N_GROUPS_PER_LEVEL 20
+#define MAX_N_GROUPS_PER_LEVEL 10
 
 #define MAX_N_BITS 64
 

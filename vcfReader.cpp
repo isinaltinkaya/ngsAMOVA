@@ -1093,7 +1093,10 @@ void vcfData::lngl_expand() {
 
     int prev_lngl = _lngl;
     _lngl = _lngl * 2;
-    lngl = (double **)REALLOC(lngl, _lngl * sizeof(double *));
+
+    double **rc_lngl = (double **)realloc(lngl, _lngl * sizeof(double *));
+    CREALLOC(lngl);
+
     for (int i = prev_lngl; i < (int)_lngl; i++) {
         lngl[i] = (double *)malloc(nInd * nGT * sizeof(double));
         for (int indi = 0; indi < nInd; indi++) {

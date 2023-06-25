@@ -100,7 +100,7 @@ void get_degreesOfFreedom(amovaStruct *amova, metadataStruct *metadata) {
     // highest level df is nStrata - 1
     // e.g. Individual ~ Region / Population / Subpopulation
     // if there are 3 regions, then nStrata is number of unique regions - 1 = 3-1 = 2
-    amova->df[0] = metadata->nGroups[0] - 1;
+    amova->df[0] = metadata->nGroupsAtLevel[0] - 1;
 
     // total df
     amova->df[amova->nAmovaLevels - 1] = nInd - 1;
@@ -109,13 +109,13 @@ void get_degreesOfFreedom(amovaStruct *amova, metadataStruct *metadata) {
         // df for lowest amova level
         // e.g. Individual ~ Region / Population / Subpopulation
         // nInd - sum(for each Population, nStrata (num_Subpopulation) in Population)
-        amova->df[1] = nInd - metadata->nGroups[0];
+        amova->df[1] = nInd - metadata->nGroupsAtLevel[0];
     } else if (metadata->nLevels == 2) {
         int sum0 = 0;
-        for (int i = 0; i < metadata->nGroups[0]; i++) {
+        for (int i = 0; i < metadata->nGroupsAtLevel[0]; i++) {
             sum0 += metadata->countNSubgroupAtLevel(0, i, 1);
         }
-        int sum1 = metadata->nGroups[0];
+        int sum1 = metadata->nGroupsAtLevel[0];
         amova->df[1] = sum0 - sum1;
         amova->df[2] = nInd - sum0;
     } else {
@@ -161,12 +161,12 @@ void get_varianceCoefficients(amovaStruct *amova, metadataStruct *metadata, dist
         double n_gi = 0.0;
 
         // n = [ N - \sum_{g \in G} ( N^2_{g}/N) ) ]  /   G - 1
-        for (int sti = 0; sti < metadata->nGroups[0]; sti++) {
+        for (int sti = 0; sti < metadata->nGroupsAtLevel[0]; sti++) {
             ASSERT(metadata->nIndPerStrata[0] != 0);
             n_gi += SQUARE(metadata->nIndPerStrata[0][sti]);
         }
         n_gi = n_gi / (double)dm->nInd;
-        amova->ncoef[0] = (double)((double)dm->nInd - (double)n_gi) / (double)(metadata->nGroups[0] - 1);
+        amova->ncoef[0] = (double)((double)dm->nInd - (double)n_gi) / (double)(metadata->nGroupsAtLevel[0] - 1);
 
     } else if (metadata->nLevels == 2) {
         // calculate variance coefficients for 2 level AMOVA
@@ -193,8 +193,8 @@ void get_varianceCoefficients(amovaStruct *amova, metadataStruct *metadata, dist
         // loop through the groups in the highest hierarchy level hierArr[0] (e.g. regions)
         double NUL = 0.0;
 
-        for (int g = 0; g < metadata->nGroups[0]; g++) {
-            for (int sg = 0; sg < metadata->nGroups[1]; sg++) {
+        for (int g = 0; g < metadata->nGroupsAtLevel[0]; g++) {
+            for (int sg = 0; sg < metadata->nGroupsAtLevel[1]; sg++) {
                 // if subgroup is a child of group; count number of individuals in subgroup
                 if (metadata->groupFromParentGroup(0, g, 1, sg) == 1) {
                     NUL += metadata->countIndsInGroup(1, sg);
@@ -218,10 +218,10 @@ void get_varianceCoefficients(amovaStruct *amova, metadataStruct *metadata, dist
         double Nig2_g = 0.0;
         double Nig_g = 0.0;
 
-        for (int g = 0; g < metadata->nGroups[0]; g++) {
+        for (int g = 0; g < metadata->nGroupsAtLevel[0]; g++) {
             Nig2_g = 0.0;
             Nig_g = 0.0;
-            for (int sg = 0; sg < metadata->nGroups[1]; sg++) {
+            for (int sg = 0; sg < metadata->nGroupsAtLevel[1]; sg++) {
                 // if subgroup is a child of group; count number of individuals in subgroup
                 if (metadata->groupFromParentGroup(0, g, 1, sg) == 1) {
                     Nig2_g += SQUARE(metadata->countIndsInGroup(1, sg));
@@ -238,7 +238,7 @@ void get_varianceCoefficients(amovaStruct *amova, metadataStruct *metadata, dist
         //
         //
         double NL = 0.0;
-        for (int g = 0; g < metadata->nGroups[0]; g++) {
+        for (int g = 0; g < metadata->nGroupsAtLevel[0]; g++) {
             NL += metadata->countNSubgroupAtLevel(0, g, 1) - 1;
         }
 
@@ -271,8 +271,8 @@ void get_varianceCoefficients(amovaStruct *amova, metadataStruct *metadata, dist
         double Nig2 = 0.0;
 
         // g=group, sg=subgroup
-        for (int g = 0; g < metadata->nGroups[0]; g++) {
-            for (int sg = 0; sg < metadata->nGroups[1]; sg++) {
+        for (int g = 0; g < metadata->nGroupsAtLevel[0]; g++) {
+            for (int sg = 0; sg < metadata->nGroupsAtLevel[1]; sg++) {
                 if (metadata->groupFromParentGroup(0, g, 1, sg) == 1) {
                     Nig2 += SQUARE(metadata->nIndPerStrata[1][sg]);
                 }
@@ -285,7 +285,7 @@ void get_varianceCoefficients(amovaStruct *amova, metadataStruct *metadata, dist
         // N1L = nRegions - 1;
         //
         double N1L = 0.0;
-        N1L = metadata->nGroups[0] - 1;
+        N1L = metadata->nGroupsAtLevel[0] - 1;
 
         amova->ncoef[1] = (NUR - N1UR) / N1L;
 
@@ -311,9 +311,9 @@ void get_varianceCoefficients(amovaStruct *amova, metadataStruct *metadata, dist
         //
         double N2UR = 0.0;
         double Ni2g = 0.0;
-        for (int g = 0; g < metadata->nGroups[0]; g++) {
+        for (int g = 0; g < metadata->nGroupsAtLevel[0]; g++) {
             double xx = 0.0;
-            for (int sg = 0; sg < metadata->nGroups[1]; sg++) {
+            for (int sg = 0; sg < metadata->nGroupsAtLevel[1]; sg++) {
                 if (metadata->groupFromParentGroup(0, g, 1, sg) == 1) {
                     xx += metadata->countIndsInGroup(1, sg);
                 }
@@ -343,7 +343,7 @@ void get_varianceComponents(amovaStruct *amova) {
 
         double sum = 0.0;
         int x = 1;
-        for (int i = 0; i < amova->_ncoef - 2; i++) {
+        for (size_t i = 0; i < amova->_ncoef - 2; i++) {
             sum = 0.0;
             for (int j = 1; j < 2; j++) {
                 sum += amova->ncoef[x] * amova->sigmasq[j];
@@ -355,7 +355,7 @@ void get_varianceComponents(amovaStruct *amova) {
         }
 
         // sigmasq total
-        for (int i = 0; i < amova->_ncoef; ++i) {
+        for (size_t i = 0; i < amova->_ncoef; ++i) {
             amova->sigmasq[amova->_ncoef] += amova->sigmasq[i];
         }
 
@@ -627,7 +627,7 @@ double calculate_SumOfSquares_Within(int lvl, amovaStruct *amova, distanceMatrix
         double ssd = 0.0;
         int n = 0;
 
-        for (int g = 0; g < metadata->nGroups[lvl]; g++) {
+        for (int g = 0; g < metadata->nGroupsAtLevel[lvl]; g++) {
             sum = 0.0;
             n = metadata->countIndsInGroup(lvl, g);
 

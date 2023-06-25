@@ -316,7 +316,7 @@ argStruct *argStruct_get(int argc, char **argv) {
                 }
                 BITSET(VERBOSE, verbose_val);
             } else {
-                NEVER;
+                ERROR("Invalid verbosity level provided: %s\n", val);
             }
             fprintf(stderr, "\n[INFO]\t-> Verbosity level is set to %d.\n", WHICH_BIT_SET1(VERBOSE));
         }

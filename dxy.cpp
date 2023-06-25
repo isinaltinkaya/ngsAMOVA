@@ -27,10 +27,17 @@ dxyStruct::~dxyStruct() {
 
 void dxyStruct::expand() {
     _dxyArr = _dxyArr * 2;
-    dxyArr = (double *)REALLOC(dxyArr, _dxyArr * sizeof(double));
-    groupNames1 = (char **)REALLOC(groupNames1, _dxyArr * sizeof(char *));
-    groupNames2 = (char **)REALLOC(groupNames2, _dxyArr * sizeof(char *));
-    levelNames = (char **)REALLOC(levelNames, _dxyArr * sizeof(char *));
+    double *rc_dxyArr = (double *)realloc(dxyArr, _dxyArr * sizeof(double));
+    CREALLOC(dxyArr);
+
+    char **rc_groupNames1 = (char **)realloc(groupNames1, _dxyArr * sizeof(char *));
+    CREALLOC(groupNames1);
+
+    char **rc_groupNames2 = (char **)realloc(groupNames2, _dxyArr * sizeof(char *));
+    CREALLOC(groupNames2);
+
+    char **rc_levelNames = (char **)realloc(levelNames, _dxyArr * sizeof(char *));
+    CREALLOC(levelNames);
     for (size_t i = _dxyArr / 2; i < _dxyArr; i++) {
         dxyArr[i] = -1;
     }
@@ -77,9 +84,9 @@ int dxyStruct::estimate_dxy_2groups(const int local_idx1, const int local_idx2, 
 
 int dxyStruct::estimate_dxy_allGroupsAtLevel(const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars) {
     int n_vals = 0;
-    int nGroups = mtd->nGroups[lvl];
-    for (int g1 = 0; g1 < nGroups - 1; g1++) {
-        for (int g2 = g1 + 1; g2 < nGroups; g2++) {
+    int nGroupsAtLevel = mtd->nGroupsAtLevel[lvl];
+    for (int g1 = 0; g1 < nGroupsAtLevel - 1; g1++) {
+        for (int g2 = g1 + 1; g2 < nGroupsAtLevel; g2++) {
             n_vals += estimate_dxy_2groups(g1, g2, lvl, dMS, mtd, pars);
         }
     }
@@ -89,7 +96,7 @@ int dxyStruct::estimate_dxy_allGroupsAtLevel(const int lvl, distanceMatrixStruct
 int dxyStruct::estimate_dxy_allLevels(distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars) {
     int n_vals = 0;
     for (int lvl = 0; lvl < mtd->nLevels; lvl++) {
-        if (mtd->nGroups[lvl] == 1) {
+        if (mtd->nGroupsAtLevel[lvl] == 1) {
             continue;
         }
 
@@ -208,9 +215,11 @@ dxyStruct *dxyStruct_get(paramStruct *pars, distanceMatrixStruct *dMS, metadataS
                 group_exists = 0;
                 // check if group name is valid (==exists in the metadata file)
                 for (int i = 0; i < mtd->nLevels; i++) {
-                    for (int j = 0; j < mtd->nGroups[i]; j++) {
+                    for (int j = 0; j < mtd->nGroupsAtLevel[i]; j++) {
                         if (strcmp(dxyGroup, mtd->groupNames[i][j]) == 0) {
-                            dxyGroups = (char **)REALLOC(dxyGroups, (nDxyGroups + 1) * sizeof(char *));
+                            char **rc_dxyGroups = (char **)realloc(dxyGroups, (nDxyGroups + 1) * sizeof(char *));
+                            CREALLOC(dxyGroups);
+
                             dxyGroups[nDxyGroups] = strdup(dxyGroup);
                             nDxyGroups++;
                             group_exists = 1;
@@ -233,7 +242,7 @@ dxyStruct *dxyStruct_get(paramStruct *pars, distanceMatrixStruct *dMS, metadataS
                 for (int j = i + 1; j < nDxyGroups; j++) {
                     int g1 = -1, g2 = -1, lvl = -1, lvl2 = -1;
                     for (int k = 0; k < mtd->nLevels; k++) {
-                        for (int l = 0; l < mtd->nGroups[k]; l++) {
+                        for (int l = 0; l < mtd->nGroupsAtLevel[k]; l++) {
                             if (strcmp(dxyGroups[i], mtd->groupNames[k][l]) == 0) {
                                 g1 = l;
                                 lvl = k;

@@ -67,13 +67,18 @@ void allelesStruct::add_new_contig(const int contig_i, const char *contig_id, co
     this->nContigs = contig_i + 1;
 
     if (this->nContigs > 1) {
-        this->nSites = (int *)REALLOC(this->nSites, (this->nContigs) * sizeof(int));
+        int *r_nSites = (int *)realloc(this->nSites, (this->nContigs) * sizeof(int));
+        CCREALLOC(r_nSites, this->nSites);
+
         this->nSites[contig_i] = 0;
 
-        this->contigOffsets = (int *)REALLOC(this->contigOffsets, (this->nContigs) * sizeof(int));
+        int *r_contigOffsets = (int *)realloc(this->contigOffsets, (this->nContigs) * sizeof(int));
+        CCREALLOC(r_contigOffsets, this->contigOffsets);
+
         this->contigOffsets[contig_i] = contig_i_offset;
 
-        this->contigNames = (char **)REALLOC(this->contigNames, (this->nContigs) * sizeof(char *));
+        char **r_contigNames = (char **)realloc(this->contigNames, (this->nContigs) * sizeof(char *));
+        CCREALLOC(r_contigNames, this->contigNames);
     }
     this->contigNames[contig_i] = strdup(contig_id);
     ASSERT(this->contigNames[contig_i] != NULL);
@@ -82,9 +87,14 @@ void allelesStruct::add_new_contig(const int contig_i, const char *contig_id, co
 }
 
 void allelesStruct::expand(const int contig_i, const int new_size) {
-    allele1s = (char *)REALLOC(allele1s, new_size * sizeof(char));
-    allele2s = (char *)REALLOC(allele2s, new_size * sizeof(char));
-    positions = (int *)REALLOC(positions, new_size * sizeof(int));
+    char *r_allele1s = (char *)realloc(allele1s, new_size * sizeof(char));
+    CCREALLOC(r_allele1s, allele1s);
+
+    char *r_allele2s = (char *)realloc(allele2s, new_size * sizeof(char));
+    CCREALLOC(r_allele2s, allele2s);
+
+    int *r_positions = (int *)realloc(positions, new_size * sizeof(int));
+    CCREALLOC(r_positions, positions);
 }
 
 allelesStruct::allelesStruct() {
@@ -121,17 +131,15 @@ allelesStruct *allelesStruct_read(const char *fn) {
     // assume len(contig_id) < 1024
     char last_contig[1024];
 
-    char *line = NULL;
-    size_t len = 0;
-
     // rolling sum
     int roll_contig_i_offset = 0;
 
     // offset of the current contig
     int current_contig_i_offset = 0;
 
+    char *line = NULL;
+    size_t len = 0;
     // loop through lines in the file
-    // while (fgets(buf, FGETS_BUF_SIZE, fp) != NULL) {
     while ((getline(&line, &len, fp)) != -1) {
         coli = 0;
         char *tok = strtok(line, "\t\n");
@@ -347,45 +355,31 @@ metadataStruct::metadataStruct(int nInd) {
     indKeys = (uint64_t *)malloc(nInd * sizeof(uint64_t));
     indNames = (char **)malloc(nInd * sizeof(char *));
 
-    nGroups = (int *)malloc(MAX_N_HIER_LEVELS * sizeof(int));
-    groupNames = (char ***)malloc(MAX_N_HIER_LEVELS * sizeof(char **));
-    levelNames = (char **)malloc(MAX_N_HIER_LEVELS * sizeof(char *));
+    groupNames = (char ***)malloc(1 * sizeof(char **));
+    groupNames[0] = (char **)malloc(1 * sizeof(char *));
+    // nGroupsAtLevel = (int *)calloc(1, sizeof(int));
+    levelNames = (char **)malloc(1 * sizeof(char *));
 
-    lvlgToIdx = (int **)malloc(MAX_N_HIER_LEVELS * sizeof(int *));
+    lvlgToIdx = (int **)malloc(1 * sizeof(int *));
+    lvlgToIdx[0] = (int *)malloc(1 * sizeof(int));
+    lvlgToIdx[0][0] = -1;
+
     nIndPerStrata = NULL;
 
-    lvlStartPos = (int *)malloc(MAX_N_HIER_LEVELS * sizeof(int));
+    lvlStartPos = (int *)malloc(1 * sizeof(int));
 
     for (int i = 0; i < nInd; i++) {
-        indNames[i] = NULL;
         indKeys[i] = 0;
     }
 
-    for (size_t lvl = 0; lvl < MAX_N_HIER_LEVELS; lvl++) {
-        lvlgToIdx[lvl] = (int *)malloc(MAX_N_GROUPS_PER_LEVEL * sizeof(int));
+    idxToLvlg = (int **)malloc(1 * sizeof(int *));
+    idxToLvlg[0] = (int *)malloc(2 * sizeof(int));
+    idxToLvlg[0][0] = -1;  // lvl
+    idxToLvlg[0][1] = -1;  // g
 
-        groupNames[lvl] = (char **)malloc(MAX_N_GROUPS_PER_LEVEL * sizeof(char *));
-
-        for (size_t g = 0; g < MAX_N_GROUPS_PER_LEVEL; g++) {
-            groupNames[lvl][g] = NULL;
-
-            lvlgToIdx[lvl][g] = -1;
-        }
-
-        nGroups[lvl] = 0;
-        lvlStartPos[lvl] = -1;
-        levelNames[lvl] = NULL;
-    }
-
-    idxToLvlg = (int **)malloc(MAX_N_HIER_LEVELS * MAX_N_GROUPS_PER_LEVEL * sizeof(int *));
     groupKeys = (uint64_t *)malloc(MAX_N_BITS * sizeof(uint64_t));
     for (size_t i = 0; i < MAX_N_BITS; i++) {
         groupKeys[i] = 0;
-    }
-    for (size_t i = 0; i < MAX_N_HIER_LEVELS * MAX_N_GROUPS_PER_LEVEL; i++) {
-        idxToLvlg[i] = (int *)malloc(2 * sizeof(int));
-        idxToLvlg[i][0] = -1;
-        idxToLvlg[i][1] = -1;
     }
 }
 
@@ -398,21 +392,23 @@ metadataStruct::~metadataStruct() {
     FREE(indNames);
     FREE(groupKeys);
 
-    FREE(nGroups);
-
-    // for(size_t lvl = 0; lvl < (size_t) nLevels; lvl++)
-    for (size_t lvl = 0; lvl < (size_t)MAX_N_HIER_LEVELS; lvl++) {
-        // for(size_t g = 0; g < (size_t) nGroups[lvl]; g++)
-        for (size_t g = 0; g < (size_t)MAX_N_GROUPS_PER_LEVEL; g++) {
-            FFREE(groupNames[lvl][g]);  // TODO del?
+    // dragon
+    int i = 0;
+    for (size_t lvl = 0; lvl < (size_t)nLevels; lvl++) {
+        for (size_t g = 0; g < (size_t)nGroupsAtLevel[lvl]; g++) {
+            FREE(groupNames[lvl][g]);
+            FREE(idxToLvlg[i]);
+            ++i;
         }
-        FFREE(groupNames[lvl]);  // TODO del?
-        FFREE(levelNames[lvl]);  // TODO del?
+        FFREE(groupNames[lvl]);
+        FFREE(levelNames[lvl]);
         FREE(lvlgToIdx[lvl]);
     }
     for (size_t lvl = 0; lvl < (size_t)nLevels; lvl++) {
         FREE(nIndPerStrata[lvl]);
     }
+
+    FREE(nGroupsAtLevel);
 
     FREE(groupNames);
     FREE(levelNames);
@@ -421,12 +417,6 @@ metadataStruct::~metadataStruct() {
     FREE(nIndPerStrata);
 
     FREE(lvlStartPos);
-
-    // for (int i=0; i < nBits; i++){
-    for (int i = 0; i < MAX_N_HIER_LEVELS * MAX_N_GROUPS_PER_LEVEL; i++) {
-        FREE(idxToLvlg[i]);
-    }
-    FREE(idxToLvlg);
 }
 
 metadataStruct *metadataStruct_get(paramStruct *pars) {
@@ -434,25 +424,16 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
     ASSERT(args->formula != NULL);
     metadataStruct *mtd = new metadataStruct(pars->nInd);
 
-    FILE *in_mtd_fp = IO::getFile(args->in_mtd_fn, "r");
+    FILE *fp = IO::getFile(args->in_mtd_fn, "r");
 
-    char *mtd_buf = (char *)malloc(FGETS_BUF_SIZE * sizeof(char));
-    if (NULL == fgets(mtd_buf, FGETS_BUF_SIZE, in_mtd_fp)) {
-        ERROR("Problem with reading metadata file \'%s\'.", args->in_mtd_fn);
-    }
-
-    // check if the line was fully read
-    if (mtd_buf[strlen(mtd_buf) - 1] != '\n') {
-        fprintf(stderr, "\n[ERROR]\tLine in metadata file is too long. Maximum line length is %d. Please increase FGETS_BUF_SIZE.\n", FGETS_BUF_SIZE);
-        exit(1);
-    }
+    char *buf = IO::readFile::getFirstLine(fp);
 
     int nLevels = 0;
 
     int hdr_col_idx = -1;  // 0-based for indexing
 
     // split the header into tokens
-    char *hdrtok = strtok(mtd_buf, METADATA_DELIMS);
+    char *hdrtok = strtok(buf, METADATA_DELIMS);
     while (hdrtok != NULL) {
         ++hdr_col_idx;
 
@@ -464,6 +445,7 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
         }
         hdrtok = strtok(NULL, METADATA_DELIMS);
     }
+    FREE(buf);
 
     // exclude the left-hand-side of the formula (i.e. Individual column) from the number of hierarchical levels count
     nLevels--;
@@ -481,6 +463,20 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
     }
 
     mtd->nLevels = nLevels;
+
+    char ***r_groupNames = (char ***)realloc(mtd->groupNames, nLevels * sizeof(char **));
+    CCREALLOC(r_groupNames, mtd->groupNames);
+
+    mtd->groupNames[0] = (char **)malloc(1 * sizeof(char *));
+    mtd->nGroupsAtLevel = (int *)calloc(nLevels, sizeof(int));
+
+    int **r_lvlgToIdx = (int **)realloc(mtd->lvlgToIdx, nLevels * sizeof(int *));
+    CCREALLOC(r_lvlgToIdx, mtd->lvlgToIdx);
+
+    for (int i = 0; i < nLevels; i++) {
+        mtd->lvlgToIdx[i] = (int *)calloc(1, sizeof(int));
+    }
+
     formulaStruct_validate(pars->formula, nLevels);
 
     int nRows = 0;
@@ -493,7 +489,7 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
     // associate the individuals to the index of groups at each level
     // indToGroupIdx[nInd][nLevels] = index of the group at each level
     //
-    // usage: indToGroupIdx[ind_i][lvl_i] = index of the group at lvl_i
+    // usage: indToGroupIdx[ind_i][lvl_i] = index of the group at lvl_i that ind_i belongs to
     ASSERT(pars->nInd > 0);
     int **indToGroupIdx = (int **)malloc(pars->nInd * sizeof(int *));
     for (int i = 0; i < pars->nInd; i++) {
@@ -505,20 +501,16 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
 
     int nBits_needed = 0;
 
+    char *line = NULL;
+    size_t len = 0;
     // loop through the rest of the file, one line per individual
-    while (fgets(mtd_buf, FGETS_BUF_SIZE, in_mtd_fp) != NULL) {
-        // check if the line was fully read
-        if (mtd_buf[strlen(mtd_buf) - 1] != '\n') {
-            fprintf(stderr, "\n[ERROR]\tLine in metadata file is too long. Maximum line length is %d. Please increase FGETS_BUF_SIZE.\n", FGETS_BUF_SIZE);
-            exit(1);
-        }
-
+    while ((getline(&line, &len, fp)) != -1) {
         ++nRows;
 
         col_i = 0;
 
         // split by delimiters
-        char *col = strtok(mtd_buf, METADATA_DELIMS);
+        char *col = strtok(line, METADATA_DELIMS);
 
         while (col != NULL) {  // loop through cols
 
@@ -546,19 +538,21 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
                         int grp_i = -1;
 
                         // check if group name is already in groupNames
-                        if (mtd->nGroups[lvl_idx] > 0) {
-                            for (size_t grp = 0; grp < (size_t)mtd->nGroups[lvl_idx]; grp++) {
-                                if ((mtd->groupNames[lvl_idx][grp] != NULL) && (strcmp(mtd->groupNames[lvl_idx][grp], col) == 0)) {
-                                    grp_i = grp;
-                                    break;
+                        if (mtd->nGroupsAtLevel[lvl_idx] > 0) {
+                            for (size_t grp = 0; grp < (size_t)mtd->nGroupsAtLevel[lvl_idx]; grp++) {
+                                if (NULL != mtd->groupNames) {
+                                    if (strcmp(mtd->groupNames[lvl_idx][grp], col) == 0) {
+                                        grp_i = grp;
+                                        break;
+                                    }
                                 }
                             }
                         }
 
                         if (grp_i == -1) {
                             ++nBits_needed;
-                            mtd->addGroup(lvl_idx, mtd->nGroups[lvl_idx], col);
-                            grp_i += mtd->nGroups[lvl_idx];
+                            mtd->addGroup(lvl_idx, mtd->nGroupsAtLevel[lvl_idx], col);
+                            grp_i += mtd->nGroupsAtLevel[lvl_idx];
                         }
 
                         indToGroupIdx[nInd][lvl_idx] = grp_i;
@@ -610,6 +604,11 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
             // check if the group is already processed == if the bit is already set
             if (mtd->groupKeys[bit_i] == 0) {
                 mtd->lvlgToIdx[lvl_i][grp_i] = bit_i;
+                int **r_idxToLvlg = (int **)realloc(mtd->idxToLvlg, (bit_i + 1) * sizeof(int *));
+                CCREALLOC(r_idxToLvlg, mtd->idxToLvlg);
+
+                mtd->idxToLvlg[bit_i] = (int *)malloc(2 * sizeof(int));
+
                 mtd->idxToLvlg[bit_i][0] = lvl_i;
                 mtd->idxToLvlg[bit_i][1] = grp_i;
 
@@ -618,7 +617,7 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
 
             mtd->lvlStartPos[lvl_i] = nGroups_rollingSum;
 
-            nGroups_rollingSum += mtd->nGroups[lvl_i];
+            nGroups_rollingSum += mtd->nGroupsAtLevel[lvl_i];
             prev_bit = bit_i;
         }  // levels loop
 
@@ -646,8 +645,7 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
 
     mtd->getNIndPerStrata();
 
-    FCLOSE(in_mtd_fp);
-    FREE(mtd_buf);
+    FCLOSE(fp);
     for (int i = 0; i < pars->nInd; i++) {
         FREE(indToGroupIdx[i]);
     }
@@ -662,8 +660,29 @@ void metadataStruct::printAll() {
 }
 
 void metadataStruct::addLevelName(const char *levelName, const int level_idx) {
+    char **r_levelNames = (char **)realloc(levelNames, (level_idx + 1) * sizeof(char *));
+    CCREALLOC(r_levelNames, levelNames);
+
     IO::vprint(0, "\nFound hierarchical level: %s\n", levelName);
     levelNames[level_idx] = strdup(levelName);
+    ASSERT(levelNames[level_idx] != NULL);
+}
+
+void metadataStruct::addGroup(int lvl, int g, char *name) {
+    IO::vprint(2, "Found new group: %s at level %ld with index %ld", name, lvl, g);
+
+    nGroupsAtLevel[lvl]++;
+
+    char **r_groupNames = (char **)realloc(groupNames[lvl], (g + 1) * sizeof(char *));
+    CCREALLOC(r_groupNames, groupNames[lvl]);
+    groupNames[lvl][g] = NULL;
+
+    int *r_lvlgToIdx = (int *)realloc(lvlgToIdx[lvl], (g + 1) * sizeof(int));
+    CCREALLOC(r_lvlgToIdx, lvlgToIdx[lvl]);
+
+    // add group name
+    groupNames[lvl][g] = strdup(name);
+    ASSERT(groupNames[lvl][g] != NULL);
 }
 
 int metadataStruct::indsFromGroup(int ind1, int ind2, int globGrpIdx) {
@@ -720,8 +739,8 @@ void metadataStruct::getNIndPerStrata() {
     ASSERT(nLevels > 0);
     nIndPerStrata = (int **)malloc(sizeof(int *) * nLevels);
     for (int lvl = 0; lvl < nLevels; lvl++) {
-        nIndPerStrata[lvl] = (int *)malloc(sizeof(int) * nGroups[lvl]);
-        for (int g = 0; g < nGroups[lvl]; g++) {
+        nIndPerStrata[lvl] = (int *)malloc(sizeof(int) * nGroupsAtLevel[lvl]);
+        for (int g = 0; g < nGroupsAtLevel[lvl]; g++) {
             nIndPerStrata[lvl][g] = countIndsInGroup(lvl, g);
         }
     }
@@ -737,7 +756,7 @@ int metadataStruct::groupFromParentGroup(int plvl, int pg, int lvl, int g) {
 int metadataStruct::countNSubgroupAtLevel(int plvl, int pg, int lvl) {
     ASSERT(lvl > plvl);
     int n = 0;
-    for (int g = 0; g < nGroups[lvl]; g++) {
+    for (int g = 0; g < nGroupsAtLevel[lvl]; g++) {
         n += groupFromParentGroup(plvl, pg, lvl, g);
     }
     return n;
@@ -906,7 +925,8 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars) {
         while (tok != NULL) {
             if (n_vals > dm_vals_size) {
                 dm_vals_size = dm_vals_size * 2;
-                dm_vals = (double *)REALLOC(dm_vals, (dm_vals_size) * sizeof(double));
+                double *r_dm_vals = (double *)realloc(dm_vals, (dm_vals_size) * sizeof(double));
+                CCREALLOC(r_dm_vals, dm_vals);
             }
             dm_vals[n_vals] = atof(tok);
             n_vals++;
@@ -929,7 +949,8 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars) {
             while (tok != NULL) {
                 if (n_vals > dm_vals_size) {
                     dm_vals_size = dm_vals_size * 2;
-                    dm_vals = (double *)REALLOC(dm_vals, (dm_vals_size) * sizeof(double));
+                    double *r_dm_vals = (double *)realloc(dm_vals, (dm_vals_size) * sizeof(double));
+                    CCREALLOC(r_dm_vals, dm_vals);
                 }
                 dm_vals[n_vals] = atof(tok);
                 n_vals++;
@@ -1050,8 +1071,11 @@ int formulaStruct::setFormulaTokenIdx(const char *mtd_tok, const int mtd_col_idx
 
 // @brief shrink - shrink the size of the arrays defined with default max values to the actual size needed
 void formulaStruct::shrink() {
-    formulaTokens = (char **)REALLOC(formulaTokens, nTokens * sizeof(char *));
-    formulaTokenIdx = (int *)REALLOC(formulaTokenIdx, nTokens * sizeof(int));
+    char **r_formulaTokens = (char **)realloc(formulaTokens, nTokens * sizeof(char *));
+    CCREALLOC(r_formulaTokens, formulaTokens);
+
+    int *r_formulaTokenIdx = (int *)realloc(formulaTokenIdx, nTokens * sizeof(int));
+    CCREALLOC(r_formulaTokenIdx, formulaTokenIdx);
 }
 
 /// @brief formulaStruct_get initialize the formulaStruct

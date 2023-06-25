@@ -1,9 +1,14 @@
-# Prerequisites
+# Dependencies
 *.d
 
-# Compiled Object files
+# Object files
 *.o
 
+# Preprocessed C++ files
+*.ii
+
+# Assembly source files
+*.s
 
 ngsAMOVA
 

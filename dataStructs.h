@@ -228,7 +228,8 @@ struct pairStruct {
         size_t oldSize = _sharedSites;
 
         _sharedSites *= 2;
-        sharedSites = (int *)REALLOC(sharedSites, _sharedSites * sizeof(int));
+        int *rc_sharedSites = (int *)realloc(sharedSites, _sharedSites * sizeof(int));
+        CREALLOC(sharedSites);
         for (size_t i = oldSize; i < _sharedSites; i++) {
             sharedSites[i] = -1;
         }
@@ -326,7 +327,7 @@ struct metadataStruct {
 
     // nGroups[nLevels]
     // access: nGroups[h_i] = number of groups at level h_i
-    int *nGroups = NULL;
+    int *nGroupsAtLevel = NULL;
 
     // (lvl, g) -> lvlg_idx lut
     // lvl = hierarchical level
@@ -379,20 +380,13 @@ struct metadataStruct {
     }
 
     int get_lvlgidx(int lvl, int g) {
-        return (lvl * nGroups[lvl - 1] + g);
+        return (lvl * nGroupsAtLevel[lvl - 1] + g);
     }
 
     /// @param lvl:		hierarchical level of the group to add
     /// @param g:	group index at level lvl of the group to add
     /// @param name:	name of the group to add
-    void addGroup(int lvl, int g, char *name) {
-        IO::vprint(2, "Found new group: %s at level %ld with index %ld", name, lvl, g);
-
-        // add group name
-        groupNames[lvl][g] = (char *)malloc(sizeof(char) * (strlen(name) + 1));
-        ASSERT(strncpy(groupNames[lvl][g], name, strlen(name) + 1) != NULL);
-        nGroups[lvl]++;
-    }
+    void addGroup(int lvl, int g, char *name);
 
     void setGroupKey(int bit_i, int lvl, int g, int prev_bit) {
         // fprintf(stderr, "setting the key for group %s at level %d (bit %d) with parent %d (bit %d) with key %ld (bit %d)\n", groupNames[lvl][g], lvl, bit_i, lvl-1, prev_bit, groupKeys[prev_bit], prev_bit);
