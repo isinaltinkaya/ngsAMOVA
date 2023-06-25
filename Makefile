@@ -34,9 +34,6 @@ LIBS := -lz -lm -lbz2 -llzma -lcurl -lpthread
 $(info [INFO]    Make received LIBS="$(LIBS)")
 
 
-# avoid using assert statements for safety
-# define NDEBUG to disable assert statements
-CXXFLAGS := -DNDEBUG
 $(info [INFO]    Make received CXXFLAGS="$(CXXFLAGS)")
 
 OPTIM_FLAGS := -O3
@@ -56,7 +53,7 @@ DEV_MODE=1
 OPTIM_FLAGS := -O0
 CXXFLAGS += -g -Wall $(OPTIM_FLAGS) -save-temps -v
 $(info )
-$(info [INFO]    Make received CXXFLAGS="$(CXXFLAGS)")
+$(info [INFO]    Make updated CXXFLAGS="$(CXXFLAGS)")
 $(info )
 
 else
@@ -181,14 +178,14 @@ OBJ := $(CXXSRC:.cpp=.o)
 DEP := $(OBJ:.o=.d)
 
 
-LIBS += $(LIBHTS)
+LIBS := $(LIBHTS) $(LIBS)
 
 $(PROGRAM): $(OBJ)
-	$(CXX) $(OBJ) -o $(PROGRAM) $(LIBS) 
+	$(CXX) -o $(PROGRAM) *.o $(LIBS) 
 
 
 -include $(DEP)
-FLAGS=$(CPPFLAGS) $(CXXFLAGS)
+FLAGS := $(CPPFLAGS) $(CXXFLAGS)
 %.o: %.cpp
 	$(CXX) -c  $(FLAGS) $*.cpp
 	$(CXX) -MM $(FLAGS) $*.cpp >$*.d
