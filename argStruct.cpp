@@ -485,12 +485,6 @@ void argStruct::check_arg_dependencies() {
         NEVER;
     }
 
-// [dev mode]
-#if 1 == DEV
-    DEVPRINT("Development mode is on. Will print extra information.\n");
-// BITSET(VERBOSE, 7); // max: 7
-#endif
-
     //----------------------------------------------------------------------------------//
     // -doDist      defines the method to estimate distance matrix
     //              default: 0

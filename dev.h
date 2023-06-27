@@ -1,9 +1,13 @@
 #define DEV 0
 
+#if 1 == DEV
+
+// ----------------------------------------------------------------------------->
+// DEV MODE: ON
+// ----------------------------------------------------------------------------->
+
 /* -> DEVELOPMENT/DEBUGGING MACROS --------------------------------------------*/
 // enabled if `make dev` is used
-
-// #if 1==DEV
 
 // print the binary representation of a char with additional info
 //      with info about where this function is called from,name of the variable
@@ -51,9 +55,6 @@
     fprintf(stderr, "\n*****************************************\n\n\n");                             \
     exit(1);
 
-// TODO maybe make macro append #if 1==DEV to the beginning and #endif to the end
-// so that it would only be run if dev mode is enabled
-
 /*
  *
  * Macro:[DEVPRINT]
@@ -81,6 +82,28 @@
     fprintf(stderr, "\n*****************************************\n\n\n");     \
     exit(1);
 
-// #endif
+#else
+
+// ----------------------------------------------------------------------------->
+// DEV MODE: OFF
+// ----------------------------------------------------------------------------->
+
+#define DEVRUN(run) \
+    do {            \
+    } while (0)
+
+#define DEVRUNX(run) \
+    do {             \
+    } while (0)
+
+#define DEVPRINT(msg, ...) \
+    do {                   \
+    } while (0)
+
+#define DEVPRINTX(msg, ...) \
+    do {                    \
+    } while (0)
+
+#endif
 
 /* --------------------------------------------------------------------------*/
