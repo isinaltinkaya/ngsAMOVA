@@ -654,11 +654,6 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
     return (mtd);
 }
 
-void metadataStruct::printAll() {
-    print_indKeys();
-    print_groupKeys();
-}
-
 void metadataStruct::addLevelName(const char *levelName, const int level_idx) {
     char **r_levelNames = (char **)realloc(levelNames, (level_idx + 1) * sizeof(char *));
     CCREALLOC(r_levelNames, levelNames);
@@ -837,14 +832,11 @@ void distanceMatrixStruct::print() {
 
     for (int px = 0; px < nIndCmb; px++) {
         if (px != 0 && px != nIndCmb - 1) {
-            ksprintf(outFiles->out_dm_fs->kbuf, ",");
-            ksprintf(outFiles->out_dm_fs->kbuf, "%.*f", DBL_MAXDIG10, M[px]);
+            ksprintf(outFiles->out_dm_fs->kbuf, ",%f", M[px]);
         } else if (px == 0) {
-            ksprintf(outFiles->out_dm_fs->kbuf, "%.*f", DBL_MAXDIG10, M[px]);
+            ksprintf(outFiles->out_dm_fs->kbuf, "%f", M[px]);
         } else if (px == nIndCmb - 1) {
-            ksprintf(outFiles->out_dm_fs->kbuf, ",");
-            ksprintf(outFiles->out_dm_fs->kbuf, "%.*f", DBL_MAXDIG10, M[px]);
-            ksprintf(outFiles->out_dm_fs->kbuf, "\n");
+            ksprintf(outFiles->out_dm_fs->kbuf, ",%f\n", M[px]);
         } else {
             NEVER;
         }

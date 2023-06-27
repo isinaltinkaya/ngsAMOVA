@@ -10,9 +10,9 @@ all:
 #
 	@printf "\n\n\n";
 	@printf "===============================================================================\n";
-	@printf "\n\n\n[TEST 2]: Read the data from distance matrix file, then AMOVA with 1 levels in metadata\n";
+	@printf "\n\n\n[TEST 2]: Read the data from distance matrix file created in the previous step, then AMOVA with 1 levels in metadata\n";
 	../ngsAMOVA -doEM 0 -doAMOVA 1 --in-dm testwd/test_s9_d1_1K_mtd1.distance_matrix.csv --minInd 2 -doDist 3 -m metadata_with_header_1lvl.tsv --ancDerFile test_s9_d1_1K_ancder.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1_indm 2> testwd/logs/test_s9_d1_1K_mtd1_indm.log;
-	bash -c "diff testwd/test_s9_d1_1K_mtd1_indm.amova.csv reference/test_s9_d1_1K_mtd1.amova.csv";
+	bash -c "diff testwd/test_s9_d1_1K_mtd1_indm.amova.csv reference/test_s9_d1_1K_mtd1_indm.amova.csv";
 #
 	@printf "\n\n\n";
 	@printf "===============================================================================\n";

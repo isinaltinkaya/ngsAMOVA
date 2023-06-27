@@ -268,16 +268,6 @@ struct distanceMatrixStruct {
     void print();
 
     void set_item_labels(char **indNames);
-    // TODO print in csv format
-    //  for (int i1=0; i1<metadataSt->nInd-1; i1++)
-    //  {
-    //  	for (int i2=i1+1; i2<metadataSt->nInd; i2++)
-    //  	{
-    //  		int pidx = nCk_idx(metadataSt->nInd, i1, i2);
-    //  		fprintf(stdout,"%d,%d,%d,", i1,i2,pidx);
-    //  		fprintf(stdout,"%.*f\n",DBL_MAXDIG10, dMS[0]->M[pidx]);
-    //  	}
-    //  }
 };
 
 /// @brief read distance matrix from distance matrix csv file

@@ -28,8 +28,6 @@ void njStruct::print_leaf_newick(int node, kstring_t *kbuf) {
     if (nodeIdxInParents < 0) {
         // node := leaf node
 
-        // fprintf(stderr,"\nFound leaf node: %s idx:%d", nodeLabels[node], node);
-        // fprintf(stderr, "%d", node);
         ksprintf(kbuf, "%s", nodeLabels[node]);
         return;
     } else {
@@ -48,7 +46,7 @@ void njStruct::print_leaf_newick(int node, kstring_t *kbuf) {
             print_leaf_newick(edgeNodes[parentToEdgeIdx[nodeIdxInParents][edge_i]][1], kbuf);
             // %
 
-            ksprintf(kbuf, ":%.*f", DBL_MAXDIG10, edgeLengths[edge_i]);
+            ksprintf(kbuf, ":%f", edgeLengths[edge_i]);
 
             // there are multiple edges && this is the last edge
             if ((nEdgesPerParentNode[nodeIdxInParents] > 1) && (edge_i == nEdgesPerParentNode[nodeIdxInParents] - 1)) {
@@ -64,8 +62,7 @@ void njStruct::_print(void) {
     fprintf(stderr, "node1_id,node2_id,edge_length\n");
 
     for (int i = 0; i < nTreeEdges; i++) {
-        fprintf(stderr, "%s,%s", nodeLabels[edgeNodes[i][0]], nodeLabels[edgeNodes[i][1]]);
-        fprintf(stderr, ",%.*f\n", DBL_MAXDIG10, edgeLengths[i]);
+        fprintf(stderr, "%s,%s,%f\n", nodeLabels[edgeNodes[i][0]], nodeLabels[edgeNodes[i][1]], edgeLengths[i]);
     }
 }
 

@@ -432,16 +432,18 @@ void argStruct::check_arg_dependencies() {
         ERROR("minInd is set to %d. Minimum value allowed for minInd is 2.", minInd);
     }
 
-    if (0 == isSim) {
-        if (NULL == in_ancder_fn && NULL == in_majorminor_fn) {
-            ERROR("Must supply either --majorMinorFile/-mmf <filename> or --ancDerFile/-adf <filename>.");
+    if (in_vcf_fn != NULL) {
+        if (0 == isSim) {
+            if (NULL == in_ancder_fn && NULL == in_majorminor_fn) {
+                ERROR("Must supply either --majorMinorFile/-mmf <filename> or --ancDerFile/-adf <filename>.");
+            }
+        } else if (1 == isSim) {
+            if (NULL != in_ancder_fn || NULL != in_majorminor_fn) {
+                ERROR("Cannot use --majorMinorFile/-mmf <filename> or --ancDerFile/-adf <filename> with --isSim 1.");
+            }
+        } else {
+            ERROR("isSim must be 0 or 1.");
         }
-    } else if (1 == isSim) {
-        if (NULL != in_ancder_fn || NULL != in_majorminor_fn) {
-            ERROR("Cannot use --majorMinorFile/-mmf <filename> or --ancDerFile/-adf <filename> with --isSim 1.");
-        }
-    } else {
-        ERROR("isSim must be 0 or 1.");
     }
 
     if (in_vcf_fn == NULL && in_dm_fn == NULL) {
@@ -458,7 +460,7 @@ void argStruct::check_arg_dependencies() {
 
     // if data is from in_dm_fn (distance matrix file) can only use -doDist 3
     if (NULL != in_dm_fn && doDist != 3) {
-        ERROR("Cannot use -doDist %d with -in_dm %s.", doDist, in_dm_fn);
+        ERROR("--in-dm <DM_file> requires -doDist 3.");
     }
 
     if (seed == -1) {
@@ -478,10 +480,9 @@ void argStruct::check_arg_dependencies() {
         }
     }
 
-    if (windowSize == 0) {
-        fprintf(stderr, "\n[INFO]\t-> -windowSize 0; will not use sliding window\n");
-    } else {
+    if (windowSize != 0) {
         fprintf(stderr, "\n[INFO]\t-> -windowSize %d; will use sliding windows of size %d\n", windowSize, windowSize);
+        NEVER;
     }
 
 // [dev mode]

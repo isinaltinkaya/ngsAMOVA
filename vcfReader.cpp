@@ -185,6 +185,7 @@ glData::glData(vcfData *vcfd) {
     }
 
     n_gls = n_values / vcfd->nInd;
+    DEVPRINT("nind:%d, n_values:%d, n_gls:%d", vcfd->nInd, n_values, n_gls);
 
     if (10 == n_gls) {
         IO::vprint(3, "GL field has 10 values per individual.");
@@ -964,6 +965,7 @@ void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct
 
             if (vcfd->lngl != NULL) {
                 skip_site = site_read_GL(contig_i, site_i, vcfd, pars, pairSt);
+                IO::vprint(1, "Reading site at %s:%ld", vcfd->get_contig_name(), vcfd->rec->pos + 1);
             } else {
                 // TODOdragon
                 skip_site = get_JointGenotypeMatrix_GT(contig_i, site_i, vcfd, pars, -1);
