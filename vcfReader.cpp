@@ -155,7 +155,7 @@ int glData::ind_data_isMissing(const int ind_i) {
         return 1;
     }
 
-    if (isnan(ind_data[0])) {
+    if (bcf_float_is_missing(ind_data[0])) {
         return 1;
     }
 
@@ -185,14 +185,13 @@ glData::glData(vcfData *vcfd) {
     }
 
     n_gls = n_values / vcfd->nInd;
-    DEVPRINT("nind:%d, n_values:%d, n_gls:%d", vcfd->nInd, n_values, n_gls);
 
     if (10 == n_gls) {
         IO::vprint(3, "GL field has 10 values per individual.");
     } else if (3 == n_gls) {
         IO::vprint(3, "GL field has 3 values per individual.");
     } else {
-        ERROR("GL field has %d values per individual. Only 3 or 10 are supported.", n_gls);
+        // ERROR("GL field has %d values per individual. Only 3 or 10 are supported.", n_gls);
     }
 }
 
@@ -468,12 +467,49 @@ int read_site_with_alleles_allelesStruct(const int contig_i, const int site_i, v
     }
 }
 
+// int read_site_with_alleles(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2, const int n_gls) {
+//     if(3 == n_gls){
+//         read_site_with_alleles_3gls(contig_i, site_i, vcfd, pars, a1, a2);
+//     }
+//     if(10 == n_gls){
+//         read_site_with_alleles_10gls(contig_i, site_i, vcfd, pars, a1, a2);
+//     }
+
+// }
+
+// int read_site_with_alleles_3gls(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2, const int n_gls) {
+
+//     for (int i = 0; i < vcfd->rec->n_allele; ++i) {
+//         if (1 != strlen(vcfd->rec->d.allele[i])) {
+//             IO::vprint(2, "Skipping site at %s:%ld. Reason: ALT allele (%s) is not a single character.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1, vcfd->rec->d.allele[i]);
+//             return (2);
+//         }
+//     }
+
+//     // if we have 3 gls, then
+//     //      - the first allele (REF, idx:0) is a1
+//     //      - the second allele (ALT, idx:1) is a2
+
+//     *a1 = acgt_charToInt[(int)*vcfd->rec->d.allele[0]];
+
+//     *a2 = acgt_charToInt[(int)*vcfd->rec->d.allele[1]];
+
+//     ASSERT(-1 != *a1);
+//     ASSERT(-1 != *a2);
+//     // debug
+//     ASSERT(*a1 != *a2);
+
+//     return (0);
+
+// }
+
 int read_site_with_alleles(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2) {
     // N.B. contig_i not necessarily equal to vcfd->red->rid
     // since some contigs in the VCF file might be skipped thus contig indices shift
 
     for (int i = 0; i < vcfd->rec->n_allele; ++i) {
         if (1 != strlen(vcfd->rec->d.allele[i])) {
+            NEVER;
             IO::vprint(2, "Skipping site at %s:%ld. Reason: ALT allele (%s) is not a single character.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1, vcfd->rec->d.allele[i]);
             return (2);
         }
@@ -707,8 +743,7 @@ vcfData *vcfData_init(paramStruct *pars) {
 
     vcfd->in_fp = bcf_open(args->in_vcf_fn, "r");
     if (vcfd->in_fp == NULL) {
-        fprintf(stderr, "\n[ERROR] Could not open bcf file: %s\n", args->in_vcf_fn);
-        exit(1);
+        ERROR("Could not open bcf file: %s\n", args->in_vcf_fn);
     }
 
     vcfd->set_n_joint_categories(pars);
@@ -763,7 +798,7 @@ vcfData *vcfData_init(paramStruct *pars) {
     vcfd->nContigs = vcfd->hdr->n[BCF_DT_CTG];
     ASSERT(vcfd->nContigs > 0);
 
-    check_consistency_args_pars(args, pars);
+    check_consistency_args_pars(pars);
 
     if (NULL != pars->ancder) {
         vcfd->contig_vcfToAncDer = (int *)malloc(vcfd->nContigs * sizeof(int));
@@ -965,7 +1000,7 @@ void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct
 
             if (vcfd->lngl != NULL) {
                 skip_site = site_read_GL(contig_i, site_i, vcfd, pars, pairSt);
-                IO::vprint(1, "Reading site at %s:%ld", vcfd->get_contig_name(), vcfd->rec->pos + 1);
+                // IO::vprint(1, "Reading site at %s:%ld", vcfd->get_contig_name(), vcfd->rec->pos + 1);
             } else {
                 // TODOdragon
                 skip_site = get_JointGenotypeMatrix_GT(contig_i, site_i, vcfd, pars, -1);

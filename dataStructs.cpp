@@ -905,6 +905,7 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars) {
 
     int n_vals = 0;
 
+    // TODO
     if (IO::isGzFile(args->in_dm_fn) == 1) {
         size_t buf_size = FGETS_BUF_SIZE;
         size_t *buf_size_ptr = &buf_size;

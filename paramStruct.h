@@ -60,6 +60,9 @@ struct paramStruct {
 paramStruct *paramStruct_init(argStruct *args);
 void paramStruct_destroy(paramStruct *p);
 
-void check_consistency_args_pars(argStruct *args, paramStruct *pars);
+void check_consistency_args_pars(paramStruct *pars);
+
+bool require_formula(void);
+bool require_metadata(void);
 
 #endif  // __PARAM_STRUCT__

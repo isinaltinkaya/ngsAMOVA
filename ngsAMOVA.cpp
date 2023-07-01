@@ -36,17 +36,16 @@ void input_VCF(paramStruct *pars) {
     char **indNames = NULL;
 
     metadataStruct *metadata = NULL;
-    // if analyses requiring metadata are requested
-    if (0 != args->doAMOVA || 0 != args->doDxy || 2 == args->doNJ) {
-        if (NULL != args->in_mtd_fn) {
+    if (require_metadata()) {
+        if (NULL == args->in_mtd_fn) {
+            ERROR("Requested analyses requiring metadata but no metadata file was provided.");
+        } else {
             if (NULL != args->formula) {
                 metadata = metadataStruct_get(pars);
                 indNames = metadata->indNames;
             } else {
-                ERROR("Requested analyses requiring metadata but no formula was provided.");
+                NEVER;  // this should already be checked in require_formula()
             }
-        } else {
-            ERROR("Requested analyses requiring metadata but no metadata file was provided.");
         }
     }
 
@@ -105,7 +104,7 @@ void input_VCF(paramStruct *pars) {
         DEL(njSt);
     }
 
-    IFDEL(metadata);
+    FDEL(metadata);
     DEL2D(pairSt, pars->nIndCmb);
     DEL(distanceMatrix);
 
@@ -119,9 +118,19 @@ void input_DM(paramStruct *pars) {
 
     distanceMatrixStruct *distanceMatrix = distanceMatrixStruct_read(pars);
 
-    metadataStruct *metadata = metadataStruct_get(pars);
-
-    distanceMatrix->set_item_labels(metadata->indNames);
+    metadataStruct *metadata = NULL;
+    if (require_metadata()) {
+        if (NULL == args->in_mtd_fn) {
+            ERROR("Requested analyses requiring metadata but no metadata file was provided.");
+        } else {
+            if (NULL != args->formula) {
+                metadata = metadataStruct_get(pars);
+                distanceMatrix->set_item_labels(metadata->indNames);
+            } else {
+                NEVER;  // this should already be checked in require_formula()
+            }
+        }
+    }
 
     pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
 
@@ -159,7 +168,8 @@ void input_DM(paramStruct *pars) {
         DEL(njSt);
     }
 
-    DEL(metadata);
+    FDEL(metadata);
+
     DEL2D(pairSt, pars->nIndCmb);
     DEL(distanceMatrix);
 }

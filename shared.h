@@ -245,14 +245,14 @@
     }
 
 /*
- * Macro:[IFDEL]
+ * Macro:[FDEL]
  * if x exists; delete memory and set pointer to NULL
  * do NOT throw error if pointer is NULL
  *
  * for variables declared as:
  * type *x = new type;
  */
-#define IFDEL(x)     \
+#define FDEL(x)      \
     if (NULL != x) { \
         delete x;    \
         x = NULL;    \
@@ -276,7 +276,7 @@
     }
 
 /*
- * Macro:[IFDEL1D]
+ * Macro:[FDEL1D]
  * if x exists; delete memory and set pointer to NULL
  * do NOT throw error if pointer is NULL
  *
@@ -284,7 +284,7 @@
  * type *x = new type[size];
  *
  */
-#define IFDEL1D(x)   \
+#define FDEL1D(x)    \
     if (NULL != x) { \
         delete[] x;  \
         x = NULL;    \
@@ -314,7 +314,7 @@
     }
 
 /*
- * Macro:[IFDEL2D]
+ * Macro:[FDEL2D]
  * shortcut to delete memory and set pointer to NULL
  * for 2D arrays declared as:
  * type **x = new type*[size];
@@ -324,7 +324,7 @@
  *
  * do NOT throw error if pointer is NULL
  */
-#define IFDEL2D(x, size)                            \
+#define FDEL2D(x, size)                             \
     if (NULL != x) {                                \
         for (size_t i = 0; i < (size_t)size; i++) { \
             if (NULL != x[i]) {                     \

@@ -9,6 +9,21 @@ const char *IO::FILE_EXTENSIONS[] = {"", ".gz", ".bgz"};
 
 IO::outFilesStruct *outFiles = new IO::outFilesStruct();
 
+kstring_t *kbuf_init() {
+    kstring_t *kbuf = new kstring_t;
+    kbuf->l = 0;
+    kbuf->m = 0;
+    kbuf->s = NULL;
+    return kbuf;
+}
+
+void kbuf_destroy(kstring_t *kbuf) {
+    if (NULL != kbuf) {
+        FREE(kbuf->s);
+        delete kbuf;
+    }
+}
+
 // int IO::readFile::getNextLine(FILE* fp, char* line, size_t* len)
 
 void IO::append_argsFile(const char *format, ...) {
@@ -329,30 +344,6 @@ char *IO::readFile::getFirstLine(FILE *fp) {
     return full_line;
 }
 
-char *IO::readFile::readToBuffer(const char *fn) {
-    char *buffer = NULL;
-    size_t buf_size = 0;
-    FILE *fp = IO::getFile(fn, "r");
-
-    // seek to end of file
-    fseek(fp, 0, SEEK_END);
-    // offset to the end of the file == size of the file
-    buf_size = ftell(fp);
-    ASSERT(buf_size > 0);
-
-    buffer = (char *)malloc((buf_size + 1) * sizeof(char));
-    ASSERT(buffer != NULL);
-
-    // seek back to beginning of file
-    fseek(fp, 0, SEEK_SET);
-
-    fread(buffer, sizeof(char), buf_size, fp);
-    buffer[buf_size] = '\0';
-
-    FCLOSE(fp);
-    return buffer;
-}
-
 int IO::readGzFile::readToBuffer(char *fn, char **buffer_p, size_t *buf_size_p) {
     gzFile fp = IO::getGzFile(fn, "r");
 
@@ -394,64 +385,6 @@ int IO::inspectFile::count_nCols(const char *line, const char *delims) {
         ++p;
     }
     return count;
-}
-
-/// @brief count_nRows count number of rows in a file
-/// @param fn file name
-/// @param HAS_COLNAMES 1 if file has header
-/// @return integer n number of rows
-int IO::inspectFile::count_nRows(char *fn, int HAS_COLNAMES) {
-    FILE *fp = IO::getFile(fn, "r");
-
-    char buf[FREAD_BUF_SIZE];
-    int n = 0;
-    for (;;) {
-        size_t res = fread(buf, 1, FREAD_BUF_SIZE, fp);
-        ASSERT(ferror(fp) == 0);
-
-        size_t i;
-        for (i = 0; i < res; i++)
-            if (buf[i] == '\n')
-                n++;
-
-        if (feof(fp))
-            break;
-    }
-
-    if (HAS_COLNAMES == 1)
-        n--;
-
-    fclose(fp);
-
-    return n;
-}
-
-/// @brief count_nRows count number of rows in a file
-/// @param fp pointer to file
-/// @param HAS_COLNAMES 1 if file has header
-/// @return integer n number of rows
-int IO::inspectFile::count_nRows(FILE *fp, int HAS_COLNAMES) {
-    // return to the beginning of the file
-    ASSERT(fseek(fp, 0, SEEK_SET) == 0);
-
-    char buf[FREAD_BUF_SIZE];
-    int n = 0;
-    for (;;) {
-        size_t res = fread(buf, 1, FREAD_BUF_SIZE, fp);
-        ASSERT(ferror(fp) == 0);
-
-        size_t i;
-        for (i = 0; i < res; i++)
-            if (buf[i] == '\n')
-                n++;
-
-        if (feof(fp))
-            break;
-    }
-
-    if (HAS_COLNAMES == 1)
-        n--;
-    return n;
 }
 
 // //TODO DEPRECATED?
@@ -505,21 +438,6 @@ int IO::inspectFile::count_nRows(FILE *fp, int HAS_COLNAMES) {
 // 		}
 // 	}
 
-kstring_t *kbuf_init() {
-    kstring_t *kbuf = new kstring_t;
-    kbuf->l = 0;
-    kbuf->m = 0;
-    kbuf->s = NULL;
-    return kbuf;
-}
-
-void kbuf_destroy(kstring_t *kbuf) {
-    if (NULL != kbuf) {
-        FREE(kbuf->s);
-        delete kbuf;
-    }
-}
-
 IO::outputStruct::outputStruct(const char *fn_, const char *suffix, int fc_) {
     fc = OUTFC(fc_);
     switch (fc) {
@@ -528,7 +446,6 @@ IO::outputStruct::outputStruct(const char *fn_, const char *suffix, int fc_) {
         fp = openFileW(fn);
         break;
     case OUTFC::GZ:
-        NEVER;
         fn = setFileName(fn_, suffix, FILE_EXTENSIONS[fc]);
         gzfp = openGzFileW(fn);
         break;
@@ -537,8 +454,7 @@ IO::outputStruct::outputStruct(const char *fn_, const char *suffix, int fc_) {
         bgzfp = bgzf_open(fn, "wb");
         break;
     default:
-        fprintf(stderr, "\n[ERROR] Unknown file compression type (%d)\n", fc);
-        exit(1);
+        ERROR("Unknown file compression type is specified (%d)", fc);
         break;
     }
     // fprintf(stderr, "\n[INFO] Opening output file: %s with compression type: %d (%s)\n", fn, fc, OUTFC_LUT[(OUTFC)fc]);
@@ -642,7 +558,6 @@ void IO::outputStruct::kbuf_write() {
         ASSERT(fprintf(fp, "%s", kbuf->s) > 0);
         break;
     case OUTFC::GZ:
-        fprintf(stderr, "%s", kbuf->s);
         ASSERT(gzprintf(gzfp, "%s", kbuf->s) > 0);
         break;
     case OUTFC::BBGZ:
@@ -730,39 +645,18 @@ void IO::outFilesStruct_init(IO::outFilesStruct *ofs) {
 void IO::outFilesStruct_destroy(IO::outFilesStruct *ofs) {
     // flushAll();
 
-    IFDEL(ofs->out_args_fs);
-    IFDEL(ofs->out_dm_fs);
-    IFDEL(ofs->out_amova_fs);
-    IFDEL(ofs->out_dev_fs);
-    IFDEL(ofs->out_jgcd_fs);
-    IFDEL(ofs->out_dxy_fs);
-    IFDEL(ofs->out_nj_fs);
-    IFDEL(ofs->out_blockstab_fs);
-    IFDEL(ofs->out_v_bootstrapRep_fs);
+    FDEL(ofs->out_args_fs);
+    FDEL(ofs->out_dm_fs);
+    FDEL(ofs->out_amova_fs);
+    FDEL(ofs->out_dev_fs);
+    FDEL(ofs->out_jgcd_fs);
+    FDEL(ofs->out_dxy_fs);
+    FDEL(ofs->out_nj_fs);
+    FDEL(ofs->out_blockstab_fs);
+    FDEL(ofs->out_v_bootstrapRep_fs);
 
     delete ofs;
 }
-
-// void flushAll()
-// {
-//     if (out_dm_fs != NULL)
-//     {
-//         out_dm_fs->flush();
-//     }
-//     if (out_jgcd_fs != NULL)
-//     {
-//         out_jgcd_fs->flush();
-//     }
-//     if (out_amova_fs != NULL)
-//     {
-//         out_amova_fs->flush();
-//     }
-//     if (out_dev_fs != NULL)
-//     {
-//         out_dev_fs->flush();
-//     }
-// }
-
 int IO::verbose(const int verbose_threshold) {
     if (verbose_threshold == 0) {
         return 1;  // if checking against 0 (i.e. no verbose needed) return 1

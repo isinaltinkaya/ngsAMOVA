@@ -8,11 +8,16 @@
 # `make` 		- compile in release mode
 #
 # `make dev` 	- compile in developer mode
-# 				-O0 (no optimization)
-# 				-g (debugging info)
-# 				-Wall (turn on compiler warnings)
-# 				-save-temps (save intermediate files; useful for seeing macro expansions)
-# 				-v (verbose)
+# 				- O0 (no optimization)
+# 				- g (debugging info)
+# 				- Wall (turn on compiler warnings)
+#
+# `make dev ext`- compile in extended developer mode 
+# 				- O0 (no optimization)
+# 				- g (debugging info)
+# 				- Wall (turn on compiler warnings)
+# 				- save-temps (save intermediate files; useful for seeing macro expansions)
+# 				- v (verbose)
 #
 # `make clean` 	- clean up the director
 #
@@ -51,7 +56,13 @@ $(info _________________________________________________________________________
 
 DEV_MODE=1
 OPTIM_FLAGS := -O0
+
+ifeq (ext,$(filter ext,$(MAKECMDGOALS)))
 CXXFLAGS += -g -Wall $(OPTIM_FLAGS) -save-temps -v
+else
+CXXFLAGS += -g -Wall $(OPTIM_FLAGS) 
+endif
+
 $(info )
 $(info [INFO]    Make updated CXXFLAGS="$(CXXFLAGS)")
 $(info )
@@ -177,15 +188,14 @@ OBJ := $(CXXSRC:.cpp=.o)
 # Dependency files
 DEP := $(OBJ:.o=.d)
 
-
 LIBS := $(LIBHTS) $(LIBS)
-
-$(PROGRAM): $(OBJ)
-	$(CXX) -o $(PROGRAM) *.o $(LIBS) 
-
 
 -include $(DEP)
 FLAGS := $(CPPFLAGS) $(CXXFLAGS)
+
+$(PROGRAM): $(OBJ) 
+	$(CXX) -o $(PROGRAM) *.o $(LIBS)
+
 %.o: %.cpp
 	$(CXX) -c  $(FLAGS) $*.cpp
 	$(CXX) -MM $(FLAGS) $*.cpp >$*.d

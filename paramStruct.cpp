@@ -6,6 +6,24 @@ void setInputFileType(paramStruct *pars, int inputFileType) {
     pars->in_ft = pars->in_ft | inputFileType;
 }
 
+// check if any analysis requires formula
+bool require_formula(void) {
+    if (0 != args->doAMOVA) {
+        return (true);
+    }
+
+    return (false);
+}
+
+// check if any analysis requires metadata
+bool require_metadata(void) {
+    if (0 != args->doAMOVA) {
+        return (true);
+    }
+
+    return (false);
+}
+
 paramStruct *paramStruct_init(argStruct *args) {
     paramStruct *pars = new paramStruct;
 
@@ -33,8 +51,12 @@ paramStruct *paramStruct_init(argStruct *args) {
     pars->totSites = 0;
     pars->nContigs = 0;
 
-    if (NULL != args->formula) {
-        pars->formula = formulaStruct_get(args->formula);
+    if (require_formula()) {
+        if (NULL != args->formula) {
+            pars->formula = formulaStruct_get(args->formula);
+        } else {
+            ERROR("Specified analyses require formula (`--formula/-f`)");
+        }
     }
 
     pars->nIndCmb = 0;
@@ -66,7 +88,7 @@ void paramStruct_destroy(paramStruct *pars) {
 /// @brief check_consistency_args_pars - check consistency between arguments and parameters
 /// @param args pointer to argStruct
 /// @param pars pointer to paramStruct
-void check_consistency_args_pars(argStruct *args, paramStruct *pars) {
+void check_consistency_args_pars(paramStruct *pars) {
     if (args->minInd == pars->nInd) {
         fprintf(stderr, "\n\t-> -minInd %d is equal to the number of individuals found in file: %d. Setting -minInd to 0 (all).\n", args->minInd, pars->nInd);
         args->minInd = 0;
