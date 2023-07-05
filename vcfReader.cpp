@@ -881,6 +881,8 @@ void vcfData_destroy(vcfData *v) {
 }
 
 void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct *blob) {
+
+
     int skip_site = 0;
 
     // contig index in vcfd

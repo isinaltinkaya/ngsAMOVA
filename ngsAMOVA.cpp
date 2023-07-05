@@ -32,8 +32,6 @@ void input_VCF(paramStruct *pars) {
         }
     }
 
-    // TODO deprec
-    char **indNames = NULL;
 
     metadataStruct *metadata = NULL;
     if (require_metadata()) {
@@ -42,7 +40,6 @@ void input_VCF(paramStruct *pars) {
         } else {
             if (NULL != args->formula) {
                 metadata = metadataStruct_get(pars);
-                indNames = metadata->indNames;
             } else {
                 NEVER;  // this should already be checked in require_formula()
             }
@@ -52,13 +49,33 @@ void input_VCF(paramStruct *pars) {
     // ---- GET DISTANCE MATRIX ------------------------------------------------- //
 
     distanceMatrixStruct *distanceMatrix = NULL;
+
     blobStruct *blobSt = NULL;
 
     if (0 < args->nBootstraps) {
         blobSt = blobStruct_get(vcfd, pars);
     }
 
+
+	char **indNames=NULL;
+
+	if(metadata!=NULL){
+		indNames=metadata->indNames;
+	}
+	
     distanceMatrix = distanceMatrixStruct_get(pars, vcfd, pairSt, indNames, blobSt);
+
+	if(require_itemLabels()){
+
+		for (int i=0; i<bcf_hdr_nsamples(vcfd->hdr); i++)
+		{
+			ASSERT(vcfd->hdr->samples!=NULL);
+			ASSERT(vcfd->hdr->samples[i]!=NULL);
+			ASSERT(pars->indNames!=NULL);
+		    pars->indNames->add(vcfd->hdr->samples[i]);
+		}
+
+	}
 
     // ---- ANALYSES ------------------------------------------------------------ //
 
@@ -125,7 +142,7 @@ void input_DM(paramStruct *pars) {
         } else {
             if (NULL != args->formula) {
                 metadata = metadataStruct_get(pars);
-                distanceMatrix->set_item_labels(metadata->indNames);
+                // distanceMatrix->set_item_labels(metadata->indNames);
             } else {
                 NEVER;  // this should already be checked in require_formula()
             }

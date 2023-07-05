@@ -85,19 +85,3 @@ char *get_time() {
     return (asctime(local_time));
 }
 
-// /// Warnings
-// ///
-// /// Warnings[IsRelatedToTypeX][IndexInTypeX] = "Warning string"
-// ///
-// /// Why do you get this warning = You used [IsRelatedToTypeX][IndexInTypeX]
-// /// e.g. Warnings[INFT][IN_VCF] = "You used VCF input file type"
-// const char* WARNINGS[][] = {
-// 	// INFT input file type
-// 	{
-// 		// IN_VCF	input file type is VCF
-// 		{"Assuming that the VCF file is sorted by position."},
-// 		// IN_DM	input file type is distance matrix
-// 		{"Assuming that the distance matrix is either an output from this program or a distance matrix with prepared with the same format as the output of this program."},
-// 		{""}
-// 	}
-// }

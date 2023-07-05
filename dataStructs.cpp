@@ -813,14 +813,6 @@ const int calculateBufferSizeCsv(const int n_vals, const int max_digits) {
     return ((n_vals * (max_digits + 1)) + 2);
 }
 
-void distanceMatrixStruct::set_item_labels(char **itemLabelArr) {
-    ASSERT(itemLabelArr != NULL);
-    itemLabels = (char **)malloc(nInd * sizeof(char *));
-    for (int i = 0; i < nInd; i++) {
-        itemLabels[i] = strdup(itemLabelArr[i]);
-    }
-}
-
 void distanceMatrixStruct::print() {
     if (0 == args->printDistanceMatrix)
         return;
@@ -853,12 +845,12 @@ distanceMatrixStruct::distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquare
     }
     isSquared = isSquared_;
 
-    if (itemLabels_ != NULL) {
-        itemLabels = (char **)malloc(nInd * sizeof(char *));
-        for (int i = 0; i < nInd; i++) {
-            itemLabels[i] = strdup(itemLabels_[i]);
-        }
-    }
+    // if (itemLabels_ != NULL) {
+        // itemLabels = (char **)malloc(nInd * sizeof(char *));
+        // for (int i = 0; i < nInd; i++) {
+            // itemLabels[i] = strdup(itemLabels_[i]);
+        // }
+    // }
 
     inds2idx = (int **)malloc(nInd * sizeof(int *));
     for (int i = 0; i < nInd; i++) {
@@ -881,13 +873,13 @@ distanceMatrixStruct::distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquare
 distanceMatrixStruct::~distanceMatrixStruct() {
     delete[] M;
 
-    if (itemLabels != NULL) {
-        for (int i = 0; i < nInd; i++) {
-            FREE(itemLabels[i]);
-        }
-        FREE(itemLabels);
-    }
-
+    // if (itemLabels != NULL) {
+        // for (int i = 0; i < nInd; i++) {
+            // FREE(itemLabels[i]);
+        // }
+        // FREE(itemLabels);
+    // }
+//
     for (int i = 0; i < nInd; i++) {
         FREE(inds2idx[i]);
     }

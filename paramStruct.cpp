@@ -2,11 +2,62 @@
 
 #include "dataStructs.h"
 
+
+strArray* strArray_init(void){
+	strArray *arr = (strArray*) malloc(sizeof(strArray));
+	ASSERT(NULL!=arr);
+	arr->nbuf = 1;
+	arr->nvals = 0;
+	arr->vals = (char**) malloc( arr->nbuf * sizeof(char*));
+	arr->vals[0]=NULL;
+	ASSERT(arr->vals!=NULL);
+	return (arr);
+}
+
+void strArray_destroy(strArray* arr){
+	ASSERT(arr->vals!=NULL);
+	for(int i=0;i<arr->nbuf;++i){
+		FFREE(arr->vals[i]);
+	}
+	FFREE(arr->vals);
+	FREE(arr);
+}
+
+void strArray::add(const char* new_val){
+	ASSERT(new_val!=NULL);
+
+	if(this->nvals == this->nbuf){
+
+		this->nbuf = this->nbuf * 2;
+		REALLOC(this->vals, this->nbuf * sizeof(char*), char**);
+		for(int i=this->nvals; i<this->nbuf;++i){
+			this->vals[i]=NULL;
+		}
+	}
+	this->vals[this->nvals]=strdup(new_val);
+	ASSERT(this->vals[this->nvals]!=NULL);
+	this->nvals++;
+}
+
+
+void strArray::print(void){
+	for(int i=0;i<this->nbuf;++i){
+		fprintf(stderr,"%s\n",this->vals[i]);
+	}
+}
+
+void strArray::print(FILE* fp){
+	for(int i=0;i<this->nbuf;++i){
+		fprintf(fp,"%s\n",this->vals[i]);
+	}
+}
+
+
+
 void setInputFileType(paramStruct *pars, int inputFileType) {
     pars->in_ft = pars->in_ft | inputFileType;
 }
 
-// check if any analysis requires formula
 bool require_formula(void) {
     if (0 != args->doAMOVA) {
         return (true);
@@ -15,7 +66,6 @@ bool require_formula(void) {
     return (false);
 }
 
-// check if any analysis requires metadata
 bool require_metadata(void) {
     if (0 != args->doAMOVA) {
         return (true);
@@ -24,11 +74,24 @@ bool require_metadata(void) {
     return (false);
 }
 
+// TODO incomplete!
+bool require_itemLabels(void){
+	if (0 != args->doNJ){
+		return(true);
+	}
+	return(false);
+}
+
+
+
 paramStruct *paramStruct_init(argStruct *args) {
     paramStruct *pars = new paramStruct;
 
     pars->DATETIME = (char *)malloc(1024 * sizeof(char));
     sprintf(pars->DATETIME, "%s", get_time());
+
+    pars->indNames = strArray_init();
+
 
     if (NULL != args->in_vcf_fn) {
         fprintf(stderr, "\n[INFO]\tFound input VCF file: %s\n", args->in_vcf_fn);
@@ -62,6 +125,7 @@ paramStruct *paramStruct_init(argStruct *args) {
     pars->nIndCmb = 0;
     pars->nInd = 0;
 
+
     return pars;
 }
 
@@ -77,6 +141,10 @@ void paramStruct_destroy(paramStruct *pars) {
 
     if (NULL != pars->formula) {
         formulaStruct_destroy(pars->formula);
+    }
+
+    if(NULL != pars->indNames){
+	    strArray_destroy(pars->indNames);
     }
 
     delete pars;

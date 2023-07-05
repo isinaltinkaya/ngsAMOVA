@@ -46,8 +46,8 @@ all:
 #
 	@printf "\n\n\n";
 	@printf "===============================================================================\n";
-	@printf "\n\n\n[TEST 8]: Neighbor Joining with individuals as tips\n";
-	../ngsAMOVA -doAMOVA 1 -doDist 2 --in-vcf test_s9_d1_1K.vcf -m metadata_with_header_2lvl.tsv --ancDerFile test_s9_d1_1K_ancder.tsv -f "Individual~Region/Population" -doNJ 1 -o testwd/test_s9_d1_1K_mtd2_nj 2> testwd/logs/test_s9_d1_1K_mtd2_nj.log;
+	@printf "\n\n\n[TEST 8]: Neighbor Joining with individuals as tips. Use vcf individual names as tip labels\n";
+	../ngsAMOVA -doDist 2 --in-vcf test_s9_d1_1K.vcf --ancDerFile test_s9_d1_1K_ancder.tsv -f "Individual~Region/Population" -doNJ 1 -o testwd/test_s9_d1_1K_mtd2_nj 2> testwd/logs/test_s9_d1_1K_mtd2_nj.log;
 	bash -c "diff testwd/test_s9_d1_1K_mtd2_nj.newick reference/test_s9_d1_1K_mtd2_nj.newick";
 #
 	@printf "\n\n\n";

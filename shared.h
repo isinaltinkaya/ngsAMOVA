@@ -163,6 +163,12 @@
         p = rp;                                                                                  \
     }
 
+#define REALLOC(p, size, type) \
+	void* tmp = (void*) realloc(((p)),((size))); \
+	ASSERT(tmp!=NULL); \
+	(p) = (type) tmp;
+
+
 /*
  * Macro:[FREE]
  * force free

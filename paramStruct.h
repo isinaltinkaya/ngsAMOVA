@@ -7,6 +7,20 @@ typedef struct allelesStruct allelesStruct;
 typedef struct paramStruct paramStruct;
 typedef struct formulaStruct formulaStruct;
 
+typedef struct strArray{
+	char** vals=NULL;
+	int nvals;
+	int nbuf;
+
+	void add(const char* new_val);
+	void print(FILE* fp);
+	void print(void);
+}strArray;
+strArray* strArray_init(void);
+void strArray_destroy(strArray* arr);
+
+
+
 /*
  * @typedef
  * @abstract paramStruct - parameter structure
@@ -52,6 +66,9 @@ struct paramStruct {
     // validate that parameters make sense
     // e.g. nInd > 0
     void validate();
+
+    strArray* indNames = NULL;
+
 };
 
 /// @brief paramStruct_init initialize the paramStruct
@@ -62,7 +79,14 @@ void paramStruct_destroy(paramStruct *p);
 
 void check_consistency_args_pars(paramStruct *pars);
 
+// REQUIRE 
+// in form require_object
+// check if any of the specified analyses require object
+
 bool require_formula(void);
 bool require_metadata(void);
+bool require_itemLabels(void);
+
+
 
 #endif  // __PARAM_STRUCT__

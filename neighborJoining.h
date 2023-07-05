@@ -123,8 +123,8 @@ typedef struct njStruct {
     /// iteration.
     int isNeighbor(int nodeIndex);
 
-    njStruct(distanceMatrixStruct *dms);
-    njStruct(dxyStruct *dxySt);
+ 	njStruct(distanceMatrixStruct *dms, paramStruct* pars);
+	njStruct(dxyStruct *dxySt, paramStruct* pars);
     ~njStruct();
 
 } njStruct;

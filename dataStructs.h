@@ -256,7 +256,7 @@ struct distanceMatrixStruct {
     // inds2idx[i1][i2] = index of the pair (i1,i2) in the distance matrix
     int **inds2idx = NULL;
 
-    char **itemLabels = NULL;
+    // char **itemLabels = NULL;
 
     int nInd = 0;
     int nIndCmb = 0;
@@ -267,7 +267,6 @@ struct distanceMatrixStruct {
 
     void print();
 
-    void set_item_labels(char **indNames);
 };
 
 /// @brief read distance matrix from distance matrix csv file
