@@ -323,12 +323,34 @@ void njIteration(njStruct *nji) {
     int pxnew1 = nji->items2idx[min_i1][parentNode];
     nji->NJD[pxnew1] = edgeLength;
 
+
+
+
     // calculate the distance from the new node to the child node 2
     // d(min_i2,new_node) = ( d(min_i1,min_i2) + NetDivergence[min_i2] - NetDivergence[min_i1] ) / 2
     edgeLength = (0.5 * (min_dist - min_NetDivergence));
     nji->addEdge(parentNode, min_i2, edgeLength);
     int pxnew2 = nji->items2idx[min_i2][parentNode];
     nji->NJD[pxnew2] = edgeLength;
+
+    
+    // -> handle negative branch lengths
+    //
+    // if a branch length < 0:
+    // set branch length to zero
+    // and transfer the difference to the adjacent branch length (+= - orig_len)
+    // so that the total distance between an adjacent pair of terminal nodes remains unaffected 
+    // see Kuhner and Felsenstein 1994.
+    if(nji->NJD[pxnew1]<0){
+	    WARNING("Observed negative branch length at (%d,%d) distance 1 (%f). Transferring the difference to the adjacent branch distance 2 (before: %f).",pxnew1,pxnew2,nji->NJD[pxnew1],nji->NJD[pxnew2]);
+	    nji->NJD[pxnew2] += - nji->NJD[pxnew1];
+	    nji->NJD[pxnew1] = 0.0;
+    }else if (nji->NJD[pxnew2]<0){
+	    WARNING("Observed negative branch length at (%d,%d) distance 2 (%f). Transferring the difference to the adjacent branch distance 1 (before: %f).",pxnew1,pxnew2,nji->NJD[pxnew2],nji->NJD[pxnew1]);
+	    nji->NJD[pxnew1] += - nji->NJD[pxnew2];
+	    nji->NJD[pxnew2] = 0.0;
+    }
+
     // --------------------------------------------------------------------
 
     // calculate the distance from the new node to each non-child node
