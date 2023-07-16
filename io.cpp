@@ -626,7 +626,7 @@ void IO::outFilesStruct_init(IO::outFilesStruct *ofs) {
     if (args->printBlocksTab == 1) {
         ofs->out_blockstab_fs = new IO::outputStruct(args->out_fnp, ".blocks.tab", OUTFC::NONE);
     }
-    if (args->doNJ > 0) {
+    if (args->doPhylo > 0) {
         ofs->out_nj_fs = new IO::outputStruct(args->out_fnp, ".newick", OUTFC::NONE);
     }
 

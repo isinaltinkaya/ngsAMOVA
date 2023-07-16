@@ -107,15 +107,15 @@ void input_VCF(paramStruct *pars) {
 
     // ---- NEIGHBOR JOINING
     njStruct *njSt = NULL;
-    if (args->doNJ != 0) {
-        if (args->doNJ == 1) {
+    if (args->doPhylo != 0) {
+        if (args->doPhylo == 1) {
             njSt = njStruct_get(pars, distanceMatrix);
-        } else if (args->doNJ == 2) {
+        } else if (args->doPhylo == 2) {
             if (args->doDxy != 0) {
                 ASSERT(dxySt != NULL);
                 njSt = njStruct_get(pars, dxySt);
             } else {
-                ERROR("-doNJ 2 requires -doDxy");
+                ERROR("-doPhylo 2 requires -doDxy");
             }
         }
         DEL(njSt);
@@ -174,11 +174,11 @@ void input_DM(paramStruct *pars) {
     }
 
     njStruct *njSt = NULL;
-    if (args->doNJ != 0) {
-        if (args->doNJ == 1) {
+    if (args->doPhylo != 0) {
+        if (args->doPhylo == 1) {
             ASSERT(distanceMatrix != NULL);
             njSt = njStruct_get(pars, distanceMatrix);
-        } else if (args->doNJ == 2) {
+        } else if (args->doPhylo == 2) {
             ASSERT(dxySt != NULL);
             njSt = njStruct_get(pars, dxySt);
         }

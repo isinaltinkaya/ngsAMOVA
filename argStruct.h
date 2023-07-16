@@ -97,7 +97,7 @@ extern argStruct *args;
  * @field doDxyStr       [default=""] Stores the string given to doDxy, if any
  *                       [""] do NOT perform Dxy OR perform Dxy using numeric argument
  *
- * @field doNJ           [default=0]
+ * @field doPhylo           [default=0]
  *                       [0] do NOT perform neighbor joining
  *                       [1] perform neighbor joining using individuals as nodes
  *                       [2] perform neighbor joining using groups as nodes
@@ -166,7 +166,7 @@ struct argStruct {
     int doAMOVA = 0;
     int doEM = 0;
     int doDxy = 0;
-    int doNJ = 0;
+    int doPhylo = 0;
     int doDist = 0;
 
     int printAmovaTable = 0;

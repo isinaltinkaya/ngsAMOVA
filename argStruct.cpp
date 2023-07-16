@@ -42,7 +42,7 @@ argStruct *argStruct_get(int argc, char **argv) {
         //   -doAMOVA <int> : perform AMOVA analysis
         //   -doEM <int> : perform EM optimization
         //   -doDxy <int> : estimate Dxy
-        //   -doNJ <int> : do neighbor-joining
+        //   -doPhylo <int> : do neighbor-joining
         //   -doDist <int> : estimate pairwise distance matrix
 
         // TODO idea multilayer argument reading using LUTs
@@ -61,8 +61,8 @@ argStruct *argStruct_get(int argc, char **argv) {
                 args->doDxy = 999;  // indicates that a string is provided
                 args->doDxyStr = strdup(val);
             }
-        } else if ((strcasecmp("-doNeighborJoining", arv) == 0) || (strcasecmp("-doNJ", arv) == 0)) {
-            args->doNJ = atoi(val);
+        } else if ((strcasecmp("-doNeighborJoining", arv) == 0) || (strcasecmp("-doPhylo", arv) == 0)) {
+            args->doPhylo = atoi(val);
 
         } else if (strcasecmp("-doDist", arv) == 0) {
             args->doDist = atoi(val);
@@ -518,7 +518,7 @@ void argStruct::check_arg_dependencies() {
     // -doAMOVA
     //             default: 0
     //             0: do not perform AMOVA
-    //             1: perform AMOVA on all groups in each hierarchical level defined in the metadata file (requires: method to obtain distance matrix, metadata file)
+    //             1: perform AMOVA
 
     if (0 == doAMOVA) {
         //
@@ -601,33 +601,32 @@ void argStruct::check_arg_dependencies() {
     }
 
     //----------------------------------------------------------------------------------//
-    // -doNJ
+    // -doPhylo
     //              default: 0
-    //              0: do not perform neighbor joining
-    //              1: perform neighbor joining with individuals (requires: method to obtain distance matrix)
-    //              2: perform neighbor joining with dxy groups (requires: method to obtain dxy matrix)
-    //
+    //              0: do not run phylogenetic tree construction
+    //              1: construct phylogenetic tree using neighbor joining with individuals as leaf nodes
+    //              2: construct phylogenetic tree using neighbor joining with groups as leaf nodes (requires: `-doDxy`)
 
-    if (0 == doNJ) {
+    if (0 == doPhylo){
         //
-    } else if (1 == doNJ) {
+    } else if (1 == doPhylo) {
         if (0 == doDist && NULL == in_dm_fn) {
-            ERROR("-doNJ %d requires a distance matrix (either -doDist <int> or --in-dm <file>).", doNJ);
+            ERROR("-doPhylo %d requires a distance matrix (either -doDist <int> or --in-dm <file>).", doPhylo);
         }
-    } else if (2 == doNJ) {
+    } else if (2 == doPhylo) {
         if (0 == doDxy && NULL == in_dxy_fn) {
-            ERROR("-doNJ %d requires a dxy matrix (either -doDxy <int> or --in-dxy <file>).", doNJ);
+            ERROR("-doPhylo %d requires a dxy matrix (either -doDxy <int> or --in-dxy <file>).", doPhylo);
         }
     } else {
-        ERROR("-doNJ %d is not a valid option.", doNJ);
+        ERROR("-doPhylo %d is not a valid option.", doPhylo);
     }
 
-    //  else if (doNJ == 1 && doDist == 0 && in_dm_fn == NULL) {
-    //     fprintf(stderr, "\n[ERROR]\t-> -doNJ %i requires -doDist 1 or --in-dm <file>.", doNJ);
+    //  else if (doPhylo == 1 && doDist == 0 && in_dm_fn == NULL) {
+    //     fprintf(stderr, "\n[ERROR]\t-> -doPhylo %i requires -doDist 1 or --in-dm <file>.", doPhylo);
     //     exit(1);
     // }
-    // if (doNJ == 2 && doDxy == 0 && in_dxy_fn == NULL) {
-    //     fprintf(stderr, "\n[ERROR]\t-> -doNJ %i requires -doDxy 1 or --in-dxy <file>.", doNJ);
+    // if (doPhylo == 2 && doDxy == 0 && in_dxy_fn == NULL) {
+    //     fprintf(stderr, "\n[ERROR]\t-> -doPhylo %i requires -doDxy 1 or --in-dxy <file>.", doPhylo);
     //     exit(1);
     // }
 

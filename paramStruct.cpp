@@ -76,7 +76,7 @@ bool require_metadata(void) {
 
 // TODO incomplete!
 bool require_itemLabels(void){
-	if (0 != args->doNJ){
+	if (0 != args->doPhylo){
 		return(true);
 	}
 	return(false);
