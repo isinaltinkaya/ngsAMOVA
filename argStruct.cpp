@@ -433,16 +433,10 @@ void argStruct::check_arg_dependencies() {
     }
 
     if (in_vcf_fn != NULL) {
-        if (0 == isSim) {
-            if (NULL == in_ancder_fn && NULL == in_majorminor_fn) {
-                ERROR("Must supply either --majorMinorFile/-mmf <filename> or --ancDerFile/-adf <filename>.");
-            }
-        } else if (1 == isSim) {
+        if (1 == isSim) {
             if (NULL != in_ancder_fn || NULL != in_majorminor_fn) {
                 ERROR("Cannot use --majorMinorFile/-mmf <filename> or --ancDerFile/-adf <filename> with --isSim 1.");
             }
-        } else {
-            ERROR("isSim must be 0 or 1.");
         }
     }
 

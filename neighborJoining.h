@@ -38,9 +38,6 @@ typedef struct njStruct {
     // is choose(nTreeNodes,2) = nTreeNodes*(nTreeNodes-1)/2
     // since NJD contains all steps
     //
-    // /def idx2items[pair_index][0] = index of the first item in the pair
-    // /def idx2items[pair_index][1] = index of the second item in the pair
-    int **idx2items = NULL;
     // items2idx[i1][i2] = index of the pair (i1,i2) in the distance matrix
     int **items2idx = NULL;
 

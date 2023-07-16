@@ -108,12 +108,6 @@ njStruct::njStruct(distanceMatrixStruct *dms, paramStruct* pars) {
         edgeLengths[i] = -1.0;
     }
 
-    idx2items = (int **)malloc(nTreeNodePairs * sizeof(int *));
-    for (int i = 0; i < nTreeNodePairs; ++i) {
-        idx2items[i] = (int *)malloc(2 * sizeof(int));
-        idx2items[i][0] = -1;
-        idx2items[i][1] = -1;
-    }
     items2idx = (int **)malloc(nTreeNodes * sizeof(int *));
     for (int i = 0; i < nTreeNodes; ++i) {
         items2idx[i] = (int *)malloc(nTreeNodes * sizeof(int));
@@ -125,8 +119,6 @@ njStruct::njStruct(distanceMatrixStruct *dms, paramStruct* pars) {
     int idx = 0;
     for (int i1 = 0; i1 < nTreeNodes - 1; i1++) {
         for (int i2 = i1 + 1; i2 < nTreeNodes; i2++) {
-            idx2items[idx][0] = i1;
-            idx2items[idx][1] = i2;
             items2idx[i1][i2] = idx;
             items2idx[i2][i1] = idx;
             idx++;
@@ -189,15 +181,8 @@ njStruct::~njStruct() {
         FREE(edgeNodes[i]);
     }
     FREE(edgeNodes);
-
     FREE(edgeLengths);
     FREE(neighborIdx);
-
-    for (int i = 0; i < nTreeNodePairs; ++i) {
-        FREE(idx2items[i]);
-    }
-    FREE(idx2items);
-
     FREE(nEdgesPerParentNode);
     for (int i = 0; i < nParents; ++i) {
         FREE(parentToEdgeIdx[i]);
@@ -250,10 +235,7 @@ void njIteration(njStruct *nji) {
     // NET DIVERGENCE
     //
     // calculate the net divergence of each node ==TotalDistance[i]/(nNodesAtIteration-2)
-    double NetDivergence[nji->totL];
-    for (int i = 0; i < nji->totL; i++) {
-        NetDivergence[i] = 0.0;
-    }
+    double NetDivergence[nji->totL]={0.0};
 
     // divident (nNodesAtIteration-2)
     // since we add to the end of the same array - thus grow L
@@ -309,30 +291,18 @@ void njIteration(njStruct *nji) {
     ASSERT(min_i2 >= 0);
 
     int parentNode = nji->newParentNode(min_i1, min_i2);
-    double edgeLength = 0.0;
-
-    double min_NetDivergence = NetDivergence[min_i1] - NetDivergence[min_i2];
 
     // --------------------------------------------------------------------
     // SET CHILD NODES
 
     // calculate the distance from the new node to each child node
+    // child1:
     // d(min_i1,new_node) = ( d(min_i1,min_i2) + NetDivergence[min_i1] - NetDivergence[min_i2] ) / 2
-    edgeLength = (0.5 * (min_dist + min_NetDivergence));
-    nji->addEdge(parentNode, min_i1, edgeLength);
-    int pxnew1 = nji->items2idx[min_i1][parentNode];
-    nji->NJD[pxnew1] = edgeLength;
+    double dist1 = (0.5 * min_dist) + (0.5 * (NetDivergence[min_i1] - NetDivergence[min_i2]));
 
-
-
-
-    // calculate the distance from the new node to the child node 2
+    // child2:
     // d(min_i2,new_node) = ( d(min_i1,min_i2) + NetDivergence[min_i2] - NetDivergence[min_i1] ) / 2
-    edgeLength = (0.5 * (min_dist - min_NetDivergence));
-    nji->addEdge(parentNode, min_i2, edgeLength);
-    int pxnew2 = nji->items2idx[min_i2][parentNode];
-    nji->NJD[pxnew2] = edgeLength;
-
+    double dist2 = min_dist - dist1;
     
     // -> handle negative branch lengths
     //
@@ -340,16 +310,24 @@ void njIteration(njStruct *nji) {
     // set branch length to zero
     // and transfer the difference to the adjacent branch length (+= - orig_len)
     // so that the total distance between an adjacent pair of terminal nodes remains unaffected 
-    // see Kuhner and Felsenstein 1994.
-    if(nji->NJD[pxnew1]<0){
-	    WARNING("Observed negative branch length at (%d,%d) distance 1 (%f). Transferring the difference to the adjacent branch distance 2 (before: %f).",pxnew1,pxnew2,nji->NJD[pxnew1],nji->NJD[pxnew2]);
-	    nji->NJD[pxnew2] += - nji->NJD[pxnew1];
-	    nji->NJD[pxnew1] = 0.0;
-    }else if (nji->NJD[pxnew2]<0){
-	    WARNING("Observed negative branch length at (%d,%d) distance 2 (%f). Transferring the difference to the adjacent branch distance 1 (before: %f).",pxnew1,pxnew2,nji->NJD[pxnew2],nji->NJD[pxnew1]);
-	    nji->NJD[pxnew1] += - nji->NJD[pxnew2];
-	    nji->NJD[pxnew2] = 0.0;
+    // (see Kuhner and Felsenstein 1994)
+    if(dist1<0){
+	    WARNING("Observed negative branch length at (%d,%d) distance 1 (%f). Transferring the abs(distance 1) to the adjacent branch distance 2 (before: %f).", nji->items2idx[min_i1][parentNode], nji->items2idx[min_i2][parentNode], dist1, dist2);
+	    dist2 = dist2 - dist1;
+	    dist1=0.0;
+	    ASSERT(dist2>=0.0);
+    }else if(dist2<0){
+	    WARNING("Observed negative branch length at (%d,%d) distance 2 (%f). Transferring the abs(distance 2) to the adjacent branch distance 1 (before: %f).", nji->items2idx[min_i1][parentNode], nji->items2idx[min_i2][parentNode], dist2, dist1);
+	    dist1 = dist1 - dist2;
+	    dist2=0.0;
+	    ASSERT(dist1>=0.0);
     }
+
+    nji->addEdge(parentNode, min_i1, dist1);
+    nji->NJD[nji->items2idx[min_i1][parentNode]]=dist1;
+
+    nji->addEdge(parentNode, min_i2, dist2);
+    nji->NJD[nji->items2idx[min_i2][parentNode]]=dist2;
 
     // --------------------------------------------------------------------
 
@@ -366,9 +344,7 @@ void njIteration(njStruct *nji) {
 
         ASSERT(px1 >= 0);
         ASSERT(px2 >= 0);
-        edgeLength = 0.5 * (nji->NJD[px1] + nji->NJD[px2] - min_dist);
-        int pxnew = nji->items2idx[i][parentNode];
-        nji->NJD[pxnew] = edgeLength;
+        nji->NJD[nji->items2idx[i][parentNode]] = 0.5 * (nji->NJD[px1] + nji->NJD[px2] - min_dist);
     }
 
     nji->totL++;
@@ -394,6 +370,7 @@ void njIteration(njStruct *nji) {
 }
 
 void njStruct::addEdge(int parentNode, int childNode, double edgeLength) {
+
     edgeLengths[nEdges] = edgeLength;
     edgeNodes[nEdges][0] = parentNode;
     edgeNodes[nEdges][1] = childNode;
@@ -483,12 +460,6 @@ njStruct::njStruct(dxyStruct *dxy, paramStruct* pars){
 		edgeLengths[i] = -1.0;
 	}
 
-	idx2items = (int **)malloc(nTreeNodePairs * sizeof(int *));
-	for (int i = 0; i < nTreeNodePairs; ++i) {
-		idx2items[i] = (int *)malloc(2 * sizeof(int));
-		idx2items[i][0] = -1;
-		idx2items[i][1] = -1;
-	}
 	items2idx = (int **)malloc(nTreeNodes * sizeof(int *));
 	for (int i = 0; i < nTreeNodes; ++i) {
 		items2idx[i] = (int *)malloc(nTreeNodes * sizeof(int));
@@ -500,8 +471,6 @@ njStruct::njStruct(dxyStruct *dxy, paramStruct* pars){
 	int idx = 0;
 	for (int i1 = 0; i1 < nTreeNodes - 1; i1++) {
 		for (int i2 = i1 + 1; i2 < nTreeNodes; i2++) {
-			idx2items[idx][0] = i1;
-			idx2items[idx][1] = i2;
 			items2idx[i1][i2] = idx;
 			items2idx[i2][i1] = idx;
 			idx++;

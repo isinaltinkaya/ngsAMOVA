@@ -311,10 +311,13 @@ int bcf_alleles_get_gtidx(unsigned char a1, unsigned char a2) {
     return bcf_alleles2gt(acgt_charToInt[(int)a1], acgt_charToInt[(int)a2]);
 }
 
-int read_site_with_alleles_isSim(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2) {
-    // in simulation mode, assume that:
-    //      - the first allele (REF, idx:0) is the ancestral allele
-    //      - the second allele (ALT, idx:1) is the derived allele in d.allele array
+
+// is used in 2 cases: isSim or allelesFile==NULL
+int read_site_with_alleles_biallelic_ordered(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2) {
+
+    // assume that:
+    //      - the first allele (REF, idx:0) is allele1
+    //      - the second allele (ALT, idx:1) is allele2
     // where d.allele = {REF, ALT1, ALT2, ...}
 
     *a1 = acgt_charToInt[(int)*vcfd->rec->d.allele[0]];
@@ -515,22 +518,31 @@ int read_site_with_alleles(const int contig_i, const int site_i, vcfData *vcfd, 
         }
     }
 
+    //DEVPRINTX("%d",vcfd->rec->n_allele);
+
     // [simulation mode]
+    // REF        ALT
+    // single base    single base or list of bases
+    // A        C or C,G,T
+    // allele2        if list, use list[0] as allele2
     if (1 == args->isSim) {
-        return (read_site_with_alleles_isSim(contig_i, site_i, vcfd, pars, a1, a2));
+        return (read_site_with_alleles_biallelic_ordered(contig_i, site_i, vcfd, pars, a1, a2));
     }
 
-    if (NULL != pars->ancder && NULL != pars->majmin) {
-        ERROR("Both --ancDerFile and --majMinFile are specified.");
-    }
 
     if (NULL != pars->ancder) {
         return (read_site_with_alleles_allelesStruct(contig_i, site_i, vcfd, pars, a1, a2, pars->ancder, &vcfd->contig_vcfToAncDer));
     } else if (NULL != pars->majmin) {
         return (read_site_with_alleles_allelesStruct(contig_i, site_i, vcfd, pars, a1, a2, pars->majmin, &vcfd->contig_vcfToMajMin));
     } else {
-        ERROR("Neither --ancDerFile nor --majMinFile is specified.");
+
+        if (NULL != pars->ancder && NULL != pars->majmin) {
+        	ERROR("Both --ancDerFile and --majMinFile are specified, and cannot determine which one to use.");
+        }
+
+        return (read_site_with_alleles_biallelic_ordered(contig_i, site_i, vcfd, pars, a1, a2));
     }
+
 }
 
 // return 1: skip site for all individuals
