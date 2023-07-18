@@ -1,12 +1,12 @@
 #include "em.h"
 
 // TODO add better thread management
-void spawnThreads_pairEM(paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, distanceMatrixStruct *distanceMatrix) {
+void spawnThreads_pairEM(paramStruct *pars, vcfData *vcfd, distanceMatrixStruct *distanceMatrix) {
     pthread_t pairThreads[pars->nIndCmb];
     indPairThreads **THREADS = new indPairThreads *[pars->nIndCmb];
 
-    for (int i = 0; i < pars->nIndCmb; i++) {
-        THREADS[i] = new indPairThreads(pairSt[i], vcfd->lngl, pars);
+    for (int pidx = 0; pidx < pars->nIndCmb; ++pidx){
+        THREADS[pidx] = new indPairThreads(vcfd, pars, pidx);
     }
 
     int nJobs_sent = 0;
@@ -43,26 +43,23 @@ void spawnThreads_pairEM(paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, 
     }
 
     for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
-        pairStruct *pair = THREADS[pidx]->pair;
-        ASSERT(pair->snSites > 0);
 
-        for (int g = 0; g < vcfd->nJointClasses; g++) {
-            // vcfd->JointGenotypeCountMatrixGL[pidx][g] = pair->optim_jointGenotypeCountMatrix[g];
-            // vcfd->JointGenotypeCountMatrixGL[pidx][g] = pair->optim_jointGenotypeProbMatrix[g] * pair->snSites;
-            // or should i multiply wih total nsites?
-            vcfd->JointGenotypeProbMatrixGL[pidx][g] = pair->optim_jointGenotypeProbMatrix[g];
-        }
-        // vcfd->JointGenotypeCountMatrixGL[pidx][vcfd->nJointClasses] = pair->snSites;
-        vcfd->JointGenotypeProbMatrixGL[pidx][vcfd->nJointClasses] = pair->snSites;
+		if(vcfd->snSites[pidx]>0){
+			if (args->squareDistance == 1) {
+				// DEVPRINT("%d",pidx);
+				// DEVPRINT("%f",vcfd->jointGenotypeMatrixGL[pidx][0]);
+				// if(pidx==1)NEVER;
+				distanceMatrix->M[pidx] = (double)SQUARE((MATH::Dij(vcfd->jointGenotypeMatrixGL[pidx])));
+				// DEVPRINT("%f",distanceMatrix->M[pidx]);
+			} else {
+				distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->jointGenotypeMatrixGL[pidx]);
+			}
+		}else{
+			ERROR("Pair %d has no sites shared. This is currently not allowed.",pidx);
+		}
 
-        if (args->squareDistance == 1) {
-            distanceMatrix->M[pidx] = (double)SQUARE((MATH::Dij(vcfd->JointGenotypeProbMatrixGL[pidx])));
-        } else {
-            distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->JointGenotypeProbMatrixGL[pidx]);
-        }
         delete THREADS[pidx];
     }
-    vcfd->print_JointGenotypeCountMatrix();
 
     delete[] THREADS;
 }
@@ -76,76 +73,235 @@ void *t_EM_optim_jgd_gl3(void *p) {
     return (0);
 }
 
-int EM_optim_jgd_gl3(indPairThreads *THREAD) {
-    double **lngls = THREAD->lngls;
-    pairStruct *pair = THREAD->pair;
-    const double tole = THREAD->tole;
-    const int mEmIter = THREAD->maxEmIter;
+int EM_optim_jgd_gl3(indPairThreads *tdata) {
+	// does not allow cases where pair has no shared sites
 
-    const int i1 = pair->i1;
-    const int i2 = pair->i2;
+	vcfData* vcfd = tdata->vcfd;
+	paramStruct* pars = tdata->pars;
+	double** lngl=tdata->vcfd->lngl->d;
+
+    const double tole = args->tole;
+	const int n_gt=vcfd->nGT;
+	const int pidx = tdata->pidx;
+	const int i1=pars->pidx2inds[pidx][0];
+	const int i2=pars->pidx2inds[pidx][1];
+	const int i1_pos = n_gt * i1;
+	const int i2_pos = n_gt * i2;
+    const int max_iter = args->maxEmIter;
 
     double sum = 0.0;
     double d = 0.0;
+    double tmp = 0.0;
 
-    double tmp_jointGenoProb = 0.0;
+	double* m_optim = vcfd->jointGenotypeMatrixGL[pidx];
 
-    // set initial guess: 1/9 flat prior
-    for (int i = 0; i < 9; i++) {
-        pair->optim_jointGenotypeProbMatrix[i] = FRAC_1_9;
-    }
+	int n_iter=0;
 
-    do {
-        if (pair->n_em_iter >= mEmIter) {
+	// #shared sites for this pair
+	int shared_nSites=0;
+
+	double TMP[9]={0.0};
+	double ESFS[9]={0.0};
+
+	double i1gl0=NEG_INF;
+	double i1gl1=NEG_INF;
+	double i1gl2=NEG_INF;
+	double i2gl0=NEG_INF;
+	double i2gl1=NEG_INF;
+	double i2gl2=NEG_INF;
+
+	// em iteration 0
+	// starts before while to get shared_nSites without loop cost
+	for (size_t s=0; s < pars->nSites; ++s){
+
+		// 0 <- (a1,a1)
+		// 1 <- (a1,a2) or (a2,a1)
+		// 2 <- (a2,a2)
+		// 
+		// 				ind2
+		// 				0		1		2
+		// 				-----------------
+		// ind1	0	  |	0		3		6
+		// 		1	  |	1		4		7
+		// 		2	  |	2		5		8
+		//
+		//
+		// double* t=vcfd->jointGenotypeMatrixGL[pidx];
+
+		if(NEG_INF==(i1gl0=lngl[s][i1_pos])){
+			continue;
+		}else if(NEG_INF==(i1gl1=lngl[s][i1_pos+1])){
+			continue;
+		}else if(NEG_INF==(i1gl2=lngl[s][i1_pos+2])){
+			continue;
+		}else if(NEG_INF==(i2gl0=lngl[s][i2_pos])){
+			continue;
+		}else if(NEG_INF==(i2gl1=lngl[s][i2_pos+1])){
+			continue;
+		}else if(NEG_INF==(i2gl2=lngl[s][i2_pos+2])){
+			continue;
+		}
+		
+		shared_nSites++;
+				
+		// expectation
+		TMP[0] = m_optim[0] * exp(i1gl0+i2gl0);
+		TMP[1] = m_optim[1] * exp(i1gl1+i2gl0);
+		TMP[2] = m_optim[2] * exp(i1gl2+i2gl0);
+		TMP[3] = m_optim[3] * exp(i1gl0+i2gl1);
+		TMP[4] = m_optim[4] * exp(i1gl1+i2gl1);
+		TMP[5] = m_optim[5] * exp(i1gl2+i2gl1);
+		TMP[6] = m_optim[6] * exp(i1gl0+i2gl2);
+		TMP[7] = m_optim[7] * exp(i1gl1+i2gl2);
+		TMP[8] = m_optim[8] * exp(i1gl2+i2gl2);
+		sum = TMP[0]+TMP[1]+TMP[2]+TMP[3]+TMP[4]+TMP[5]+TMP[6]+TMP[7]+TMP[8];
+		ESFS[0]+=TMP[0]/sum;
+		ESFS[1]+=TMP[1]/sum;
+		ESFS[2]+=TMP[2]/sum;
+		ESFS[3]+=TMP[3]/sum;
+		ESFS[4]+=TMP[4]/sum;
+		ESFS[5]+=TMP[5]/sum;
+		ESFS[6]+=TMP[6]/sum;
+		ESFS[7]+=TMP[7]/sum;
+		ESFS[8]+=TMP[8]/sum;
+
+	} // end sites loop
+
+	// maximization
+	d = 0.0;
+	tmp = ESFS[0]/shared_nSites;
+	d += fabs(tmp - m_optim[0]);
+	m_optim[0] = tmp;
+	ESFS[0]=0.0;
+	tmp = ESFS[1]/shared_nSites;
+	d += fabs(tmp - m_optim[1]);
+	m_optim[1] = tmp;
+	ESFS[1]=0.0;
+	tmp = ESFS[2]/shared_nSites;
+	d += fabs(tmp - m_optim[2]);
+	m_optim[2] = tmp;
+	ESFS[2]=0.0;
+	tmp = ESFS[3]/shared_nSites;
+	d += fabs(tmp - m_optim[3]);
+	m_optim[3] = tmp;
+	ESFS[3]=0.0;
+	tmp = ESFS[4]/shared_nSites;
+	d += fabs(tmp - m_optim[4]);
+	m_optim[4] = tmp;
+	ESFS[4]=0.0;
+	tmp = ESFS[5]/shared_nSites;
+	d += fabs(tmp - m_optim[5]);
+	m_optim[5] = tmp;
+	ESFS[5]=0.0;
+	tmp = ESFS[6]/shared_nSites;
+	d += fabs(tmp - m_optim[6]);
+	m_optim[6] = tmp;
+	ESFS[6]=0.0;
+	tmp = ESFS[7]/shared_nSites;
+	d += fabs(tmp - m_optim[7]);
+	m_optim[7] = tmp;
+	ESFS[7]=0.0;
+	tmp = ESFS[8]/shared_nSites;
+	d += fabs(tmp - m_optim[8]);
+	m_optim[8] = tmp;
+	ESFS[8]=0.0;
+
+	++n_iter;
+
+    
+	while (d > tole){
+        d = 0.0;
+
+        if (n_iter == max_iter) {
             break;
         }
 
-        double TMP[3][3];
-        double ESFS[3][3];
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                ESFS[i][j] = 0.0;
-            }
-        }
+		for (size_t s=0; s < pars->nSites; ++s){
 
-        // loop through shared sites for pair
-        for (size_t sn = 0; sn < pair->snSites; sn++) {
-            size_t s = pair->sharedSites[sn];
-            sum = 0.0;
+			if(NEG_INF==(i1gl0=lngl[s][i1_pos])){
+				continue;
+			}else if(NEG_INF==(i1gl1=lngl[s][i1_pos+1])){
+				continue;
+			}else if(NEG_INF==(i1gl2=lngl[s][i1_pos+2])){
+				continue;
+			}else if(NEG_INF==(i2gl0=lngl[s][i2_pos])){
+				continue;
+			}else if(NEG_INF==(i2gl1=lngl[s][i2_pos+1])){
+				continue;
+			}else if(NEG_INF==(i2gl2=lngl[s][i2_pos+2])){
+				continue;
+			}
 
-            // SFS * ind1 * ind2
-            // lngls3 (anc,anc),(anc,der),(der,der)
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    TMP[i][j] = pair->optim_jointGenotypeProbMatrix[i * 3 + j] * exp(lngls[s][(3 * i1) + i] + lngls[s][(3 * i2) + j]);
-                    // fprintf(stderr, "TMP[%d][%d] = %f * exp(%f + %f)\n", i, j, pair->optim_jointGenotypeProbMatrix[i * 3 + j], lngls[s][(3 * i1) + i], lngls[s][(3 * i2) + j]);
-                    // fprintf(stderr, "TMP[%d][%d] = %f\n", i, j, TMP[i][j]);
-                    sum += TMP[i][j];
-                    // fprintf(stderr, "sum += TMP[%d][%d]; sum = %f\n", i, j, sum);
-                }
-            }
+				
+			// expectation
+			TMP[0] = m_optim[0] * exp(i1gl0+i2gl0);
+			TMP[1] = m_optim[1] * exp(i1gl1+i2gl0);
+			TMP[2] = m_optim[2] * exp(i1gl2+i2gl0);
+			TMP[3] = m_optim[3] * exp(i1gl0+i2gl1);
+			TMP[4] = m_optim[4] * exp(i1gl1+i2gl1);
+			TMP[5] = m_optim[5] * exp(i1gl2+i2gl1);
+			TMP[6] = m_optim[6] * exp(i1gl0+i2gl2);
+			TMP[7] = m_optim[7] * exp(i1gl1+i2gl2);
+			TMP[8] = m_optim[8] * exp(i1gl2+i2gl2);
+			sum = TMP[0]+TMP[1]+TMP[2]+TMP[3]+TMP[4]+TMP[5]+TMP[6]+TMP[7]+TMP[8];
+			ESFS[0]+=TMP[0]/sum;
+			ESFS[1]+=TMP[1]/sum;
+			ESFS[2]+=TMP[2]/sum;
+			ESFS[3]+=TMP[3]/sum;
+			ESFS[4]+=TMP[4]/sum;
+			ESFS[5]+=TMP[5]/sum;
+			ESFS[6]+=TMP[6]/sum;
+			ESFS[7]+=TMP[7]/sum;
+			ESFS[8]+=TMP[8]/sum;
 
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    ESFS[i][j] += TMP[i][j] / sum;
-                }
-            }
-        }
+		} // end sites loop
 
-        d = 0.0;
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                tmp_jointGenoProb = ESFS[i][j] / (double)pair->snSites;
-                d += fabs(tmp_jointGenoProb - pair->optim_jointGenotypeProbMatrix[i * 3 + j]);
-                pair->optim_jointGenotypeProbMatrix[i * 3 + j] = tmp_jointGenoProb;
-            }
-        }
 
-        pair->n_em_iter++;
+		// maximization
+		d = 0.0;
+		tmp = ESFS[0]/shared_nSites;
+		d += fabs(tmp - m_optim[0]);
+		m_optim[0] = tmp;
+		ESFS[0]=0.0;
+		tmp = ESFS[1]/shared_nSites;
+		d += fabs(tmp - m_optim[1]);
+		m_optim[1] = tmp;
+		ESFS[1]=0.0;
+		tmp = ESFS[2]/shared_nSites;
+		d += fabs(tmp - m_optim[2]);
+		m_optim[2] = tmp;
+		ESFS[2]=0.0;
+		tmp = ESFS[3]/shared_nSites;
+		d += fabs(tmp - m_optim[3]);
+		m_optim[3] = tmp;
+		ESFS[3]=0.0;
+		tmp = ESFS[4]/shared_nSites;
+		d += fabs(tmp - m_optim[4]);
+		m_optim[4] = tmp;
+		ESFS[4]=0.0;
+		tmp = ESFS[5]/shared_nSites;
+		d += fabs(tmp - m_optim[5]);
+		m_optim[5] = tmp;
+		ESFS[5]=0.0;
+		tmp = ESFS[6]/shared_nSites;
+		d += fabs(tmp - m_optim[6]);
+		m_optim[6] = tmp;
+		ESFS[6]=0.0;
+		tmp = ESFS[7]/shared_nSites;
+		d += fabs(tmp - m_optim[7]);
+		m_optim[7] = tmp;
+		ESFS[7]=0.0;
+		tmp = ESFS[8]/shared_nSites;
+		d += fabs(tmp - m_optim[8]);
+		m_optim[8] = tmp;
+		ESFS[8]=0.0;
 
-    } while (d > tole);
+        ++n_iter;
 
-    pair->d = d;
+    } 
+
+	vcfd->snSites[pidx] = shared_nSites;
 
     return 0;
 }
+

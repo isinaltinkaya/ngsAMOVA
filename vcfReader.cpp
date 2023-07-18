@@ -2,37 +2,6 @@
 
 #include "bootstrap.h"
 
-const int vcfData::get_contigIdx_in_alleles(int **contig_vcfToAlleles, allelesStruct *alleles) {
-    // use actual rid of the current contig, may not match the contig_i if regions were used
-    // bc the contig_vcfToAlleles is constructed using all contigs in the header, before starting to read the VCF recorfs
-    const int contig_i = this->rec->rid;
-    ASSERT(NULL != contig_vcfToAlleles);
-    int *vcfToAlleles = *contig_vcfToAlleles;
-    int ret = vcfToAlleles[contig_i];
-    return (ret);
-}
-
-void set_contig_vcfToAlleles(vcfData *vcfd, int **contig_vcfToAlleles, allelesStruct *alleles) {
-    ASSERT(NULL != alleles->contigNames);
-    int *vcfToAlleles = *contig_vcfToAlleles;
-
-    for (int i = 0; i < vcfd->nContigs; ++i) {
-        // alleles contig idx
-        int ai = 0;
-        while (0 != strcmp(vcfd->get_contig_name(i), alleles->contigNames[ai])) {
-            ++ai;
-            if (ai == alleles->nContigs) {
-                // at the end and still not found
-                ai = -1;
-                break;
-            }
-        }
-
-        // ai now contains the corresponding alleles contig index for i
-        // or -1 if not found
-        vcfToAlleles[i] = ai;
-    }
-}
 
 const char *vcfData::get_contig_name(void) {
     const char *ret = bcf_hdr_id2name(this->hdr, this->rec ? this->rec->rid : -1);
@@ -140,9 +109,10 @@ int require_unpack() {
         return (BCF_UN_STR);
     }
     if (1 == args->doDist) {
-        if (NULL != args->in_ancder_fn || NULL != args->in_majorminor_fn) {
+        // if (NULL != args->in_ancder_fn || NULL != args->in_majorminor_fn) {
+		// TODO
             return (BCF_UN_STR);
-        }
+        // }
     }
 
     return (0);  // no unpacking needed
@@ -332,143 +302,6 @@ int read_site_with_alleles_biallelic_ordered(const int contig_i, const int site_
     return (0);
 }
 
-int read_site_with_alleles_allelesStruct(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2, allelesStruct *alleles, int **contig_vcfToAlleles) {
-    // --------------------------------------------------------------------------------
-    // -> match contig
-    // store the match in alleles_contig_i
-    // --------------------------------------------------------------------------------
-
-    // match the contig name in VCF to the contig name in allelesStruct
-
-    int alleles_contig_i = vcfd->get_contigIdx_in_alleles(contig_vcfToAlleles, alleles);
-
-    if (-1 == alleles_contig_i) {
-        IO::vprint(2, "Skipping site at %s:%ld. Reason: Contig in VCF file could not be found in allelesFile.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
-        return (1);
-    }
-
-    // --------------------------------------------------------------------------------
-    // -> match positions
-    // store the match in alleles_site_i, resulting pos in alleles_pos
-    // --------------------------------------------------------------------------------
-    // start pos of the contig_i in alleles->allele1s and alleles->allele2s
-    const int vcf_pos = vcfd->rec->pos;
-
-    int alleles_site_i = site_i;
-    int alleles_pos = -1;
-
-    do {
-        // first, try the given record's site index
-        alleles_pos = alleles->get_pos(alleles_contig_i, alleles_site_i);
-
-        if (alleles_pos == vcf_pos) {
-            break;
-        }
-
-        // -> site indices do not match
-        // \assume positions are sorted both in vcf file and in allelesStruct
-
-        // if vcf_pos > alleles_pos, try fast-forwarding alleles to find vcf_pos
-        if (vcf_pos > alleles_pos) {
-            while (vcf_pos > alleles_pos) {
-                ++alleles_site_i;
-
-                if (alleles_site_i == alleles->nSites[alleles_contig_i]) {
-                    // end of contig reached in allelesStruct and still no match
-                    alleles_pos = -1;
-                    alleles_contig_i = -1;
-                    break;
-                }
-                alleles_pos = alleles->get_pos(alleles_contig_i, alleles_site_i);
-
-                if (alleles_pos == vcf_pos) {
-                    // found the match
-                    break;
-                }
-            }
-        } else {
-            // if vcf_pos < alleles_pos, try rewinding alleles to find vcf_pos
-            while (vcf_pos < alleles_pos) {
-                --alleles_site_i;
-
-                if (alleles_site_i == -1) {
-                    // end of contig reached in allelesStruct and still no match
-                    alleles_pos = -1;
-                    alleles_contig_i = -1;
-                    break;
-                }
-                alleles_pos = alleles->get_pos(alleles_contig_i, alleles_site_i);
-
-                if (alleles_pos == vcf_pos) {
-                    // found the match
-                    break;
-                }
-            }
-        }
-
-        if (-1 == alleles_pos) {
-            // could not find the match
-            // no need to check the other part of the array due to
-            // \assume positions are sorted both in vcf and allelesStruct
-            IO::vprint(2, "Skipping site at %s:%ld. Reason: Site in VCF file could not be found in allelesFile.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
-            return (1);
-        }
-
-    } while (0);
-
-    // --------------------------------------------------------------------------------
-    // -> match found
-    // if we made it so far, site is found and everything is ok
-    // use:
-    // alleles_contig_i
-    // alleles_pos
-
-    char ca1 = alleles->get_a1(alleles_contig_i, alleles_site_i);
-    char ca2 = alleles->get_a2(alleles_contig_i, alleles_site_i);
-
-    if (ca1 == ca2) {
-        ERROR("Allele 1 (%c) is the same as allele 2 (%c) at site %s:%ld. Please check your alleles file.", ca1, ca2, bcf_seqname_safe(vcfd->hdr, vcfd->rec), vcfd->rec->pos + 1);
-    }
-
-    bool ca1_found = false;
-    bool ca2_found = false;
-    for (int i = 0; i < vcfd->rec->n_allele; ++i) {
-        if (ca1_found && ca2_found) {
-            break;
-        }
-
-        // \assume strlen(d.allele[i]) == 1 is ensured, otherwise site would be skipped before this point
-        if (ca1 == vcfd->rec->d.allele[i][0]) {
-            ca1_found = true;
-            continue;
-        }
-        // ca2 not checked if ca1 continues above since ca1!=ca2 is ensured
-        if (ca2 == vcfd->rec->d.allele[i][0]) {
-            ca2_found = true;
-            continue;
-        }
-    }
-
-    if (ca1_found && ca2_found) {
-        // everything is ok
-
-        // int representation (== index in {A,C,G,T}) of a1 (ancestral/major allele)
-        *a1 = acgt_charToInt[(int)ca1];
-
-        // int representation (== index in {A,C,G,T}) of a2 (derived/minor allele)
-        *a2 = acgt_charToInt[(int)ca2];
-
-        ASSERT(-1 != *a1);
-        ASSERT(-1 != *a2);
-
-        return (0);
-
-    } else {
-        // at least one of the alleles is not found in VCF
-        IO::vprint(2, "Skipping site at %s:%ld. Reason: Alleles in VCF file could not be found in allelesFile.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
-        return (1);
-    }
-}
 
 // int read_site_with_alleles(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2, const int n_gls) {
 //     if(3 == n_gls){
@@ -530,23 +363,15 @@ int read_site_with_alleles(const int contig_i, const int site_i, vcfData *vcfd, 
     }
 
 
-    if (NULL != pars->ancder) {
-        return (read_site_with_alleles_allelesStruct(contig_i, site_i, vcfd, pars, a1, a2, pars->ancder, &vcfd->contig_vcfToAncDer));
-    } else if (NULL != pars->majmin) {
-        return (read_site_with_alleles_allelesStruct(contig_i, site_i, vcfd, pars, a1, a2, pars->majmin, &vcfd->contig_vcfToMajMin));
-    } else {
 
-        if (NULL != pars->ancder && NULL != pars->majmin) {
-        	ERROR("Both --ancDerFile and --majMinFile are specified, and cannot determine which one to use.");
-        }
-
+	//TODO here
         return (read_site_with_alleles_biallelic_ordered(contig_i, site_i, vcfd, pars, a1, a2));
-    }
+
 
 }
 
 // return 1: skip site for all individuals
-int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, pairStruct **pairs) {
+int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars) {
     if (1 != bcf_is_snp(vcfd->rec)) {
         IO::vprint(2, "Skipping site at %s:%ld. Reason: VCF record is not a SNP.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
         return (1);
@@ -559,11 +384,6 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
 
     int *a1 = new int;
     int *a2 = new int;
-
-    int cmbArr[pars->nIndCmb];
-    for (int i = 0; i < pars->nIndCmb; i++) {
-        cmbArr[i] = 0;
-    }
 
     do {
         int ret = read_site_with_alleles(contig_i, site_i, vcfd, pars, a1, a2);
@@ -617,35 +437,13 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
                 continue;
             }
 
-            int pidx = -1;
-            // if not first individual, check previous individuals pairing with current ind
-            if (indi != 0) {
-                for (int indi2 = indi - 1; indi2 > -1; indi2--) {
-                    // both inds has data
-                    pidx = nCk_idx(nInd, indi, indi2);
-
-                    if (cmbArr[pidx]) {
-                        // append site to sharedSites shared sites list
-                        pairs[pidx]->sharedSites_add(pars->nSites);
-                    }
-                }
-            }
-
-            // if not last individual, check latter individuals pairing with current ind
-            if (indi != nInd - 1) {
-                for (int indi2 = indi + 1; indi2 < nInd; indi2++) {
-                    pidx = nCk_idx(nInd, indi, indi2);
-                    cmbArr[pidx]++;
-                }
-            }
-
             const int lngls_ind_start = indi * vcfd->nGT;
             // vcfd->lngl[pars->nSites][lngls_ind_start + 0] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a1, *a1)]);
             // vcfd->lngl[pars->nSites][lngls_ind_start + 1] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a1, *a2)]);
             // vcfd->lngl[pars->nSites][lngls_ind_start + 2] = (double)LOG2LN(lgls.ind_ptr(indi)[bcf_alleles_get_gtidx(*a2, *a2)]);
-            vcfd->lngl[pars->nSites][lngls_ind_start + 0] = (double)LOG2LN(lgls.ind_ptr(indi)[a1a1]);
-            vcfd->lngl[pars->nSites][lngls_ind_start + 1] = (double)LOG2LN(lgls.ind_ptr(indi)[a1a2]);
-            vcfd->lngl[pars->nSites][lngls_ind_start + 2] = (double)LOG2LN(lgls.ind_ptr(indi)[a2a2]);
+            vcfd->lngl->d[pars->nSites][lngls_ind_start + 0] = (double)LOG2LN(lgls.ind_ptr(indi)[a1a1]);
+            vcfd->lngl->d[pars->nSites][lngls_ind_start + 1] = (double)LOG2LN(lgls.ind_ptr(indi)[a1a2]);
+            vcfd->lngl->d[pars->nSites][lngls_ind_start + 2] = (double)LOG2LN(lgls.ind_ptr(indi)[a2a2]);
         }
 
     } while (0);
@@ -713,8 +511,8 @@ int get_JointGenotypeMatrix_GT(const int contig_i, const int site_i, vcfData *vc
 
                 // no block bootstrapping
                 if (-1 == block_i) {
-                    vcfd->JointGenotypeCountMatrixGT[pair_idx][nDerToM33Idx[i1_nder][i2_nder]]++;
-                    vcfd->JointGenotypeCountMatrixGT[pair_idx][9]++;  // #shared sites
+                    vcfd->jointGenotypeMatrixGT[pair_idx][nDerToM33Idx[i1_nder][i2_nder]]++;
+					vcfd->snSites[pair_idx]++;// #shared sites
                 } else {
                     vcfd->jgcd_gt[block_i][pair_idx][nDerToM33Idx[i1_nder][i2_nder]]++;
                     vcfd->pair_shared_nSites[block_i][pair_idx]++;
@@ -729,26 +527,6 @@ int get_JointGenotypeMatrix_GT(const int contig_i, const int site_i, vcfData *vc
     return (skip_site);
 }
 
-void vcfData::set_n_joint_categories(paramStruct *pars) {
-    if (1 == args->doDist) {
-        // EM using 3 GL values
-        if (args->doEM == 1) {
-            nGT = 3;
-            nJointClasses = 9;
-        }
-        // EM using 10 GL values
-        else if (args->doEM == 2) {
-            nGT = 10;
-            nJointClasses = 100;
-        }
-    } else if (2 == args->doDist) {
-        // GT
-        nGT = 3;
-        nJointClasses = 9;
-    } else {
-        NEVER;
-    }
-}
 
 vcfData *vcfData_init(paramStruct *pars) {
     vcfData *vcfd = new vcfData;
@@ -758,7 +536,6 @@ vcfData *vcfData_init(paramStruct *pars) {
         ERROR("Could not open bcf file: %s\n", args->in_vcf_fn);
     }
 
-    vcfd->set_n_joint_categories(pars);
 
     vcfd->hdr = bcf_hdr_read(vcfd->in_fp);
     vcfd->rec = bcf_init();
@@ -786,19 +563,83 @@ vcfData *vcfData_init(paramStruct *pars) {
     }
 
     pars->nInd = bcf_hdr_nsamples(vcfd->hdr);
-
-    // TODO unnecessary
-    vcfd->nInd = pars->nInd;
     pars->nIndCmb = nC2(pars->nInd);
+
+    vcfd->nInd = pars->nInd;
     vcfd->nIndCmb = pars->nIndCmb;
 
+	pars->pidx2inds=(int**) malloc(pars->nIndCmb * sizeof(int*));
+	ASSERT(pars->pidx2inds!=NULL);
+	for(int i=0;i<pars->nIndCmb;++i){
+		pars->pidx2inds[i]=(int*) malloc(2*sizeof(int));
+	}
+
+	int pidx=0;
+	
+	for (int i1=0; i1 < pars->nInd-1;++i1){
+		for (int i2=i1+1; i2< pars->nInd;++i2){
+			pidx=nCk_idx(pars->nInd, i1, i2);
+			pars->pidx2inds[pidx][0]=i1;
+			pars->pidx2inds[pidx][1]=i2;
+		}
+	}
+	
     if (1 == args->doDist) {
-        vcfd->lngl_init(args->doEM);
-        vcfd->init_JointGenotypeCountMatrixGL();
-        vcfd->init_JointGenotypeProbMatrixGL();
+        // EM using 3 GL values
+        if (args->doEM == 1) {
+            vcfd->nGT = 3;
+            vcfd->nJointClasses = 9;
+        }
+        // EM using 10 GL values
+        else if (args->doEM == 2) {
+            vcfd->nGT = 10;
+            vcfd->nJointClasses = 100;
+        }
     } else if (2 == args->doDist) {
-        vcfd->init_JointGenotypeCountMatrixGT();
+        // GT
+        vcfd->nGT = 3;
+        vcfd->nJointClasses = 9;
+    } else {
+        NEVER;
     }
+	
+
+    if (1 == args->doDist) {
+		vcfd->lngl = new lnglStruct(vcfd->nGT, pars->nInd);
+
+		ASSERT(pars->nIndCmb>0);
+
+		// \def jointGenotypeMatrix[nIndCmb][nJointClasses]
+		// jointGenotypeMatrix[i][j] == Value for pair j at joint class i
+		vcfd->jointGenotypeMatrixGL = (double**) malloc(pars->nIndCmb * sizeof(double*));
+		vcfd->snSites = (int*) malloc(pars->nIndCmb * sizeof(int));
+		for (int i = 0; i < pars->nIndCmb; i++) {
+			vcfd->snSites[i]=0;
+
+			vcfd->jointGenotypeMatrixGL[i] = (double *)malloc((vcfd->nJointClasses) * sizeof(double));
+			for (int j = 0; j < vcfd->nJointClasses; j++) {
+    			// set initial guess: 1/9 flat prior
+				vcfd->jointGenotypeMatrixGL[i][j] = (double) FRAC_1_9;
+			}
+		}
+
+
+    } else if (2 == args->doDist) {
+
+		// \def jointGenotypeMatrix[nIndCmb][nJointClasses]
+		// jointGenotypeMatrix[i][j] == Value for pair j at joint class i
+		vcfd->jointGenotypeMatrixGT = (int**) malloc(pars->nIndCmb * sizeof(int*));
+		vcfd->snSites = (int*) malloc(pars->nIndCmb * sizeof(int));
+		for (int i = 0; i < pars->nIndCmb; i++) {
+			vcfd->snSites[i]=0;
+			vcfd->jointGenotypeMatrixGT[i] = (int *)malloc((vcfd->nJointClasses) * sizeof(int));
+			for (int j = 0; j < vcfd->nJointClasses; j++) {
+				vcfd->jointGenotypeMatrixGT[i][j] = 0;
+			}
+		}
+
+    }
+	//////
 
     BEGIN_LOGSECTION;
     LOG("Found %d individuals in the VCF file", pars->nInd);
@@ -812,21 +653,6 @@ vcfData *vcfData_init(paramStruct *pars) {
 
     check_consistency_args_pars(pars);
 
-    if (NULL != pars->ancder) {
-        vcfd->contig_vcfToAncDer = (int *)malloc(vcfd->nContigs * sizeof(int));
-        for (int i = 0; i < vcfd->nContigs; ++i) {
-            vcfd->contig_vcfToAncDer[i] = -1;
-        }
-        set_contig_vcfToAlleles(vcfd, &vcfd->contig_vcfToAncDer, pars->ancder);
-    }
-    if (NULL != pars->majmin) {
-        vcfd->contig_vcfToMajMin = (int *)malloc(vcfd->nContigs * sizeof(int));
-        for (int i = 0; i < vcfd->nContigs; ++i) {
-            vcfd->contig_vcfToMajMin[i] = -1;
-        }
-        set_contig_vcfToAlleles(vcfd, &vcfd->contig_vcfToMajMin, pars->majmin);
-    }
-
     return vcfd;
 }
 
@@ -834,8 +660,6 @@ void vcfData_destroy(vcfData *v) {
     bcf_hdr_destroy(v->hdr);
     bcf_destroy(v->rec);
 
-    FFREE(v->contig_vcfToAncDer);
-    FFREE(v->contig_vcfToMajMin);
 
     int BCF_CLOSE = bcf_close(v->in_fp);
     if (0 != BCF_CLOSE) {
@@ -844,30 +668,25 @@ void vcfData_destroy(vcfData *v) {
     }
 
     if (v->lngl != NULL) {
-        for (size_t i = 0; i < v->_lngl; i++) {
-            FREE(v->lngl[i]);
-        }
-        FREE(v->lngl);
-    }
+		delete v->lngl;
+	}
 
-    if (v->JointGenotypeCountMatrixGT != NULL) {
-        for (size_t s = 0; s < (size_t)v->nIndCmb; s++) {
-            FREE(v->JointGenotypeCountMatrixGT[s]);
-        }
-        FREE(v->JointGenotypeCountMatrixGT);
-    }
-    if (v->JointGenotypeCountMatrixGL != NULL) {
-        for (size_t s = 0; s < (size_t)v->nIndCmb; s++) {
-            FREE(v->JointGenotypeCountMatrixGL[s]);
-        }
-        FREE(v->JointGenotypeCountMatrixGL);
-    }
-    if (v->JointGenotypeProbMatrixGL != NULL) {
-        for (size_t s = 0; s < (size_t)v->nIndCmb; s++) {
-            FREE(v->JointGenotypeProbMatrixGL[s]);
-        }
-        FREE(v->JointGenotypeProbMatrixGL);
-    }
+	if(NULL!=v->jointGenotypeMatrixGL){
+		for(int i=0;i<v->nIndCmb;++i){
+			FREE(v->jointGenotypeMatrixGL[i]);
+		}
+		FREE(v->jointGenotypeMatrixGL);
+	}
+
+	if(NULL!=v->jointGenotypeMatrixGT){
+		for(int i=0;i<v->nIndCmb;++i){
+			FREE(v->jointGenotypeMatrixGT[i]);
+		}
+		FREE(v->jointGenotypeMatrixGT);
+	}
+
+	FFREE(v->snSites);
+	
     for (int i = 0; i < v->nInd; i++) {
         FREE(v->indNames[i]);
     }
@@ -892,7 +711,7 @@ void vcfData_destroy(vcfData *v) {
     delete v;
 }
 
-void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct *blob) {
+void readSites(vcfData *vcfd, paramStruct *pars, blobStruct *blob) {
 
 
     int skip_site = 0;
@@ -965,21 +784,12 @@ void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct
                 }
             }
 
+			//TODO branch beforethis so you dont check this at every loop
             if (vcfd->lngl != NULL) {
-                while (pars->nSites >= vcfd->_lngl) {
-                    vcfd->lngl_expand();
+                while (pars->nSites >= vcfd->lngl->size1) {
+                    vcfd->lngl->expand();
                 }
 
-                // if cleared in the previous loop to skip the site, allocate memory again
-                if (NULL == vcfd->lngl[pars->nSites]) {
-                    vcfd->lngl[pars->nSites] = (double *)malloc(pars->nInd * vcfd->nGT * sizeof(double));
-                    for (int indi = 0; indi < pars->nInd; indi++) {
-                        const int lngls_ind_start = indi * vcfd->nGT;
-                        for (int j = 0; j < vcfd->nGT; j++) {
-                            vcfd->lngl[pars->nSites][lngls_ind_start + j] = NEG_INF;
-                        }
-                    }
-                }
             }
 
             // if at the very beginning
@@ -1013,7 +823,7 @@ void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct
             }
 
             if (vcfd->lngl != NULL) {
-                skip_site = site_read_GL(contig_i, site_i, vcfd, pars, pairSt);
+                skip_site = site_read_GL(contig_i, site_i, vcfd, pars);
                 // IO::vprint(1, "Reading site at %s:%ld", vcfd->get_contig_name(), vcfd->rec->pos + 1);
             } else {
                 // TODOdragon
@@ -1025,10 +835,6 @@ void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct
                 pars->totSites++;
                 site_i++;
 
-                //  next loop will skip this and use the same pars->nSites
-                if (vcfd->lngl != NULL) {
-                    FREE(vcfd->lngl[pars->nSites]);
-                }
                 continue;
             }
 
@@ -1050,114 +856,40 @@ void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct
     END_LOGSECTION;
 }
 
-// dragon
-void vcfData::init_JointGenotypeCountMatrixGL() {
-    ASSERT(nJointClasses > 0);
-    ASSERT(nIndCmb > 0);
-    JointGenotypeCountMatrixGL = (double **)malloc(nIndCmb * sizeof(double *));
-    for (int i = 0; i < nIndCmb; i++) {
-        JointGenotypeCountMatrixGL[i] = (double *)malloc((nJointClasses + 1) * sizeof(double));
-        for (int j = 0; j < nJointClasses + 1; j++) {
-            JointGenotypeCountMatrixGL[i][j] = 0.0;
-        }
-    }
-}
+//TODO
+// void vcfData::print_JointGenotypeCountMatrix() {
+    // if (outFiles->out_jgcd_fs != NULL) {
+        // outFiles->out_jgcd_fs->kbuf = kbuf_init();
+        // kstring_t *kbuf = outFiles->out_jgcd_fs->kbuf;
+        // if (args->doDist == 1) {
+            // for (int i = 0; i < nIndCmb; i++) {
+                // ksprintf(kbuf, "%i,", i);
+                // for (int j = 0; j < nJointClasses + 1; j++) {
+                    // ksprintf(kbuf, "%f", JointGenotypeCountMatrixGL[i][j]);
+                    // if (j == nJointClasses) {
+                        // ksprintf(kbuf, "\n");
+                    // } else {
+                        // ksprintf(kbuf, ",");
+                    // }
+                // }
+            // }
+        // } else if (args->doDist == 2) {
+            // for (int i = 0; i < nIndCmb; i++) {
+                // ksprintf(kbuf, "%i,", i);
+                // for (int j = 0; j < nJointClasses + 1; j++) {
+                    // ksprintf(kbuf, "%i", jointGenotypeMatrixGT[i][j]);
+                    // if (j == nJointClasses) {
+                        // ksprintf(kbuf, "\n");
+                    // } else {
+                        // ksprintf(kbuf, ",");
+                    // }
+                // }
+            // }
+        // }
+        // outFiles->out_jgcd_fs->kbuf_write();
+    // }
+// }
 
-void vcfData::init_JointGenotypeProbMatrixGL() {
-    ASSERT(nJointClasses > 0);
-    ASSERT(nIndCmb > 0);
-    JointGenotypeProbMatrixGL = (double **)malloc(nIndCmb * sizeof(double *));
-    for (int i = 0; i < nIndCmb; i++) {
-        JointGenotypeProbMatrixGL[i] = (double *)malloc((nJointClasses + 1) * sizeof(double));
-        for (int j = 0; j < nJointClasses + 1; j++) {
-            JointGenotypeProbMatrixGL[i][j] = 0.0;
-        }
-    }
-}
-
-void vcfData::init_JointGenotypeCountMatrixGT() {
-    ASSERT(nIndCmb > 0);
-    JointGenotypeCountMatrixGT = (int **)malloc(nIndCmb * sizeof(int *));
-    for (int i = 0; i < nIndCmb; i++) {
-        JointGenotypeCountMatrixGT[i] = (int *)malloc((nJointClasses + 1) * sizeof(int));
-        for (int j = 0; j < nJointClasses + 1; j++) {
-            JointGenotypeCountMatrixGT[i][j] = 0;
-        }
-    }
-}
-
-void vcfData::print_JointGenotypeCountMatrix() {
-    if (outFiles->out_jgcd_fs != NULL) {
-        outFiles->out_jgcd_fs->kbuf = kbuf_init();
-        kstring_t *kbuf = outFiles->out_jgcd_fs->kbuf;
-        if (args->doDist == 1) {
-            for (int i = 0; i < nIndCmb; i++) {
-                ksprintf(kbuf, "%i,", i);
-                for (int j = 0; j < nJointClasses + 1; j++) {
-                    ksprintf(kbuf, "%f", JointGenotypeCountMatrixGL[i][j]);
-                    if (j == nJointClasses) {
-                        ksprintf(kbuf, "\n");
-                    } else {
-                        ksprintf(kbuf, ",");
-                    }
-                }
-            }
-        } else if (args->doDist == 2) {
-            for (int i = 0; i < nIndCmb; i++) {
-                ksprintf(kbuf, "%i,", i);
-                for (int j = 0; j < nJointClasses + 1; j++) {
-                    ksprintf(kbuf, "%i", JointGenotypeCountMatrixGT[i][j]);
-                    if (j == nJointClasses) {
-                        ksprintf(kbuf, "\n");
-                    } else {
-                        ksprintf(kbuf, ",");
-                    }
-                }
-            }
-        }
-        outFiles->out_jgcd_fs->kbuf_write();
-    }
-}
-
-void vcfData::lngl_init(int doEM) {
-    lngl = (double **)malloc(_lngl * sizeof(double *));
-
-    ASSERT(nInd > 0);
-    ASSERT(nGT > 0);
-    ASSERT(_lngl > 0);
-
-    for (size_t i = 0; i < _lngl; i++) {
-        lngl[i] = (double *)malloc(nInd * nGT * sizeof(double));
-        for (int indi = 0; indi < nInd; indi++) {
-            const int lngls_ind_start = indi * nGT;
-            for (int j = 0; j < nGT; j++) {
-                lngl[i][lngls_ind_start + j] = NEG_INF;
-            }
-        }
-    }
-}
-
-void vcfData::lngl_expand() {
-    ASSERT(nInd > 0);
-    ASSERT(nGT > 0);
-    ASSERT(lngl != NULL);
-
-    int prev_lngl = _lngl;
-    _lngl = _lngl * 2;
-
-    double **rc_lngl = (double **)realloc(lngl, _lngl * sizeof(double *));
-    CREALLOC(lngl);
-
-    for (int i = prev_lngl; i < (int)_lngl; i++) {
-        lngl[i] = (double *)malloc(nInd * nGT * sizeof(double));
-        for (int indi = 0; indi < nInd; indi++) {
-            const int lngls_ind_start = indi * nGT;
-            for (int j = 0; j < nGT; j++) {
-                lngl[i][lngls_ind_start + j] = NEG_INF;
-            }
-        }
-    }
-}
 
 void vcfData::_print(FILE *fp) {
     fprintf(stderr, "\nNumber of samples: %i", nInd);

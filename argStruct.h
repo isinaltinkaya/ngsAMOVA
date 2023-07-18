@@ -184,7 +184,7 @@ struct argStruct {
     double tole = -1;
     int maxEmIter = -1;
 
-    int nThreads = 0;
+    int nThreads = 1;
     int seed = -1;
     int nBootstraps = 0;
 

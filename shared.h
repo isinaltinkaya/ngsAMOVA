@@ -168,6 +168,11 @@
 	ASSERT(tmp!=NULL); \
 	(p) = (type) tmp;
 
+#define REALLOC2(p, size, type) \
+	void* tmp = (void*) realloc(((p)),((size)) * sizeof( *((p)) ); \
+	ASSERT(tmp!=NULL); \
+	(p) = (type) tmp;
+
 
 /*
  * Macro:[FREE]

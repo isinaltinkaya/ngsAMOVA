@@ -3,7 +3,6 @@
 
 #include "shared.h"
 
-typedef struct allelesStruct allelesStruct;
 typedef struct paramStruct paramStruct;
 typedef struct formulaStruct formulaStruct;
 
@@ -46,12 +45,12 @@ struct paramStruct {
 
     int nContigs;
 
-    allelesStruct *ancder = NULL;
-    allelesStruct *majmin = NULL;
     formulaStruct *formula = NULL;
 
     int nInd;
     int nIndCmb;
+
+	int** pidx2inds=NULL;
 
     // input file type from enum
     int in_ft = 0;

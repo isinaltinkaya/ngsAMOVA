@@ -121,7 +121,7 @@ dxyStruct *dxyStruct_read(paramStruct *pars, distanceMatrixStruct *dMS, metadata
     FILE *in_dxy_fp = fopen(args->in_dxy_fn, "r");
 
     // skip the first line (header)
-    fgets(dxy_buf, FGETS_BUF_SIZE, in_dxy_fp);
+	ASSERT(fgets(dxy_buf, FGETS_BUF_SIZE, in_dxy_fp)!=NULL); // error or unexpected eof; so handle both with assert
 
     int col = 0;
     while (fgets(dxy_buf, FGETS_BUF_SIZE, in_dxy_fp)) {

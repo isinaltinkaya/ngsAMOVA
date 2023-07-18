@@ -1,231 +1,42 @@
 #include "dataStructs.h"
 
-int allelesStruct::get_contig_offset(const int contig_i) {
-    int i = this->contigOffsets[contig_i];
-    ASSERT(i > -1 && i < this->nTotSites);
-    return (i);
+lnglStruct::lnglStruct(const int nGt, const int nInd){
+	this->size1=4096; // init nSites
+	this->size2=(size_t) nGt*nInd;
+
+	this->d = (double**) malloc(this->size1*sizeof(double*));
+	for(size_t i=0; i<this->size1;++i){
+		this->d[i]=(double*)malloc(this->size2*sizeof(double));
+		for(size_t j=0;j<this->size2;++j){
+			this->d[i][j]=NEG_INF;
+		}
+	}
 }
 
-int allelesStruct::get_contig_site_index(const int contig_i, const int site_i) {
-    int i = this->get_contig_offset(contig_i) + site_i;
-    ASSERT(i < this->nTotSites);
-    return (i);
+lnglStruct::~lnglStruct(){
+	for(size_t i=0;i<this->size1;++i){
+		FFREE(this->d[i]);
+	}
+	FFREE(this->d);
 }
 
-void allelesStruct::set_pos(const int contig_i, const int site_i, const int setToPosition) {
-    int i = this->contigOffsets[contig_i] + site_i;
-    ASSERT(i > -1);
-    this->positions[i] = setToPosition;
-    return;
+void lnglStruct::expand(){
+	int oldsize=this->size1;
+	this->size1 += 4096; // expand nSites
+	double **tmp=(double**) realloc(this->d, this->size1*sizeof(*this->d));
+	ASSERT(tmp!=NULL);
+	this->d=tmp;
+
+	for(size_t i=oldsize; i<this->size1;++i){
+		this->d[i]=(double*)malloc(this->size2*sizeof(double));
+		for(size_t j=0;j<this->size2;++j){
+			this->d[i][j]=NEG_INF;
+		}
+	}
 }
 
-int allelesStruct::get_pos(const int contig_i, const int site_i) {
-    return (this->positions[this->get_contig_site_index(contig_i, site_i)]);
-}
 
-char allelesStruct::get_a1(const int contig_i, const int site_i) {
-    return (this->allele1s[this->get_contig_site_index(contig_i, site_i)]);
-}
-
-void allelesStruct::set_a1(const int contig_i, const int site_i, const char *setToAllele) {
-    ASSERT(setToAllele != NULL);
-    ASSERT(strlen(setToAllele) == 1);
-    int i = this->contigOffsets[contig_i] + site_i;
-    ASSERT(i > -1);
-    this->allele1s[i] = *setToAllele;
-    return;
-}
-
-void allelesStruct::set_a1(const int contig_i, const int site_i, const char setToAllele) {
-    int i = this->contigOffsets[contig_i] + site_i;
-    ASSERT(i > -1);
-    this->allele1s[i] = setToAllele;
-    return;
-}
-
-char allelesStruct::get_a2(const int contig_i, const int site_i) {
-    return (this->allele2s[this->get_contig_site_index(contig_i, site_i)]);
-}
-
-void allelesStruct::set_a2(const int contig_i, const int site_i, const char *setToAllele) {
-    ASSERT(setToAllele != NULL);
-    ASSERT(strlen(setToAllele) == 1);
-    int i = this->contigOffsets[contig_i] + site_i;
-    ASSERT(i > -1);
-    this->allele2s[i] = *setToAllele;
-    return;
-}
-
-void allelesStruct::set_a2(const int contig_i, const int site_i, const char allele) {
-    int i = this->contigOffsets[contig_i] + site_i;
-    ASSERT(i > -1);
-    this->allele2s[i] = allele;
-    return;
-}
-
-void allelesStruct::add_new_contig(const int contig_i, const char *contig_id, const int contig_i_offset) {
-    this->nContigs = contig_i + 1;
-
-    if (this->nContigs > 1) {
-        int *r_nSites = (int *)realloc(this->nSites, (this->nContigs) * sizeof(int));
-        CCREALLOC(r_nSites, this->nSites);
-
-        this->nSites[contig_i] = 0;
-
-        int *r_contigOffsets = (int *)realloc(this->contigOffsets, (this->nContigs) * sizeof(int));
-        CCREALLOC(r_contigOffsets, this->contigOffsets);
-
-        this->contigOffsets[contig_i] = contig_i_offset;
-
-        char **r_contigNames = (char **)realloc(this->contigNames, (this->nContigs) * sizeof(char *));
-        CCREALLOC(r_contigNames, this->contigNames);
-    }
-    this->contigNames[contig_i] = strdup(contig_id);
-    ASSERT(this->contigNames[contig_i] != NULL);
-
-    return;
-}
-
-void allelesStruct::expand(const int contig_i, const int new_size) {
-    char *r_allele1s = (char *)realloc(allele1s, new_size * sizeof(char));
-    CCREALLOC(r_allele1s, allele1s);
-
-    char *r_allele2s = (char *)realloc(allele2s, new_size * sizeof(char));
-    CCREALLOC(r_allele2s, allele2s);
-
-    int *r_positions = (int *)realloc(positions, new_size * sizeof(int));
-    CCREALLOC(r_positions, positions);
-}
-
-allelesStruct::allelesStruct() {
-    nSites = (int *)calloc(1, sizeof(int));
-    allele1s = (char *)malloc(BUF_NTOTSITES * sizeof(char));
-    allele2s = (char *)malloc(BUF_NTOTSITES * sizeof(char));
-    positions = (int *)calloc(BUF_NTOTSITES, sizeof(int));
-    contigNames = (char **)malloc(1 * sizeof(char *));
-    contigOffsets = (int *)calloc(1, sizeof(int));
-}
-
-allelesStruct::~allelesStruct() {
-    FREE(nSites);
-    FREE(allele1s);
-    FREE(allele2s);
-    FREE(positions);
-    FREE2D(contigNames, nContigs);
-    FREE(contigOffsets);
-}
-
-allelesStruct *allelesStruct_read(const char *fn) {
-    allelesStruct *alleles = new allelesStruct;
-
-    FILE *fp = IO::getFile(fn, "r");
-
-    int buf_nTotSites = BUF_NTOTSITES;
-
-    int coli = 0;
-
-    // indices in allelesStruct
-    int site_i = 0;
-    int contig_i = 0;
-
-    // assume len(contig_id) < 1024
-    char last_contig[1024];
-
-    // rolling sum
-    int roll_contig_i_offset = 0;
-
-    // offset of the current contig
-    int current_contig_i_offset = 0;
-
-    char *line = NULL;
-    size_t len = 0;
-    // loop through lines in the file
-    while ((getline(&line, &len, fp)) != -1) {
-        coli = 0;
-        char *tok = strtok(line, "\t\n");
-
-        // loop through the columns in the line
-        while (tok != NULL) {
-            if (0 == coli) {  // -> contig id column
-
-                if (0 == contig_i && 0 == site_i) {
-                    // the very first contig and position
-                    // set last_contig to current contig
-                    strcpy(last_contig, tok);
-                    alleles->add_new_contig(contig_i, tok, roll_contig_i_offset);
-
-                } else {
-                    if (0 != strcmp(last_contig, tok)) {
-                        // ** contig is changed **
-
-                        // add the last contig's nSites to rolling sum
-                        roll_contig_i_offset += alleles->nSites[contig_i];
-
-                        // move to next contig index
-                        ++contig_i;
-
-                        current_contig_i_offset = roll_contig_i_offset;
-
-                        alleles->add_new_contig(contig_i, tok, roll_contig_i_offset);
-
-                        // init pos index site_i in new contig
-                        site_i = 0;
-
-                        // set last_contig to current contig
-                        strcpy(last_contig, tok);
-                    }
-                }
-
-                // if nSites buffer for current contig needs to be increased
-                if (current_contig_i_offset + site_i == buf_nTotSites) {
-                    buf_nTotSites *= 2;
-                    alleles->expand(contig_i, buf_nTotSites);
-                } else if (current_contig_i_offset + site_i > buf_nTotSites) {
-                    NEVER;
-                }
-
-            } else if (1 == coli) {  // -> position column
-                ASSERTM(strIsNumeric(tok), "Position must be numeric.");
-                // pos_int = atoi(tok);
-                alleles->set_pos(contig_i, site_i, atoi(tok) - 1);
-
-            } else if (2 == coli) {        // -> allele1s column
-                ASSERT(1 == strlen(tok));  // expect a single character e.g. G
-                if (1 < strlen(tok)) {     // debug
-                    ERROR("Too many characters found in the 3rd column of file %s. Expected: 1", fn);
-                }
-                alleles->set_a1(contig_i, site_i, *tok);
-
-            } else if (3 == coli) {     // -> allele2s column
-                if (1 < strlen(tok)) {  // debug
-                    ERROR("Too many characters found in the 4th column of file %s. Expected: 1", fn);
-                }
-                alleles->set_a2(contig_i, site_i, *tok);
-
-            } else {
-                ERROR("Too many columns in file %s. Expected: 4", fn);
-            }
-            tok = strtok(NULL, "\t\n");
-
-            ++coli;
-
-        }  // end of line columns loop (i.e. end of one position)
-
-        ++site_i;
-        alleles->nSites[contig_i]++;
-        alleles->nTotSites++;
-
-    }  // end of file lines loop
-
-    FREE(line);
-    FCLOSE(fp);
-
-    ASSERT(alleles->contigNames != NULL);
-
-    return alleles;
-}
-
-distanceMatrixStruct *distanceMatrixStruct_get(paramStruct *pars, vcfData *vcfd, pairStruct **pairSt, char **indNames, blobStruct *blob) {
+distanceMatrixStruct *distanceMatrixStruct_get(paramStruct *pars, vcfData *vcfd, char **indNames, blobStruct *blob) {
     distanceMatrixStruct *dm = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, indNames);
 
     if (NULL != blob) {
@@ -236,10 +47,10 @@ distanceMatrixStruct *distanceMatrixStruct_get(paramStruct *pars, vcfData *vcfd,
 
     if (args->doDist == 1) {
         // -> use genotype likelihoods
-        get_distanceMatrix_GL(pars, dm, vcfd, pairSt, NULL);
+        get_distanceMatrix_GL(pars, dm, vcfd, NULL);
     } else if (args->doDist == 2) {
         // -> use genotypes
-        get_distanceMatrix_GT(pars, dm, vcfd, pairSt, NULL);
+        get_distanceMatrix_GT(pars, dm, vcfd, NULL);
     } else {
         NEVER;
     }
@@ -248,28 +59,28 @@ distanceMatrixStruct *distanceMatrixStruct_get(paramStruct *pars, vcfData *vcfd,
     return (dm);
 }
 
-void get_distanceMatrix_GL(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt, blobStruct *blob) {
-    readSites(vcfd, pars, pairSt, blob);
+void get_distanceMatrix_GL(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, blobStruct *blob) {
+    readSites(vcfd, pars, blob);
     if (1 == args->doEM) {
-        spawnThreads_pairEM(pars, pairSt, vcfd, distanceMatrix);
+        spawnThreads_pairEM(pars, vcfd, distanceMatrix);
         return;
     }
     NEVER;
 }
 
-void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt, blobStruct *blob) {
+void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, blobStruct *blob) {
     if (NULL == blob) {
-        readSites(vcfd, pars, pairSt, blob);
+        readSites(vcfd, pars, blob);
         for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
-            int snSites = vcfd->JointGenotypeCountMatrixGT[pidx][vcfd->nJointClasses];
+            int snSites = vcfd->snSites[pidx];
             if (snSites == 0) {
                 fprintf(stderr, "\n[ERROR]\t-> No shared sites found for pair %d (snSites=%d). This is currently not allowed.\n", pidx, snSites);
                 exit(1);
             }
             if (args->squareDistance == 1) {
-                distanceMatrix->M[pidx] = (double)SQUARE(MATH::Dij(vcfd->JointGenotypeCountMatrixGT[pidx], snSites));
+                distanceMatrix->M[pidx] = (double)SQUARE(MATH::Dij(vcfd->jointGenotypeMatrixGT[pidx], snSites));
             } else {
-                distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->JointGenotypeCountMatrixGT[pidx], snSites);
+                distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->jointGenotypeMatrixGT[pidx], snSites);
             }
         }
 
@@ -288,51 +99,51 @@ void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatr
             vcfd->pair_shared_nSites[b] = (int *)calloc(nIndCmb, sizeof(int));
         }
 
-        readSites(vcfd, pars, pairSt, blob);
+        readSites(vcfd, pars, blob);
         for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
             for (int block_i = 0; block_i < blob->nBlocks; ++block_i) {
                 for (int j = 0; j < vcfd->nJointClasses; ++j) {
-                    vcfd->JointGenotypeCountMatrixGT[pidx][j] += vcfd->jgcd_gt[block_i][pidx][j];
+                    vcfd->jointGenotypeMatrixGT[pidx][j] += vcfd->jgcd_gt[block_i][pidx][j];
                 }
-                vcfd->JointGenotypeCountMatrixGT[pidx][vcfd->nJointClasses] = vcfd->pair_shared_nSites[block_i][pidx];
+				// vcfd->snSites[pidx] = vcfd->pair_shared_nSites[block_i][pidx];
             }
-            int snSites = vcfd->JointGenotypeCountMatrixGT[pidx][vcfd->nJointClasses];
+            int snSites = vcfd->snSites[pidx];
             if (snSites == 0) {
                 ERROR("No shared sites found for pair %d (snSites=%d). This is currently not allowed.\n", pidx, snSites);
             }
             if (args->squareDistance == 1) {
-                distanceMatrix->M[pidx] = (double)SQUARE(MATH::Dij(vcfd->JointGenotypeCountMatrixGT[pidx], snSites));
+                distanceMatrix->M[pidx] = (double)SQUARE(MATH::Dij(vcfd->jointGenotypeMatrixGT[pidx], snSites));
             } else {
-                distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->JointGenotypeCountMatrixGT[pidx], snSites);
+                distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->jointGenotypeMatrixGT[pidx], snSites);
             }
         }
 
         for (int rep = 0; rep < blob->bootstraps->nReplicates; ++rep) {
-            int r_JointGenotypeCountMatrixGT[pars->nIndCmb][vcfd->nJointClasses + 1];
+            int r_jointGenotypeMatrixGT[pars->nIndCmb][vcfd->nJointClasses];
 
             for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
-                for (int i = 0; i < vcfd->nJointClasses + 1; i++) {
-                    r_JointGenotypeCountMatrixGT[pidx][i] = 0;
+                for (int i = 0; i < vcfd->nJointClasses; i++) {
+                    r_jointGenotypeMatrixGT[pidx][i] = 0;
                 }
 
                 for (int r_block = 0; r_block < blob->nBlocks; ++r_block) {
                     int chosen_block = blob->bootstraps->replicates[rep]->rBlocks[r_block];
 
                     for (int j = 0; j < vcfd->nJointClasses; ++j) {
-                        r_JointGenotypeCountMatrixGT[pidx][j] += vcfd->jgcd_gt[chosen_block][pidx][j];
+                        r_jointGenotypeMatrixGT[pidx][j] += vcfd->jgcd_gt[chosen_block][pidx][j];
                     }
-                    r_JointGenotypeCountMatrixGT[pidx][vcfd->nJointClasses] += vcfd->pair_shared_nSites[chosen_block][pidx];
+					vcfd->snSites[pidx] += vcfd->pair_shared_nSites[chosen_block][pidx];
                 }
-                int snSites = r_JointGenotypeCountMatrixGT[pidx][vcfd->nJointClasses];
+                int snSites = r_jointGenotypeMatrixGT[pidx][vcfd->nJointClasses];
 
                 if (snSites == 0) {
                     ERROR("No shared sites found for pair %d (snSites=%d). This is currently not allowed.\n", pidx, snSites);
                 }
 
                 if (args->squareDistance == 1) {
-                    blob->bootstraps->replicates[rep]->distanceMatrix->M[pidx] = (double)SQUARE(MATH::Dij(r_JointGenotypeCountMatrixGT[pidx], snSites));
+                    blob->bootstraps->replicates[rep]->distanceMatrix->M[pidx] = (double)SQUARE(MATH::Dij(r_jointGenotypeMatrixGT[pidx], snSites));
                 } else {
-                    blob->bootstraps->replicates[rep]->distanceMatrix->M[pidx] = (double)MATH::Dij(r_JointGenotypeCountMatrixGT[pidx], snSites);
+                    blob->bootstraps->replicates[rep]->distanceMatrix->M[pidx] = (double)MATH::Dij(r_jointGenotypeMatrixGT[pidx], snSites);
                 }
             }
         }
@@ -361,6 +172,7 @@ metadataStruct::metadataStruct(int nInd) {
     levelNames = (char **)malloc(1 * sizeof(char *));
 
     lvlgToIdx = (int **)malloc(1 * sizeof(int *));
+	ASSERT(lvlgToIdx!=NULL);
     lvlgToIdx[0] = (int *)malloc(1 * sizeof(int));
     lvlgToIdx[0][0] = -1;
 

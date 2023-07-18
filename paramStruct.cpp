@@ -101,14 +101,6 @@ paramStruct *paramStruct_init(argStruct *args) {
         fprintf(stderr, "\n[INFO]\tFound input distance matrix file: %s\n", args->in_dm_fn);
         setInputFileType(pars, IN_DM);
     }
-    if (NULL != args->in_ancder_fn) {
-        pars->ancder = allelesStruct_read(args->in_ancder_fn);
-        ASSERT(pars->ancder != NULL);
-    }
-    if (NULL != args->in_majorminor_fn) {
-        pars->majmin = allelesStruct_read(args->in_majorminor_fn);
-        ASSERT(pars->majmin != NULL);
-    }
 
     pars->nSites = 0;
     pars->totSites = 0;
@@ -132,13 +124,6 @@ paramStruct *paramStruct_init(argStruct *args) {
 void paramStruct_destroy(paramStruct *pars) {
     FREE(pars->DATETIME);
 
-    if (NULL != pars->ancder) {
-        DEL(pars->ancder);
-    }
-    if (NULL != pars->majmin) {
-        DEL(pars->majmin);
-    }
-
     if (NULL != pars->formula) {
         formulaStruct_destroy(pars->formula);
     }
@@ -146,6 +131,15 @@ void paramStruct_destroy(paramStruct *pars) {
     if(NULL != pars->indNames){
 	    strArray_destroy(pars->indNames);
     }
+	
+	if(NULL!=pars->pidx2inds){
+		for(int i=0;i<pars->nIndCmb;++i){
+			FREE(pars->pidx2inds[i]);
+		}
+	}
+	FFREE(pars->pidx2inds);
+
+
 
     delete pars;
 }

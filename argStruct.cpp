@@ -325,7 +325,7 @@ argStruct *argStruct_get(int argc, char **argv) {
             args->formula = strdup(val);
         }
 
-        // [--majorMinorFile/-mmf <filename>]
+        // [-sites <filename>]
         //     Filename of the file containing the major and minor alleles for each site in the VCF file.
         //
         //     The file should be in the following format:
@@ -339,29 +339,6 @@ argStruct *argStruct_get(int argc, char **argv) {
         //
         //    This file can be obtained using ANGSD maf files.
 
-        else if (strcasecmp("--majorMinorFile", arv) == 0 || strcasecmp("--majMinFile", arv) == 0 || strcasecmp("-mmf", arv) == 0) {
-            args->in_majorminor_fn = strdup(val);
-        }
-
-        // [--ancDerFile/-adf <filename>]
-        //     Filename of the file containing the ancestral and derived alleles for each site in the VCF file.
-        //
-        //     The file should be in the following format:
-        //	   - 1-based indexing for positions [start:included, end:included]
-        //	   - Should be sorted by chromosome name and start position.
-        //     - Should be tab-delimited.
-        //
-        // e.g. Chromosome name <TAB> position <TAB> ancestral allele <TAB> derived allele
-        //    chr1	100	A	T
-        //    chr1	200	A	G
-        //
-        //    This file can be obtained using ANGSD maf files.
-
-        else if (strcasecmp("--ancDerFile", arv) == 0 || strcasecmp("-adf", arv) == 0) {
-            args->in_ancder_fn = strdup(val);
-        }
-
-        // TODO majorminor and ancder file inputs,can we join them?
 
         else if (strcasecmp("-dev", arv) == 0)
             args->printDev = atoi(val);
@@ -430,14 +407,6 @@ void argStruct::check_arg_dependencies() {
         ARGLOG("minInd is set to 2; will use sites that is nonmissing for both individuals in a pair.")
     } else if (minInd == 1 || minInd < -1) {
         ERROR("minInd is set to %d. Minimum value allowed for minInd is 2.", minInd);
-    }
-
-    if (in_vcf_fn != NULL) {
-        if (1 == isSim) {
-            if (NULL != in_ancder_fn || NULL != in_majorminor_fn) {
-                ERROR("Cannot use --majorMinorFile/-mmf <filename> or --ancDerFile/-adf <filename> with --isSim 1.");
-            }
-        }
     }
 
     if (in_vcf_fn == NULL && in_dm_fn == NULL) {
@@ -666,9 +635,6 @@ void argStruct_destroy(argStruct *args) {
     FFREE(args->formula);
     FFREE(args->keyCols);
     FFREE(args->doDxyStr);
-
-    FFREE(args->in_majorminor_fn);
-    FFREE(args->in_ancder_fn);
 
     // check below
 

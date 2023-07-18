@@ -13,112 +13,39 @@
 struct blobStruct;
 struct amovaStruct;
 
-typedef struct allelesStruct allelesStruct;
-typedef struct pairStruct pairStruct;
+typedef struct lnglStruct lnglStruct;
 typedef struct distanceMatrixStruct distanceMatrixStruct;
 typedef struct metadataStruct metadataStruct;
 typedef struct vcfData vcfData;
 typedef struct indPairThreads indPairThreads;
 
-void spawnThreads_pairEM(paramStruct *pars, pairStruct **pairSt, vcfData *vcfd, distanceMatrixStruct *distMatrix);
+void spawnThreads_pairEM(paramStruct *pars, vcfData *vcfd, distanceMatrixStruct *distMatrix);
 void setInputFileType(paramStruct *pars, int inFileType);
 /* -------------------------------------------------------------------------- */
 
-/// @brief allelesStruct    structure to hold alleles data
-struct allelesStruct {
-    int nContigs = 0;  // 4
+struct lnglStruct {
 
-    // total number of sites with a1 a2 data
-    // equal to sum(nSites[contig_i] for contig_i in nContigs)
-    // also equal to the total number of lines in the alleles file
-    int nTotSites = 0;  // 8
+    /*
+     * lngl[nSites][nInd*nGT*double]
+     * genotype likelihoods in natural log
+     * for each individual at each site
+     *
+     * nGT=10 == store all 10 values per individual
+     * nGT=3 == store only 3 values per individual
+     * 		corresponding to (0,0), (0,1), (1,1)
+     */
+	// d[size1][size2]
+	double** d=NULL;
+	size_t size1=-1;
+	size_t size2=-1;
 
-    // \def nSites[nContigs]
-    //      nSites[contig_i] == number of sites with a1 a2 data in contig_i
-    int *nSites = NULL;  // 16
+	lnglStruct(const int nGt, const int nInd);
+	~lnglStruct();
 
-    // \def allele1s[for contig_i in nContigs sum(nSites[contig_i])]
-    char *allele1s = NULL;  // 24
+	void expand();
 
-    // \def allele2s[for contig_i in nContigs sum(nSites[contig_i])]
-    char *allele2s = NULL;  // 32
-
-    // \def positions[for contig_i in nContigs sum(nSites[contig_i])
-    int *positions = NULL;  // 40
-
-    // \def contigNames[nContigs]
-    //      contigNames[contig_i] == name of contig_i
-    char **contigNames = NULL;  // 48
-
-    // \def contigOffsets[nContigs]
-    //      contigOffsets[contig_i] == offset of contig_i (i.e. where it starts in the allele1s and allele2s arrays)
-    int *contigOffsets = NULL;  // 56
-
-    allelesStruct();
-    ~allelesStruct();
-
-    /// @brief get_pos       get position
-    /// @param contig_i      index of the contig to get position from
-    /// @param site_i        index of the site to get position from
-    /// @return              int position at site_i in contig_i
-    /// e.g.  positions = { 21,22,23,0,100,101,102 }
-    ///     positions == { {21,22,23}, {0,100,101,102} }
-    ///     contig_i_0 = { 21,22,23 }
-    ///     contig_i_1 = { 0,100,101,102 }
-    ///
-    /// alleles->get_pos(1,1) == 100
-    /// get_pos(contig_i, site_i) == positions[sum(nSites[0:contig_i-1]) + site_i]
-    int get_pos(const int contig_i, const int site_i);
-
-    void set_pos(const int contig_i, const int site_i, const int setToPosition);
-
-    /// @brief add_new_contig add a new contig
-    /// @param contig_i index of the new contig to add
-    /// @param contig_id name of the new contig to add
-    /// @param contig_i_offset offset of the new contig to add (i.e. where it starts in the allele1s and allele2s arrays)
-    void add_new_contig(const int contig_i, const char *contig_id, const int contig_i_offset);
-
-    void expand(const int contig_i, const int new_size);
-
-    /// @brief get_a1           get allele 1
-    /// @param contig_i     index of the contig to get allele from
-    /// @param site_i       index of the site to get allele from
-    /// @return             char allele 1 at site_i in contig_i
-    /// @details
-    /// e.g. allele1s = { G,C,T,T,G,C,A }
-    ///     allele1s == { {G,C,T,T,G}, {C,A} }
-    ///     contig_i_0 = { G,C,T,T,G }
-    ///     contig_i_1 = { C,A }
-    ///
-    /// alleles->a1(1,1) == 'A'
-    /// a1(contig_i, site_i) == allele1s[sum(nSites[0:contig_i-1]) + site_i]
-    char get_a1(const int contig_i, const int site_i);
-
-    void set_a1(const int contig_i, const int site_i, const char setToAllele);
-    void set_a1(const int contig_i, const int site_i, const char *setToAllele);
-
-    /// @brief get_a2           get allele 2
-    /// @param contig_i     index of the contig to get allele from
-    /// @param site_i       index of the site to get allele from
-    /// @return             char allele 2 at site_i in contig_i
-    char get_a2(const int contig_i, const int site_i);
-
-    void set_a2(const int contig_i, const int site_i, const char setToAllele);
-    void set_a2(const int contig_i, const int site_i, const char *setToAllele);
-
-    int get_contig_offset(const int contig_i);
-    int get_contig_site_index(const int contig_i, const int site_i);
 };
 
-/// @brief allelesStruct_read read alleles file
-/// @param fn alleles file name
-/// @return pointer to a new allelesStruct
-/// @details alleles files are tab delimited files with 4 columns:
-/// 1. contig name
-/// 2. position
-/// 3. a1 (e.g. ancestral or major allele)
-/// 4. a2 (e.g. derived or minor allele)
-allelesStruct *allelesStruct_read(const char *fn);
 
 struct formulaStruct {
     // @nTokens number of tokens in the formula
@@ -164,77 +91,19 @@ formulaStruct *formulaStruct_get(const char *formula);
 void formulaStruct_validate(formulaStruct *fos, const int nLevels);
 void formulaStruct_destroy(formulaStruct *fos);
 
-distanceMatrixStruct *distanceMatrixStruct_get(paramStruct *pars, vcfData *vcfd, pairStruct **pairSt, char **indNames, blobStruct *blob);
+distanceMatrixStruct *distanceMatrixStruct_get(paramStruct *pars, vcfData *vcfd, char **indNames, blobStruct *blob);
 
 // prepare distance matrix using genotype likelihoods
-void get_distanceMatrix_GL(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt, blobStruct *blob);
+void get_distanceMatrix_GL(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, blobStruct *blob);
 
 // prepare distance matrix using genotypes
 // prepare distance matrix using genotypes + construct block bootstrapping distance matrix at the same time
-void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt, blobStruct *blob);
+void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, blobStruct *blob);
 
 /// trim spaces from the beginning and end of a char* (inplace)
 /// @param str - char* to trim
 void trimSpaces(char *str);
 
-struct pairStruct {
-    int idx;  // index of the pair
-    int i1;   // index of the first individual
-    int i2;   // index of the second individual
-
-    // number of shared sites
-    size_t snSites = 0;
-
-    // contains index of the shared sites of the pair
-    int *sharedSites = NULL;
-    size_t _sharedSites = 4096;
-
-    double d;
-    int n_em_iter;
-
-    double *optim_jointGenotypeCountMatrix = NULL;
-    double *optim_jointGenotypeProbMatrix = NULL;
-
-    pairStruct(paramStruct *pars_, int pidx, int i1_, int i2_) {
-        idx = pidx;
-        d = 0.0;
-        n_em_iter = 0;
-        i1 = i1_;
-        i2 = i2_;
-        // pars = pars_;
-        sharedSites = (int *)malloc(_sharedSites * sizeof(int));
-        for (size_t i = 0; i < _sharedSites; i++) {
-            sharedSites[i] = -1;
-        }
-
-        optim_jointGenotypeCountMatrix = (double *)malloc(9 * sizeof(double));
-        optim_jointGenotypeProbMatrix = (double *)malloc(9 * sizeof(double));
-    }
-    ~pairStruct() {
-        FREE(sharedSites);
-        FREE(optim_jointGenotypeCountMatrix);
-        FREE(optim_jointGenotypeProbMatrix);
-    }
-
-    void sharedSites_add(size_t site_i) {
-        if (snSites >= _sharedSites) {
-            sharedSites_expand();
-        }
-        sharedSites[snSites] = site_i;
-        snSites++;
-    }
-
-    void sharedSites_expand() {
-        size_t oldSize = _sharedSites;
-
-        _sharedSites *= 2;
-        int *rc_sharedSites = (int *)realloc(sharedSites, _sharedSites * sizeof(int));
-        CREALLOC(sharedSites);
-        for (size_t i = oldSize; i < _sharedSites; i++) {
-            sharedSites[i] = -1;
-        }
-    }
-};
 
 /**
  * @brief distanceMatrixStruct stores the distance matrix
@@ -490,20 +359,16 @@ metadataStruct *metadataStruct_get(paramStruct *pars);
 void metadataStruct_destroy(metadataStruct *mtd);
 
 struct indPairThreads {
-    pairStruct *pair;
-    double **lngls;
 
-    double tole = 0.0;
-    int maxEmIter = 0;
+	paramStruct* pars=NULL;
+	vcfData* vcfd=NULL;
 
-    size_t nSites;
+	int pidx=-1;
 
-    indPairThreads(pairStruct *tPair, double **lngl, paramStruct *pars) {
-        pair = tPair;
-        lngls = lngl;
-        tole = args->tole;
-        maxEmIter = args->maxEmIter;
-        nSites = pars->nSites;
+    indPairThreads(vcfData* vcfd_, paramStruct *pars_, const int pairIndex) {
+		this->pars=pars_;
+		this->vcfd=vcfd_;
+		pidx=pairIndex;
     }
 };
 

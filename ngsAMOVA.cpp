@@ -23,14 +23,6 @@ using size_t = decltype(sizeof(int));
 void input_VCF(paramStruct *pars) {
     vcfData *vcfd = vcfData_init(pars);
 
-    // TODO deprec
-    pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
-    for (int i1 = 0; i1 < pars->nInd - 1; i1++) {
-        for (int i2 = i1 + 1; i2 < pars->nInd; i2++) {
-            int pidx = nCk_idx(pars->nInd, i1, i2);
-            pairSt[pidx] = new pairStruct(pars, pidx, i1, i2);
-        }
-    }
 
 
     metadataStruct *metadata = NULL;
@@ -63,7 +55,7 @@ void input_VCF(paramStruct *pars) {
 		indNames=metadata->indNames;
 	}
 	
-    distanceMatrix = distanceMatrixStruct_get(pars, vcfd, pairSt, indNames, blobSt);
+    distanceMatrix = distanceMatrixStruct_get(pars, vcfd, indNames, blobSt);
 
 	if(require_itemLabels()){
 
@@ -77,6 +69,7 @@ void input_VCF(paramStruct *pars) {
 
 	}
 
+    vcfData_destroy(vcfd);
     // ---- ANALYSES ------------------------------------------------------------ //
 
     // ---- AMOVA
@@ -122,10 +115,8 @@ void input_VCF(paramStruct *pars) {
     }
 
     FDEL(metadata);
-    DEL2D(pairSt, pars->nIndCmb);
     DEL(distanceMatrix);
 
-    vcfData_destroy(vcfd);
 }
 
 void input_DM(paramStruct *pars) {
@@ -146,15 +137,6 @@ void input_DM(paramStruct *pars) {
             } else {
                 NEVER;  // this should already be checked in require_formula()
             }
-        }
-    }
-
-    pairStruct **pairSt = new pairStruct *[pars->nIndCmb];
-
-    for (int i1 = 0; i1 < pars->nInd - 1; i1++) {
-        for (int i2 = i1 + 1; i2 < pars->nInd; i2++) {
-            int pidx = nCk_idx(pars->nInd, i1, i2);
-            pairSt[pidx] = new pairStruct(pars, pidx, i1, i2);
         }
     }
 
@@ -187,7 +169,6 @@ void input_DM(paramStruct *pars) {
 
     FDEL(metadata);
 
-    DEL2D(pairSt, pars->nIndCmb);
     DEL(distanceMatrix);
 }
 

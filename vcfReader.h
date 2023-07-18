@@ -16,6 +16,7 @@ typedef struct gtData gtData;
 typedef struct glData glData;
 
 struct blobStruct;
+struct lnglStruct;
 /* -------------------------------------------------------------------------- */
 
 /// @brief nDerToM33Idx - convert the number of derived alleles to the index of the corresponding combination in the 3x3 matrix
@@ -61,8 +62,6 @@ int require_index(paramStruct *pars);
 /// @return 0 if no unpacking is required, otherwise return a BCF_UN_* value
 int require_unpack();
 
-void set_contig_vcfToAlleles(vcfData *vcfd, int **contig_vcfToAlleles, allelesStruct *alleles);
-
 struct vcfData {
     vcfFile *in_fp = NULL;
     bcf1_t *rec = NULL;
@@ -80,33 +79,20 @@ struct vcfData {
     int nInd = 0;
     int nIndCmb = 0;
 
-    int *contig_vcfToAncDer = NULL;
-    int *contig_vcfToMajMin = NULL;
-
-    /// @brief get_contigIdx_in_alleles - get the index of a given contig in the allelesStruct
-    /// @param contig_vcfToAlleles
-    /// @param alleles
-    /// @return index of the contig_i in the allelesStruct if found, otherwise -1
-    const int get_contigIdx_in_alleles(int **contig_vcfToAlleles, allelesStruct *alleles);
-
-    /*
-     * lngl[nSites][nInd*nGT*double]
-     * genotype likelihoods in natural log
-     * for each individual at each site
-     *
-     * nGT=10 == store all 10 values per individual
-     * nGT=3 == store only 3 values per individual
-     * 		corresponding to (0,0), (0,1), (1,1)
-     */
-    double **lngl = NULL;
-    size_t _lngl = 4096;
+	lnglStruct* lngl=NULL;
     int nGT = 0;
 
     /*
      * [nIndCmb][9+1]
      * last element contains total number of sites shared
      */
-    int **JointGenotypeCountMatrixGT = NULL;
+
+
+	double **jointGenotypeMatrixGL=NULL;
+	int **jointGenotypeMatrixGT=NULL;
+
+
+
 
     // \def jgcd_gt[nBlocks][nIndCmb][nJointClasses]
     //      jgcd_gt[b][i][j] == number of sites where the ith pair of individuals have the jth joint genotype class in block b
@@ -116,8 +102,11 @@ struct vcfData {
     //      pair_shared_nSites[b][i] == number of sites shared between the individuals in the ith pair in block b
     int **pair_shared_nSites = NULL;
 
-    double **JointGenotypeCountMatrixGL = NULL;
-    double **JointGenotypeProbMatrixGL = NULL;
+
+	// \def snSites[nIndCmb]
+	// 		snSites[i] == #sites shared in pair i
+	int* snSites=NULL;
+
     int nJointClasses = 0;
 
     // TODO instead of copying the names, just store the order
@@ -134,19 +123,6 @@ struct vcfData {
         }
     }
 
-    // given number of genotype categories (nGT_)
-    // set nGT to given nGT, set nJointClasses to nGT*nGT
-    // void set_nGT(const int nGT_);
-
-    void init_JointGenotypeCountMatrixGL();
-    void init_JointGenotypeProbMatrixGL();
-    void init_JointGenotypeCountMatrixGT();
-
-    void print_JointGenotypeCountMatrix();
-
-    void lngl_init(int doEM);
-    void lngl_expand();
-
     void _print(FILE *fp);
     void _print();
 
@@ -154,7 +130,6 @@ struct vcfData {
     /// @return 0 if there are no more records, otherwise return 1
     int records_next();
 
-    void set_n_joint_categories(paramStruct *pars);
 
     /// @brief unpack - unpack the bcf record based on the value from require_unpack()
     void unpack(void);
@@ -302,24 +277,17 @@ struct get_data {
     }
 };
 
-void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt, blobStruct *blob);
-void readSites(vcfData *vcfd, paramStruct *pars, pairStruct **pairSt);
+void readSites(vcfData *vcfd, paramStruct *pars, blobStruct *blob);
+void readSites(vcfData *vcfd, paramStruct *pars); 
 
 // @return
 // 1    skip site
-int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, pairStruct **pairs);
+int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars);
 
 // return 1 if skipped
 // block_i  -1 if block bootstrapping is disabled
 int get_JointGenotypeMatrix_GT(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, const int block_i);
 
 int GLtoGT_1_JointGenotypeMatrix(vcfData *vcf, paramStruct *pars);
-
-/// @brief read_site_with_alleles - for a given site fetch the alleles at site from allelesStruct
-/// @return
-/// 0    if positions match and everything works fine
-/// 1    if 'contig:site' in VCF cannot be found in alleles file
-/// 2    if a1 or a2 is not a single character
-int read_site_with_alleles(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2);
 
 #endif  // __VCF_READER__

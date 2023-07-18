@@ -120,6 +120,6 @@ bootstrapDataset *bootstrapDataset_get(vcfData *vcfd, paramStruct *pars, blobStr
 
 // distanceMatrixStruct *get_distanceMatrix_GL_bootstrapReplicate(const int nInd, const int nIndCmb, const int squareDistance, bootstrapReplicate *bRep, vcfData *vcfd, paramStruct *pars);
 // distanceMatrixStruct *get_distanceMatrix_GT_bootstrapReplicate(const int nInd, const int nIndCmb, const int squareDistance, vcfData *vcfd, paramStruct *pars, blobStruct *blob, const int rep);
-void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, pairStruct **pairSt, blobStruct *blob);
+void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, blobStruct *blob);
 
 #endif  // __BOOTSTRAP__
