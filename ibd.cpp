@@ -153,13 +153,10 @@ void readSites_doIbd(vcfData *vcfd, paramStruct *pars){
 		/// -------------------
 		if(args->doIbd==1){
 
-			// TODO XX
-			//
 			glData lgls(vcfd);
 			bool ind_is_missing[nInd]={false};
 
 			do {
-				int ret=read_site_with_alleles(contig_i,site_i,vcfd,pars,a1,a2);
 
 				//TODO assume only 3 gls for now
 				// int a1a1 = bcf_alleles_get_gtidx(*a1, *a1);D
@@ -169,9 +166,6 @@ void readSites_doIbd(vcfData *vcfd, paramStruct *pars){
 				int a1a2=1;
 				int a2a2=2;
 
-	// if(site_i==0){
-						// fprintf(stdout, "X,%d,%d,%d\n",a1a1,a1a2,a2a2);
-	// }
 
 				for (int indi = 0; indi < nInd; indi++) {
 					if (1 == lgls.ind_data_isMissing(indi)) {
@@ -226,18 +220,11 @@ void readSites_doIbd(vcfData *vcfd, paramStruct *pars){
 							}
 						}
 
-						// fprintf(stdout, "VGL1,%d,%d,%d,%f\n",i1,i2,site_i,score);
-	// if(i1==0 && i2==1){
-						// fprintf(stdout, "VGL1,%d,%d,%d,%f\n",i1,i2,site_i,score);
-	// }
-
 						int pair_idx=nCk_idx(nInd,i1,i2);
 						pars->ibd->pairScores[pair_idx][site_i]=score;
 						// VALIDATION GL1
-
-	// if(i1==0 && i2==1 && site_i==0){
 						// fprintf(stdout, "VGL1,%d,%d,%d,%f\n",i1,i2,site_i,score);
-	// }
+						// fprintf(stdout, "VGL1,%d,%d,%d,%f\n",i1,i2,vcfd->rec->pos+1,score);
 
 
 					}
@@ -245,14 +232,11 @@ void readSites_doIbd(vcfData *vcfd, paramStruct *pars){
 
 			} while (0);
 
-			// TODO XX
 
 
 
 		}else if (args->doIbd==2){
 
-			// TODO XX
-			//
 
 
 
@@ -378,13 +362,9 @@ void readSites_doIbd(vcfData *vcfd, paramStruct *pars){
 							int pair_idx=nCk_idx(nInd,i1,i2);
 							pars->ibd->pairScores[pair_idx][site_i]=score;
 							// VALIDATION1
-							// dose1,dose2,i1,i2,site,score
-							// fprintf(stdout, "V1,%d,%d,%d,%d,%d,%f\n",dose1,dose2,i1,i2,site_i,score);
 							// VALIDATION GT1
-	// if(i1==0 && i2==1){
 							// fprintf(stdout, "VGT1,%d,%d,%d,%f\n",i1,i2,site_i,score);
-	// }
-	// NEVER;
+							// fprintf(stdout, "VGT1,%d,%d,%d,%f\n",i1,i2,vcfd->rec->pos+1,score);
 							}
 
 						}
@@ -394,8 +374,7 @@ void readSites_doIbd(vcfData *vcfd, paramStruct *pars){
 				}
 
 			} while (0);
-			//
-			// TODO XX
+
 		}else{
 			NEVER;
 		}
@@ -822,16 +801,13 @@ double ibdStruct::ibdScore_GL(const int i1, const int i2, vcfData* vcfd, paramSt
 	GLS[7]=exp(i1gl2+i2gl3);
 	GLS[8]=exp(i1gl3+i2gl3);
 
-	// if(i1==0 && i2==1 && site_i==0){
-// fprintf(stderr,"site:%ld i1:%d i2:%d i1gl1:%f i1gl2:%f i1gl3:%f i2gl1:%f i2gl2:%f i2gl3:%f\n",site_i,i1,i2,i1gl1,i1gl2,i1gl3,i2gl1,i2gl1,i1gl3);
-	// }
 
 	double m=0.0;
 	double n=0.0;
 	for(int i=0;i<9;++i){
 		if(GLS[i]!=0.0){
 
-// fprintf(stderr,"site:%ld i1:%d i2:%d i1gl1:%f i1gl2:%f i1gl3:%f i2gl1:%f i2gl2:%f i2gl3:%f\n",site_i,i1,i2,i1gl1,i1gl2,i1gl3,i2gl1,i2gl1,i1gl3);
+// fprintf(stderr,"%ld i1:%d i2:%d i1gl1:%f i1gl2:%f i1gl3:%f i2gl1:%f i2gl2:%f i2gl3:%f\n",site_i,i1,i2,i1gl1,i1gl2,i1gl3,i2gl1,i2gl1,i1gl3);
 
 			m+=GLS[i]*ibdLike_GL(i,vcfd,pars,fa);
 			n+=GLS[i]*nullLike_GL(i,vcfd,pars,fa);
