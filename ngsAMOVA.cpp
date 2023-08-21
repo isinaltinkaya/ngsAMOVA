@@ -16,6 +16,7 @@
 #include "paramStruct.h"
 #include "shared.h"
 #include "vcfReader.h"
+#include "ibd.h"
 
 // TODO check size_t
 using size_t = decltype(sizeof(int));
@@ -23,6 +24,11 @@ using size_t = decltype(sizeof(int));
 void input_VCF(paramStruct *pars) {
     vcfData *vcfd = vcfData_init(pars);
 
+	if(0!=args->doIbd){
+		pars->ibd=new ibdStruct (vcfd,pars);
+		readSites_doIbd(vcfd,pars);
+		return;
+	}
 
 
     metadataStruct *metadata = NULL;

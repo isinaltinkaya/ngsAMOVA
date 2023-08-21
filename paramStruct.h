@@ -5,6 +5,7 @@
 
 typedef struct paramStruct paramStruct;
 typedef struct formulaStruct formulaStruct;
+typedef struct ibdStruct ibdStruct;
 
 typedef struct strArray{
 	char** vals=NULL;
@@ -46,6 +47,10 @@ struct paramStruct {
     int nContigs;
 
     formulaStruct *formula = NULL;
+
+	// ------------
+	ibdStruct *ibd=NULL;
+	// ------------
 
     int nInd;
     int nIndCmb;

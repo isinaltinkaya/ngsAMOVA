@@ -494,7 +494,8 @@
 #define METADATA_DELIMS "\t ,\n"
 
 // dragon
-#define BUF_NSITES 4096
+// #define BUF_NSITES 4096
+#define BUF_NSITES 500000
 #define BUF_NCONTIGS 256
 #define BUF_NTOTSITES 4096
 

@@ -599,9 +599,17 @@ vcfData *vcfData_init(paramStruct *pars) {
         // GT
         vcfd->nGT = 3;
         vcfd->nJointClasses = 9;
-    } else {
-        NEVER;
-    }
+    } else if(1==args->doIbd){
+        // using 3 GL values
+		vcfd->nGT = 3;
+		vcfd->nJointClasses = 9;
+    }else if (2==args->doIbd){
+        // GT
+        vcfd->nGT = 3;
+        vcfd->nJointClasses = 9;
+	}else{
+		NEVER;
+	}
 	
 
     if (1 == args->doDist) {

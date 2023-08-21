@@ -273,7 +273,7 @@ struct get_data {
     }
 
     ~get_data() {
-        FREE(data);
+        FFREE(data);
     }
 };
 
@@ -289,5 +289,8 @@ int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruc
 int get_JointGenotypeMatrix_GT(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, const int block_i);
 
 int GLtoGT_1_JointGenotypeMatrix(vcfData *vcf, paramStruct *pars);
+
+
+int read_site_with_alleles(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2);
 
 #endif  // __VCF_READER__

@@ -1,5 +1,6 @@
 #include "paramStruct.h"
 
+#include "ibd.h"
 #include "dataStructs.h"
 
 
@@ -139,6 +140,14 @@ void paramStruct_destroy(paramStruct *pars) {
 	}
 	FFREE(pars->pidx2inds);
 
+
+	if(pars->ibd!=NULL){
+	for (size_t i=0;i<pars->nIndCmb;++i){
+		FREE(pars->ibd->pairScores[i]);
+	}
+	FREE(pars->ibd->pairScores);
+	delete pars->ibd;
+	}
 
 
     delete pars;
