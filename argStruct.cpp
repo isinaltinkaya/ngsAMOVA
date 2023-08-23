@@ -63,6 +63,8 @@ argStruct *argStruct_get(int argc, char **argv) {
             }
         } else if ((strcasecmp("-doNeighborJoining", arv) == 0) || (strcasecmp("-doPhylo", arv) == 0)) {
             args->doPhylo = atoi(val);
+        } else if ((strcasecmp("--handle-negative-branch", arv) == 0) ){
+		args->handle_neg_branch_length=atoi(val);
 
         } else if (strcasecmp("-doDist", arv) == 0) {
             args->doDist = atoi(val);

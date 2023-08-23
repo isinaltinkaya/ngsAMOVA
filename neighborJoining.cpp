@@ -47,6 +47,7 @@ void njStruct::print_leaf_newick(int node, kstring_t *kbuf) {
             // %
 
             ksprintf(kbuf, ":%f", edgeLengths[edge_i]);
+//ksprintf(kbuf, ":%.*f", (int)DBL_MAXDIG10,edgeLengths[edge_i]);
 
             // there are multiple edges && this is the last edge
             if ((nEdgesPerParentNode[nodeIdxInParents] > 1) && (edge_i == nEdgesPerParentNode[nodeIdxInParents] - 1)) {
@@ -303,24 +304,28 @@ void njIteration(njStruct *nji) {
     // child2:
     // d(min_i2,new_node) = ( d(min_i1,min_i2) + NetDivergence[min_i2] - NetDivergence[min_i1] ) / 2
     double dist2 = min_dist - dist1;
-    
-    // -> handle negative branch lengths
-    //
-    // if a branch length < 0:
-    // set branch length to zero
-    // and transfer the difference to the adjacent branch length (+= - orig_len)
-    // so that the total distance between an adjacent pair of terminal nodes remains unaffected 
-    // (see Kuhner and Felsenstein 1994)
-    if(dist1<0){
-	    WARNING("Observed negative branch length at (%d,%d) distance 1 (%f). Transferring the abs(distance 1) to the adjacent branch distance 2 (before: %f).", nji->items2idx[min_i1][parentNode], nji->items2idx[min_i2][parentNode], dist1, dist2);
-	    dist2 = dist2 - dist1;
-	    dist1=0.0;
-	    ASSERT(dist2>=0.0);
-    }else if(dist2<0){
-	    WARNING("Observed negative branch length at (%d,%d) distance 2 (%f). Transferring the abs(distance 2) to the adjacent branch distance 1 (before: %f).", nji->items2idx[min_i1][parentNode], nji->items2idx[min_i2][parentNode], dist2, dist1);
-	    dist1 = dist1 - dist2;
-	    dist2=0.0;
-	    ASSERT(dist1>=0.0);
+
+    if(args->handle_neg_branch_length==1){
+
+	    
+	    // -> handle negative branch lengths
+	    //
+	    // if a branch length < 0:
+	    // set branch length to zero
+	    // and transfer the difference to the adjacent branch length (+= - orig_len)
+	    // so that the total distance between an adjacent pair of terminal nodes remains unaffected 
+	    // (see Kuhner and Felsenstein 1994)
+	    if(dist1<0){
+		    WARNING("Observed negative branch length at (%d,%d) distance 1 (%f). Transferring the abs(distance 1) to the adjacent branch distance 2 (before: %f).", nji->items2idx[min_i1][parentNode], nji->items2idx[min_i2][parentNode], dist1, dist2);
+		    dist2 = dist2 - dist1;
+		    dist1=0.0;
+		    ASSERT(dist2>=0.0);
+	    }else if(dist2<0){
+		    WARNING("Observed negative branch length at (%d,%d) distance 2 (%f). Transferring the abs(distance 2) to the adjacent branch distance 1 (before: %f).", nji->items2idx[min_i1][parentNode], nji->items2idx[min_i2][parentNode], dist2, dist1);
+		    dist1 = dist1 - dist2;
+		    dist2=0.0;
+		    ASSERT(dist1>=0.0);
+	    }
     }
 
     nji->addEdge(parentNode, min_i1, dist1);

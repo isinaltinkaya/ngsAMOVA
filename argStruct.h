@@ -169,6 +169,9 @@ struct argStruct {
     int doPhylo = 0;
     int doDist = 0;
 
+
+    int handle_neg_branch_length=0;
+
     int printAmovaTable = 0;
     int printDistanceMatrix = 0;
     int printJointGenotypeCountMatrix = 0;
