@@ -44,6 +44,7 @@ argStruct *argStruct_get(int argc, char **argv) {
         //   -doDxy <int> : estimate Dxy
         //   -doPhylo <int> : do neighbor-joining
         //   -doDist <int> : estimate pairwise distance matrix
+		//   -doIbd <int> 	: detect IBD segments
 
         // TODO idea multilayer argument reading using LUTs
         // e.g. `-doAMOVA`  in lut1 -> "args->doAMOVA" in lut2 ->integer in lut3
@@ -68,7 +69,9 @@ argStruct *argStruct_get(int argc, char **argv) {
 
         } else if (strcasecmp("-doDist", arv) == 0) {
             args->doDist = atoi(val);
-        }
+        } else if (strcasecmp("-doIbd", arv) == 0) {
+            args->doIbd = atoi(val);
+		}
 
         // ################################
         // #    INPUT FILES [--in-XXX]    #
@@ -347,6 +350,37 @@ argStruct *argStruct_get(int argc, char **argv) {
 
         else if (strcasecmp("--minInd", arv) == 0)
             args->minInd = atoi(val);
+        else if (strcasecmp("--min-af", arv) == 0){
+            args->min_af = atof(val);
+		}
+
+
+        else if (strcasecmp("--ibdseq-errorprop", arv) == 0){
+			args->ibdseq_errorprop = atof(val);
+		}
+
+        else if (strcasecmp("--ibdseq-errormax", arv) == 0){
+			args->ibdseq_errormax = atof(val);
+		}
+
+        else if (strcasecmp("--ibdseq-minalleles", arv) == 0){
+            args->ibdseq_minalleles = atoi(val);
+			if(args->ibdseq_minalleles<2){
+				ERROR("--ibdseq-minalleles is set to %d. Allowed range of values is 2<value<N");
+			}
+		}
+        else if (strcasecmp("--ibdseq-ibdlod", arv) == 0){
+            args->ibdseq_ibdlod= atof(val);
+			if(args->ibdseq_ibdlod<0){
+				ERROR("--ibdseq-ibdlod must be a positive number.");
+			}
+		}
+        else if (strcasecmp("--ibdseq-ibdtrim", arv) == 0){
+            args->ibdseq_ibdtrim= atof(val);
+			if(args->ibdseq_ibdtrim<0){
+				ERROR("--ibdseq-ibdtrim must be a nonnegative number.");
+			}
+		}
 
         else if (strcasecmp("--em-tole", arv) == 0)
             args->tole = atof(val);
@@ -459,10 +493,12 @@ void argStruct::check_arg_dependencies() {
     //              2: estimate distance matrix from genotypes
     //              3: read distance matrix from file
 
-    if (0 == doDist) {
-        fprintf(stderr, "\n\n-doDist 0: Nothing to do; will exit.\n\n");
-        exit(0);
-    } else if (1 == doDist) {
+	//TODO
+    // if (0 == doDist) {
+        // fprintf(stderr, "\n\n-doDist 0: Nothing to do; will exit.\n\n");
+        // exit(0);
+    // } else
+		if (1 == doDist) {
         LOG("-doDist 1, will estimate distance matrix from genotype likelihoods.");
 
         IO::requireArgFile(in_vcf_fn, "--in-vcf", "-doDist 1");
@@ -481,9 +517,11 @@ void argStruct::check_arg_dependencies() {
         if (0 != printDistanceMatrix) {
             ERROR("-doDist 3 cannot be used with --printDistanceMatrix.\n");
         }
-    } else {
-        ERROR("-doDist %d is not a valid option.", doDist);
-    }
+	}
+		//TODO
+    // } else {
+        // ERROR("-doDist %d is not a valid option.", doDist);
+    // }
 
     //----------------------------------------------------------------------------------//
     // -doAMOVA

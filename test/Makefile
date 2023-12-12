@@ -64,3 +64,18 @@ all:
 	bash -c "diff testwd/test_s9_d1_1K_3gls_mtd1.amova.csv reference/test_s9_d1_1K_mtd1.amova.csv";
 	@printf "\n\n\n";
 #
+	@printf "\n\n\n";
+	@printf "===============================================================================\n";
+	@printf "\n\n\n[TEST 1]: Do ibd with ibdseq method implementation using default ibdseq params to ensure we get the same results as ibdseq\n";
+	../ngsAMOVA --in-vcf test1_ibd_100.vcf --issim 1 -doibd 2 > testwd/test1_ibd_100_doIbd2.ibd;
+	bash -c "diff testwd/test1_ibd_100_doIbd2.ibd reference/test1_ibd_100_doIbd2.ibd";
+#
+	@printf "\n\n\n";
+	@printf "===============================================================================\n";
+	@printf "\n\n\n[TEST 2]: Do ibd with both gl and ibdseq gt method implementations using input file where gls are simulated with an error rate of 0. Compare the gl and gt method (with errorprop0) to ensure we get the same results";
+	../ngsAMOVA --in-vcf test2_ibd_1000_err0.vcf --issim 1 -doibd 2 --ibdseq-errorprop 0 > testwd/test2_ibd_1000_doIbd2_errorprop0.ibd
+	../ngsAMOVA --in-vcf test2_ibd_1000_err0.vcf --issim 1 -doibd 1 > testwd/test2_ibd_1000_doIbd1.ibd
+	bash -c "diff testwd/test2_ibd_1000_doIbd1.ibd testwd/test2_ibd_1000_doIbd2_errorprop0.ibd";
+	bash -c "diff reference/test2_ibd_1000_doIbd1.ibd testwd/test2_ibd_1000_doIbd1.ibd";
+
+

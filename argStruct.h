@@ -168,6 +168,7 @@ struct argStruct {
     int doDxy = 0;
     int doPhylo = 0;
     int doDist = 0;
+	int doIbd = 0;
 
 
     int handle_neg_branch_length=0;
@@ -186,6 +187,24 @@ struct argStruct {
     int minInd = -1;
     double tole = -1;
     int maxEmIter = -1;
+
+
+	// ------------------------------------------------
+	// VCF filters
+	double min_af = 0.0;
+	// ------------------------------------------------
+
+
+
+	// ------------------------------------------------
+	// IBDSEQ method implementation
+	int ibdseq_minalleles=2; 
+	double ibdseq_errormax=0.001; 
+	double ibdseq_errorprop=0.25; 
+	double ibdseq_ibdlod=3.0; 
+	double ibdseq_ibdtrim=0.0;
+
+
 
     int nThreads = 1;
     int seed = -1;
