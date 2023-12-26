@@ -9,6 +9,13 @@
 #include "io.h"
 #include "paramStruct.h"
 
+
+
+// BASES are: { A, C, G, T, BASE_UNOBSERVED }
+// base indices: A:0 C:1 G:2 T:3 BASE_UNOBSERVED:4
+// where BASE_UNOBSERVED is the unobserved allele denoted by <*> or <NON_REF>
+#define BASE_UNOBSERVED 4
+
 /* FORWARD DECLARATIONS ----------------------------------------------------- */
 
 typedef struct vcfData vcfData;
@@ -56,30 +63,47 @@ int bcf_alleles_get_gtidx(char a1, char a2);
 /// @param pars
 /// @return 0 if no index file is required, otherwise return an IDX_* value
 ///         indicating which index file type is required given the input file type
-int require_index(paramStruct *pars);
+int require_index(paramStruct* pars);
 
 /// @brief require_unpack - check if the analysis requires unpacking
 /// @return 0 if no unpacking is required, otherwise return a BCF_UN_* value
 int require_unpack();
 
 struct vcfData {
-    vcfFile *in_fp = NULL;
-    bcf1_t *rec = NULL;
 
-    bcf_hdr_t *hdr = NULL;
+    //TODO use htsFile instead
+    vcfFile* in_fp = NULL;
 
-    hts_idx_t *idx = NULL;
-    hts_itr_t *itr = NULL;
+    bcf1_t* rec = NULL;
+    bcf_hdr_t* hdr = NULL;
 
-    int require_index = 0;
+    hts_idx_t* idx = NULL;
+    tbx_t* tbx = NULL;
+
+    hts_itr_t* itr = NULL;
+
+
+    // @param DO_BCF_UNPACK
+    // determines the level of unpacking needed for the specified analysis
+    // init at vcfData_init()
+    // used at every rec read
+    // @values one of BCF_UN_* values
+    // BCF_UN_STR: up to ALT inclusive
+    // BCF_UN_FLT: up to FILTER
+    // BCF_UN_INFO: up to INFO
+    // BCF_UN_SHR: all shared information
+    // BCF_UN_FMT: unpack format and each sample
+    // BCF_UN_ALL: everything
+    int DO_BCF_UNPACK;
+
 
     int nContigs = 0;
-    int *skipContigs = NULL;
+    int* skipContigs = NULL;
 
     int nInd = 0;
     int nIndCmb = 0;
 
-	lnglStruct* lngl=NULL;
+    lnglStruct* lngl = NULL;
     int nGT = 0;
 
     /*
@@ -88,42 +112,31 @@ struct vcfData {
      */
 
 
-	double **jointGenotypeMatrixGL=NULL;
-	int **jointGenotypeMatrixGT=NULL;
+    double** jointGenotypeMatrixGL = NULL;
+    int** jointGenotypeMatrixGT = NULL;
 
 
+    // index of the unobserved allele in vcfd->rec->d.allele (if any)
+    // set to -1 if no unobserved allele is found in d.alleles
+    int allele_unobserved = -1;
 
 
     // \def jgcd_gt[nBlocks][nIndCmb][nJointClasses]
     //      jgcd_gt[b][i][j] == number of sites where the ith pair of individuals have the jth joint genotype class in block b
-    int ***jgcd_gt = NULL;
+    int*** jgcd_gt = NULL;
 
     // \def pair_shared_nSites[nBlocks][nIndCmb]
     //      pair_shared_nSites[b][i] == number of sites shared between the individuals in the ith pair in block b
-    int **pair_shared_nSites = NULL;
+    int** pair_shared_nSites = NULL;
 
 
-	// \def snSites[nIndCmb]
-	// 		snSites[i] == #sites shared in pair i
-	int* snSites=NULL;
+    // \def snSites[nIndCmb]
+    // 		snSites[i] == #sites shared in pair i
+    int* snSites = NULL;
 
     int nJointClasses = 0;
 
-    // TODO instead of copying the names, just store the order
-    // and access the names via bcf_hdr_id2name(hdr, i) where i is the order of the individual
-    // in the bcf file
-
-    char **indNames = NULL;  // individual names in bcf order
-
-    void addIndNames() {
-        indNames = (char **)malloc(nInd * sizeof(char *));
-        for (size_t i = 0; i < (size_t)nInd; i++) {
-            indNames[i] = NULL;
-            indNames[i] = strdup(hdr->samples[i]);
-        }
-    }
-
-    void _print(FILE *fp);
+    void _print(FILE* fp);
     void _print();
 
     /// @brief records_next - get the next record
@@ -134,37 +147,35 @@ struct vcfData {
     /// @brief unpack - unpack the bcf record based on the value from require_unpack()
     void unpack(void);
 
-    gtData *gts = NULL;
-    glData *gls = NULL;
+    gtData* gts = NULL;
+    glData* gls = NULL;
 
     void site_gts_get(const int a1, const int a2);
 
     /// @brief get_rec_contig_id - get the contig id of the current record
-    const char *get_contig_name(void);
+    const char* get_contig_name(void);
 
     /// @brief get_rec_contig_id(i) - get the contig id of the contig with id i
-    const char *get_contig_name(const int32_t i);
+    const char* get_contig_name(const int32_t i);
 };
 
-vcfData *vcfData_init(paramStruct *pars);
-void vcfData_destroy(vcfData *v);
+vcfData* vcfData_init(paramStruct* pars);
+void vcfData_destroy(vcfData* v);
 
 struct gtData {
-    int32_t *data = NULL;
+    int32_t* data = NULL;
 
     int size_e = 0;
     int n_values = 0;
     int n_missing_ind = 0;
 
-    int ploidy = 0;  // ploidy = n_values / nInd
-
-    gtData();
+    gtData(vcfData* vcfd);
     ~gtData();
 
     /// @brief ind pointer
     /// @param ind_i index of the individual
     /// @return  pointer to the start of the GTs for the given individual
-    int *ind_ptr(const int ind_i);
+    int* ind_ptr(const int ind_i);
 
     /// @brief pass_minInd_threshold - check if the minInd threshold is met
     /// @param nInd number of individuals
@@ -175,7 +186,7 @@ struct gtData {
     /// @param ind_i index of the individual
     /// @return number of derived alleles found in the genotype of the given individual
     /// -1 if the individual is missing
-    int get_n_derived_alleles_ind(const int ind_i, char **site_alleles);
+    int get_n_derived_alleles_ind(const int ind_i, char** site_alleles);
     int get_n_derived_alleles_ind(const int ind_i);
 
     // internal representation: ACGT -> 0123
@@ -188,7 +199,8 @@ struct gtData {
     //      and initialized as {-1, -1, -1. -1}
     //      then alleles set to their corresponding allele type
     // @example if major is G and minor is C, then intbase2state = {1, 0, -1, -1}
-    int *intbase2state = NULL;
+    int* intbase2state = NULL;
+    //TODO DEPREC? use pars->a1a2 or majorminor etc instead?
 
     // \def acgt2alleles[4] == lookup table for converting the internal acgt index to the allele index in rec->d.allele
     //     in the order {A, C, G, T}
@@ -207,7 +219,7 @@ struct gtData {
     //      and initialized as {-1, -1, -1, -1}
     //      then alleles set to their corresponding allele type
     // @example if major is G and minor is C, then alleleidx2state = {1, 0, -1, -1}
-    int *alleleidx2state = NULL;
+    int* alleleidx2state = NULL;
 
     /// @brief get_alleleidx2state - get the allelic state for the given allele index in rec->d->allele (alleleidx)
     /// @param alleleidx index of the allele in rec->d->allele
@@ -220,22 +232,21 @@ struct gtData {
 /// @brief  genotype likelihood data
 ///
 struct glData {
-    float *data = NULL;
+    float* data = NULL;
 
     int size_e = 0;
     int n_values = 0;
     int n_gls = 0;  // number of genotype likelihoods per individual (3 or 10)j
     int n_missing_ind = 0;
 
-    glData(vcfData *vcfd);
+    glData(vcfData* vcfd);
     ~glData();
 
-    int ind_data_isMissing(const int ind_i);
 
     /// @brief ind pointer
     /// @param ind_i index of the individual
     /// @return  pointer to the start of the GLs for the given individual
-    float *ind_ptr(const int ind_i);
+    float* ind_ptr(const int ind_i);
 };
 
 /*
@@ -255,7 +266,8 @@ struct glData {
  */
 template <typename T>
 struct get_data {
-    T *data = NULL;
+    //TODO DEPREC
+    T* data = NULL;
 
     int size_e = 0;
     int n = 0;
@@ -264,7 +276,7 @@ struct get_data {
     int ploidy = 0;  // ploidy = n_values / nInd
     int n_values = 0;
 
-    T &operator[](unsigned i) {
+    T& operator[](unsigned i) {
         return data[i];
     }
 
@@ -273,24 +285,24 @@ struct get_data {
     }
 
     ~get_data() {
-        FFREE(data);
+        FREE(data);
     }
 };
 
-void readSites(vcfData *vcfd, paramStruct *pars, blobStruct *blob);
-void readSites(vcfData *vcfd, paramStruct *pars); 
+void readSites(vcfData* vcfd, paramStruct* pars, blobStruct* blob);
+void readSites(vcfData* vcfd, paramStruct* pars);
 
 // @return
 // 1    skip site
-int site_read_GL(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars);
+int site_read_GL(const int contig_i, const int site_i, vcfData* vcfd, paramStruct* pars);
 
 // return 1 if skipped
 // block_i  -1 if block bootstrapping is disabled
-int get_JointGenotypeMatrix_GT(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, const int block_i);
+int get_JointGenotypeMatrix_GT(const int contig_i, const int site_i, vcfData* vcfd, paramStruct* pars, const int block_i);
 
-int GLtoGT_1_JointGenotypeMatrix(vcfData *vcf, paramStruct *pars);
+int GLtoGT_1_JointGenotypeMatrix(vcfData* vcf, paramStruct* pars);
 
 
-int read_site_with_alleles(const int contig_i, const int site_i, vcfData *vcfd, paramStruct *pars, int *a1, int *a2);
+int read_site_with_alleles(const int site_i, vcfData* vcfd, paramStruct* pars);
 
 #endif  // __VCF_READER__

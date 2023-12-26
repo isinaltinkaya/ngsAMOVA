@@ -1,13 +1,14 @@
 #ifndef __ARG_STRUCT__
 #define __ARG_STRUCT__
 
+
 // #include "io.h"
 #include "shared.h"
 
 typedef struct argStruct argStruct;
 
 extern u_char VERBOSE;
-extern argStruct *args;
+extern argStruct* args;
 
 /*
  * @typedef
@@ -141,37 +142,37 @@ extern argStruct *args;
  */
 
 struct argStruct {
-    char *in_vcf_fn = NULL;
-    char *in_dm_fn = NULL;
-    char *in_mtd_fn = NULL;
-    char *in_dxy_fn = NULL;
 
-    char *out_fnp = NULL;
+    char* in_vcf_fn = NULL;
+    char* in_dm_fn = NULL;
+    char* in_mtd_fn = NULL;
+    char* in_dxy_fn = NULL;
 
-    char *in_region = NULL;
-    char *in_regions_tab_fn = NULL;
-    char *in_regions_bed_fn = NULL;
+    char* out_fnp = NULL;
+
+    char* in_region = NULL;
+    char* in_regions_tab_fn = NULL;
+    char* in_regions_bed_fn = NULL;
 
     int blockSize = 0;
-    char *in_blocks_tab_fn = NULL;
-    char *in_blocks_bed_fn = NULL;
+    char* in_blocks_tab_fn = NULL;
+    char* in_blocks_bed_fn = NULL;
 
-    char *in_majorminor_fn = NULL;
-    char *in_ancder_fn = NULL;
+    char* in_majorminor_fn = NULL;
+    char* in_ancder_fn = NULL;
 
-    char *command = NULL;
+    char* command = NULL;
 
-    char *formula = NULL;
+    char* formula = NULL;
 
     int doAMOVA = 0;
     int doEM = 0;
     int doDxy = 0;
     int doPhylo = 0;
     int doDist = 0;
-	int doIbd = 0;
+    int doIbd = 0;
 
-
-    int handle_neg_branch_length=0;
+    int handle_neg_branch_length = 0;
 
     int printAmovaTable = 0;
     int printDistanceMatrix = 0;
@@ -180,8 +181,8 @@ struct argStruct {
 
     int squareDistance = 1;
 
-    char *dxyGroups = NULL;
-    char *dxyLevels = NULL;
+    char* dxyGroups = NULL;
+    char* dxyLevels = NULL;
 
     // EM
     int minInd = -1;
@@ -189,20 +190,20 @@ struct argStruct {
     int maxEmIter = -1;
 
 
-	// ------------------------------------------------
-	// VCF filters
-	double min_af = 0.0;
-	// ------------------------------------------------
+    // ------------------------------------------------
+    // VCF filters
+    double min_af = 0.0;
+    // ------------------------------------------------
 
 
 
-	// ------------------------------------------------
-	// IBDSEQ method implementation
-	int ibdseq_minalleles=2; 
-	double ibdseq_errormax=0.001; 
-	double ibdseq_errorprop=0.25; 
-	double ibdseq_ibdlod=3.0; 
-	double ibdseq_ibdtrim=0.0;
+    // ------------------------------------------------
+    // IBDSEQ method implementation
+    int ibdseq_minalleles = 2;
+    double ibdseq_errormax = 0.001;
+    double ibdseq_errorprop = 0.25;
+    double ibdseq_ibdlod = 3.0;
+    double ibdseq_ibdtrim = 0.0;
 
 
 
@@ -210,24 +211,22 @@ struct argStruct {
     int seed = -1;
     int nBootstraps = 0;
 
-    int isSim = 0;
-
     void check_arg_dependencies();
 
     // TODO check below
-    char *doDxyStr = NULL;  // TODO maybe not needed
+    char* doDxyStr = NULL;  // TODO maybe not needed
     int windowSize = 0;
-    int *keyCols = NULL;
+    int* keyCols = NULL;
     int printDev = 0;
 
-    void print(FILE *fp);
+    void print(FILE* fp);
     void print();
 };
 
 //
 /// @brief argStruct_get - parse command line arguments
 /// @return pointer to the argStruct structure
-argStruct *argStruct_get(int argc, char **argv);
-void argStruct_destroy(argStruct *arg);
+argStruct* argStruct_get(int argc, char** argv);
+void argStruct_destroy(argStruct* arg);
 
 #endif  // __ARG_STRUCT__

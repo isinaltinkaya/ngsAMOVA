@@ -1,166 +1,186 @@
-####################################################################################################
+###################################################################################################
 # ngsAMOVA Makefile
 ####################################################################################################
 
+default: all
 
-####################################################################################################
-#
-# `make` 		- compile in release mode
-#
-# `make dev` 	- compile in developer mode
-# 				- O0 (no optimization)
-# 				- g (debugging info)
-# 				- Wall (turn on compiler warnings)
-#
-# `make clean` 	- clean up the director
-#
-####################################################################################################
-
-
-####################################################################################################
-# -- BEGIN BLOCK --
-# only run the block if not clean mode
-ifneq (clean,$(filter clean,$(MAKECMDGOALS)))
-#
-
+PROGRAM = ngsAMOVA
 
 # Compiler specs
 CXX ?= g++
 
-# Libraries to link
-LIBS := -lz -lm -lbz2 -llzma -lcurl -lpthread
-$(info [INFO]    Make received LIBS="$(LIBS)")
+
+# No-compile targets
+NO_COMPILE = clean test help
 
 
-$(info [INFO]    Make received CXXFLAGS="$(CXXFLAGS)")
-
-OPTIM_FLAGS := -O3
-
-
-DEVH_VAL=$(shell grep "define DEV [0-2]" dev.h | cut -d " " -f 3)
-
-
-ifeq (dev,$(filter dev,$(MAKECMDGOALS)))
-##
-
-$(info )
-$(info [INFO]    Compiling in developer mode)
-$(info _________________________________________________________________________________)
-
-DEV_MODE=1
-OPTIM_FLAGS := -O0
-
-CXXFLAGS += -g -Wall $(OPTIM_FLAGS) 
-
-$(info )
-$(info [INFO]    Make updated CXXFLAGS="$(CXXFLAGS)")
-$(info )
-
-else
-##
-
-
-DEV_MODE=0
-$(info _________________________________________________________________________________)
-$(info )
-$(info [INFO]    Compiling in release mode)
-$(info _________________________________________________________________________________)
-$(info )
-
-OPTIM_FLAGS := -O3
-CXXFLAGS += $(OPTIM_FLAGS)
-
-endif
-##
-
-ifneq ($(DEVH_VAL),$(DEV_MODE))
-##
-
-$(info [INFO]    Changing DEV in dev.h from $(DEVH_VAL) to $(DEV_MODE))
-$(shell sed -i "1s/define DEV $(DEVH_VAL)/define DEV $(DEV_MODE)/g" dev.h)
-
-endif
-##
-
-#
-endif
-# -- END BLOCK --
-####################################################################################################
-
-dev: all
-
+VAL_ADD_CRYPTOLIB = -lcrypto
+VAL_NOTADD_CRYPTOLIB =
 
 ####################################################################################################
-## [cryptolib check]
-# - check if cryptolib is available to link
-CRYPTO_TRY=$(shell echo 'int main(){}'|$(CXX) -x c++ - -lcrypto 2>/dev/null -o /dev/null; echo $$?)
+# [BLOCK START]
+# ony run if make will try compiling, i.e. not NO_COMPILE
 
-ifeq "$(CRYPTO_TRY)" "0"
-$(info [INFO]    Crypto library is available to link; adding -lcrypto to LIBS)
-LIBS += -lcrypto
+ifeq (,$(filter $(NO_COMPILE),$(MAKECMDGOALS))) #1
 
-else
-
-$(info [INFO]    Crypto library is not available to link; will not use -lcrypto)
-endif
+$(info ________________________________________________________________________________)
+$(info )
+$(info [INFO]    Checking for library availability)
+$(info )
 
 
+## -> [cryptolib availability check]
+CRYPTO_TRY = $(shell echo 'int main(){}'|$(CXX) -x c++ - -lcrypto 2>/dev/null -o /dev/null; echo $$?)
 
-####################################################################################################
-## [htslib source check]
-# - to define htslib source, use `make HTSSRC=/path/to/htslib`
-# - to use the systemwide htslib installation, use `make HTSSRC=systemwide`
-# - to use the submodule, just use `make`
+ifeq "$(CRYPTO_TRY)" "0" #1_1
+
+$(info [INFO]    -> Crypto library is available to link)
+THIS_CRYPTOLIB = $(VAL_ADD_CRYPTOLIB)
+
+else  #1_1
+
+# CRYPTO_TRY != 0
+
+THIS_CRYPTOLIB = $(VAL_NOTADD_CRYPTOLIB)
+
+$(info [INFO]    -> Crypto library is not available to link)
+endif #1_1
+
+## -> [htslib source check]
 
 #if htslib source is defined
-ifdef HTSSRC
+ifdef HTSSRC #1_2
 
 #if hts source is set to systemwide
-ifeq ($(HTSSRC),systemwide)
+ifeq ($(HTSSRC),systemwide) #1_2_1
 
-$(info [INFO]    HTSSRC set to systemwide; assuming systemwide installation)
-LIBHTS := -lhts
+$(info [INFO]    -> HTSSRC set to systemwide; assuming systemwide installation)
+THIS_LIBHTS := -lhts
 
-else
+else #1_2_1
 
 #if hts source path is given
 # Adjust $(HTSSRC) to point to your top-level htslib directory
-$(info [INFO]    HTSSRC defined: $(HTSSRC))
-CPPFLAGS += -I"$(realpath $(HTSSRC))"
-LIBHTS := $(realpath $(HTSSRC))/libhts.a
+$(info [INFO]    -> HTSSRC is defined as $(HTSSRC))
+CPPFLAGS := -I$(realpath $(HTSSRC))
+THIS_LIBHTS := $(realpath $(HTSSRC))/libhts.a
 
-endif
+endif #1_2_1
 
 #if htssrc not defined
-else
+else #1_2
 
-$(info [INFO]    HTSSRC not defined; using htslib submodule)
-$(info [INFO]       `make HTSSRC=/path/to/htslib` to build using a local htslib installation)
-$(info [INFO]       `make HTSSRC=systemwide` to build using the systemwide htslib installation)
+$(info [INFO]    -> HTSSRC is not defined; using htslib submodule)
 
 HTSSRC := $(realpath $(CURDIR)/htslib)
-CPPFLAGS += -I"$(HTSSRC)"
-LIBHTS := $(HTSSRC)/libhts.a
-
+CPPFLAGS := -I$(HTSSRC)
+THIS_LIBHTS := $(HTSSRC)/libhts.a
 
 all: .activate_module
 
-endif
+endif #1_2
+
+DEV_FLAGS = -g -Wall 
+OPTIM_OFF = -O0
+OPTIM_ON = -O3
+
+PREV_BUILD_MODE := $(shell grep -oP 'define DEV \K\d' dev.h)
 
 
-.PHONY: .activate_module
-.activate_module:
-	$(info [INFO]    Activating htslib submodule)
-	git submodule update --init --recursive
-	$(MAKE) -C $(HTSSRC)
+ifeq (dev,$(filter dev,$(MAKECMDGOALS))) #1_3
 
-	
+THIS_BUILD_MODE := 1
+
+ifeq (1,$(PREV_BUILD_MODE)) #1_3_1
+
+# PREV_BUILD_MODE is 1
+BUILD_MODE_CHANGED := 0
+
+else #1_3_1
+
+# PREV_BUILD_MODE is 0
+BUILD_MODE_CHANGED := 1
+
+endif #1_3_1
+else #1_3
+
+THIS_BUILD_MODE := 0
+
+ifeq (1,$(PREV_BUILD_MODE)) #1_3_2
+# PREV_BUILD_MODE is 1
+
+BUILD_MODE_CHANGED := 1
+
+else #1_3_2
+# PREV_BUILD_MODE is 0
+
+BUILD_MODE_CHANGED := 0
+
+endif #1_3_2
+endif #1_3
+
+
+
+
+ifeq (1,$(BUILD_MODE_CHANGED)) #1_4
+$(info [INFO]    -> Build mode has been changed)
+$(info [INFO]    -> Updating dev.h)
+$(shell sed -i 's/define DEV $(PREV_BUILD_MODE)/define DEV $(THIS_BUILD_MODE)/' dev.h)
+endif #1_4
+
+
+
+ifeq (dev,$(filter dev,$(MAKECMDGOALS))) #1_5
+
+$(info )
+$(info ________________________________________________________________________________)
+$(info )
+$(info [INFO]    Compiling in developer mode)
+$(info )
+
+
+OPTIM_FLAGS := $(OPTIM_OFF)
+THIS_MODE_FLAGS := $(DEV_FLAGS) $(OPTIM_FLAGS)
+
+
+else #1_5
+
+$(info )
+$(info ________________________________________________________________________________)
+$(info )
+$(info [INFO]    Compiling in release mode)
+$(info )
+
+OPTIM_FLAGS := $(OPTIM_ON)
+THIS_MODE_FLAGS := $(OPTIM_FLAGS)
+
+endif #1_5
+
+
+$(info [INFO]    -> CXXFLAGS was "$(CXXFLAGS)")
+CXXFLAGS += $(THIS_MODE_FLAGS)
+$(info [INFO]    -> Updated CXXFLAGS to "$(CXXFLAGS)")
+
+
+$(info [INFO]    -> LIBS was "$(LIBS)")
+LIBS := -lz -lm -lbz2 -llzma -lcurl -lpthread $(THIS_LIBHTS) $(THIS_CRYPTOLIB)
+$(info [INFO]    -> Updated LIBS to "$(LIBS)")
+
+$(info )
+$(info ________________________________________________________________________________)
+$(info )
+
+endif #1
+
+# [BLOCK END]
+####################################################################################################
+
 
 ####################################################################################################
 
 
+dev: all
 
-PROGRAM = ngsAMOVA
 all: $(PROGRAM)
 
 CXXSRC := $(wildcard *.cpp)
@@ -177,36 +197,131 @@ OBJ := $(CXXSRC:.cpp=.o)
 # Dependency files
 DEP := $(OBJ:.o=.d)
 
-LIBS := $(LIBHTS) $(LIBS)
-
 -include $(DEP)
+
+
 FLAGS := $(CPPFLAGS) $(CXXFLAGS)
 
-$(PROGRAM): $(OBJ) 
-	$(CXX) -o $(PROGRAM) *.o $(LIBS)
 
-%.o: %.cpp
+# Versioning
+VERSION = v0.1
+
+ifneq ($(wildcard .git),)
+VERSION := $(VERSION)-$(shell git describe --always)
+endif
+
+VERSIONH = version.h
+
+$(VERSIONH):
+	$(if $(wildcards version.h),$(if $(findstring "$(VERSION)",$(shell cat version.h)),,$(shell echo '#define ngsAMOVA_VERSION "$(VERSION)"' > version.h)), $(shell echo '#define ngsAMOVA_VERSION "$(VERSION)"' > version.h))
+
+
+# Build info
+BUILDH = build.h
+
+$(BUILDH): 
+	$(info [INFO]    Writing build info to build.h)
+	$(shell echo '#define ngsAMOVA_MAKE_CXX ("$(CXX)")' > build.h)
+	$(shell echo '#define ngsAMOVA_MAKE_LIBS ("$(LIBS)")' >> build.h)
+	$(shell echo '#define ngsAMOVA_MAKE_FLAGS ("$(FLAGS)")' >> build.h)
+	$(shell echo '#define ngsAMOVA_MAKE_HTSSRC ("$(HTSSRC)")' >> build.h)
+	$(shell echo '#define ngsAMOVA_MAKE_CXXFLAGS ("$(CXXFLAGS)")' >> build.h)
+	$(shell echo '#define ngsAMOVA_MAKE_CPPFLAGS ("$(CPPFLAGS)")' >> build.h)
+
+
+$(PROGRAM): $(OBJ) 
+	@echo "________________________________________________________________________________"
+	@echo ""
+	@echo "[INFO]    -> Finishing up"
+	$(CXX) -o $@ $^ $(LIBS) 
+	@echo "________________________________________________________________________________"
+	@echo ""
+	@echo "[FINISHED]    $(PROGRAM) is now ready to use!"
+	@echo "              Full path to the program: $(CURDIR)/$(PROGRAM)"
+	@echo ""
+	@echo "              To get started, run:"
+	@echo "              $(CURDIR)/$(PROGRAM) -h"
+	@echo "              or:"
+	@echo "              ./$(PROGRAM) -h"
+	@echo ""
+
+%.o: %.cpp $(VERSIONH) $(BUILDH) 
+	@echo ""
+	@echo "________________________________________________________________________________"
+	@echo ""
+	@echo "[INFO]    -> Compiling $*.cpp"
 	$(CXX) -c  $(FLAGS) $*.cpp
 	$(CXX) -MM $(FLAGS) $*.cpp >$*.d
 
 
 
-
 ####################################################################################################
 ## [clean]
-# - clean up the directory, use `make clean`
+# - clean up the directory
+
 .PHONY: clean
 clean:
-	$(RM) $(OBJ) $(DEP) $(PREP) $(ASM) $(PROGRAM)
+	$(RM) $(OBJ) $(DEP) $(PREP) $(ASM) $(VERSIONH) $(BUILDH) $(PROGRAM)
 
 ####################################################################################################
-
 ## [test]
-# - to run unit tests, use `make test`
-# - tests are defined in test/Makefile
+# - run unit tests
+
 .PHONY: test
 test:
-	$(MAKE) -C test
+	bash test/runTests.sh
 
 ####################################################################################################
+## [.activate_module]
 
+.PHONY: .activate_module
+
+.activate_module:
+	@echo "________________________________________________________________________________"
+	@echo ""
+	@echo "[INFO]	Activating HTSlib submodule"
+	@echo ""
+	git submodule update --init --recursive
+	$(MAKE) -C $(HTSSRC)
+	@echo "[INFO]	-> HTSlib submodule is now activated"
+	@echo ""
+	@echo "________________________________________________________________________________"
+	
+
+####################################################################################################
+## [help]
+
+.PHONY: help
+help:
+	@echo ""
+	@echo "----------------------------------------"
+	@echo " Program: $(PROGRAM)"
+	@echo " Version: $(VERSION)"
+	@echo " License: GNU GPLv3.0"
+	@echo "----------------------------------------"
+	@echo ""
+	@echo " Usage:"
+	@echo "   make [target] [FLAG=value...]"
+	@echo ""
+	@echo " Targets:"
+	@echo "   help    - Print this help message"
+	@echo "   dev     - Compile in developer/debug mode (activates flags: -g -Wall -O0)"
+	@echo "   clean   - Clean up the directory"
+	@echo "   test    - Run unit tests"
+	@echo ""
+	@echo " Flags:"
+	@echo "   HTSSRC  - Specifies the source of HTSlib."
+	@echo "       Values:"
+	@echo "       (empty)          - Use the HTSlib submodule [default]"
+	@echo "       systemwide       - Use the systemwide HTSlib installation"
+	@echo "       /path/to/htslib  - Use the HTSlib installation at /path/to/htslib"
+	@echo ""
+	@echo " Examples:"
+	@echo "   make                         - Compile in release mode using HTSlib submodule"
+	@echo "   make HTSSRC=/path/to/htslib  - Compile in release mode using /path/to/htslib"
+	@echo "   make dev HTSSRC=systemwide   - Compile in developer mode using the systemwide HTSlib installation"
+	@echo ""
+	@echo " Note: If no values are provided for HTSSRC, CXX, CXXFLAGS, or LIBS, defaults will be used."
+	@echo ""
+
+####################################################################################################

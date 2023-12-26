@@ -1,3 +1,6 @@
+#ifndef __DEV__
+#define __DEV__
+
 #define DEV 0
 
 #if 1 == DEV
@@ -6,81 +9,100 @@
 // DEV MODE: ON
 // ----------------------------------------------------------------------------->
 
-/* -> DEVELOPMENT/DEBUGGING MACROS --------------------------------------------*/
-// enabled if `make dev` is used
+/* -> DEVELOPMENT/DEBUGGING MACROS
+ * --------------------------------------------*/
+ // enabled if `make DEV=1` is used
 
-// print the binary representation of a char with additional info
-//      with info about where this function is called from,name of the variable
-//       and the value of the variable
-#define PRINT_CHAR_BITS(a) \
-    printf("\n\n[DEV][PRINT_CHAR_BITS]\t%s:%d: var:%s, val:%d, 0b:%d%d%d%d%d%d%d%d\n\n", __FILE__, __LINE__, #a, a, !!((a << 0) & 0x80), !!((a << 1) & 0x80), !!((a << 2) & 0x80), !!((a << 3) & 0x80), !!((a << 4) & 0x80), !!((a << 5) & 0x80), !!((a << 6) & 0x80), !!((a << 7) & 0x80));
 
-/*
- * Macro:[PRINT_BITKEY]
- * @param a - variable to print
- * @param nBits - number of bits to print
- * prints the binary representation of a variable
- * @note in LSb order for little endian systems
- */
-#define PRINT_BITKEY(a, nBits)                                                   \
-    fprintf(stderr, "\nBitkey of var:%s, val:%ld, nBits:%d, 0b:", #a, a, nBits); \
-    for (int i = 0; i < nBits; i++) {                                            \
-        int bit;                                                                 \
-        BITCHECK(a, i) ? bit = 1 : bit = 0;                                      \
-        fprintf(stderr, "%d", bit);                                              \
-        if (i == nBits - 1)                                                      \
-            fprintf(stderr, "\n");                                               \
-    }
+ /*
+  * Macro:[DEVASSERT]
+  * Works the same way as ASSERT in shared.h, but only run if dev mode is on
+  */
+#define DEVASSERT_EXPAND(x) x
+#define DEVASSERT(expr)                                                        \
+do {                                                                    \
+	if (!(DEVASSERT_EXPAND(expr))){ \
+		fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d) %s\n*******\n", \
+				__FILE__, __FUNCTION__, __LINE__, #expr);               \
+		exit(1);                                                        \
+	}                                                                   \
+} while (0);
 
-/*
- * Macro:[DEVRUN]
- * @param run - a function to run
- * prints the output of a function to stderr with additional info
- */
-#define DEVRUN(run)                                                                                   \
-    fprintf(stderr, "\n\n\n*****************************************\n");                             \
-    fprintf(stderr, "*** [DEV]<%s:%d>\n\n-> Running:\t%s\n\n-> Output:\t", __FILE__, __LINE__, #run); \
-    run;                                                                                              \
-    fprintf(stderr, "\n*****************************************\n\n\n");
 
-/*
- * Macro:[DEVRUNX]
- * @param run - a function to run
- * just like DEVRUN, but exits after running
- */
-#define DEVRUNX(run)                                                                                  \
-    fprintf(stderr, "\n\n\n*****************************************\n");                             \
-    fprintf(stderr, "*** [DEV]<%s:%d>\n\n-> Running:\t%s\n\n-> Output:\t", __FILE__, __LINE__, #run); \
-    run;                                                                                              \
-    fprintf(stderr, "\n*****************************************\n\n\n");                             \
-    exit(1);
 
-/*
- *
- * Macro:[DEVPRINT]
- * @param msg - a message to print
- * @details uses variable arguments to print a message to stderr with additional info
- * @usage DEVPRINT("Hello %s", "World");
- * @note VAARGS may not work on all compilers, so only defined in dev mode
- */
+ /*
+  * Macro:[DEVRUN]
+  * @param expr - an expression to run
+  * runs a given expression if DEV==1
+  */
+#define DEVRUN_EXPAND(x) x
+#define DEVRUN(expr)                                                            \
+    do {                                                                       \
+DEVRUN_EXPAND(expr);       \
+    } while (0);
+
+ /*
+  * Macro:[DEVRUNV]
+  * @param expr - an expression to run
+  * same as macro:DEVRUN but verbose (prints what it is running)
+  */
+#define DEVRUNV(expr)                                                            \
+    do {                                                                       \
+        fprintf(stderr, "\n\n\n*****************************************\n");  \
+        fprintf(stderr, "*** [DEV]<%s:%d>\n\n-> Running:\t%s\n\n-> Output:\t", \
+                __FILE__, __LINE__, #expr);                                     \
+DEVRUN_EXPAND(expr);       \
+        fprintf(stderr, "\n*****************************************\n\n\n");  \
+    } while (0);
+
+  /*
+   * Macro:[DEVRUNVX]
+   * @param expr - an expression to run
+   * same as DEVRUNV, but exits after running
+   */
+#define DEVRUNVX(expr)                                                            \
+    do {                                                                       \
+        fprintf(stderr, "\n\n\n*****************************************\n");  \
+        fprintf(stderr, "*** [DEV]<%s:%d>\n\n-> Running:\t%s\n\n-> Output:\t", \
+                __FILE__, __LINE__, #expr);                                     \
+DEVRUN_EXPAND(expr);       \
+        fprintf(stderr, "\n*****************************************\n\n\n");  \
+        exit(1);                                                               \
+    } while (0);
+
+   /*
+    *
+    * Macro:[DEVPRINT]
+    * @param msg - a message to print
+    * @details uses variable arguments to print a message to stderr with additional
+    * info
+    * @usage DEVPRINT("Hello %s", "World");
+    * @note VAARGS may not work on all compilers, so only defined in dev mode
+    */
 #define DEVPRINT(msg, ...)                                                    \
-    fprintf(stderr, "\n\n\n*****************************************\n");     \
-    fprintf(stderr, "*** [DEV]<%s:%d>\n\n-> Message:\t", __FILE__, __LINE__); \
-    fprintf(stderr, msg, ##__VA_ARGS__);                                      \
-    fprintf(stderr, "\n*****************************************\n\n\n");
+    do {                                                                      \
+        fprintf(stderr, "\n\n\n*****************************************\n"); \
+        fprintf(stderr, "*** [DEV]<%s:%d>\n\n-> Message:\t", __FILE__,        \
+                __LINE__);                                                    \
+        fprintf(stderr, msg, ##__VA_ARGS__);                                  \
+        fprintf(stderr, "\n*****************************************\n\n\n"); \
+    } while (0);
 
-/*
- *
- * Macro:[DEVPRINTX]
- * @param msg - a message to print
- * @details same as DEVPRINT, but exits after printing
- */
+    /*
+     *
+     * Macro:[DEVPRINTX]
+     * @param msg - a message to print
+     * @details same as macro:DEVPRINT, but exits after printing
+     */
 #define DEVPRINTX(msg, ...)                                                   \
-    fprintf(stderr, "\n\n\n*****************************************\n");     \
-    fprintf(stderr, "*** [DEV]<%s:%d>\n\n-> Message:\t", __FILE__, __LINE__); \
-    fprintf(stderr, msg, ##__VA_ARGS__);                                      \
-    fprintf(stderr, "\n*****************************************\n\n\n");     \
-    exit(1);
+    do {                                                                      \
+        fprintf(stderr, "\n\n\n*****************************************\n"); \
+        fprintf(stderr, "*** [DEV]<%s:%d>\n\n-> Message:\t", __FILE__,        \
+                __LINE__);                                                    \
+        fprintf(stderr, msg, ##__VA_ARGS__);                                  \
+        fprintf(stderr, "\n*****************************************\n\n\n"); \
+        exit(1);                                                              \
+    } while (0);
 
 #else
 
@@ -88,22 +110,19 @@
 // DEV MODE: OFF
 // ----------------------------------------------------------------------------->
 
-#define DEVRUN(run) \
-    do {            \
-    } while (0)
+#define DEVASSERT(expr)
 
-#define DEVRUNX(run) \
-    do {             \
-    } while (0)
+#define DEVRUN(expr) 
 
-#define DEVPRINT(msg, ...) \
-    do {                   \
-    } while (0)
+#define DEVRUNX(expr)
 
-#define DEVPRINTX(msg, ...) \
-    do {                    \
-    } while (0)
+#define DEVPRINT(msg, ...)
+
+#define DEVPRINTX(msg, ...)
+
 
 #endif
 
 /* --------------------------------------------------------------------------*/
+
+#endif  // __DEV__

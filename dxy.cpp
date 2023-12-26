@@ -3,10 +3,10 @@
 #include "dataStructs.h"
 
 dxyStruct::dxyStruct() {
-    dxyArr = (double *)malloc(_dxyArr * sizeof(double));
-    groupNames1 = (char **)malloc(_dxyArr * sizeof(char *));
-    groupNames2 = (char **)malloc(_dxyArr * sizeof(char *));
-    levelNames = (char **)malloc(_dxyArr * sizeof(char *));
+    dxyArr = (double*)malloc(_dxyArr * sizeof(double));
+    groupNames1 = (char**)malloc(_dxyArr * sizeof(char*));
+    groupNames2 = (char**)malloc(_dxyArr * sizeof(char*));
+    levelNames = (char**)malloc(_dxyArr * sizeof(char*));
 
     for (size_t i = 0; i < _dxyArr; i++) {
         dxyArr[i] = -1;
@@ -27,23 +27,16 @@ dxyStruct::~dxyStruct() {
 
 void dxyStruct::expand() {
     _dxyArr = _dxyArr * 2;
-    double *rc_dxyArr = (double *)realloc(dxyArr, _dxyArr * sizeof(double));
-    CREALLOC(dxyArr);
-
-    char **rc_groupNames1 = (char **)realloc(groupNames1, _dxyArr * sizeof(char *));
-    CREALLOC(groupNames1);
-
-    char **rc_groupNames2 = (char **)realloc(groupNames2, _dxyArr * sizeof(char *));
-    CREALLOC(groupNames2);
-
-    char **rc_levelNames = (char **)realloc(levelNames, _dxyArr * sizeof(char *));
-    CREALLOC(levelNames);
+    REALLOC(dxyArr, _dxyArr, double*);
+    REALLOC(groupNames1, _dxyArr, char**);
+    REALLOC(groupNames2, _dxyArr, char**);
+    REALLOC(levelNames, _dxyArr, char**);
     for (size_t i = _dxyArr / 2; i < _dxyArr; i++) {
         dxyArr[i] = -1;
     }
 }
 
-int dxyStruct::estimate_dxy_2groups(const int local_idx1, const int local_idx2, const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars) {
+int dxyStruct::estimate_dxy_2groups(const int local_idx1, const int local_idx2, const int lvl, distanceMatrixStruct* dMS, metadataStruct* mtd, paramStruct* pars) {
     double dxy = 0.0;
 
     if (local_idx1 == local_idx2) {
@@ -82,7 +75,7 @@ int dxyStruct::estimate_dxy_2groups(const int local_idx1, const int local_idx2, 
     return 1;
 }
 
-int dxyStruct::estimate_dxy_allGroupsAtLevel(const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars) {
+int dxyStruct::estimate_dxy_allGroupsAtLevel(const int lvl, distanceMatrixStruct* dMS, metadataStruct* mtd, paramStruct* pars) {
     int n_vals = 0;
     int nGroupsAtLevel = mtd->nGroupsAtLevel[lvl];
     for (int g1 = 0; g1 < nGroupsAtLevel - 1; g1++) {
@@ -93,7 +86,7 @@ int dxyStruct::estimate_dxy_allGroupsAtLevel(const int lvl, distanceMatrixStruct
     return n_vals;
 }
 
-int dxyStruct::estimate_dxy_allLevels(distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars) {
+int dxyStruct::estimate_dxy_allLevels(distanceMatrixStruct* dMS, metadataStruct* mtd, paramStruct* pars) {
     int n_vals = 0;
     for (int lvl = 0; lvl < mtd->nLevels; lvl++) {
         if (mtd->nGroupsAtLevel[lvl] == 1) {
@@ -107,26 +100,26 @@ int dxyStruct::estimate_dxy_allLevels(distanceMatrixStruct *dMS, metadataStruct 
 
 // dxy file format: comma-separated list of pairwise dxy values
 // group1Name,group2Name,levelID,dxyValue
-dxyStruct *dxyStruct_read(paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd) {
-    dxyStruct *dxyS = new dxyStruct();
+dxyStruct* dxyStruct_read(paramStruct* pars, distanceMatrixStruct* dMS, metadataStruct* mtd) {
+    dxyStruct* dxyS = new dxyStruct();
 
     // number of lines in dxy file == number of pairwise dxy values
     int n_vals = 0;
 
-    char *line = (char *)malloc(FGETS_BUF_SIZE);
+    char* line = (char*)malloc(FGETS_BUF_SIZE);
     ASSERT(line != NULL);
 
     char dxy_buf[FGETS_BUF_SIZE];
 
-    FILE *in_dxy_fp = fopen(args->in_dxy_fn, "r");
+    FILE* in_dxy_fp = fopen(args->in_dxy_fn, "r");
 
     // skip the first line (header)
-	ASSERT(fgets(dxy_buf, FGETS_BUF_SIZE, in_dxy_fp)!=NULL); // error or unexpected eof; so handle both with assert
+    ASSERT(fgets(dxy_buf, FGETS_BUF_SIZE, in_dxy_fp) != NULL); // error or unexpected eof; so handle both with assert
 
     int col = 0;
     while (fgets(dxy_buf, FGETS_BUF_SIZE, in_dxy_fp)) {
         col = 0;
-        char *tok = strtok(dxy_buf, ",");
+        char* tok = strtok(dxy_buf, ",");
         while (tok != NULL) {
             while (n_vals >= (int)dxyS->_dxyArr) {
                 dxyS->expand();
@@ -182,7 +175,7 @@ void dxyStruct::print_struct() {
 void dxyStruct::print() {
     fprintf(stderr, "\n[INFO]\t-> Writing the dxy results to %s.\n", outFiles->out_dxy_fs->fn);
     outFiles->out_dxy_fs->kbuf = kbuf_init();
-    kstring_t *kbuf = outFiles->out_dxy_fs->kbuf;
+    kstring_t* kbuf = outFiles->out_dxy_fs->kbuf;
     ksprintf(kbuf, "group1_id,group2_id,hierarchical_level,dxy\n");
 
     ASSERT(nDxy > 0);
@@ -192,8 +185,8 @@ void dxyStruct::print() {
     outFiles->out_dxy_fs->kbuf_write();
 }
 
-dxyStruct *dxyStruct_get(paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd) {
-    dxyStruct *dxyS = new dxyStruct();
+dxyStruct* dxyStruct_get(paramStruct* pars, distanceMatrixStruct* dMS, metadataStruct* mtd) {
+    dxyStruct* dxyS = new dxyStruct();
 
     int n_vals = 0;
 
@@ -203,11 +196,11 @@ dxyStruct *dxyStruct_get(paramStruct *pars, distanceMatrixStruct *dMS, metadataS
 
         // check if the argument value is a list of group names == check if it has a comma
         if (strchr(args->doDxyStr, ',') != NULL) {
-            char **dxyGroups = (char **)malloc(1 * sizeof(char *));
+            char** dxyGroups = (char**)malloc(1 * sizeof(char*));
             int nDxyGroups = 0;
 
             // split the string into a list of group names
-            char *dxyGroup = strtok(args->doDxyStr, ",");
+            char* dxyGroup = strtok(args->doDxyStr, ",");
 
             int group_exists = 0;
             while (dxyGroup != NULL) {
@@ -216,8 +209,7 @@ dxyStruct *dxyStruct_get(paramStruct *pars, distanceMatrixStruct *dMS, metadataS
                 for (int i = 0; i < mtd->nLevels; i++) {
                     for (int j = 0; j < mtd->nGroupsAtLevel[i]; j++) {
                         if (strcmp(dxyGroup, mtd->groupNames[i][j]) == 0) {
-                            char **rc_dxyGroups = (char **)realloc(dxyGroups, (nDxyGroups + 1) * sizeof(char *));
-                            CREALLOC(dxyGroups);
+                            REALLOC(dxyGroups, ((nDxyGroups + 1)), char**);
 
                             dxyGroups[nDxyGroups] = strdup(dxyGroup);
                             nDxyGroups++;

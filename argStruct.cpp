@@ -5,21 +5,21 @@
 //  default: 0 (verbose mode off)
 u_char VERBOSE = 0;
 
-argStruct *args = NULL;
+argStruct* args = NULL;
 
 // TODO check multiple of same argument
 /// @brief argStruct_get read command line arguments
 /// @param argc
 /// @param argv
 /// @return pointer to argStruct
-argStruct *argStruct_get(int argc, char **argv) {
+argStruct* argStruct_get(int argc, char** argv) {
     args = new argStruct;
 
     while (*argv) {
         // TODO check if given files exist here
 
-        char *arv = *argv;
-        char *val = *(++argv);
+        char* arv = *argv;
+        char* val = *(++argv);
 
         if (val == NULL) {
             print_help(stdout);
@@ -44,7 +44,7 @@ argStruct *argStruct_get(int argc, char **argv) {
         //   -doDxy <int> : estimate Dxy
         //   -doPhylo <int> : do neighbor-joining
         //   -doDist <int> : estimate pairwise distance matrix
-		//   -doIbd <int> 	: detect IBD segments
+        //   -doIbd <int> 	: detect IBD segments
 
         // TODO idea multilayer argument reading using LUTs
         // e.g. `-doAMOVA`  in lut1 -> "args->doAMOVA" in lut2 ->integer in lut3
@@ -64,14 +64,14 @@ argStruct *argStruct_get(int argc, char **argv) {
             }
         } else if ((strcasecmp("-doNeighborJoining", arv) == 0) || (strcasecmp("-doPhylo", arv) == 0)) {
             args->doPhylo = atoi(val);
-        } else if ((strcasecmp("--handle-negative-branch", arv) == 0) ){
-		args->handle_neg_branch_length=atoi(val);
+        } else if ((strcasecmp("--handle-negative-branch", arv) == 0)) {
+            args->handle_neg_branch_length = atoi(val);
 
         } else if (strcasecmp("-doDist", arv) == 0) {
             args->doDist = atoi(val);
         } else if (strcasecmp("-doIbd", arv) == 0) {
             args->doIbd = atoi(val);
-		}
+        }
 
         // ################################
         // #    INPUT FILES [--in-XXX]    #
@@ -317,7 +317,7 @@ argStruct *argStruct_get(int argc, char **argv) {
                 int verbose_val = atoi(val) - 1;
                 if (verbose_val > MAX_VERBOSE_LEVEL) {
                     verbose_val = MAX_VERBOSE_LEVEL;
-                    fprintf(stderr, "\n[WARNING]\tVerbosity level is set to %d, which is greater than the maximum verbosity level %d. Setting verbosity level to MAX.\n", verbose_val, MAX_VERBOSE_LEVEL);
+                    fprintf(stderr, "\n[WARN]\tVerbosity level is set to %d, which is greater than the maximum verbosity level %d. Setting verbosity level to MAX.\n", verbose_val, MAX_VERBOSE_LEVEL);
                 }
                 BITSET(VERBOSE, verbose_val);
             } else {
@@ -350,37 +350,35 @@ argStruct *argStruct_get(int argc, char **argv) {
 
         else if (strcasecmp("--minInd", arv) == 0)
             args->minInd = atoi(val);
-        else if (strcasecmp("--min-af", arv) == 0){
+        else if (strcasecmp("--min-af", arv) == 0) {
             args->min_af = atof(val);
-		}
+        }
 
 
-        else if (strcasecmp("--ibdseq-errorprop", arv) == 0){
-			args->ibdseq_errorprop = atof(val);
-		}
+        else if (strcasecmp("--ibdseq-errorprop", arv) == 0) {
+            args->ibdseq_errorprop = atof(val);
+        }
 
-        else if (strcasecmp("--ibdseq-errormax", arv) == 0){
-			args->ibdseq_errormax = atof(val);
-		}
+        else if (strcasecmp("--ibdseq-errormax", arv) == 0) {
+            args->ibdseq_errormax = atof(val);
+        }
 
-        else if (strcasecmp("--ibdseq-minalleles", arv) == 0){
+        else if (strcasecmp("--ibdseq-minalleles", arv) == 0) {
             args->ibdseq_minalleles = atoi(val);
-			if(args->ibdseq_minalleles<2){
-				ERROR("--ibdseq-minalleles is set to %d. Allowed range of values is 2<value<N");
-			}
-		}
-        else if (strcasecmp("--ibdseq-ibdlod", arv) == 0){
-            args->ibdseq_ibdlod= atof(val);
-			if(args->ibdseq_ibdlod<0){
-				ERROR("--ibdseq-ibdlod must be a positive number.");
-			}
-		}
-        else if (strcasecmp("--ibdseq-ibdtrim", arv) == 0){
-            args->ibdseq_ibdtrim= atof(val);
-			if(args->ibdseq_ibdtrim<0){
-				ERROR("--ibdseq-ibdtrim must be a nonnegative number.");
-			}
-		}
+            if (args->ibdseq_minalleles < 2) {
+                ERROR("--ibdseq-minalleles is set to %d. Allowed range of values is 2<value<N", args->ibdseq_minalleles);
+            }
+        } else if (strcasecmp("--ibdseq-ibdlod", arv) == 0) {
+            args->ibdseq_ibdlod = atof(val);
+            if (args->ibdseq_ibdlod < 0) {
+                ERROR("--ibdseq-ibdlod must be a positive number.");
+            }
+        } else if (strcasecmp("--ibdseq-ibdtrim", arv) == 0) {
+            args->ibdseq_ibdtrim = atof(val);
+            if (args->ibdseq_ibdtrim < 0) {
+                ERROR("--ibdseq-ibdtrim must be a nonnegative number.");
+            }
+        }
 
         else if (strcasecmp("--em-tole", arv) == 0)
             args->tole = atof(val);
@@ -393,13 +391,12 @@ argStruct *argStruct_get(int argc, char **argv) {
             args->nBootstraps = (int)atof(val);
         }
 
-        else if (strcasecmp("--maxEmIter", arv) == 0)
+        else if (strcasecmp("--maxEmIter", arv) == 0) {
             args->maxEmIter = atoi(val);
 
-        else if (strcasecmp("--isSim", arv) == 0) {
-            args->isSim = atoi(val);
+        }
 
-        } else if (strcasecmp("--nThreads", arv) == 0 || strcasecmp("-P", arv) == 0) {
+        else if (strcasecmp("--nThreads", arv) == 0 || strcasecmp("-P", arv) == 0) {
             args->nThreads = atoi(val);
 
         } else if (strcasecmp("-h", arv) == 0 || strcasecmp("--help", arv) == 0) {
@@ -434,249 +431,284 @@ void argStruct::check_arg_dependencies() {
     }
 
     if (minInd == 0) {
-        ARGLOG("minInd is set to 0; will use sites with data for all individuals.")
+        LOG("minInd is set to 0; will use sites with data for all individuals.")
 
     } else if (minInd == -1) {
-        ARGLOG("minInd is not set. Default is setting minInd to 2; will use sites that is nonmissing for both individuals in each individual pair.")
-        minInd = 2;
-    } else if (minInd == 2) {
-        ARGLOG("minInd is set to 2; will use sites that is nonmissing for both individuals in a pair.")
-    } else if (minInd == 1 || minInd < -1) {
-        ERROR("minInd is set to %d. Minimum value allowed for minInd is 2.", minInd);
-    }
+            LOG("minInd is not set. Default is setting minInd to 2; will use sites that is nonmissing for both individuals in each individual pair.")
+                minInd = 2;
+        } else if (minInd == 2) {
+            LOG("minInd is set to 2; will use sites that is nonmissing for both individuals in a pair.")
+        } else if (minInd == 1 || minInd < -1) {
+                ERROR("minInd is set to %d. Minimum value allowed for minInd is 2.", minInd);
+            }
 
-    if (in_vcf_fn == NULL && in_dm_fn == NULL) {
-        fprintf(stderr, "\n[ERROR] Must supply either --in-vcf <VCF_file> or --in-dm <Distance_matrix_file>.\n");
-        exit(1);
-    } else if (in_vcf_fn != NULL && in_dm_fn != NULL) {
-        fprintf(stderr, "\n[ERROR] Cannot use --in-vcf %s and --in-dm %s at the same time.\n", in_vcf_fn, in_dm_fn);
-        exit(1);
-    }
+            if (in_vcf_fn == NULL && in_dm_fn == NULL) {
+                fprintf(stderr, "\n[ERROR] Must supply either --in-vcf <VCF_file> or --in-dm <Distance_matrix_file>.\n");
+                exit(1);
+            } else if (in_vcf_fn != NULL && in_dm_fn != NULL) {
+                fprintf(stderr, "\n[ERROR] Cannot use --in-vcf %s and --in-dm %s at the same time.\n", in_vcf_fn, in_dm_fn);
+                exit(1);
+            }
 
-    if (printDistanceMatrix != 0) {
-        fprintf(stderr, "\n[INFO]\t-> -printMatrix %d; will print distance matrix\n", printDistanceMatrix);
-    }
+            if (printDistanceMatrix != 0) {
+                fprintf(stderr, "\n[INFO]\t-> -printMatrix %d; will print distance matrix\n", printDistanceMatrix);
+            }
 
-    // if data is from in_dm_fn (distance matrix file) can only use -doDist 3
-    if (NULL != in_dm_fn && doDist != 3) {
-        ERROR("--in-dm <DM_file> requires -doDist 3.");
-    }
+            // if data is from in_dm_fn (distance matrix file) can only use -doDist 3
+            if (NULL != in_dm_fn && doDist != 3) {
+                ERROR("--in-dm <DM_file> requires -doDist 3.");
+            }
 
-    if (seed == -1) {
-        seed = time(NULL);
-        srand48(seed);
-        ARGLOG("Seed is not defined, will use current time as random seed for the random number generator. Seed is now set to: %d.\n", seed);
-        WARNING("Used the current time as random seed for random number generator. For parallel runs this may cause seed collisions. Hence, it is recommended to set the seed manually using `--seed <INTEGER>`.");
-    } else {
-        srand48(seed);
-        ARGLOG("Seed is set to: %d.\n", seed);
-    }
+            if (seed == -1) {
+                seed = time(NULL);
+                srand48(seed);
+                LOG("Seed is not defined, will use current time as random seed for the random number generator. Seed is now set to: %d.\n", seed);
+                WARN("Used the current time as random seed for random number generator. For parallel runs this may cause seed collisions. Hence, it is recommended to set the seed manually using `--seed <INTEGER>`.");
+            } else {
+                srand48(seed);
+                LOG("Seed is set to: %d.\n", seed);
+            }
 
-    if (in_dm_fn != NULL) {
-        if (doEM != 0) {
-            fprintf(stderr, "\n[ERROR]\t-doEM %i cannot be used with -in_dm %s.", doEM, in_dm_fn);
-            exit(1);
-        }
-    }
+            if (in_dm_fn != NULL) {
+                if (doEM != 0) {
+                    fprintf(stderr, "\n[ERROR]\t-doEM %i cannot be used with -in_dm %s.", doEM, in_dm_fn);
+                    exit(1);
+                }
+            }
 
-    if (windowSize != 0) {
-        fprintf(stderr, "\n[INFO]\t-> -windowSize %d; will use sliding windows of size %d\n", windowSize, windowSize);
-        NEVER;
-    }
+            if (windowSize != 0) {
+                fprintf(stderr, "\n[INFO]\t-> -windowSize %d; will use sliding windows of size %d\n", windowSize, windowSize);
+                NEVER;
+            }
 
-    //----------------------------------------------------------------------------------//
-    // -doDist      defines the method to estimate distance matrix
-    //              default: 0
-    //
-    //              0: do not estimate distance matrix
-    //              1: estimate distance matrix from genotype likelihoods
-    //              2: estimate distance matrix from genotypes
-    //              3: read distance matrix from file
+            //----------------------------------------------------------------------------------//
+            // -doDist      defines the method to estimate distance matrix
+            //              default: 0
+            //
+            //              0: do not estimate distance matrix
+            //              1: estimate distance matrix from genotype likelihoods
+            //              2: estimate distance matrix from genotypes
+            //              3: read distance matrix from file
 
-	//TODO
-    // if (0 == doDist) {
-        // fprintf(stderr, "\n\n-doDist 0: Nothing to do; will exit.\n\n");
-        // exit(0);
-    // } else
-		if (1 == doDist) {
-        LOG("-doDist 1, will estimate distance matrix from genotype likelihoods.");
+            //TODO
+            // if (0 == doDist) {
+                // fprintf(stderr, "\n\n-doDist 0: Nothing to do; will exit.\n\n");
+                // exit(0);
+            // } else
+            if (1 == doDist) {
+                LOG("-doDist 1, will estimate distance matrix from genotype likelihoods.");
 
-        IO::requireArgFile(in_vcf_fn, "--in-vcf", "-doDist 1");
+                IO::requireArgFile(in_vcf_fn, "--in-vcf", "-doDist 1");
 
-        if (0 == doEM) {
-            ERROR("-doDist 1 requires -doEM != 0.\n");
-        }
-        squareDistance = 1;
-    } else if (2 == doDist) {
-        IO::requireArgFile(in_vcf_fn, "--in-vcf", "-doDist 2");
-        squareDistance = 1;
-    } else if (3 == doDist) {
-        IO::requireArgFile(in_dm_fn, "--in-dm", "-doDist 3");
-        squareDistance = 0;
+                if (0 == doEM) {
+                    ERROR("-doDist 1 requires -doEM != 0.\n");
+                }
+                squareDistance = 1;
+            } else if (2 == doDist) {
+                IO::requireArgFile(in_vcf_fn, "--in-vcf", "-doDist 2");
+                squareDistance = 1;
+            } else if (3 == doDist) {
+                IO::requireArgFile(in_dm_fn, "--in-dm", "-doDist 3");
+                squareDistance = 0;
 
-        if (0 != printDistanceMatrix) {
-            ERROR("-doDist 3 cannot be used with --printDistanceMatrix.\n");
-        }
-	}
-		//TODO
-    // } else {
-        // ERROR("-doDist %d is not a valid option.", doDist);
-    // }
+                if (0 != printDistanceMatrix) {
+                    ERROR("-doDist 3 cannot be used with --printDistanceMatrix.\n");
+                }
+            }
+            //TODO
+        // } else {
+            // ERROR("-doDist %d is not a valid option.", doDist);
+        // }
 
-    //----------------------------------------------------------------------------------//
-    // -doAMOVA
-    //             default: 0
-    //             0: do not perform AMOVA
-    //             1: perform AMOVA
+        //----------------------------------------------------------------------------------//
+        // -doAMOVA
+        //             default: 0
+        //             0: do not perform AMOVA
+        //             1: perform AMOVA
 
-    if (0 == doAMOVA) {
-        //
-        if (NULL != in_mtd_fn) {
-            WARNING("-m/--metadata is provided but no analysis requires it; will ignore -m/--metadata.");
-        }
+            if (0 == doAMOVA) {
+                //
+                if (NULL != in_mtd_fn) {
+                    WARN("-m/--metadata is provided but no analysis requires it; will ignore -m/--metadata.");
+                }
 
-        if (NULL != formula) {
-            WARNING("-f/--formula is provided but no analysis requires it; will ignore -f/--formula.");
-        }
+                if (NULL != formula) {
+                    WARN("-f/--formula is provided but no analysis requires it; will ignore -f/--formula.");
+                }
 
-    } else if (1 == doAMOVA) {
-        IO::requireArgStr(formula, "--formula/-f", "-doAMOVA 1");
-        IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doAMOVA 1");
+            } else if (1 == doAMOVA) {
+                IO::requireArgStr(formula, "--formula/-f", "-doAMOVA 1");
+                IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doAMOVA 1");
 
-        if (0 == doDist) {
-            ERROR("-doAMOVA %d requires -doDist != 0.", doAMOVA);
-        }
-    } else {
-        ERROR("-doAMOVA %d is not a valid option.", doAMOVA);
-    }
+                if (0 == doDist) {
+                    ERROR("-doAMOVA %d requires -doDist != 0.", doAMOVA);
+                }
+            } else {
+                ERROR("-doAMOVA %d is not a valid option.", doAMOVA);
+            }
 
-    if (0 == doEM) {
-        //
-        if (-1 != tole) {
-            ERROR("-tole %e requires -doEM != 0.", tole);
-        }
-        if (-1 != maxEmIter) {
-            ERROR("--maxEmIter %d requires -doEM != 0.", maxEmIter);
-        }
-    } else if (1 == doEM) {
-        if (-1 == tole) {
-            tole = 1e-6;
-            LOG("-tole is not set, setting to default value %e. Will terminate the EM algorithm if the change in the log-likelihood is less than %e.", tole, tole);
-        } else {
-            LOG("-tole is set to %e. Will terminate the EM algorithm if the change in the log-likelihood is less than %e.", tole, tole);
-        }
+            if (0 == doEM) {
+                //
+                if (-1 != tole) {
+                    ERROR("-tole %e requires -doEM != 0.", tole);
+                }
+                if (-1 != maxEmIter) {
+                    ERROR("--maxEmIter %d requires -doEM != 0.", maxEmIter);
+                }
+            } else if (1 == doEM) {
+                if (-1 == tole) {
+                    tole = 1e-6;
+                    LOG("-tole is not set, setting to default value %e. Will terminate the EM algorithm if the change in the log-likelihood is less than %e.", tole, tole);
+                } else {
+                    LOG("-tole is set to %e. Will terminate the EM algorithm if the change in the log-likelihood is less than %e.", tole, tole);
+                }
 
-        if (-1 == maxEmIter) {
-            maxEmIter = 500;
-            LOG("-maxEmIter is not set, setting to default value %d. Will terminate the EM algorithm if the number of iterations exceed %d.", maxEmIter, maxEmIter);
-        } else {
-            LOG("-maxEmIter is set to %d. Will terminate the EM algorithm if the number of iterations exceed %d.", maxEmIter, maxEmIter);
-        }
+                if (-1 == maxEmIter) {
+                    maxEmIter = 500;
+                    LOG("-maxEmIter is not set, setting to default value %d. Will terminate the EM algorithm if the number of iterations exceed %d.", maxEmIter, maxEmIter);
+                } else {
+                    LOG("-maxEmIter is set to %d. Will terminate the EM algorithm if the number of iterations exceed %d.", maxEmIter, maxEmIter);
+                }
 
-    } else {
-        ERROR("-doEM %d is not a valid option.", doEM);
-    }
+            } else {
+                ERROR("-doEM %d is not a valid option.", doEM);
+            }
 
-    //----------------------------------------------------------------------------------//
-    // -doDxy
-    //              default: 0
-    //              0: do not estimate dxy
-    //              1: estimate dxy from the distance matrix for all groups in each hierarchical level defined in the metadata file (requires: method to obtain distance matrix, metadata file)
-    //              2: estimate dxy from the distance matrix for the groups in metadata specified by the user via --dxy-groups (requires: method to obtain distance matrix, metadata file, --dxy-groups)
-    //              3: estimate dxy from the distance matrix for the groups in the hierarchical level specified by the user via --dxy-levels (requires: method to obtain distance matrix, metadata file, --dxy-levels)
+            //----------------------------------------------------------------------------------//
+            // -doDxy
+            //              default: 0
+            //              0: do not estimate dxy
+            //              1: estimate dxy from the distance matrix for all groups in each hierarchical level defined in the metadata file (requires: method to obtain distance matrix, metadata file)
+            //              2: estimate dxy from the distance matrix for the groups in metadata specified by the user via --dxy-groups (requires: method to obtain distance matrix, metadata file, --dxy-groups)
+            //              3: estimate dxy from the distance matrix for the groups in the hierarchical level specified by the user via --dxy-levels (requires: method to obtain distance matrix, metadata file, --dxy-levels)
 
-    // : (doDist 1,2 or in_ft == IN_DM), (--metadata-file <METADATA_FILE> or doDxyStr)
-    if (0 == doDxy) {
-        //
-    } else if (1 == doDxy) {
-        IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doDxy 1");
-        if (0 == doDist) {
-            ERROR("-doDxy %d requires -doDist != 0.", doDxy);
-        }
-    } else if (2 == doDxy) {
-        IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doDxy 2");
-        IO::requireArgStr(dxyGroups, "--dxy-groups", "-doDxy 2");
-        if (0 == doDist) {
-            ERROR("-doDxy %d requires -doDist != 0.", doDxy);
-        }
-    } else if (3 == doDxy) {
-        IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doDxy 3");
-        IO::requireArgStr(dxyLevels, "--dxy-levels", "-doDxy 3");
-        if (0 == doDist) {
-            ERROR("-doDxy %d requires -doDist != 0.", doDxy);
-        }
-    } else {
-        ERROR("-doDxy %d is not a valid option.", doDxy);
-    }
+            // : (doDist 1,2 or in_ft == IN_DM), (--metadata-file <METADATA_FILE> or doDxyStr)
+            if (0 == doDxy) {
+                //
+            } else if (1 == doDxy) {
+                IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doDxy 1");
+                if (0 == doDist) {
+                    ERROR("-doDxy %d requires -doDist != 0.", doDxy);
+                }
+            } else if (2 == doDxy) {
+                IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doDxy 2");
+                IO::requireArgStr(dxyGroups, "--dxy-groups", "-doDxy 2");
+                if (0 == doDist) {
+                    ERROR("-doDxy %d requires -doDist != 0.", doDxy);
+                }
+            } else if (3 == doDxy) {
+                IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doDxy 3");
+                IO::requireArgStr(dxyLevels, "--dxy-levels", "-doDxy 3");
+                if (0 == doDist) {
+                    ERROR("-doDxy %d requires -doDist != 0.", doDxy);
+                }
+            } else {
+                ERROR("-doDxy %d is not a valid option.", doDxy);
+            }
 
-    //----------------------------------------------------------------------------------//
-    // -doPhylo
-    //              default: 0
-    //              0: do not run phylogenetic tree construction
-    //              1: construct phylogenetic tree using neighbor joining with individuals as leaf nodes
-    //              2: construct phylogenetic tree using neighbor joining with groups as leaf nodes (requires: `-doDxy`)
+            //----------------------------------------------------------------------------------//
+            // -doPhylo
+            //              default: 0
+            //              0: do not run phylogenetic tree construction
+            //              1: construct phylogenetic tree using neighbor joining with individuals as leaf nodes
+            //              2: construct phylogenetic tree using neighbor joining with groups as leaf nodes (requires: `-doDxy`)
 
-    if (0 == doPhylo){
-        //
-    } else if (1 == doPhylo) {
-        if (0 == doDist && NULL == in_dm_fn) {
-            ERROR("-doPhylo %d requires a distance matrix (either -doDist <int> or --in-dm <file>).", doPhylo);
-        }
-    } else if (2 == doPhylo) {
-        if (0 == doDxy && NULL == in_dxy_fn) {
-            ERROR("-doPhylo %d requires a dxy matrix (either -doDxy <int> or --in-dxy <file>).", doPhylo);
-        }
-    } else {
-        ERROR("-doPhylo %d is not a valid option.", doPhylo);
-    }
+            if (0 == doPhylo) {
+                //
+            } else if (1 == doPhylo) {
+                if (0 == doDist && NULL == in_dm_fn) {
+                    ERROR("-doPhylo %d requires a distance matrix (either -doDist <int> or --in-dm <file>).", doPhylo);
+                }
+            } else if (2 == doPhylo) {
+                if (0 == doDxy && NULL == in_dxy_fn) {
+                    ERROR("-doPhylo %d requires a dxy matrix (either -doDxy <int> or --in-dxy <file>).", doPhylo);
+                }
+            } else {
+                ERROR("-doPhylo %d is not a valid option.", doPhylo);
+            }
 
-    //  else if (doPhylo == 1 && doDist == 0 && in_dm_fn == NULL) {
-    //     fprintf(stderr, "\n[ERROR]\t-> -doPhylo %i requires -doDist 1 or --in-dm <file>.", doPhylo);
-    //     exit(1);
-    // }
-    // if (doPhylo == 2 && doDxy == 0 && in_dxy_fn == NULL) {
-    //     fprintf(stderr, "\n[ERROR]\t-> -doPhylo %i requires -doDxy 1 or --in-dxy <file>.", doPhylo);
-    //     exit(1);
-    // }
+            //  else if (doPhylo == 1 && doDist == 0 && in_dm_fn == NULL) {
+            //     fprintf(stderr, "\n[ERROR]\t-> -doPhylo %i requires -doDist 1 or --in-dm <file>.", doPhylo);
+            //     exit(1);
+            // }
+            // if (doPhylo == 2 && doDxy == 0 && in_dxy_fn == NULL) {
+            //     fprintf(stderr, "\n[ERROR]\t-> -doPhylo %i requires -doDxy 1 or --in-dxy <file>.", doPhylo);
+            //     exit(1);
+            // }
 
-    // TODO using regions with block definitions
-    // TODO handle empty blocks
-    if (blockSize > 0 && in_blocks_tab_fn != NULL) {
-        fprintf(stderr, "\n[ERROR]\t-> `--block-size` cannot be used with `--in-blocks-tab`.\n");
-        exit(1);
-    }
-    if (blockSize > 0 && in_blocks_bed_fn != NULL) {
-        fprintf(stderr, "\n[ERROR]\t-> `--block-size` cannot be used with `--in-blocks-bed`.\n");
-        exit(1);
-    }
+            // TODO using regions with block definitions
+            // TODO handle empty blocks
+            if (blockSize > 0 && in_blocks_tab_fn != NULL) {
+                fprintf(stderr, "\n[ERROR]\t-> `--block-size` cannot be used with `--in-blocks-tab`.\n");
+                exit(1);
+            }
+            if (blockSize > 0 && in_blocks_bed_fn != NULL) {
+                fprintf(stderr, "\n[ERROR]\t-> `--block-size` cannot be used with `--in-blocks-bed`.\n");
+                exit(1);
+            }
 
-    if (in_blocks_tab_fn != NULL || in_blocks_bed_fn != NULL) {
-        if (in_regions_tab_fn != NULL || in_regions_bed_fn != NULL || in_region != NULL) {
-            fprintf(stderr, "\n[ERROR]\tBlock definitions cannot be used with region definitions, yet.\n");
-            exit(1);
-        }
-    }
+            if (in_blocks_tab_fn != NULL || in_blocks_bed_fn != NULL) {
+                if (in_regions_tab_fn != NULL || in_regions_bed_fn != NULL || in_region != NULL) {
+                    fprintf(stderr, "\n[ERROR]\tBlock definitions cannot be used with region definitions, yet.\n");
+                    exit(1);
+                }
+            }
 }
 
-void argStruct_destroy(argStruct *args) {
-    FFREE(args->in_vcf_fn);
-    FFREE(args->in_dm_fn);
-    FFREE(args->in_mtd_fn);
-    FFREE(args->in_dxy_fn);
+void argStruct_destroy(argStruct* args) {
 
-    FFREE(args->in_region);
-    FFREE(args->in_regions_tab_fn);
-    FFREE(args->in_regions_bed_fn);
-    FFREE(args->in_blocks_tab_fn);
-    FFREE(args->in_blocks_bed_fn);
+    // FFREE(args->in_vcf_fn);
+    if (args->in_vcf_fn != NULL) {
+        FREE(args->in_vcf_fn);
+    }
 
-    FFREE(args->out_fnp);
+    // FFREE(args->in_dm_fn);
+    if (args->in_dm_fn != NULL) {
+        FREE(args->in_dm_fn);
+    }
 
-    FFREE(args->formula);
-    FFREE(args->keyCols);
-    FFREE(args->doDxyStr);
+    // FFREE(args->in_mtd_fn);
+    if (args->in_mtd_fn != NULL) {
+        FREE(args->in_mtd_fn);
+    }
 
-    // check below
+    if (args->in_dxy_fn != NULL) {
+        FREE(args->in_dxy_fn);
+    }
+
+    if (args->in_region != NULL) {
+        FREE(args->in_region);
+    }
+    if (args->in_regions_tab_fn != NULL) {
+        FREE(args->in_regions_tab_fn);
+    }
+
+    if (args->in_regions_bed_fn != NULL) {
+        FREE(args->in_regions_bed_fn);
+    }
+
+    if (args->in_blocks_tab_fn != NULL) {
+        FREE(args->in_blocks_tab_fn);
+    }
+
+    if (args->in_blocks_bed_fn != NULL) {
+        FREE(args->in_blocks_bed_fn);
+    }
+
+
+    FREE(args->out_fnp);
+
+    if (args->formula != NULL) {
+        FREE(args->formula);
+    }
+
+    if (args->keyCols != NULL) {
+        FREE(args->keyCols);
+    }
+    if (args->doDxyStr != NULL) {
+        FREE(args->doDxyStr);
+    }
+
 
     delete args;
 }
@@ -686,13 +718,13 @@ void argStruct::print() {
     if (NULL == outFiles->out_args_fs->kbuf) {
         outFiles->out_args_fs->kbuf = kbuf_init();
     }
-    kstring_t *kbuf = outFiles->out_args_fs->kbuf;
+    kstring_t* kbuf = outFiles->out_args_fs->kbuf;
 
     kputs("\nCommand: ", kbuf);
     // ksprintf(kbuf, "%s", args->command);
 }
 
-void argStruct::print(FILE *fp) {
+void argStruct::print(FILE* fp) {
     // fprintf(fp, "\nCommand: %s", args->command);//TODO
     fprintf(fp, "\n");
 }

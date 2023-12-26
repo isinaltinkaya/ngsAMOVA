@@ -19,8 +19,8 @@ typedef struct metadataStruct metadataStruct;
 typedef struct vcfData vcfData;
 typedef struct indPairThreads indPairThreads;
 
-void spawnThreads_pairEM(paramStruct *pars, vcfData *vcfd, distanceMatrixStruct *distMatrix);
-void setInputFileType(paramStruct *pars, int inFileType);
+void spawnThreads_pairEM(paramStruct* pars, vcfData* vcfd, distanceMatrixStruct* distMatrix);
+void setInputFileType(paramStruct* pars, int inFileType);
 /* -------------------------------------------------------------------------- */
 
 struct lnglStruct {
@@ -30,19 +30,20 @@ struct lnglStruct {
      * genotype likelihoods in natural log
      * for each individual at each site
      *
-     * nGT=10 == store all 10 values per individual
-     * nGT=3 == store only 3 values per individual
-     * 		corresponding to (0,0), (0,1), (1,1)
+     *
      */
-	// d[size1][size2]
-	double** d=NULL;
-	size_t size1=-1;
-	size_t size2=-1;
+     // d[size1][size2]
+    double** d = NULL;
 
-	lnglStruct(const int nGt, const int nInd);
-	~lnglStruct();
+    // size1 follows pars->nSites_arrays_size
+    size_t size1 = -1;
 
-	void expand();
+    size_t size2 = -1;
+
+    lnglStruct(const int nGt, const int nInd);
+    ~lnglStruct();
+
+    void expand();
 
 };
 
@@ -57,13 +58,13 @@ struct formulaStruct {
 
     // the formula in the raw text form as it is in the argument
     // e.g. "Individual ~ Region/Population/Subpopulation"
-    char *formula = NULL;
+    char* formula = NULL;
 
     // @formulaTokens
     // array of tokens in the formula
     // e.g. formula: "Individual ~ Region/Population/Subpopulation"
     // 		formulaTokens = {"Individual","Region","Population","Subpopulation"}
-    char **formulaTokens;
+    char** formulaTokens;
 
     // @formulaTokenIdx[nTokens]
     //
@@ -73,36 +74,36 @@ struct formulaStruct {
     // e.g. metadata file header: "Individual,Population,Etc,Region,Subpopulation"
     // 		formula: "Individual ~ Region/Population/Subpopulation"
     // 		formulaTokenIdx = {0,3,1,2}
-    int *formulaTokenIdx;
+    int* formulaTokenIdx;
 
-    void print(FILE *fp);
+    void print(FILE* fp);
 
     /// match the given metadata token with formula tokens
     /// @param mtd_tok 		- metadata token to match
     /// @param mtd_col_idx	- index of the metadata column containing mtd_tok
     /// @return int			- index if found any match, -1 otherwise
-    int setFormulaTokenIdx(const char *mtd_tok, const int mtd_col_idx);
+    int setFormulaTokenIdx(const char* mtd_tok, const int mtd_col_idx);
 
     // TODO deprec
     //  @brief shrink - shrink the size of the arrays defined with default max values to the actual size needed
     void shrink();
 };
-formulaStruct *formulaStruct_get(const char *formula);
-void formulaStruct_validate(formulaStruct *fos, const int nLevels);
-void formulaStruct_destroy(formulaStruct *fos);
+formulaStruct* formulaStruct_get(const char* formula);
+void formulaStruct_validate(formulaStruct* fos, const int nLevels);
+void formulaStruct_destroy(formulaStruct* fos);
 
-distanceMatrixStruct *distanceMatrixStruct_get(paramStruct *pars, vcfData *vcfd, char **indNames, blobStruct *blob);
+distanceMatrixStruct* distanceMatrixStruct_get(paramStruct* pars, vcfData* vcfd, char** indNames, blobStruct* blob);
 
 // prepare distance matrix using genotype likelihoods
-void get_distanceMatrix_GL(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, blobStruct *blob);
+void get_distanceMatrix_GL(paramStruct* pars, distanceMatrixStruct* distanceMatrix, vcfData* vcfd, blobStruct* blob);
 
 // prepare distance matrix using genotypes
 // prepare distance matrix using genotypes + construct block bootstrapping distance matrix at the same time
-void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, blobStruct *blob);
+void get_distanceMatrix_GT(paramStruct* pars, distanceMatrixStruct* distanceMatrix, vcfData* vcfd, blobStruct* blob);
 
 /// trim spaces from the beginning and end of a char* (inplace)
 /// @param str - char* to trim
-void trimSpaces(char *str);
+void trimSpaces(char* str);
 
 
 /**
@@ -116,14 +117,14 @@ void trimSpaces(char *str);
  *
  */
 struct distanceMatrixStruct {
-    double *M = NULL;
+    double* M = NULL;
 
     // idx2inds[pair_index][0] = index of the first individual in the pair
     // idx2inds[pair_index][1] = index of the second individual in the pair
-    int **idx2inds = NULL;
+    int** idx2inds = NULL;
 
     // inds2idx[i1][i2] = index of the pair (i1,i2) in the distance matrix
-    int **inds2idx = NULL;
+    int** inds2idx = NULL;
 
     // char **itemLabels = NULL;
 
@@ -131,7 +132,7 @@ struct distanceMatrixStruct {
     int nIndCmb = 0;
     int isSquared = -1;
 
-    distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquared_, char **itemLabels_);
+    distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquared_, char** itemLabels_);
     ~distanceMatrixStruct();
 
     void print();
@@ -142,7 +143,7 @@ struct distanceMatrixStruct {
 /// @param in_dm_fp input distance matrix file
 /// @param pars paramStruct parameters
 /// @return distance matrix double*
-distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars);
+distanceMatrixStruct* distanceMatrixStruct_read(paramStruct* pars);
 
 struct metadataStruct {
     // total number of individuals in the entire dataset
@@ -151,7 +152,7 @@ struct metadataStruct {
     // number of hierarchical levels excluding the lowest level (i.e. individual)
     int nLevels = 0;
 
-    int **nIndPerStrata = NULL;
+    int** nIndPerStrata = NULL;
 
     // Individual to Group Bitset Association
     // --------------------------------------
@@ -176,16 +177,16 @@ struct metadataStruct {
     // pop1 = 10100 // member of reg1
     // pop2 = 10010 // member of reg1
     // pop3 = 01001 // member of reg2
-    uint64_t *groupKeys = NULL;
+    uint64_t* groupKeys = NULL;
 
     // indKeys[nInd]
     // for ind3, which is from reg1 and pop2
     // ind3's key = pop2's key stored at ind3's index
-    uint64_t *indKeys = NULL;
+    uint64_t* indKeys = NULL;
 
     // nGroups[nLevels]
     // access: nGroups[h_i] = number of groups at level h_i
-    int *nGroupsAtLevel = NULL;
+    int* nGroupsAtLevel = NULL;
 
     // (lvl, g) -> lvlg_idx lut
     // lvl = hierarchical level
@@ -196,23 +197,23 @@ struct metadataStruct {
     // lvlgToIdx[lvl][g] = idx
     // idxToLvlg[idx][0] = lvl
     // idxToLvlg[idx][1] = g
-    int **lvlgToIdx = NULL;
-    int **idxToLvlg = NULL;
+    int** lvlgToIdx = NULL;
+    int** idxToLvlg = NULL;
 
     // indNames[i] = name of individual i (char *)
-    char **indNames = NULL;
+    char** indNames = NULL;
 
     // groupNames[max_n_levels][max_n_groups_per_level][max_group_name_length]
     // access: groupNames[0][0] = "group1"
-    char ***groupNames = NULL;
+    char*** groupNames = NULL;
 
     // levelNames[nLevels+1] = {individual, level1, level2, ..., level_n}
     // names of levels in the hierarchy (e.g. region, population, subpopulation, individual)
     // NOTE: levelNames[0] = "individual", therefore the indexing is shifted by +1
-    char **levelNames = NULL;
+    char** levelNames = NULL;
 
     // lvlStartPos[lvl] = index of the first bit in the group key corresponding to the group at level lvl
-    int *lvlStartPos = NULL;
+    int* lvlStartPos = NULL;
 
     // [nBits] total number of bits used in the construction of individual keys
     // e.g. metadata table
@@ -244,7 +245,7 @@ struct metadataStruct {
     /// @param lvl:		hierarchical level of the group to add
     /// @param g:	group index at level lvl of the group to add
     /// @param name:	name of the group to add
-    void addGroup(int lvl, int g, char *name);
+    void addGroup(int lvl, int g, char* name);
 
     void setGroupKey(int bit_i, int lvl, int g, int prev_bit) {
         // fprintf(stderr, "setting the key for group %s at level %d (bit %d) with parent %d (bit %d) with key %ld (bit %d)\n", groupNames[lvl][g], lvl, bit_i, lvl-1, prev_bit, groupKeys[prev_bit], prev_bit);
@@ -273,7 +274,7 @@ struct metadataStruct {
     /// @brief addLevelName - add a level name to the metadata structure
     /// @param levelName  - name of the level
     /// @param level_idx  - index of the level
-    void addLevelName(const char *levelName, const int level_idx);
+    void addLevelName(const char* levelName, const int level_idx);
 
     // discard the bits lower than the level at interest
     // e.g.  (lvl3 \isSubsetOf lvl2 \isSubsetOf lvl1)
@@ -352,23 +353,23 @@ struct metadataStruct {
     /// @brief whichLevel - get the 1-based level index of a given level name
     /// @param levelName  - name of the level
     /// @return index of the level, throw an error if the level name is not found
-    int whichLevel1(const char *levelName);
+    int whichLevel1(const char* levelName);
 };
 
-metadataStruct *metadataStruct_get(paramStruct *pars);
-void metadataStruct_destroy(metadataStruct *mtd);
+metadataStruct* metadataStruct_get(paramStruct* pars);
+void metadataStruct_destroy(metadataStruct* mtd);
 
 struct indPairThreads {
 
-	paramStruct* pars=NULL;
-	vcfData* vcfd=NULL;
+    paramStruct* pars = NULL;
+    vcfData* vcfd = NULL;
 
-	int pidx=-1;
+    int pidx = -1;
 
-    indPairThreads(vcfData* vcfd_, paramStruct *pars_, const int pairIndex) {
-		this->pars=pars_;
-		this->vcfd=vcfd_;
-		pidx=pairIndex;
+    indPairThreads(vcfData* vcfd_, paramStruct* pars_, const int pairIndex) {
+        this->pars = pars_;
+        this->vcfd = vcfd_;
+        pidx = pairIndex;
     }
 };
 

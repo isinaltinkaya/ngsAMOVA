@@ -5,45 +5,27 @@
 
 #include "dataStructs.h"
 
-const char *IO::FILE_EXTENSIONS[] = {"", ".gz", ".bgz"};
+const char* IO::FILE_EXTENSIONS[] = { "", ".gz", ".bgz" };
 
-IO::outFilesStruct *outFiles = new IO::outFilesStruct();
+IO::outFilesStruct* outFiles = new IO::outFilesStruct();
 
-kstring_t *kbuf_init() {
-    kstring_t *kbuf = new kstring_t;
+kstring_t* kbuf_init() {
+    kstring_t* kbuf = new kstring_t;
     kbuf->l = 0;
     kbuf->m = 0;
     kbuf->s = NULL;
     return kbuf;
 }
 
-void kbuf_destroy(kstring_t *kbuf) {
+void kbuf_destroy(kstring_t* kbuf) {
     if (NULL != kbuf) {
         FREE(kbuf->s);
         delete kbuf;
     }
 }
 
-// int IO::readFile::getNextLine(FILE* fp, char* line, size_t* len)
 
-void IO::append_argsFile(const char *format, ...) {
-    ASSERT(outFiles->out_args_fs != NULL);
-    if (NULL == outFiles->out_args_fs->kbuf) {
-        outFiles->out_args_fs->kbuf = kbuf_init();
-    }
-    kstring_t *kbuf = outFiles->out_args_fs->kbuf;
-
-    char str[1024];
-    va_list args;
-    va_start(args, format);
-    vsprintf(str, format, args);
-    va_end(args);
-
-    kputs(str, kbuf);
-    kputc('\n', kbuf);
-}
-
-void IO::validateString(const char *str) {
+void IO::validateString(const char* str) {
     ASSERTM(str != NULL, "Found NULL string.");
     ASSERTM(str[0] != '\0', "Found empty string.");
 }
@@ -52,12 +34,12 @@ void IO::validateString(const char *str) {
 /// @param fn input filename
 /// @return 1 if file exists; 0 otherwise
 /// @credit angsd/aio.cpp
-int IO::fileExists(const char *fn) {
+int IO::fileExists(const char* fn) {
     struct stat st;
     return (0 == stat(fn, &st));
 }
 
-void IO::requireArgFile(const char *fn, const char *requiredArg, const char *requiredFor) {
+void IO::requireArgFile(const char* fn, const char* requiredArg, const char* requiredFor) {
     if (NULL == fn) {
         ERROR("Could not find any file defined with %s. It is required for %s.", requiredArg, requiredFor);
     }
@@ -73,7 +55,7 @@ void IO::requireArgFile(const char *fn, const char *requiredArg, const char *req
     fileExists(fn);
 }
 
-void IO::requireArgFile(const char *fn, const char *requiredArg) {
+void IO::requireArgFile(const char* fn, const char* requiredArg) {
     if (NULL == fn) {
         ERROR("Could not find any file defined with %s.", requiredArg);
     }
@@ -87,7 +69,7 @@ void IO::requireArgFile(const char *fn, const char *requiredArg) {
     }
 }
 
-void IO::requireArgStr(const char *str, const char *requiredArg, const char *requiredFor) {
+void IO::requireArgStr(const char* str, const char* requiredArg, const char* requiredFor) {
     if (NULL == str) {
         ERROR("-%s is required for %s.", requiredArg, requiredFor);
     }
@@ -101,7 +83,7 @@ void IO::requireArgStr(const char *str, const char *requiredArg, const char *req
     }
 }
 
-void IO::requireArgStr(const char *str, const char *requiredArg) {
+void IO::requireArgStr(const char* str, const char* requiredArg) {
     if (NULL == str) {
         ERROR("-%s is required.", requiredArg);
     }
@@ -119,8 +101,8 @@ void IO::requireArgStr(const char *str, const char *requiredArg) {
 /// @param fn file name
 /// @param mode file open mode
 /// @return file *fp
-FILE *IO::getFile(const char *fn, const char *mode) {
-    FILE *fp = NULL;
+FILE* IO::getFile(const char* fn, const char* mode) {
+    FILE* fp = NULL;
     if (strcmp(mode, "r") == 0) {
         LOG("Reading file: %s", fn);
     }
@@ -134,8 +116,8 @@ FILE *IO::getFile(const char *fn, const char *mode) {
 /// @param fn	filename
 /// @return pointer to file extension
 ///     	 NULL if there is no file extension
-const char *IO::getFileExtension(const char *fn) {
-    const char *dot = strrchr(fn, '.');
+const char* IO::getFileExtension(const char* fn) {
+    const char* dot = strrchr(fn, '.');
     // if there is no dot or the dot is the first character in the string, return NULL
     if (dot == NULL || dot == fn)
         return NULL;
@@ -143,8 +125,8 @@ const char *IO::getFileExtension(const char *fn) {
     return dot + 1;
 }
 
-bool IO::isGzFile(const char *fn) {
-    const char *ext = IO::getFileExtension(fn);
+bool IO::isGzFile(const char* fn) {
+    const char* ext = IO::getFileExtension(fn);
     if (ext == NULL) {
         ERROR("Could not read the file extension for %s", fn);
     }
@@ -154,7 +136,7 @@ bool IO::isGzFile(const char *fn) {
     return (false);
 }
 
-gzFile IO::getGzFile(const char *fn, const char *mode) {
+gzFile IO::getGzFile(const char* fn, const char* mode) {
     gzFile fp = Z_NULL;
     if (strcmp(mode, "r") == 0) {
         LOG("Reading gzFile: %s", fn);
@@ -169,8 +151,8 @@ gzFile IO::getGzFile(const char *fn, const char *mode) {
 /// @param a prefix
 /// @param b suffix
 /// @return filename ie combination of prefix and suffix
-char *IO::setFileName(const char *a, const char *b) {
-    char *c = (char *)malloc(strlen(a) + strlen(b) + 1);
+char* IO::setFileName(const char* a, const char* b) {
+    char* c = (char*)malloc(strlen(a) + strlen(b) + 1);
     strcpy(c, a);
     strcat(c, b);
     // fprintf(stderr,"\t-> Opening output file for writing: %s\n",c);
@@ -183,7 +165,7 @@ char *IO::setFileName(const char *a, const char *b) {
 /// 						e.g. ".sfs" or ".sfs.gz"
 /// @param fc			file compression type to be added to file name
 /// @return filename
-char *IO::setFileName(const char *fn, const char *suffix, const char *fc_ext) {
+char* IO::setFileName(const char* fn, const char* suffix, const char* fc_ext) {
     // char *fc_ext = FILE_EXTENSIONS[fc];
     // switch(fc)
     // {
@@ -201,7 +183,7 @@ char *IO::setFileName(const char *fn, const char *suffix, const char *fc_ext) {
     // 		exit(1);
     // }
 
-    char *c = (char *)malloc(strlen(fn) + strlen(suffix) + strlen(fc_ext) + 1);
+    char* c = (char*)malloc(strlen(fn) + strlen(suffix) + strlen(fc_ext) + 1);
     strcpy(c, fn);
     strcat(c, suffix);
     strcat(c, fc_ext);
@@ -211,9 +193,9 @@ char *IO::setFileName(const char *fn, const char *suffix, const char *fc_ext) {
 /// @brief open file for writing
 /// @param c name of file
 /// @return  file *fp
-FILE *IO::openFileW(char *c) {
+FILE* IO::openFileW(char* c) {
     fprintf(stderr, "\t-> Opening output file for writing: %s\n", c);
-    FILE *fp = getFile(c, "w");
+    FILE* fp = getFile(c, "w");
     return fp;
 }
 
@@ -221,12 +203,12 @@ FILE *IO::openFileW(char *c) {
 /// @param a prefix
 /// @param b suffix
 /// @return file *fp
-FILE *IO::openFileW(const char *a, const char *b) {
-    char *c = (char *)malloc(strlen(a) + strlen(b) + 1);
+FILE* IO::openFileW(const char* a, const char* b) {
+    char* c = (char*)malloc(strlen(a) + strlen(b) + 1);
     strcpy(c, a);
     strcat(c, b);
     fprintf(stderr, "\t-> Opening output file for writing: %s\n", c);
-    FILE *fp = getFile(c, "w");
+    FILE* fp = getFile(c, "w");
     FREE(c);
     return fp;
 }
@@ -234,7 +216,7 @@ FILE *IO::openFileW(const char *a, const char *b) {
 /// @brief open gzipped file for writing
 /// @param c name of file
 /// @return
-gzFile IO::openGzFileW(char *c) {
+gzFile IO::openGzFileW(char* c) {
     fprintf(stderr, "\t-> Opening gzipped output file for writing: %s\n", c);
     gzFile fp = getGzFile(c, "wb");
     return fp;
@@ -243,8 +225,8 @@ gzFile IO::openGzFileW(char *c) {
 /// @brief open gzipped file for writing using given prefix and suffix
 /// @param a prefix
 /// @param b suffix
-gzFile IO::openGzFileW(const char *a, const char *b) {
-    char *c = (char *)malloc(strlen(a) + strlen(b) + 1);
+gzFile IO::openGzFileW(const char* a, const char* b) {
+    char* c = (char*)malloc(strlen(a) + strlen(b) + 1);
     strcpy(c, a);
     strcat(c, b);
     fprintf(stderr, "\t-> Opening gzipped output file for writing: %s\n", c);
@@ -256,14 +238,14 @@ gzFile IO::openGzFileW(const char *a, const char *b) {
 /// @brief getFirstLine get first line of a file
 /// @param fp pointer to file
 /// @return char* line
-char *IO::readFile::getFirstLine(const char *fn) {
-    FILE *fp = IO::getFile(fn, "r");
+char* IO::readFile::getFirstLine(const char* fn) {
+    FILE* fp = IO::getFile(fn, "r");
 
     size_t buf_size = FGETS_BUF_SIZE;
-    char *line = (char *)malloc(FGETS_BUF_SIZE * sizeof(char));
+    char* line = (char*)malloc(FGETS_BUF_SIZE * sizeof(char));
     ASSERT(line != NULL);
 
-    char *full_line = (char *)malloc(1);
+    char* full_line = (char*)malloc(1);
     size_t full_line_size = 0;
     full_line[0] = '\0';
 
@@ -272,8 +254,7 @@ char *IO::readFile::getFirstLine(const char *fn) {
         if (line[strlen(line) - 1] == '\n') {  // line was fully read
             full_line_size += strlen(line);
             // full_line = (char *)realloc(full_line, full_line_size + 1);
-            char *rc_full_line = (char *)realloc(full_line, full_line_size + 1);
-            CREALLOC(full_line);
+            REALLOC(full_line, ((full_line_size + 1)), char*);
             strcat(full_line, line);
             break;
         } else {  // line was not fully read
@@ -281,16 +262,14 @@ char *IO::readFile::getFirstLine(const char *fn) {
 
             full_line_size += strlen(line);
             // full_line = (char *)realloc(full_line, full_line_size + 1);
-            char *rc_full_line = (char *)realloc(full_line, full_line_size + 1);
-            CREALLOC(full_line);
+            REALLOC(full_line, ((full_line_size + 1)), char*);
 
             full_line[full_line_size - 1] = '\0';
             strcat(full_line, line);
 
             buf_size *= 2;
             // line = (char *)realloc(line, buf_size * sizeof(char));
-            char *rc_line = (char *)realloc(line, buf_size * sizeof(char));
-            CREALLOC(line);
+            REALLOC(line, (buf_size * sizeof(char)), char*);
         }
     }
 
@@ -302,15 +281,15 @@ char *IO::readFile::getFirstLine(const char *fn) {
 // brief getFirstLine get first line of a file
 /// @param fp pointer to file
 /// @return char* line
-char *IO::readFile::getFirstLine(FILE *fp) {
+char* IO::readFile::getFirstLine(FILE* fp) {
     // make sure you are at the beginning of the file
     ASSERT(fseek(fp, 0, SEEK_SET) == 0);
 
     size_t buf_size = FGETS_BUF_SIZE;
-    char *line = (char *)malloc(FGETS_BUF_SIZE * sizeof(char));
+    char* line = (char*)malloc(FGETS_BUF_SIZE * sizeof(char));
     ASSERT(line != NULL);
 
-    char *full_line = (char *)malloc(1);
+    char* full_line = (char*)malloc(1);
     size_t full_line_size = 0;
     full_line[0] = '\0';
 
@@ -319,24 +298,19 @@ char *IO::readFile::getFirstLine(FILE *fp) {
         if (line[strlen(line) - 1] == '\n') {  // line was fully read
             full_line_size += strlen(line);
             // full_line = (char *)realloc(full_line, full_line_size + 1);
-            char *rc_full_line = (char *)realloc(full_line, full_line_size + 1);
-            CREALLOC(full_line);
+            REALLOC(full_line, ((full_line_size + 1)), char*);
             strcat(full_line, line);
             break;
         } else {  // line was not fully read
             fprintf(stderr, "\t-> Line was not fully read, increasing buffer size\n");
 
             full_line_size += strlen(line);
-            // full_line = (char *)realloc(full_line, full_line_size + 1);
-            char *rc_full_line = (char *)realloc(full_line, full_line_size + 1);
-            CREALLOC(full_line);
+            REALLOC(full_line, ((full_line_size + 1)), char*);
             full_line[full_line_size - 1] = '\0';
             strcat(full_line, line);
 
             buf_size *= 2;
-            // line = (char *)realloc(line, buf_size * sizeof(char));
-            char *rc_line = (char *)realloc(line, buf_size * sizeof(char));
-            CREALLOC(line);
+            REALLOC(line, (buf_size * sizeof(char)), char*);
         }
     }
 
@@ -344,12 +318,12 @@ char *IO::readFile::getFirstLine(FILE *fp) {
     return full_line;
 }
 
-int IO::readGzFile::readToBuffer(char *fn, char **buffer_p, size_t *buf_size_p) {
+int IO::readGzFile::readToBuffer(char* fn, char** buffer_p, size_t* buf_size_p) {
     gzFile fp = IO::getGzFile(fn, "r");
 
     int rlen = 0;
     while (true) {
-        char *tok = gzgets(fp, *buffer_p + rlen, *buf_size_p - rlen);
+        char* tok = gzgets(fp, *buffer_p + rlen, *buf_size_p - rlen);
         if (tok == Z_NULL) {
             GZCLOSE(fp);
             return rlen;
@@ -358,7 +332,7 @@ int IO::readGzFile::readToBuffer(char *fn, char **buffer_p, size_t *buf_size_p) 
         if (tok[tmp - 1] != '\n') {
             rlen += tmp;
             *buf_size_p *= 2;
-            char *new_buf = (char *)realloc(*buffer_p, *buf_size_p);
+            char* new_buf = (char*)realloc(*buffer_p, *buf_size_p);
             ASSERT(new_buf != NULL);
             *buffer_p = new_buf;
         } else {
@@ -373,12 +347,12 @@ int IO::readGzFile::readToBuffer(char *fn, char **buffer_p, size_t *buf_size_p) 
 /// @param line pointer to line char
 /// @param delims delimiters
 /// @return integer number of columns
-int IO::inspectFile::count_nCols(const char *line, const char *delims) {
+int IO::inspectFile::count_nCols(const char* line, const char* delims) {
     ASSERT(line != NULL);
     ASSERT(delims != NULL);
 
     int count = 1;
-    const char *p = line;
+    const char* p = line;
     while (*p != '\0') {
         if (strchr(delims, *p) != NULL)
             ++count;
@@ -438,7 +412,7 @@ int IO::inspectFile::count_nCols(const char *line, const char *delims) {
 // 		}
 // 	}
 
-IO::outputStruct::outputStruct(const char *fn_, const char *suffix, int fc_) {
+IO::outputStruct::outputStruct(const char* fn_, const char* suffix, int fc_) {
     fc = OUTFC(fc_);
     switch (fc) {
     case OUTFC::NONE:
@@ -508,7 +482,7 @@ void IO::outputStruct::flush() {
     }
 }
 
-void *IO::outputStruct::get_fp() {
+void* IO::outputStruct::get_fp() {
     switch (fc) {
     case OUTFC::NONE:
         return fp;
@@ -526,7 +500,7 @@ void *IO::outputStruct::get_fp() {
     }
 }
 
-void IO::outputStruct::write(const char *buf) {
+void IO::outputStruct::write(const char* buf) {
     switch (fc) {
     case OUTFC::NONE:
         ASSERT(fprintf(fp, "%s", buf) > 0);
@@ -575,7 +549,7 @@ void IO::outputStruct::kbuf_write() {
     this->kbuf = NULL;
 }
 
-void IO::outputStruct::write(kstring_t *kbuf_i) {
+void IO::outputStruct::write(kstring_t* kbuf_i) {
     ASSERT(NULL != kbuf_i);
     switch (fc) {
     case OUTFC::NONE:
@@ -598,10 +572,9 @@ void IO::outputStruct::write(kstring_t *kbuf_i) {
         break;
     }
     kbuf_destroy(kbuf_i);
-    kbuf_i = NULL;
 }
 
-void IO::outFilesStruct_init(IO::outFilesStruct *ofs) {
+void IO::outFilesStruct_init(IO::outFilesStruct* ofs) {
     ofs->out_args_fs = new IO::outputStruct(args->out_fnp, ".args", OUTFC::NONE);
 
     if (args->printDistanceMatrix != 0) {
@@ -642,21 +615,22 @@ void IO::outFilesStruct_init(IO::outFilesStruct *ofs) {
     }
 }
 
-void IO::outFilesStruct_destroy(IO::outFilesStruct *ofs) {
+void IO::outFilesStruct_destroy(IO::outFilesStruct* ofs) {
     // flushAll();
 
-    FDEL(ofs->out_args_fs);
-    FDEL(ofs->out_dm_fs);
-    FDEL(ofs->out_amova_fs);
-    FDEL(ofs->out_dev_fs);
-    FDEL(ofs->out_jgcd_fs);
-    FDEL(ofs->out_dxy_fs);
-    FDEL(ofs->out_nj_fs);
-    FDEL(ofs->out_blockstab_fs);
-    FDEL(ofs->out_v_bootstrapRep_fs);
+    delete (ofs->out_args_fs);
+    delete(ofs->out_dm_fs);
+    delete(ofs->out_amova_fs);
+    delete(ofs->out_dev_fs);
+    delete(ofs->out_jgcd_fs);
+    delete(ofs->out_dxy_fs);
+    delete(ofs->out_nj_fs);
+    delete(ofs->out_blockstab_fs);
+    delete(ofs->out_v_bootstrapRep_fs);
 
     delete ofs;
 }
+
 int IO::verbose(const int verbose_threshold) {
     if (verbose_threshold == 0) {
         return 1;  // if checking against 0 (i.e. no verbose needed) return 1
@@ -664,9 +638,8 @@ int IO::verbose(const int verbose_threshold) {
     return BITCHECK_ATLEAST(VERBOSE, verbose_threshold - 1);
 }
 
-void IO::vprint(const char *format, ...) {
-    // if at least one bit is set, verbose is on
-    if (CHAR_BITCHECK_ANY(VERBOSE) == 1) {
+void IO::vprint(const char* format, ...) {
+    if (VERBOSE) {
         char str[1024];
 
         va_list args;
@@ -678,7 +651,7 @@ void IO::vprint(const char *format, ...) {
     }
 }
 
-void IO::vprint(const int verbose_threshold, const char *format, ...) {
+void IO::vprint(const int verbose_threshold, const char* format, ...) {
     if (verbose_threshold == 0) {
         char str[1024];
 
@@ -701,7 +674,7 @@ void IO::vprint(const int verbose_threshold, const char *format, ...) {
     }
 }
 
-void IO::vprint(FILE *fp, const int verbose_threshold, const char *format, ...) {
+void IO::vprint(FILE* fp, const int verbose_threshold, const char* format, ...) {
     if (BITCHECK_ATLEAST(VERBOSE, (verbose_threshold - 1)) == 1) {
         char str[1024];
 
@@ -714,7 +687,7 @@ void IO::vprint(FILE *fp, const int verbose_threshold, const char *format, ...) 
     }
 }
 
-void IO::vvprint(FILE *fp, const int verbose_threshold, const char *format, ...) {
+void IO::vvprint(FILE* fp, const int verbose_threshold, const char* format, ...) {
     if (BITCHECK_ATLEAST(VERBOSE, (verbose_threshold - 1)) == 1) {
         char str[1024];
 
@@ -728,8 +701,8 @@ void IO::vvprint(FILE *fp, const int verbose_threshold, const char *format, ...)
     }
 }
 
-hts_idx_t *IO::load_bcf_csi_idx(const char *fn) {
-    hts_idx_t *csi = bcf_index_load(fn);
+hts_idx_t* IO::load_bcf_csi_idx(const char* fn) {
+    hts_idx_t* csi = bcf_index_load(fn);
     if (NULL == csi) {
         ERROR("Failed to load csi index file: %s.csi. Please make sure that the index file exists and is in the same directory as the input file (%s).", fn, fn);
     } else {
@@ -738,8 +711,8 @@ hts_idx_t *IO::load_bcf_csi_idx(const char *fn) {
     return (csi);
 }
 
-tbx_t *IO::load_vcf_tabix_idx(const char *fn) {
-    tbx_t *tbi = tbx_index_load(fn);
+tbx_t* IO::load_vcf_tabix_idx(const char* fn) {
+    tbx_t* tbi = tbx_index_load(fn);
     if (NULL == tbi) {
         ERROR("Failed to load tabix index file: %s.tbi. Please make sure that the index file exists and is in the same directory as the input file (%s).", fn, fn);
     } else {

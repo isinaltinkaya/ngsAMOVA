@@ -7,19 +7,6 @@ typedef struct paramStruct paramStruct;
 typedef struct formulaStruct formulaStruct;
 typedef struct ibdStruct ibdStruct;
 
-typedef struct strArray{
-	char** vals=NULL;
-	int nvals;
-	int nbuf;
-
-	void add(const char* new_val);
-	void print(FILE* fp);
-	void print(void);
-}strArray;
-strArray* strArray_init(void);
-void strArray_destroy(strArray* arr);
-
-
 
 /*
  * @typedef
@@ -44,26 +31,34 @@ struct paramStruct {
     size_t nSites;    // number of sites not-skipped for all individuals
     size_t totSites;  // total number of sites processed
 
+    // a1: major/ref/ancestral allele
+    // a2: minor/alt/derived allele
+    // a1a2[site] = {base_a1,base_a2}
+    // where base_* is 0 for A, 1 for C, 2 for G, 3 for T, 4 for BASE_UNOBSERVED
+    int** a1a2 = NULL;
+
+    int nSites_arrays_size;
+
     int nContigs;
 
-    formulaStruct *formula = NULL;
+    formulaStruct* formula = NULL;
 
-	// ------------
-	ibdStruct *ibd=NULL;
-	// ------------
+    // ------------
+    ibdStruct* ibd = NULL;
+    // ------------
 
     int nInd;
     int nIndCmb;
 
-	int** pidx2inds=NULL;
+    int** pidx2inds = NULL;
 
     // input file type from enum
     int in_ft = 0;
 
-    char *DATETIME = NULL;
+    char* DATETIME = NULL;
 
     // PRINT FUNCTIONS
-    void printLut(FILE *fp);
+    void printLut(FILE* fp);
 
     void init_LUTs();
 
@@ -71,17 +66,17 @@ struct paramStruct {
     // e.g. nInd > 0
     void validate();
 
-    strArray* indNames = NULL;
+    char** indNames = NULL;
 
 };
 
 /// @brief paramStruct_init initialize the paramStruct
 /// @param args arguments argStruct
 /// @return pointer to paramStruct
-paramStruct *paramStruct_init(argStruct *args);
-void paramStruct_destroy(paramStruct *p);
+paramStruct* paramStruct_init(argStruct* args);
+void paramStruct_destroy(paramStruct* p);
 
-void check_consistency_args_pars(paramStruct *pars);
+void check_consistency_args_pars(paramStruct* pars);
 
 // REQUIRE 
 // in form require_object

@@ -1,43 +1,28 @@
 #include "dataStructs.h"
 
-lnglStruct::lnglStruct(const int nGt, const int nInd){
-	this->size1=4096; // init nSites
-	this->size2=(size_t) nGt*nInd;
+lnglStruct::lnglStruct(const int nGt, const int nInd) {
+    this->size1 = NSITES_BUF_INIT;
+    this->size2 = (size_t)nGt * nInd;
 
-	this->d = (double**) malloc(this->size1*sizeof(double*));
-	for(size_t i=0; i<this->size1;++i){
-		this->d[i]=(double*)malloc(this->size2*sizeof(double));
-		for(size_t j=0;j<this->size2;++j){
-			this->d[i][j]=NEG_INF;
-		}
-	}
+    this->d = (double**)malloc(this->size1 * sizeof(double*));
+    for (size_t i = 0; i < this->size1;++i) {
+        this->d[i] = (double*)malloc(this->size2 * sizeof(double));
+        for (size_t j = 0;j < this->size2;++j) {
+            this->d[i][j] = NEG_INF;
+        }
+    }
 }
 
-lnglStruct::~lnglStruct(){
-	for(size_t i=0;i<this->size1;++i){
-		FFREE(this->d[i]);
-	}
-	FFREE(this->d);
-}
-
-void lnglStruct::expand(){
-	int oldsize=this->size1;
-	this->size1 += 4096; // expand nSites
-	double **tmp=(double**) realloc(this->d, this->size1*sizeof(*this->d));
-	ASSERT(tmp!=NULL);
-	this->d=tmp;
-
-	for(size_t i=oldsize; i<this->size1;++i){
-		this->d[i]=(double*)malloc(this->size2*sizeof(double));
-		for(size_t j=0;j<this->size2;++j){
-			this->d[i][j]=NEG_INF;
-		}
-	}
+lnglStruct::~lnglStruct() {
+    for (size_t i = 0;i < this->size1;++i) {
+        FREE(this->d[i]);
+    }
+    FREE(this->d);
 }
 
 
-distanceMatrixStruct *distanceMatrixStruct_get(paramStruct *pars, vcfData *vcfd, char **indNames, blobStruct *blob) {
-    distanceMatrixStruct *dm = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, indNames);
+distanceMatrixStruct* distanceMatrixStruct_get(paramStruct* pars, vcfData* vcfd, char** indNames, blobStruct* blob) {
+    distanceMatrixStruct* dm = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, indNames);
 
     if (NULL != blob) {
         for (int rep = 0; rep < blob->bootstraps->nReplicates; ++rep) {
@@ -59,7 +44,7 @@ distanceMatrixStruct *distanceMatrixStruct_get(paramStruct *pars, vcfData *vcfd,
     return (dm);
 }
 
-void get_distanceMatrix_GL(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, blobStruct *blob) {
+void get_distanceMatrix_GL(paramStruct* pars, distanceMatrixStruct* distanceMatrix, vcfData* vcfd, blobStruct* blob) {
     readSites(vcfd, pars, blob);
     if (1 == args->doEM) {
         spawnThreads_pairEM(pars, vcfd, distanceMatrix);
@@ -68,7 +53,8 @@ void get_distanceMatrix_GL(paramStruct *pars, distanceMatrixStruct *distanceMatr
     NEVER;
 }
 
-void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatrix, vcfData *vcfd, blobStruct *blob) {
+void get_distanceMatrix_GT(paramStruct* pars, distanceMatrixStruct* distanceMatrix, vcfData* vcfd, blobStruct* blob) {
+    //TODO checkme blob reading
     if (NULL == blob) {
         readSites(vcfd, pars, blob);
         for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
@@ -89,14 +75,14 @@ void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatr
         const int nIndCmb = pars->nIndCmb;
         ASSERT(vcfd->nJointClasses > 0);
         ASSERT(nBlocks > 1);
-        vcfd->jgcd_gt = (int ***)malloc(sizeof(int **) * nBlocks);
-        vcfd->pair_shared_nSites = (int **)malloc(sizeof(int *) * nBlocks);
+        vcfd->jgcd_gt = (int***)malloc(sizeof(int**) * nBlocks);
+        vcfd->pair_shared_nSites = (int**)malloc(sizeof(int*) * nBlocks);
         for (int b = 0; b < nBlocks; b++) {
-            vcfd->jgcd_gt[b] = (int **)malloc(nIndCmb * sizeof(int *));
+            vcfd->jgcd_gt[b] = (int**)malloc(nIndCmb * sizeof(int*));
             for (int i = 0; i < nIndCmb; i++) {
-                vcfd->jgcd_gt[b][i] = (int *)calloc(vcfd->nJointClasses, sizeof(int));
+                vcfd->jgcd_gt[b][i] = (int*)calloc(vcfd->nJointClasses, sizeof(int));
             }
-            vcfd->pair_shared_nSites[b] = (int *)calloc(nIndCmb, sizeof(int));
+            vcfd->pair_shared_nSites[b] = (int*)calloc(nIndCmb, sizeof(int));
         }
 
         readSites(vcfd, pars, blob);
@@ -105,7 +91,7 @@ void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatr
                 for (int j = 0; j < vcfd->nJointClasses; ++j) {
                     vcfd->jointGenotypeMatrixGT[pidx][j] += vcfd->jgcd_gt[block_i][pidx][j];
                 }
-				// vcfd->snSites[pidx] = vcfd->pair_shared_nSites[block_i][pidx];
+                // vcfd->snSites[pidx] = vcfd->pair_shared_nSites[block_i][pidx];
             }
             int snSites = vcfd->snSites[pidx];
             if (snSites == 0) {
@@ -132,7 +118,7 @@ void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatr
                     for (int j = 0; j < vcfd->nJointClasses; ++j) {
                         r_jointGenotypeMatrixGT[pidx][j] += vcfd->jgcd_gt[chosen_block][pidx][j];
                     }
-					vcfd->snSites[pidx] += vcfd->pair_shared_nSites[chosen_block][pidx];
+                    vcfd->snSites[pidx] += vcfd->pair_shared_nSites[chosen_block][pidx];
                 }
                 int snSites = r_jointGenotypeMatrixGT[pidx][vcfd->nJointClasses];
 
@@ -163,33 +149,30 @@ void get_distanceMatrix_GT(paramStruct *pars, distanceMatrixStruct *distanceMatr
 metadataStruct::metadataStruct(int nInd) {
     ASSERT(nInd > 0);
     nLevels = 0;
-    indKeys = (uint64_t *)malloc(nInd * sizeof(uint64_t));
-    indNames = (char **)malloc(nInd * sizeof(char *));
+    indKeys = (uint64_t*)malloc(nInd * sizeof(uint64_t));
+    indNames = (char**)malloc(nInd * sizeof(char*));
 
-    groupNames = (char ***)malloc(1 * sizeof(char **));
-    groupNames[0] = (char **)malloc(1 * sizeof(char *));
+    groupNames = (char***)malloc(1 * sizeof(char**));
+    groupNames[0] = (char**)malloc(1 * sizeof(char*));
     // nGroupsAtLevel = (int *)calloc(1, sizeof(int));
-    levelNames = (char **)malloc(1 * sizeof(char *));
+    levelNames = (char**)malloc(1 * sizeof(char*));
 
-    lvlgToIdx = (int **)malloc(1 * sizeof(int *));
-	ASSERT(lvlgToIdx!=NULL);
-    lvlgToIdx[0] = (int *)malloc(1 * sizeof(int));
+    lvlgToIdx = (int**)malloc(1 * sizeof(int*));
+    ASSERT(lvlgToIdx != NULL);
+    lvlgToIdx[0] = (int*)malloc(1 * sizeof(int));
     lvlgToIdx[0][0] = -1;
 
     nIndPerStrata = NULL;
 
-    lvlStartPos = (int *)malloc(1 * sizeof(int));
+    lvlStartPos = (int*)malloc(1 * sizeof(int));
 
     for (int i = 0; i < nInd; i++) {
         indKeys[i] = 0;
     }
 
-    idxToLvlg = (int **)malloc(1 * sizeof(int *));
-    idxToLvlg[0] = (int *)malloc(2 * sizeof(int));
-    idxToLvlg[0][0] = -1;  // lvl
-    idxToLvlg[0][1] = -1;  // g
+    idxToLvlg = (int**)malloc(1 * sizeof(int*));
 
-    groupKeys = (uint64_t *)malloc(MAX_N_BITS * sizeof(uint64_t));
+    groupKeys = (uint64_t*)malloc(MAX_N_BITS * sizeof(uint64_t));
     for (size_t i = 0; i < MAX_N_BITS; i++) {
         groupKeys[i] = 0;
     }
@@ -209,13 +192,20 @@ metadataStruct::~metadataStruct() {
     for (size_t lvl = 0; lvl < (size_t)nLevels; lvl++) {
         for (size_t g = 0; g < (size_t)nGroupsAtLevel[lvl]; g++) {
             FREE(groupNames[lvl][g]);
-            FREE(idxToLvlg[i]);
             ++i;
         }
-        FFREE(groupNames[lvl]);
-        FFREE(levelNames[lvl]);
+        FREE(groupNames[lvl]);
+        FREE(levelNames[lvl]);
         FREE(lvlgToIdx[lvl]);
     }
+
+    DEVASSERT(i == nBits);
+
+    for (size_t bit = 0;bit < (size_t)nBits;++bit) {
+        FREE(idxToLvlg[bit]);
+    }
+    FREE(idxToLvlg);
+
     for (size_t lvl = 0; lvl < (size_t)nLevels; lvl++) {
         FREE(nIndPerStrata[lvl]);
     }
@@ -223,7 +213,10 @@ metadataStruct::~metadataStruct() {
     FREE(nGroupsAtLevel);
 
     FREE(groupNames);
+
+    FREE(levelNames[nLevels]);
     FREE(levelNames);
+
     FREE(lvlgToIdx);
 
     FREE(nIndPerStrata);
@@ -231,21 +224,21 @@ metadataStruct::~metadataStruct() {
     FREE(lvlStartPos);
 }
 
-metadataStruct *metadataStruct_get(paramStruct *pars) {
+metadataStruct* metadataStruct_get(paramStruct* pars) {
     ASSERT(pars->nInd > 0);
     ASSERT(args->formula != NULL);
-    metadataStruct *mtd = new metadataStruct(pars->nInd);
+    metadataStruct* mtd = new metadataStruct(pars->nInd);
 
-    FILE *fp = IO::getFile(args->in_mtd_fn, "r");
+    FILE* fp = IO::getFile(args->in_mtd_fn, "r");
 
-    char *buf = IO::readFile::getFirstLine(fp);
+    char* buf = IO::readFile::getFirstLine(fp);
 
     int nLevels = 0;
 
     int hdr_col_idx = -1;  // 0-based for indexing
 
     // split the header into tokens
-    char *hdrtok = strtok(buf, METADATA_DELIMS);
+    char* hdrtok = strtok(buf, METADATA_DELIMS);
     while (hdrtok != NULL) {
         ++hdr_col_idx;
 
@@ -276,17 +269,16 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
 
     mtd->nLevels = nLevels;
 
-    char ***r_groupNames = (char ***)realloc(mtd->groupNames, nLevels * sizeof(char **));
-    CCREALLOC(r_groupNames, mtd->groupNames);
 
-    mtd->groupNames[0] = (char **)malloc(1 * sizeof(char *));
-    mtd->nGroupsAtLevel = (int *)calloc(nLevels, sizeof(int));
 
-    int **r_lvlgToIdx = (int **)realloc(mtd->lvlgToIdx, nLevels * sizeof(int *));
-    CCREALLOC(r_lvlgToIdx, mtd->lvlgToIdx);
 
-    for (int i = 0; i < nLevels; i++) {
-        mtd->lvlgToIdx[i] = (int *)calloc(1, sizeof(int));
+    mtd->nGroupsAtLevel = (int*)calloc(nLevels, sizeof(int));
+
+    REALLOC(mtd->groupNames, nLevels, char***);
+
+    REALLOC(mtd->lvlgToIdx, nLevels, int**);
+    for (int i = 1; i < nLevels; i++) {
+        mtd->lvlgToIdx[i] = (int*)calloc(1, sizeof(int));
     }
 
     formulaStruct_validate(pars->formula, nLevels);
@@ -303,9 +295,9 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
     //
     // usage: indToGroupIdx[ind_i][lvl_i] = index of the group at lvl_i that ind_i belongs to
     ASSERT(pars->nInd > 0);
-    int **indToGroupIdx = (int **)malloc(pars->nInd * sizeof(int *));
+    int** indToGroupIdx = (int**)malloc(pars->nInd * sizeof(int*));
     for (int i = 0; i < pars->nInd; i++) {
-        indToGroupIdx[i] = (int *)malloc(nLevels * sizeof(int));
+        indToGroupIdx[i] = (int*)malloc(nLevels * sizeof(int));
         for (int j = 0; j < nLevels; j++) {
             indToGroupIdx[i][j] = -1;
         }
@@ -313,7 +305,7 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
 
     int nBits_needed = 0;
 
-    char *line = NULL;
+    char* line = NULL;
     size_t len = 0;
     // loop through the rest of the file, one line per individual
     while ((getline(&line, &len, fp)) != -1) {
@@ -322,7 +314,7 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
         col_i = 0;
 
         // split by delimiters
-        char *col = strtok(line, METADATA_DELIMS);
+        char* col = strtok(line, METADATA_DELIMS);
 
         while (col != NULL) {  // loop through cols
 
@@ -386,6 +378,8 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
         ++nInd;
     }  // row loop (individuals)
 
+    FREE(line);
+
     // TODO
     ASSERT(nBits_needed < 64);
 
@@ -416,10 +410,11 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
             // check if the group is already processed == if the bit is already set
             if (mtd->groupKeys[bit_i] == 0) {
                 mtd->lvlgToIdx[lvl_i][grp_i] = bit_i;
-                int **r_idxToLvlg = (int **)realloc(mtd->idxToLvlg, (bit_i + 1) * sizeof(int *));
-                CCREALLOC(r_idxToLvlg, mtd->idxToLvlg);
 
-                mtd->idxToLvlg[bit_i] = (int *)malloc(2 * sizeof(int));
+                DEVASSERT(bit_i != -1);
+                REALLOC(mtd->idxToLvlg, ((bit_i + 1)), int**);
+
+                mtd->idxToLvlg[bit_i] = (int*)malloc(2 * sizeof(int));
 
                 mtd->idxToLvlg[bit_i][0] = lvl_i;
                 mtd->idxToLvlg[bit_i][1] = grp_i;
@@ -466,26 +461,25 @@ metadataStruct *metadataStruct_get(paramStruct *pars) {
     return (mtd);
 }
 
-void metadataStruct::addLevelName(const char *levelName, const int level_idx) {
-    char **r_levelNames = (char **)realloc(levelNames, (level_idx + 1) * sizeof(char *));
-    CCREALLOC(r_levelNames, levelNames);
+void metadataStruct::addLevelName(const char* levelName, const int level_idx) {
+    DEVASSERT(level_idx != -1);
+    REALLOC(levelNames, ((level_idx + 1)), char**);
 
     IO::vprint(0, "\nFound hierarchical level: %s\n", levelName);
     levelNames[level_idx] = strdup(levelName);
     ASSERT(levelNames[level_idx] != NULL);
 }
 
-void metadataStruct::addGroup(int lvl, int g, char *name) {
+void metadataStruct::addGroup(int lvl, int g, char* name) {
     IO::vprint(2, "Found new group: %s at level %ld with index %ld", name, lvl, g);
 
     nGroupsAtLevel[lvl]++;
 
-    char **r_groupNames = (char **)realloc(groupNames[lvl], (g + 1) * sizeof(char *));
-    CCREALLOC(r_groupNames, groupNames[lvl]);
+    REALLOC(groupNames[lvl], ((g + 1)), char**);
+
     groupNames[lvl][g] = NULL;
 
-    int *r_lvlgToIdx = (int *)realloc(lvlgToIdx[lvl], (g + 1) * sizeof(int));
-    CCREALLOC(r_lvlgToIdx, lvlgToIdx[lvl]);
+    REALLOC(lvlgToIdx[lvl], ((g + 1)), int*);
 
     // add group name
     groupNames[lvl][g] = strdup(name);
@@ -544,9 +538,9 @@ int metadataStruct::indFromGroup(int ind_i, int lvl_i, int localGrpIdx) {
 void metadataStruct::getNIndPerStrata() {
     ASSERT(nInd > 0);
     ASSERT(nLevels > 0);
-    nIndPerStrata = (int **)malloc(sizeof(int *) * nLevels);
+    nIndPerStrata = (int**)malloc(sizeof(int*) * nLevels);
     for (int lvl = 0; lvl < nLevels; lvl++) {
-        nIndPerStrata[lvl] = (int *)malloc(sizeof(int) * nGroupsAtLevel[lvl]);
+        nIndPerStrata[lvl] = (int*)malloc(sizeof(int) * nGroupsAtLevel[lvl]);
         for (int g = 0; g < nGroupsAtLevel[lvl]; g++) {
             nIndPerStrata[lvl][g] = countIndsInGroup(lvl, g);
         }
@@ -569,7 +563,7 @@ int metadataStruct::countNSubgroupAtLevel(int plvl, int pg, int lvl) {
     return n;
 }
 
-int metadataStruct::whichLevel1(const char *levelName) {
+int metadataStruct::whichLevel1(const char* levelName) {
     // nLevels+1 bc levelNames[0]="Individual" so it has nLevels+1 elements
     for (int i = 0; i < nLevels + 1; i++) {
         if (strcmp(levelName, levelNames[i]) == 0) {
@@ -584,7 +578,7 @@ void metadataStruct::print_indKeys() {
     // print all individual keys
     for (size_t ind = 0; ind < (size_t)nInd; ind++) {
         char str[65];
-        char *p = str;
+        char* p = str;
 
         int localGrpIdx = indKeys[ind];
         int globIdx = lvlgToIdx[nLevels - 1][localGrpIdx];
@@ -605,7 +599,7 @@ void metadataStruct::print_groupKeys() {
         int g = idxToLvlg[globIdx][1];
 
         char str[65];
-        char *p = str;
+        char* p = str;
         // loop through all the bits used in keys
         for (int bit = nBits - 1; bit > -1; bit--) {
             p += sprintf(p, "%d", BITCHECK(groupKeys[globIdx], bit));
@@ -648,7 +642,7 @@ void distanceMatrixStruct::print() {
     outFiles->out_dm_fs->kbuf_write();
 }
 
-distanceMatrixStruct::distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquared_, char **itemLabels_) {
+distanceMatrixStruct::distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquared_, char** itemLabels_) {
     nIndCmb = nIndCmb_;
     nInd = nInd_;
     M = new double[nIndCmb];
@@ -664,16 +658,16 @@ distanceMatrixStruct::distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquare
         // }
     // }
 
-    inds2idx = (int **)malloc(nInd * sizeof(int *));
+    inds2idx = (int**)malloc(nInd * sizeof(int*));
     for (int i = 0; i < nInd; i++) {
-        inds2idx[i] = (int *)malloc(nInd * sizeof(int));
+        inds2idx[i] = (int*)malloc(nInd * sizeof(int));
     }
 
-    idx2inds = (int **)malloc(nIndCmb * sizeof(int *));
+    idx2inds = (int**)malloc(nIndCmb * sizeof(int*));
     int pair_idx = 0;
     for (int i1 = 0; i1 < nInd - 1; i1++) {
         for (int i2 = i1 + 1; i2 < nInd; i2++) {
-            idx2inds[pair_idx] = (int *)malloc(2 * sizeof(int));
+            idx2inds[pair_idx] = (int*)malloc(2 * sizeof(int));
             inds2idx[i1][i2] = pair_idx;
             inds2idx[i2][i1] = pair_idx;
             idx2inds[pair_idx][0] = i1;
@@ -703,27 +697,26 @@ distanceMatrixStruct::~distanceMatrixStruct() {
     FREE(idx2inds);
 }
 
-distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars) {
+distanceMatrixStruct* distanceMatrixStruct_read(paramStruct* pars) {
     int dm_vals_size = 1225;
-    double *dm_vals = (double *)malloc((dm_vals_size) * sizeof(double));
+    double* dm_vals = (double*)malloc((dm_vals_size) * sizeof(double));
 
     int n_vals = 0;
 
     // TODO
     if (IO::isGzFile(args->in_dm_fn) == 1) {
         size_t buf_size = FGETS_BUF_SIZE;
-        size_t *buf_size_ptr = &buf_size;
-        char *line = (char *)malloc(buf_size);
-        char **line_ptr = &line;
+        size_t* buf_size_ptr = &buf_size;
+        char* line = (char*)malloc(buf_size);
+        char** line_ptr = &line;
         IO::readGzFile::readToBuffer(args->in_dm_fn, line_ptr, buf_size_ptr);
 
         ASSERT(line != NULL);
-        char *tok = strtok(line, ",\n");
+        char* tok = strtok(line, ",\n");
         while (tok != NULL) {
             if (n_vals > dm_vals_size) {
                 dm_vals_size = dm_vals_size * 2;
-                double *r_dm_vals = (double *)realloc(dm_vals, (dm_vals_size) * sizeof(double));
-                CCREALLOC(r_dm_vals, dm_vals);
+                REALLOC(dm_vals, dm_vals_size, double*);
             }
             dm_vals[n_vals] = atof(tok);
             n_vals++;
@@ -735,19 +728,18 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars) {
 
         // TODO
     } else {
-        char *line = (char *)malloc(FGETS_BUF_SIZE);
+        char* line = (char*)malloc(FGETS_BUF_SIZE);
         ASSERT(line != NULL);
 
         char dm_buf[FGETS_BUF_SIZE];
 
-        FILE *in_dm_fp = IO::getFile(args->in_dm_fn, "r");
+        FILE* in_dm_fp = IO::getFile(args->in_dm_fn, "r");
         while (fgets(dm_buf, FGETS_BUF_SIZE, in_dm_fp)) {
-            char *tok = strtok(dm_buf, ",\n");
+            char* tok = strtok(dm_buf, ",\n");
             while (tok != NULL) {
                 if (n_vals > dm_vals_size) {
                     dm_vals_size = dm_vals_size * 2;
-                    double *r_dm_vals = (double *)realloc(dm_vals, (dm_vals_size) * sizeof(double));
-                    CCREALLOC(r_dm_vals, dm_vals);
+                    REALLOC(dm_vals, dm_vals_size, double*);
                 }
                 dm_vals[n_vals] = atof(tok);
                 n_vals++;
@@ -766,7 +758,7 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars) {
     LOG("Number of individuals: %d. This is calculated based on the number of values in the distance matrix (%d).\n", pars->nInd, n_vals);
     END_LOGSECTION;
 
-    distanceMatrixStruct *dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, NULL);
+    distanceMatrixStruct* dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, NULL);
     dMS->isSquared = args->squareDistance;
 
     if (args->squareDistance == 1) {
@@ -783,7 +775,7 @@ distanceMatrixStruct *distanceMatrixStruct_read(paramStruct *pars) {
     return dMS;
 }
 
-void trimSpaces(char *str) {
+void trimSpaces(char* str) {
     ASSERT(NULL != str);
 
     int len = strlen(str);
@@ -816,7 +808,7 @@ void trimSpaces(char *str) {
     }
 }
 
-void formulaStruct_validate(formulaStruct *fos, const int nLevels) {
+void formulaStruct_validate(formulaStruct* fos, const int nLevels) {
     // validate that all tokens in formula has a corresponding column index in metadata
     for (int i = 0; i < fos->nTokens; i++) {
         if (fos->formulaTokenIdx[i] == -1) {
@@ -834,7 +826,7 @@ void formulaStruct_validate(formulaStruct *fos, const int nLevels) {
     fos->shrink();
 }
 
-void formulaStruct_destroy(formulaStruct *fos) {
+void formulaStruct_destroy(formulaStruct* fos) {
     FREE(fos->formula);
     for (int i = 0; i < fos->nTokens; i++) {
         FREE(fos->formulaTokens[i]);
@@ -845,7 +837,7 @@ void formulaStruct_destroy(formulaStruct *fos) {
     delete fos;
 }
 
-void formulaStruct::print(FILE *fp) {
+void formulaStruct::print(FILE* fp) {
     fprintf(fp, "\nFormula: %s", formula);
     fprintf(fp, "\nTokens: %i\n", nTokens);
     // for (int i = 0; i < nTokens; i++)
@@ -855,7 +847,7 @@ void formulaStruct::print(FILE *fp) {
     // fprintf(fp, "\n");
 }
 
-int formulaStruct::setFormulaTokenIdx(const char *mtd_tok, const int mtd_col_idx) {
+int formulaStruct::setFormulaTokenIdx(const char* mtd_tok, const int mtd_col_idx) {
     for (int i = 0; i < nTokens; i++) {
         if (strcmp(formulaTokens[i], mtd_tok) == 0) {
             formulaTokenIdx[i] = mtd_col_idx;
@@ -868,36 +860,33 @@ int formulaStruct::setFormulaTokenIdx(const char *mtd_tok, const int mtd_col_idx
 
 // @brief shrink - shrink the size of the arrays defined with default max values to the actual size needed
 void formulaStruct::shrink() {
-    char **r_formulaTokens = (char **)realloc(formulaTokens, nTokens * sizeof(char *));
-    CCREALLOC(r_formulaTokens, formulaTokens);
-
-    int *r_formulaTokenIdx = (int *)realloc(formulaTokenIdx, nTokens * sizeof(int));
-    CCREALLOC(r_formulaTokenIdx, formulaTokenIdx);
+    REALLOC(formulaTokens, nTokens, char**);
+    REALLOC(formulaTokenIdx, nTokens, int*);
 }
 
 /// @brief formulaStruct_get initialize the formulaStruct
 /// @param formula formula string
 /// @return pointer to formulaStruct
 /// @example formula = 'Samples ~ Continents/Regions/Populations'
-formulaStruct *formulaStruct_get(const char *formula) {
+formulaStruct* formulaStruct_get(const char* formula) {
     if (formula == NULL) {
         fprintf(stderr, "\n[ERROR]\tNo formula provided. Please provide a formula of the form y ~ x1/x2/.../xn via the --formula option.\n");
         exit(1);
     }
-    formulaStruct *fos = new formulaStruct;
+    formulaStruct* fos = new formulaStruct;
 
     fos->nTokens = 0;
 
     fos->formula = strdup(formula);
-    fos->formulaTokens = (char **)malloc(MAX_N_FORMULA_TOKENS * sizeof(char *));
-    fos->formulaTokenIdx = (int *)malloc(MAX_N_FORMULA_TOKENS * sizeof(int));
+    fos->formulaTokens = (char**)malloc(MAX_N_FORMULA_TOKENS * sizeof(char*));
+    fos->formulaTokenIdx = (int*)malloc(MAX_N_FORMULA_TOKENS * sizeof(int));
 
     for (int i = 0; i < MAX_N_FORMULA_TOKENS; ++i) {
         fos->formulaTokenIdx[i] = -1;
     }
 
     // pointer to the first character of formula string
-    const char *p = formula;
+    const char* p = formula;
 
     /// ------------------------------------------------------------
     /// get the first token - y (before the tilde ~)
@@ -923,7 +912,7 @@ formulaStruct *formulaStruct_get(const char *formula) {
         exit(1);
     }
 
-    char *token = strndup(formula, p - formula - 1);  // -1 to remove the tilde
+    char* token = strndup(formula, p - formula - 1);  // -1 to remove the tilde
     trimSpaces(token);
     fos->formulaTokens[0] = strdup(token);
     fos->nTokens++;
@@ -934,7 +923,7 @@ formulaStruct *formulaStruct_get(const char *formula) {
     /// if multiple, separated by /
 
     // point to the rest of the string
-    const char *pstart = p;
+    const char* pstart = p;
     while (*p != '\0') {
         if (*p == '~') {
             fprintf(stderr, "\n[ERROR]\tFormula \"%s\" is not valid: Found more than one '~'. \n", formula);

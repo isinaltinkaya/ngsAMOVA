@@ -2,14 +2,14 @@
 
 #include <algorithm>
 
-blobStruct *blobStruct_get(vcfData *vcf, paramStruct *pars) {
+blobStruct* blobStruct_get(vcfData* vcf, paramStruct* pars) {
     fprintf(stderr, "\n\t-> --nBootstraps %d is set, will perform %d bootstraps for AMOVA significance testing.\n", args->nBootstraps, args->nBootstraps);
 
     if (args->nBootstraps < 0) {
         ERROR("nBootstraps should be a positive integer or 0, but found %d.", args->nBootstraps);
     }
 
-    blobStruct *blob = NULL;
+    blobStruct* blob = NULL;
 
     if (args->blockSize != 0) {
         fprintf(stderr, "\n\t-> blockSize is set, will perform block bootstrapping with blocks of size %d.\n", args->blockSize);
@@ -31,8 +31,8 @@ blobStruct *blobStruct_get(vcfData *vcf, paramStruct *pars) {
     return blob;
 }
 
-bootstrapDataset *bootstrapDataset_get(vcfData *vcfd, paramStruct *pars, blobStruct *blobSt) {
-    bootstrapDataset *bootstraps = new bootstrapDataset(pars, args->nBootstraps, blobSt->nBlocks);
+bootstrapDataset* bootstrapDataset_get(vcfData* vcfd, paramStruct* pars, blobStruct* blobSt) {
+    bootstrapDataset* bootstraps = new bootstrapDataset(pars, args->nBootstraps, blobSt->nBlocks);
 
     int rblock = -1;
 
@@ -61,7 +61,7 @@ void blobStruct::_print() {
 }
 
 blobStruct::~blobStruct() {
-    DEL(bootstraps);
+    delete(bootstraps);
     for (int i = 0; i < nBlocks; ++i) {
         FREE(blocks[i]->chr);
         FREE(blocks[i]);
@@ -74,27 +74,25 @@ blobStruct::~blobStruct() {
 void blobStruct::addBlock() {
     ++nBlocks;
     if (nBlocks > 1) {
-        blockStruct **r_blocks = (blockStruct **)realloc(blocks, nBlocks * sizeof(blockStruct *));
-        CCREALLOC(r_blocks, blocks);
 
-        int **r_blockPtrs = (int **)realloc(blockPtrs, nBlocks * sizeof(int *));
-        CCREALLOC(r_blockPtrs, blockPtrs);
+        REALLOC(blocks, nBlocks, blockStruct**);
+        REALLOC(blockPtrs, nBlocks, int**);
 
     } else if (nBlocks == 1) {
-        blocks = (blockStruct **)malloc(nBlocks * sizeof(blockStruct *));
-        blockPtrs = (int **)malloc(nBlocks * sizeof(int *));
+        blocks = (blockStruct**)malloc(nBlocks * sizeof(blockStruct*));
+        blockPtrs = (int**)malloc(nBlocks * sizeof(int*));
     } else {
         NEVER;
     }
-    blocks[nBlocks - 1] = (blockStruct *)malloc(sizeof(blockStruct));
-    blockPtrs[nBlocks - 1] = (int *)malloc(sizeof(int));
+    blocks[nBlocks - 1] = (blockStruct*)malloc(sizeof(blockStruct));
+    blockPtrs[nBlocks - 1] = (int*)malloc(sizeof(int));
 }
 
 //     - 1-based
 //     - [start:included, end:included]
-blobStruct *blobStruct_read_tab(const char *fn) {
-    FILE *fp = IO::getFile(fn, "r");
-    char *firstLine = IO::readFile::getFirstLine(fp);
+blobStruct* blobStruct_read_tab(const char* fn) {
+    FILE* fp = IO::getFile(fn, "r");
+    char* firstLine = IO::readFile::getFirstLine(fp);
     int nCols = IO::inspectFile::count_nCols(firstLine, "\t");
     if (nCols != 3) {
         ERROR("Blocks tab file must have 3 columns. Found %d columns.", nCols);
@@ -103,11 +101,11 @@ blobStruct *blobStruct_read_tab(const char *fn) {
     ASSERT(fseek(fp, 0, SEEK_SET) == 0);
     int nBlocks = 0;
 
-    char *tok = NULL;
+    char* tok = NULL;
     char chr[100];
     char start[100];
     char end[100];
-    blobStruct *blob = new blobStruct();
+    blobStruct* blob = new blobStruct();
 
     while (EOF != fscanf(fp, "%s\t%s\t%s", chr, start, end)) {
         blob->addBlock();
@@ -153,9 +151,9 @@ blobStruct *blobStruct_read_tab(const char *fn) {
 
 //     - 0-based
 //     - [start:included, end:excluded)
-blobStruct *blobStruct_read_bed(const char *fn) {
-    FILE *fp = IO::getFile(fn, "r");
-    char *firstLine = IO::readFile::getFirstLine(fp);
+blobStruct* blobStruct_read_bed(const char* fn) {
+    FILE* fp = IO::getFile(fn, "r");
+    char* firstLine = IO::readFile::getFirstLine(fp);
     int nCols = IO::inspectFile::count_nCols(firstLine, "\t");
     if (nCols != 3) {
         ERROR("Blocks bed file must have 3 columns. Found %d columns.", nCols);
@@ -164,11 +162,11 @@ blobStruct *blobStruct_read_bed(const char *fn) {
     ASSERT(fseek(fp, 0, SEEK_SET) == 0);
     int nBlocks = 0;
 
-    char *tok = NULL;
+    char* tok = NULL;
     char chr[100];
     char start[100];
     char end[100];
-    blobStruct *blob = new blobStruct();
+    blobStruct* blob = new blobStruct();
 
     while (EOF != fscanf(fp, "%s\t%s\t%s", chr, start, end)) {
         blob->addBlock();
@@ -224,7 +222,7 @@ void blobStruct::print() {
     outFiles->out_blockstab_fs->kbuf_write();
 }
 
-blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf) {
+blobStruct* blobStruct_populate_blocks_withSize(vcfData* vcf) {
     // TODO make it work with region and regions, we need to get ncontigs from the region filtered vcf
     // maybe just add a lazy check afterwards to skip empty blocks due to site filtering?
     if (args->in_regions_tab_fn != NULL || args->in_regions_bed_fn != NULL || args->in_region != NULL) {
@@ -233,7 +231,7 @@ blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf) {
 
     const int blockSize = args->blockSize;
 
-    blobStruct *blob = new blobStruct();
+    blobStruct* blob = new blobStruct();
 
     int nBlocks = 0;
     for (int ci = 0; ci < vcf->nContigs; ci++) {
@@ -281,7 +279,7 @@ blobStruct *blobStruct_populate_blocks_withSize(vcfData *vcf) {
     ASSERT(nBlocks != 0);
     ASSERT(nBlocks != 1);
     if (nBlocks == 1) {
-        WARNING("Only 1 block was created. Please use a smaller block size or exclude this contig from the analysis.");
+        WARN("Only 1 block was created. Please use a smaller block size or exclude this contig from the analysis.");
     }
 
     return blob;
@@ -304,21 +302,26 @@ void bootstrapDataset::print() {
     outFiles->out_v_bootstrapRep_fs->kbuf_write();
 }
 
-bootstrapDataset::bootstrapDataset(paramStruct *pars, int nBootstraps_, int nBlocks_) {
+bootstrapDataset::bootstrapDataset(paramStruct* pars, int nBootstraps_, int nBlocks_) {
     nReplicates = nBootstraps_;
     nBlocks = nBlocks_;
-    replicates = new bootstrapReplicate *[nReplicates];
+    replicates = new bootstrapReplicate * [nReplicates];
     for (int b = 0; b < nReplicates; ++b) {
         replicates[b] = new bootstrapReplicate(nBlocks);
     }
 }
 
 bootstrapDataset::~bootstrapDataset() {
-    DEL2D(replicates, nReplicates);
-    FREE2D(phiValues, nPhiValues);
+    for (int i = 0;i < nReplicates;++i) {
+        delete[] replicates[i];
+    }
+    delete[] replicates;
+    for (int i = 0;i < nPhiValues;++i) {
+        FREE(phiValues[i]);
+    }
 }
 
-void bootstrapDataset::print_confidenceInterval(FILE *fp) {
+void bootstrapDataset::print_confidenceInterval(FILE* fp) {
     double mean = 0.0;
     double sd = 0.0;
 
@@ -338,7 +341,7 @@ void bootstrapDataset::print_confidenceInterval(FILE *fp) {
 }
 
 bootstrapReplicate::bootstrapReplicate(int nBlocks) {
-    rBlocks = (int *)malloc(nBlocks * sizeof(int));
+    rBlocks = (int*)malloc(nBlocks * sizeof(int));
     for (int i = 0; i < nBlocks; ++i) {
         rBlocks[i] = -1;
     }
@@ -346,6 +349,6 @@ bootstrapReplicate::bootstrapReplicate(int nBlocks) {
 
 bootstrapReplicate::~bootstrapReplicate() {
     FREE(rBlocks);
-    DEL1D(amova);
-    DEL1D(distanceMatrix);
+    delete amova;
+    delete distanceMatrix;
 }

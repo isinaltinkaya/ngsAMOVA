@@ -1,23 +1,23 @@
 #include "amova.h"
 
 /// @brief thread handler for doAmova
-void *t_doAmova(void *p) {
-    amovaBootstrapThreads *THREAD = (amovaBootstrapThreads *)p;
+void* t_doAmova(void* p) {
+    amovaBootstrapThreads* THREAD = (amovaBootstrapThreads*)p;
     if (doAmova(THREAD) != 0) {
         NEVER;
     }
     return (0);
 }
 
-int doAmova(amovaBootstrapThreads *THREAD) {
+int doAmova(amovaBootstrapThreads* THREAD) {
     return (doAmova(THREAD->amova, THREAD->distanceMatrix, THREAD->metadata));
 }
 
-void spawnThreads_amovaBootstrap(metadataStruct *metadata, blobStruct *blob) {
+void spawnThreads_amovaBootstrap(metadataStruct* metadata, blobStruct* blob) {
     const int nReplicates = blob->bootstraps->nReplicates;
 
     pthread_t bootstrapThreads[nReplicates];
-    amovaBootstrapThreads **THREADS = new amovaBootstrapThreads *[nReplicates];
+    amovaBootstrapThreads** THREADS = new amovaBootstrapThreads * [nReplicates];
 
     int nJobs_sent = 0;
 
@@ -53,10 +53,10 @@ void spawnThreads_amovaBootstrap(metadataStruct *metadata, blobStruct *blob) {
     }
 
     blob->bootstraps->nPhiValues = THREADS[0]->amova->_phi;
-    blob->bootstraps->phiValues = (double **)malloc(blob->bootstraps->nPhiValues * sizeof(double *));
+    blob->bootstraps->phiValues = (double**)malloc(blob->bootstraps->nPhiValues * sizeof(double*));
 
     for (int i = 0; i < blob->bootstraps->nPhiValues; i++) {
-        blob->bootstraps->phiValues[i] = (double *)malloc(nReplicates * sizeof(double));
+        blob->bootstraps->phiValues[i] = (double*)malloc(nReplicates * sizeof(double));
 
         for (int r = 0; r < nReplicates; r++) {
             blob->bootstraps->phiValues[i][r] = THREADS[r]->amova->phi[i];
@@ -69,8 +69,8 @@ void spawnThreads_amovaBootstrap(metadataStruct *metadata, blobStruct *blob) {
     delete[] THREADS;
 }
 
-amovaStruct *amovaStruct_get(distanceMatrixStruct *dm, metadataStruct *metadata) {
-    amovaStruct *amova = new amovaStruct(metadata);
+amovaStruct* amovaStruct_get(distanceMatrixStruct* dm, metadataStruct* metadata) {
+    amovaStruct* amova = new amovaStruct(metadata);
 
     ASSERT(NULL != amova);
 
@@ -82,19 +82,20 @@ amovaStruct *amovaStruct_get(distanceMatrixStruct *dm, metadataStruct *metadata)
             fprintf(stderr, ".\n");
         }
 
-        // eval_amovaStruct(amova);
         // return 0 on successful run
         // return 1 on error (either during analyses or during evaluation)
         if (args->printAmovaTable == 1) {
             amova->print_as_table(stdout, metadata);
+            //TODO make this to print file instead
         }
         amova->print_as_csv(metadata);
     }
+    ASSERT(NULL != amova);
     return (amova);
 }
 
 // calculate the degrees of freedom for each level
-void get_degreesOfFreedom(amovaStruct *amova, metadataStruct *metadata) {
+void get_degreesOfFreedom(amovaStruct* amova, metadataStruct* metadata) {
     const int nInd = metadata->nInd;
 
     // highest level df is nStrata - 1
@@ -124,7 +125,7 @@ void get_degreesOfFreedom(amovaStruct *amova, metadataStruct *metadata) {
     }
 }
 
-void get_sumOfSquares(amovaStruct *amova, metadataStruct *metadata, distanceMatrixStruct *dm) {
+void get_sumOfSquares(amovaStruct* amova, metadataStruct* metadata, distanceMatrixStruct* dm) {
     // calculate the sum of squares within for each level
     //
     for (size_t i = 0; i < amova->_ncoef; i++) {
@@ -154,7 +155,7 @@ void get_sumOfSquares(amovaStruct *amova, metadataStruct *metadata, distanceMatr
     }
 }
 
-void get_varianceCoefficients(amovaStruct *amova, metadataStruct *metadata, distanceMatrixStruct *dm) {
+void get_varianceCoefficients(amovaStruct* amova, metadataStruct* metadata, distanceMatrixStruct* dm) {
     if (metadata->nLevels == 1) {
         // calculate variance coefficients (n) for 1 level AMOVA
 
@@ -330,7 +331,7 @@ void get_varianceCoefficients(amovaStruct *amova, metadataStruct *metadata, dist
 }
 
 // calculate variance components (sigma squared)
-void get_varianceComponents(amovaStruct *amova) {
+void get_varianceComponents(amovaStruct* amova) {
     // if (amova->nAmovaLevels == 4) {
     // amova->sigmasq[2] = amova->msd[2];
     // amova->sigmasq[1] = (amova->msd[1] - amova->msd[2]) / amova->ncoef[0];
@@ -371,13 +372,13 @@ void get_varianceComponents(amovaStruct *amova) {
     calculate_PercentageTotalVariance(amova);
 }
 
-void calculate_PercentageTotalVariance(amovaStruct *amova) {
+void calculate_PercentageTotalVariance(amovaStruct* amova) {
     for (int i = 0; i < (int)amova->_ncoef; i++) {
         amova->pct_sigmasq[i] = (amova->sigmasq[i] / amova->sigmasq[amova->_ncoef]) * 100.0;
     }
 }
 
-void get_phiStatistics(amovaStruct *amova) {
+void get_phiStatistics(amovaStruct* amova) {
     if (amova->nAmovaLevels == 3) {
         amova->phi[0] = amova->sigmasq[0] / (amova->sigmasq[0] + amova->sigmasq[1]);
 
@@ -405,7 +406,7 @@ void get_phiStatistics(amovaStruct *amova) {
     }
 }
 
-int doAmova(amovaStruct *amova, distanceMatrixStruct *dm, metadataStruct *metadata) {
+int doAmova(amovaStruct* amova, distanceMatrixStruct* dm, metadataStruct* metadata) {
     get_degreesOfFreedom(amova, metadata);
     get_sumOfSquares(amova, metadata, dm);
     get_varianceCoefficients(amova, metadata, dm);
@@ -414,7 +415,7 @@ int doAmova(amovaStruct *amova, distanceMatrixStruct *dm, metadataStruct *metada
     return (0);
 }
 
-void amovaStruct::_print(FILE *fp) {
+void amovaStruct::_print(FILE* fp) {
     fprintf(fp, "\nnAmovaLevels = %d\n", nAmovaLevels);
     fprintf(fp, "\n_ncoef = %zu\n", _ncoef);
     fprintf(fp, "_phi = %zu\n", _phi);
@@ -434,7 +435,7 @@ void amovaStruct::_print(FILE *fp) {
     }
 }
 
-void amovaStruct::print_as_table(FILE *fp, metadataStruct *metadata) {
+void amovaStruct::print_as_table(FILE* fp, metadataStruct* metadata) {
     fprintf(fp, "\n");
     fprintf(fp, "\n\n");
     fprintf(fp, "==========================================  AMOVA  ==========================================");
@@ -497,14 +498,14 @@ void amovaStruct::print_as_table(FILE *fp, metadataStruct *metadata) {
 
 // TODO add pct variance to output table and csv
 // TODO add hdr to output
-void amovaStruct::print_as_csv(metadataStruct *metadata) {
+void amovaStruct::print_as_csv(metadataStruct* metadata) {
     // header
     //  type,label,value
     //  SSD,Among_region,0.1234
     //  fprintf(fp, "type,label,value\n");
 
     outFiles->out_amova_fs->kbuf = kbuf_init();
-    kstring_t *kbuf = outFiles->out_amova_fs->kbuf;
+    kstring_t* kbuf = outFiles->out_amova_fs->kbuf;
 
     ksprintf(kbuf, "df,Total,%d\n", df[nAmovaLevels - 1]);
     ksprintf(kbuf, "SSD,Total,%f\n", ssd[nAmovaLevels - 1]);
@@ -556,7 +557,7 @@ void amovaStruct::print_as_csv(metadataStruct *metadata) {
     ASSERT(outFiles->out_amova_fs->kbuf == NULL);  // TODO delme
 }
 
-amovaStruct::amovaStruct(metadataStruct *metadata) {
+amovaStruct::amovaStruct(metadataStruct* metadata) {
     // storing levels in order of highest to lowest level + total
     // {level1, level2, level3, ..., total}
     // where level1 is the highest level
@@ -564,6 +565,7 @@ amovaStruct::amovaStruct(metadataStruct *metadata) {
 
     // set number of amova levels
     // number of metadata levels + 2
+    ASSERT(metadata != NULL);
     nAmovaLevels = metadata->nLevels + 2;
     _ncoef = metadata->nLevels + 1;
     _phi = nCk(_ncoef, 2);
@@ -596,17 +598,17 @@ amovaStruct::amovaStruct(metadataStruct *metadata) {
 }
 
 amovaStruct::~amovaStruct() {
-    DEL1D(df);
-    DEL1D(ss);
-    DEL1D(ssd);
-    DEL1D(msd);
-    DEL1D(ncoef);
-    DEL1D(sigmasq);
-    DEL1D(phi);
-    DEL1D(pct_sigmasq);
+    delete[] df;
+    delete[] ss;
+    delete[] ssd;
+    delete[] msd;
+    delete[] ncoef;
+    delete[] sigmasq;
+    delete[] phi;
+    delete[] pct_sigmasq;
 }
 
-double calculate_SumOfSquares_Total(distanceMatrixStruct *dm) {
+double calculate_SumOfSquares_Total(distanceMatrixStruct* dm) {
     double ssd_TOTAL = 0.0;
 
     for (int px = 0; px < dm->nIndCmb; px++) {
@@ -617,7 +619,7 @@ double calculate_SumOfSquares_Total(distanceMatrixStruct *dm) {
     return ssd_TOTAL;
 }
 
-double calculate_SumOfSquares_Within(int lvl, amovaStruct *amova, distanceMatrixStruct *dm, metadataStruct *metadata) {
+double calculate_SumOfSquares_Within(int lvl, amovaStruct* amova, distanceMatrixStruct* dm, metadataStruct* metadata) {
     ASSERT(lvl >= 0 && lvl < amova->nAmovaLevels);
     // if at the highest level, then calculate the total sum of squares
     if (lvl == amova->nAmovaLevels - 2) {

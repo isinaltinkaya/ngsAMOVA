@@ -4,58 +4,7 @@
 #include "dataStructs.h"
 
 
-strArray* strArray_init(void){
-	strArray *arr = (strArray*) malloc(sizeof(strArray));
-	ASSERT(NULL!=arr);
-	arr->nbuf = 1;
-	arr->nvals = 0;
-	arr->vals = (char**) malloc( arr->nbuf * sizeof(char*));
-	arr->vals[0]=NULL;
-	ASSERT(arr->vals!=NULL);
-	return (arr);
-}
-
-void strArray_destroy(strArray* arr){
-	ASSERT(arr->vals!=NULL);
-	for(int i=0;i<arr->nbuf;++i){
-		FFREE(arr->vals[i]);
-	}
-	FFREE(arr->vals);
-	FREE(arr);
-}
-
-void strArray::add(const char* new_val){
-	ASSERT(new_val!=NULL);
-
-	if(this->nvals == this->nbuf){
-
-		this->nbuf = this->nbuf * 2;
-		REALLOC(this->vals, this->nbuf * sizeof(char*), char**);
-		for(int i=this->nvals; i<this->nbuf;++i){
-			this->vals[i]=NULL;
-		}
-	}
-	this->vals[this->nvals]=strdup(new_val);
-	ASSERT(this->vals[this->nvals]!=NULL);
-	this->nvals++;
-}
-
-
-void strArray::print(void){
-	for(int i=0;i<this->nbuf;++i){
-		fprintf(stderr,"%s\n",this->vals[i]);
-	}
-}
-
-void strArray::print(FILE* fp){
-	for(int i=0;i<this->nbuf;++i){
-		fprintf(fp,"%s\n",this->vals[i]);
-	}
-}
-
-
-
-void setInputFileType(paramStruct *pars, int inputFileType) {
+void setInputFileType(paramStruct* pars, int inputFileType) {
     pars->in_ft = pars->in_ft | inputFileType;
 }
 
@@ -75,23 +24,24 @@ bool require_metadata(void) {
     return (false);
 }
 
-// TODO incomplete!
-bool require_itemLabels(void){
-	if (0 != args->doPhylo){
-		return(true);
-	}
-	return(false);
-}
 
 
+paramStruct* paramStruct_init(argStruct* args) {
+    paramStruct* pars = new paramStruct;
 
-paramStruct *paramStruct_init(argStruct *args) {
-    paramStruct *pars = new paramStruct;
-
-    pars->DATETIME = (char *)malloc(1024 * sizeof(char));
+    pars->DATETIME = (char*)malloc(1024 * sizeof(char));
     sprintf(pars->DATETIME, "%s", get_time());
 
-    pars->indNames = strArray_init();
+    pars->nSites_arrays_size = NSITES_BUF_INIT;
+
+    pars->a1a2 = (int**)malloc(pars->nSites_arrays_size * sizeof(int*));
+    ASSERT(NULL != pars->a1a2);
+    for (int i = 0;i < pars->nSites_arrays_size;++i) {
+        pars->a1a2[i] = (int*)malloc(2 * sizeof(int));
+        ASSERT(NULL != pars->a1a2[i]);
+        pars->a1a2[i][0] = -1;
+        pars->a1a2[i][1] = -1;
+    }
 
 
     if (NULL != args->in_vcf_fn) {
@@ -122,32 +72,42 @@ paramStruct *paramStruct_init(argStruct *args) {
     return pars;
 }
 
-void paramStruct_destroy(paramStruct *pars) {
+void paramStruct_destroy(paramStruct* pars) {
     FREE(pars->DATETIME);
+
+    for (int i = 0;i < pars->nSites_arrays_size;++i) {
+        FREE(pars->a1a2[i]);
+    }
+    FREE(pars->a1a2);
 
     if (NULL != pars->formula) {
         formulaStruct_destroy(pars->formula);
     }
 
-    if(NULL != pars->indNames){
-	    strArray_destroy(pars->indNames);
+    if (NULL != pars->indNames) {
+        for (int i = 0;i < pars->nInd;++i) {
+            FREE(pars->indNames[i]);
+        }
+        FREE(pars->indNames);
     }
-	
-	if(NULL!=pars->pidx2inds){
-		for(int i=0;i<pars->nIndCmb;++i){
-			FREE(pars->pidx2inds[i]);
-		}
-	}
-	FFREE(pars->pidx2inds);
+
+    if (NULL != pars->pidx2inds) {
+        for (int i = 0;i < pars->nIndCmb;++i) {
+            FREE(pars->pidx2inds[i]);
+        }
+        FREE(pars->pidx2inds);
+    }
 
 
-	if(pars->ibd!=NULL){
-	for (size_t i=0;i<pars->nIndCmb;++i){
-		FREE(pars->ibd->pairScores[i]);
-	}
-	FREE(pars->ibd->pairScores);
-	delete pars->ibd;
-	}
+
+
+    if (pars->ibd != NULL) {
+        for (size_t i = 0;i < (size_t)pars->nIndCmb;++i) {
+            FREE(pars->ibd->pairScores[i]);
+        }
+        FREE(pars->ibd->pairScores);
+        delete pars->ibd;
+    }
 
 
     delete pars;
@@ -159,7 +119,7 @@ void paramStruct_destroy(paramStruct *pars) {
 /// @brief check_consistency_args_pars - check consistency between arguments and parameters
 /// @param args pointer to argStruct
 /// @param pars pointer to paramStruct
-void check_consistency_args_pars(paramStruct *pars) {
+void check_consistency_args_pars(paramStruct* pars) {
     if (args->minInd == pars->nInd) {
         fprintf(stderr, "\n\t-> -minInd %d is equal to the number of individuals found in file: %d. Setting -minInd to 0 (all).\n", args->minInd, pars->nInd);
         args->minInd = 0;

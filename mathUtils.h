@@ -15,11 +15,11 @@
  * Macro:[LOG2LN]
  * convert log_10(x) to log_e(x)
  */
-#define LOG2LN(x) (x / M_LOG10E)
+#define LOG2LN(x) ((((x)) / (M_LOG10E)))
 
-#define LN2LOG(x) (x * M_LOG10E)
+#define LN2LOG(x) ((((x) * (M_LOG10E))))
 
-void gl_log10(int base, double errate, double *like);
+void gl_log10(int base, double errate, double* like);
 
 /*
  * Binomial coefficient: n choose k
@@ -86,90 +86,90 @@ int nC2(int n);
 
 namespace MATH {
 
-double SUM(double M[3][3]);
-double SUM(double *M);
+    double SUM(double M[3][3]);
+    double SUM(double* M);
 
-double MEAN(double M[3][3]);
-double MEAN(double *M);
+    double MEAN(double M[3][3]);
+    double MEAN(double* M);
 
-double MEAN(double *arr, int size);
+    double MEAN(double* arr, int size);
 
-double VAR(double M[3][3]);
-double VAR(double *M);
+    double VAR(double M[3][3]);
+    double VAR(double* M);
 
-double SD(double M[3][3]);
-double SD(double *M);
-double SD(double *arr, int size);
+    double SD(double M[3][3]);
+    double SD(double* M);
+    double SD(double* arr, int size);
 
-double SUM(int *M);
-double MEAN(int *M);
-double VAR(int *M);
-double SD(int *M);
+    double SUM(int* M);
+    double MEAN(int* M);
+    double VAR(int* M);
+    double SD(int* M);
 
-/*
- *
- * [S_ij Similarity index]
- *
- * Similarity index (S_ij) based on the
- * probability of identity by descent
- *
- * 00 01 02 10 11 12 20 21 22
- * A  D  G  B  E  H  C  F  I
- *
- * A + I + ((B+D+E+F+H)/2)
- *
- */
+    /*
+     *
+     * [S_ij Similarity index]
+     *
+     * Similarity index (S_ij) based on the
+     * probability of identity by descent
+     *
+     * 00 01 02 10 11 12 20 21 22
+     * A  D  G  B  E  H  C  F  I
+     *
+     * A + I + ((B+D+E+F+H)/2)
+     *
+     */
 
-/*
- * Reference for Fij IBS0 IBS1 IBS2 R0 R1 Kin
- * https://doi.org/10.1111/mec.14954
- */
+     /*
+      * Reference for Fij IBS0 IBS1 IBS2 R0 R1 Kin
+      * https://doi.org/10.1111/mec.14954
+      */
 
-/*
- *
- * [F_ij F statistic]
- *
- * 00 01 02 10 11 12 20 21 22
- * A  D  G  B  E  H  C  F  I
- *
- * (2C+2G-E) / (2C+2G+B+D+E+F+H)
- *
- */
-double Sij(double M[3][3]);
-double Sij(double *M);
-double Sij(int *M, int S);
+      /*
+       *
+       * [F_ij F statistic]
+       *
+       * 00 01 02 10 11 12 20 21 22
+       * A  D  G  B  E  H  C  F  I
+       *
+       * (2C+2G-E) / (2C+2G+B+D+E+F+H)
+       *
+       */
+    double Sij(double M[3][3]);
+    double Sij(double* M);
+    double Sij(int* M, int S);
 
-double Fij(double *M);
-double Fij(int *M, int S);
-double Fij(double M[3][3]);
+    double Fij(double* M);
+    double Fij(int* M, int S);
+    double Fij(double M[3][3]);
 
-double IBS0(double *M);
-double IBS0(int *M, int S);
-double IBS0(double M[3][3]);
+    double IBS0(double* M);
+    double IBS0(int* M, int S);
+    double IBS0(double M[3][3]);
 
-double IBS1(double *M);
-double IBS1(int *M, int S);
-double IBS1(double M[3][3]);
+    double IBS1(double* M);
+    double IBS1(int* M, int S);
+    double IBS1(double M[3][3]);
 
-double IBS2(double *M);
-double IBS2(int *M, int S);
-double IBS2(double M[3][3]);
+    double IBS2(double* M);
+    double IBS2(int* M, int S);
+    double IBS2(double M[3][3]);
 
-double R0(double *M);
-double R0(int *M, int S);
-double R0(double M[3][3]);
+    double R0(double* M);
+    double R0(int* M, int S);
+    double R0(double M[3][3]);
 
-double R1(double *M);
-double R1(int *M, int S);
-double R1(double M[3][3]);
+    double R1(double* M);
+    double R1(int* M, int S);
+    double R1(double M[3][3]);
 
-double Kin(double *M);
-double Kin(int *M, int S);
-double Kin(double M[3][3]);
+    double Kin(double* M);
+    double Kin(int* M, int S);
+    double Kin(double M[3][3]);
 
-double Dij(int *M, int S);
-double Dij(double *M);
-double Dij(double M[3][3]);
+    double Dij(int* M, int S);
+    double Dij(double* M);
+    double Dij(double M[3][3]);
 
 }  // namespace MATH
 
