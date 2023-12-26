@@ -5,6 +5,11 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      git-ref:
+        description: Git SHA-1 commit hash (optional)
+        required: false
 
 jobs:
   build:
@@ -12,8 +17,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install dependencies
-      run: sudo apt-get update; sudo apt-get install libcurl4-openssl-dev
-    - name: make
-      run: make
+      run: sudo apt-get update; sudo apt-get install libcurl4-openssl-dev libhts3 libhts-dev
+    - name: make HTSSRC="systemwide"
+      run: make HTSSRC="systemwide"
     - name: make test
       run: make test
