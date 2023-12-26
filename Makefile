@@ -163,7 +163,7 @@ $(info [INFO]    -> Updated CXXFLAGS to "$(CXXFLAGS)")
 
 
 $(info [INFO]    -> LIBS was "$(LIBS)")
-LIBS := -lz -lm -lbz2 -llzma -lcurl -lpthread $(THIS_LIBHTS) $(THIS_CRYPTOLIB)
+LIBS := $(THIS_LIBHTS) $(THIS_CRYPTOLIB) -lz -lm -lbz2 -llzma -lcurl -lpthread 
 $(info [INFO]    -> Updated LIBS to "$(LIBS)")
 
 $(info )
