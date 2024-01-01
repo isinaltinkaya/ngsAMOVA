@@ -208,6 +208,7 @@ struct argStruct {
 
 
     int nThreads = 1;
+    int rmInvarSites = 0;
     int seed = -1;
     int nBootstraps = 0;
 

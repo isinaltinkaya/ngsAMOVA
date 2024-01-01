@@ -258,6 +258,7 @@ double MATH::Dij(double *M) {
     return x;
 }
 
+//TODO ?? 
 double MATH::Dij(int *M, int S) {
     double x = 0.0;
 

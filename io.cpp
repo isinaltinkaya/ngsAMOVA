@@ -583,13 +583,13 @@ void IO::outFilesStruct_init(IO::outFilesStruct* ofs) {
 
     if (args->doEM == 1) {
         if (args->printJointGenotypeCountMatrix != 0) {
-            ofs->out_jgcd_fs = new IO::outputStruct(args->out_fnp, ".joint_geno_count_dist.csv", args->printJointGenotypeCountMatrix - 1);
+            ofs->out_jgcd_fs = new IO::outputStruct(args->out_fnp, ".joint_genotype_count_matrix.csv", args->printJointGenotypeCountMatrix - 1);
         }
     }
 
     if (args->doAMOVA == 2) {
         if (args->printJointGenotypeCountMatrix != 0) {
-            ofs->out_jgcd_fs = new IO::outputStruct(args->out_fnp, ".joint_geno_count_dist.csv", args->printJointGenotypeCountMatrix - 1);
+            ofs->out_jgcd_fs = new IO::outputStruct(args->out_fnp, ".joint_genotype_count_matrix.csv", args->printJointGenotypeCountMatrix - 1);
         }
     }
 

@@ -46,11 +46,8 @@ void spawnThreads_pairEM(paramStruct* pars, vcfData* vcfd, distanceMatrixStruct*
 
 		if (vcfd->snSites[pidx] > 0) {
 			if (args->squareDistance == 1) {
-				// DEVPRINT("%d",pidx);
-				// DEVPRINT("%f",vcfd->jointGenotypeMatrixGL[pidx][0]);
 				// if(pidx==1)NEVER;
 				distanceMatrix->M[pidx] = (double)SQUARE((MATH::Dij(vcfd->jointGenotypeMatrixGL[pidx])));
-				// DEVPRINT("%f",distanceMatrix->M[pidx]);
 			} else {
 				distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->jointGenotypeMatrixGL[pidx]);
 			}

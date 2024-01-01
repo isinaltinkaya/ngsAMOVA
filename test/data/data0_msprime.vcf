@@ -1,0 +1,20 @@
+##fileformat=VCFv4.2
+##source=tskit 0.4.1
+##FILTER=<ID=PASS,Description="All filters passed">
+##contig=<ID=c1,length=10000000>
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	popA_ind1	popA_ind2	popB_ind1	popB_ind2	popC_ind1	popC_ind2	popD_ind1	popD_ind2
+c1	70	.	0	1	.	PASS	.	GT	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0
+c1	188	.	0	1	.	PASS	.	GT	1|1	1|1	1|1	1|1	1|1	1|1	1|1	1|1
+c1	286	.	0	1	.	PASS	.	GT	1|0	1|0	0|1	0|1	0|1	0|1	1|1	1|1
+c1	287	.	0	1	.	PASS	.	GT	0|0	0|0	0|0	0|0	0|0	0|0	0|0	1|1
+c1	832	.	0	1	.	PASS	.	GT	0|0	0|0	0|0	0|0	0|0	0|0	0|0	0|0
+c1	835	.	0	1	.	PASS	.	GT	0|0	0|0	1|1	0|0	0|0	1|1	0|0	0|0
+c1	836	.	0	1	.	PASS	.	GT	0|0	0|0	1|1	0|0	0|0	1|0	0|0	0|0
+c1	837	.	0	1	.	PASS	.	GT	0|0	1|1	0|0	1|1	0|0	0|0	0|0	0|0
+c1	853	.	0	1	.	PASS	.	GT	0|0	0|0	0|0	1|1	0|0	0|0	0|0	0|0
+c1	1094	.	0	1	.	PASS	.	GT	1|1	1|1	1|1	1|1	1|1	1|1	1|1	0|0
+c1	1690	.	0	1	.	PASS	.	GT	1|1	0|1	1|1	1|1	1|1	1|1	1|1	0|1
+c1	2273	.	0	1	.	PASS	.	GT	1|1	0|1	1|1	1|1	1|1	1|1	1|1	1|0
+c1	98514	.	0	1	.	PASS	.	GT	1|1	0|1	0|1	1|1	1|1	1|1	1|1	0|0
+c1	98777	.	0	1	.	PASS	.	GT	1|1	0|0	0|1	1|1	1|1	1|1	1|1	0|0

@@ -4,8 +4,11 @@
 #
 set -uo pipefail
 
-
 SCRIPTPATH=$(realpath "$0")
+
+TESTTYPE=${1:-"regular"}
+
+
 SCRIPTDIR=$(dirname "$SCRIPTPATH")
 DATADIR=$(realpath "$SCRIPTDIR/data")
 TESTWD=$(realpath "$SCRIPTDIR/testwd")
@@ -19,70 +22,101 @@ rm -rfv ${TESTWD}/
 mkdir -pv ${TESTWD}/
 echo ${TESTWD}
 
-
-
-initMainLog(){
-	local id=${1}
-	printf "\n\n"
-	printf "###############################################################################\n"
-	printf "# RUNNING TEST: ${id}\n"
-	printf "\n\n"
+testExec(){
+	if ! command -v ${EXEC} &> /dev/null; then
+		printf "${RED}\n\n"
+		printf "###############################################################################\n"
+		printf "# ERROR\n"
+		printf "# Executable could not be found at:\n"
+		printf "${EXEC}\n"
+		printf "###############################################################################\n"
+		printf "\n\n"
+		printf ${NOCOLOR}
+		exit 1;
+	fi
 }
 
-
-printMainLog(){
-	local msg=${@}
-	printf "\n# ${msg}\n"
-}
-
-testSuccess(){
-	local id=${1}
-	printf "${GREEN}\n\n"
-	printf "# FINISHED ${id} -> OK\n"
-	printf "${NOCOLOR}"
-	printf "###############################################################################\n"
-	printf "\n\n"
-}
-
-testFail(){
-	local id=${1}
-	local outFile=${2}
-	local refFile=${3}
-	local logFile=${4}
-	local diffFile=${5}
-
-	printf "\n\n"
-	printf "${RED}"
-	printf "###############################################################################\n"
-	printf "# TEST ${id}: FAILED\n"
-	printMainLog "Output file:\n${outFile}"
-	printMainLog "Reference file:\n${refFile}"
-	printMainLog "Log file:\n${logFile}"
-	printMainLog "Diff file:\n${diffFile}"
-	printf "###############################################################################\n"
-	printf "${NOCOLOR}"
-	printf "\n\n"
-	exit 1
-}
-
-runTestDiff(){
-	local id=${1}
-	local outFile=${2}
-	local refFile=${3}
-	local outPref=${TESTWD}/${id}
-	local logFile=${outPref}.log
-	local diffFile=${outPref}.diff
-
-	diff -s ${outFile} ${refFile} > ${diffFile} 2>&1
-
-	if [ $? -eq 0 ]; then
-		testSuccess ${id}
-	else
-		testFail ${id} ${outFile} ${refFile} ${logFile} ${diffFile}
+testValgrind(){
+	if ! command -v valgrind &> /dev/null; then
+		echo "valgrind could not be found";
+		exit 1;
 	fi
 }
 
 
+if [ ${TESTTYPE} == "regular" ]; then
+	testExec
+elif [ ${TESTTYPE} == "vg" ]; then
+	testExec
+	testValgrind
+elif [ ${TESTTYPE} == "all" ]; then
+	testExec
+	testValgrind
+else
+	echo "Unknown test type: ${TESTTYPE}"
+	exit 1;
+fi
+
+printf "\n\n"
+printf "###############################################################################\n"
+printf "# Starting ${TESTTYPE} tests\n"
+printf "\n# Script path:\n"
+printf "${SCRIPTPATH}\n"
+printf "\n# Script directory:\n"
+printf "${SCRIPTDIR}\n"
+printf "\n# Data directory:\n"
+printf "${DATADIR}\n"
+printf "\n# Test working directory:\n"
+printf "${TESTWD}\n"
+printf "\n# Executable:\n"
+printf "${EXEC}\n"
+printf "\n# Test data directory:\n"
+printf "${DATADIR}\n"
+printf "###############################################################################\n"
+printf "\n\n"
+
+
+
+
+runTestDiff(){
+	if [ ${TESTTYPE} == "regular" ]  || [ ${TESTTYPE} == "all" ]; then
+		local id=${1}
+		local outFile=${2}
+		local refFile=${3}
+		local outPref=${TESTWD}/${id}
+		local logFile=${outPref}.log
+		local diffFile=${outPref}.diff
+
+		local diffcmd="diff -s ${outFile} ${refFile} > ${diffFile} 2>&1"
+
+		printf "# ${id} -> Running diff\n"
+		printf "# Command:\n${diffcmd}\n"
+
+		eval ${diffcmd}
+
+		if [ $? -eq 0 ]; then
+			printf "${GREEN}"
+			printf "# ${id} -> Diff: OK\n"
+			printf "${NOCOLOR}"
+			printf "\n\n"
+		else
+			printf "\n\n"
+			printf "${RED}"
+			printf "###############################################################################\n"
+			printf "# ${id} FAILED\n"
+
+			printf "\n# Command:\n${diffcmd}\n"
+			printf "\n# Output file:\n${outFile}\n"
+			printf "\n# Reference file:\n${refFile}\n"
+			printf "\n# Log file:\n${logFile}\n"
+			printf "\n# Diff file:\n${diffFile}\n"
+			printf "###############################################################################\n"
+			printf "${NOCOLOR}"
+			printf "\n\n"
+			exit 1
+		fi
+	fi
+}
 
 
 runTest(){
@@ -96,92 +130,79 @@ runTest(){
 	local refFile=${SCRIPTDIR}/reference/${id}/${id}.vcf
 	local diffFile=${outPref}.diff
 	local logFile=${outPref}.log
-	local cmd="${EXEC} ${inOpt} ${inFileName} -o ${outPref} ${args}"
-	initMainLog ${id}
-	printMainLog "Command:\n${cmd}"
 
-	${cmd} > ${logFile} 2>&1
+	local cmd;
+
+	if [ ${TESTTYPE} == "regular" ]; then
+		cmd="${EXEC} ${inOpt} ${inFileName} -o ${outPref} ${args} 2> ${logFile}"
+	elif [ ${TESTTYPE} == "vg" ]; then
+		cmd="valgrind --leak-check=full -q --error-exitcode=1 --log-fd=9 9>> ${outPref}.vg.log ${EXEC} ${inOpt} ${inFileName} -o ${outPref} ${args} 2> ${logFile}"
+	elif [ ${TESTTYPE} == "all" ]; then
+		cmd="valgrind --leak-check=full -q --error-exitcode=1 --log-fd=9 9>> ${outPref}.vg.log ${EXEC} ${inOpt} ${inFileName} -o ${outPref} ${args} 2> ${logFile}"
+	fi
+
+	printf "\n\n"
+	printf "###############################################################################\n"
+	printf "# ${id} -> Running ${TESTTYPE} test \n"
+	printf "\n\n"
+
+	printf "# Command:\n${cmd}\n"
+
+	
+	if [ ${TESTTYPE} == "vg" ] || [ ${TESTTYPE} == "all" ]; then
+
+		local vgFile=${outPref}.vg.log
+		local vgrun;
+		eval ${cmd}
+		exitCode=$?
+
+		if [ ${exitCode} -eq 0 ]; then
+			printf "${GREEN}"
+			printf "# ${id} -> Valgrind test: OK\n"
+			printf "${NOCOLOR}"
+			printf "\n\n"
+		else
+			printf "${RED}\n\n"
+			printf "# ${id} -> Valgrind test: FAILED\n"
+			printf "# Valgrind output:\n"
+			printf "${vgFile}\n"
+
+			printf "\n\n"
+			printf "${NOCOLOR}"
+			exit 1
+
+		fi
+
+	elif [ ${TESTTYPE} == "regular" ]; then
+		eval ${cmd}
+		exitCode=$?
+
+		if [ ${exitCode} -eq 0 ]; then
+			printf "${GREEN}"
+			printf "# ${id} -> Run: OK\n"
+			printf "${NOCOLOR}"
+			printf "\n\n"
+		else
+			printf "${RED}\n\n"
+			printf "# ${id} -> Run: FAILED\n"
+			printf "# Log file:\n"
+			printf "${logFile}\n"
+
+			printf "\n\n"
+			printf "${NOCOLOR}"
+			exit 1
+
+		fi
+
+	fi
 
 }
-
-
-##@@
-# 	all:
-#         $(RM) -rvf testwd;
-#         mkdir -pv testwd/logs;
-# #
-#         @printf "\n\n\n";
-#         @printf "===============================================================================\n";
-#         @printf "\n\n\n[TEST 1]: EM, then AMOVA with 1 levels in metadata, print distance matrix\n";
-#         ../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf --printDistanceMatrix 1 --minInd 2 -doDist 1 --maxEmIter 100 --em-tole 1e-10 -m metadata_with_header_1lvl.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1 2> testwd/logs/test_s9_d1_1K_mtd1.log;
-#         bash -c "diff testwd/test_s9_d1_1K_mtd1.amova.csv reference/test_s9_d1_1K_mtd1.amova.csv";
-# #
-#         @printf "\n\n\n";
-#         @printf "===============================================================================\n";
-#         @printf "\n\n\n[TEST 2]: Read the data from distance matrix file created in the previous step, then AMOVA with 1 levels in metadata\n";
-#         ../ngsAMOVA -doEM 0 -doAMOVA 1 --in-dm testwd/test_s9_d1_1K_mtd1.distance_matrix.csv --minInd 2 -doDist 3 -m metadata_with_header_1lvl.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1_indm 2> testwd/logs/test_s9_d1_1K_mtd1_indm.log;
-#         bash -c "diff testwd/test_s9_d1_1K_mtd1_indm.amova.csv reference/test_s9_d1_1K_mtd1_indm.amova.csv";
-# #
-#         @printf "\n\n\n";
-#         @printf "===============================================================================\n";
-#         @printf "\n\n\n[TEST 3]: EM, then AMOVA with 2 levels in metadata\n";
-#         ../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf --minInd 2 -doDist 1 --maxEmIter 100 --em-tole 1e-10 -m metadata_with_header_2lvl.tsv -f "Individual~Region/Population" -out testwd/test_s9_d1_1K_mtd2 2> testwd/logs/test_s9_d1_1K_mtd2.log;
-#         bash -c "diff testwd/test_s9_d1_1K_mtd2.amova.csv reference/test_s9_d1_1K_mtd2.amova.csv";
-# #
-#         @printf "\n\n\n";
-#         @printf "===============================================================================\n";
-#         @printf "\n\n\n[TEST 4]: Read the data from distance matrix file, then do 1-level AMOVA using formula from metadata with 2 levels\n";
-#         ../ngsAMOVA -doEM 0 -doAMOVA 1 --in-dm test_s9_d1_1K_mtd1_maxIter100_tole10.distance_matrix.csv --minInd 2 -doDist 3 --nThreads 0 -m metadata_with_header_2lvl.tsv -f "Individual~Population" -out testwd/indm_test_s9_d1_1K_mtd1 2> testwd/logs/indm_test_s9_d1_1K_mtd1.log;
-#         bash -c "diff testwd/indm_test_s9_d1_1K_mtd1.amova.csv testwd/test_s9_d1_1K_mtd1.amova.csv";
-# #
-#         @printf "\n\n\n";
-#         @printf "===============================================================================\n";
-#         @printf "\n\n\n[TEST 5]: Use genotypes in VCF file to perform AMOVA\n";
-#         ../ngsAMOVA -doEM 0 -doAMOVA 1 --in-vcf test_s9_d1_1K.vcf --minInd 2 -doDist 2 -m metadata_with_header_1lvl.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1_gt 2> testwd/logs/test_s9_d1_1K_mtd1_gt.log;
-#         bash -c "diff testwd/test_s9_d1_1K_mtd1_gt.amova.csv reference/test_s9_d1_1K_mtd1_gt.amova.csv";
-# #
-#         @printf "\n\n\n";
-#         @printf "===============================================================================\n";
-#         @printf "\n\n\n[TEST 6]: Same as test 5, but use bcf input with more data and specify regions to use to get the same results as test 5\n";
-#         ../ngsAMOVA -doEM 0 -doAMOVA 1 --in-vcf test_s9_d1_1K_extra.bcf --minInd 2 -doDist 2 -m metadata_with_header_1lvl.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_mtd1_gt --region "chr22" 2> testwd/logs/test_s9_d1_1K_mtd1_gt.log;
-#         bash -c "diff testwd/test_s9_d1_1K_mtd1_gt.amova.csv reference/test_s9_d1_1K_mtd1_gt.amova.csv";
-# #
-#         @printf "\n\n\n";
-#         @printf "===============================================================================\n";
-#         @printf "[TEST 7]: 40 individuals, multithreaded EM\n";
-#         ../ngsAMOVA -doEM 1 -doAMOVA 1 -doDist 1 --maxEmIter 50 --em-tole 1e-5 -P 4 --in-vcf sim_demes_v2-model1-1-rep0-d2.bcf -m sim_demes_v2-model1_metadata_2lvl_with_header.tsv -f "Individual~Region/Population" -o testwd/sim_demes_v2-model1-1-rep0-d2_maxIter50tole5 2> testwd/logs/sim_demes_v2-model1-1-rep0-d2_maxIter50tole5.log;
-#         bash -c "diff testwd/sim_demes_v2-model1-1-rep0-d2_maxIter50tole5.amova.csv reference/sim_demes_v2-model1-1-rep0-d2_maxIter50tole5.amova.csv";
-# #
-#         @printf "\n\n\n";
-#         @printf "===============================================================================\n";
-#         @printf "\n\n\n[TEST 8]: Neighbor Joining with individuals as tips. Use vcf individual names as tip labels\n";
-#         ../ngsAMOVA -doDist 2 --in-vcf test_s9_d1_1K.vcf -f "Individual~Region/Population" -doPhylo 1 -o testwd/test_s9_d1_1K_mtd2_nj 2> testwd/logs/test_s9_d1_1K_mtd2_nj.log;
-#         bash -c "diff testwd/test_s9_d1_1K_mtd2_nj.newick reference/test_s9_d1_1K_mtd2_nj.newick";
-# #
-#         @printf "\n\n\n";
-#         @printf "===============================================================================\n";
-#         @printf "\n\n\n[TEST 9]: Same as TEST1 but with same sites divided into 2 contigs\n";
-#         ../ngsAMOVA -doEM 1 -doAMOVA 1 --in-vcf test_s9_d1_1K_2contigs.vcf --printDistanceMatrix 1 --minInd 2 -doDist 1 --maxEmIter 100 --em-tole 1e-10 -m metadata_with_header_1lvl.tsv -f "Individual~Population" -out testwd/test_s9_d1_1K_2contigs_mtd1 2> testwd/logs/test_s9_d1_1K_2contigs_mtd1.log;
-#         bash -c "diff testwd/test_s9_d1_1K_2contigs_mtd1.amova.csv reference/test_s9_d1_1K_mtd1.amova.csv";
-#         @printf "\n\n\n";
-
-
-##@@
-
-
-
-#TODO
-# test input gl reading with unobserved notation <*> (-doUnobserved 1)
-# INFILENAME="data1.vcf"
 
 ################################################################################
 # TEST1
 ID="test1"
-# INFILENAME="test_s9_d1_1K.vcf"
 INFILENAME=${DATADIR}/test_s9_d1_1K.vcf
-# local inFile=${SCRIPTDIR}/data/${inFileName}
 INOPT="--in-vcf"
-
 
 
 doEm=1
@@ -193,7 +214,6 @@ maxEmIter=100
 emTole="1e-10"
 metadataFile=${DATADIR}/metadata_with_header_1lvl.tsv
 formula="Individual~Population"
-
 
 
 ARGS=" \
@@ -209,9 +229,12 @@ ARGS=" \
 -f ${formula}
 "
 
+
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
 runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.amova.csv
 runTestDiff ${ID} ${TESTWD}/${ID}.distance_matrix.csv ${SCRIPTDIR}/reference/${ID}/${ID}.distance_matrix.csv
+
+
 
 ################################################################################
 # TEST 2
@@ -433,6 +456,261 @@ ARGS=" \
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
 runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.amova.csv
 # ###############################################################################
+
+################################################################################
+# TEST 10
+ID="test10"
+INFILENAME=${DATADIR}/data0.vcf
+INOPT="--in-vcf"
+
+doEm=1
+doAmova=1
+printDistanceMatrix=1
+minInd=2
+doDist=1
+maxEmIter=100
+emTole="1e-10"
+rmInvarSites=1
+metadataFile=${DATADIR}/data0to5_metadata.txt
+formula="Individual~Population"
+
+ARGS=" \
+--verbose 0 \
+-doEM ${doEm} \
+-doAMOVA ${doAmova} \
+--printDistanceMatrix ${printDistanceMatrix} \
+--minInd ${minInd} \
+-doDist ${doDist} \
+--maxEmIter ${maxEmIter} \
+--em-tole ${emTole} \
+--rm-invar-sites ${rmInvarSites} \
+-m ${metadataFile} \
+-f ${formula}
+"
+
+runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
+runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.amova.csv
+runTestDiff ${ID} ${TESTWD}/${ID}.distance_matrix.csv ${SCRIPTDIR}/reference/${ID}/${ID}.distance_matrix.csv
+
+
+# ###############################################################################
+
+################################################################################
+# TEST 11
+ID="test11"
+INFILENAME=${DATADIR}/data1.vcf
+INOPT="--in-vcf"
+
+doEm=1
+doAmova=1
+printDistanceMatrix=1
+minInd=2
+doDist=1
+maxEmIter=100
+emTole="1e-10"
+rmInvarSites=1
+metadataFile=${DATADIR}/data0to5_metadata.txt
+formula="Individual~Population"
+
+ARGS=" \
+--verbose 0 \
+-doEM ${doEm} \
+-doAMOVA ${doAmova} \
+--printDistanceMatrix ${printDistanceMatrix} \
+--minInd ${minInd} \
+-doDist ${doDist} \
+--maxEmIter ${maxEmIter} \
+--em-tole ${emTole} \
+--rm-invar-sites ${rmInvarSites} \
+-m ${metadataFile} \
+-f ${formula}
+"
+
+runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
+runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.amova.csv
+
+# ###############################################################################
+
+################################################################################
+# TEST 12
+ID="test12"
+INFILENAME=${DATADIR}/data2.vcf
+INOPT="--in-vcf"
+
+doEm=1
+doAmova=1
+printDistanceMatrix=1
+minInd=2
+doDist=1
+maxEmIter=100
+emTole="1e-10"
+rmInvarSites=1
+metadataFile=${DATADIR}/data0to5_metadata.txt
+formula="Individual~Population"
+
+ARGS=" \
+--verbose 0 \
+-doEM ${doEm} \
+-doAMOVA ${doAmova} \
+--printDistanceMatrix ${printDistanceMatrix} \
+--minInd ${minInd} \
+-doDist ${doDist} \
+--maxEmIter ${maxEmIter} \
+--em-tole ${emTole} \
+--rm-invar-sites ${rmInvarSites} \
+-m ${metadataFile} \
+-f ${formula}
+"
+
+runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
+runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.amova.csv
+runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/test15/test15.amova.csv
+
+# ###############################################################################
+
+
+################################################################################
+# TEST 13
+ID="test13"
+INFILENAME=${DATADIR}/data3.vcf
+INOPT="--in-vcf"
+
+doEm=1
+doAmova=1
+printDistanceMatrix=1
+minInd=2
+doDist=1
+maxEmIter=100
+emTole="1e-10"
+rmInvarSites=1
+metadataFile=${DATADIR}/data0to5_metadata.txt
+formula="Individual~Population"
+
+ARGS=" \
+--verbose 0 \
+-doEM ${doEm} \
+-doAMOVA ${doAmova} \
+--printDistanceMatrix ${printDistanceMatrix} \
+--minInd ${minInd} \
+-doDist ${doDist} \
+--maxEmIter ${maxEmIter} \
+--em-tole ${emTole} \
+--rm-invar-sites ${rmInvarSites} \
+-m ${metadataFile} \
+-f ${formula}
+"
+
+runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
+runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.amova.csv
+# ###############################################################################
+
+
+################################################################################
+# TEST 14
+ID="test14"
+INFILENAME=${DATADIR}/data4.vcf
+INOPT="--in-vcf"
+
+doEm=1
+doAmova=1
+printDistanceMatrix=1
+minInd=2
+doDist=1
+maxEmIter=100
+emTole="1e-10"
+rmInvarSites=1
+metadataFile=${DATADIR}/data0to5_metadata.txt
+formula="Individual~Population"
+
+ARGS=" \
+--verbose 0 \
+-doEM ${doEm} \
+-doAMOVA ${doAmova} \
+--printDistanceMatrix ${printDistanceMatrix} \
+--minInd ${minInd} \
+-doDist ${doDist} \
+--maxEmIter ${maxEmIter} \
+--em-tole ${emTole} \
+--rm-invar-sites ${rmInvarSites} \
+-m ${metadataFile} \
+-f ${formula}
+"
+
+runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
+runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.amova.csv
+# ###############################################################################
+
+
+################################################################################
+# TEST 15
+ID="test15"
+INFILENAME=${DATADIR}/data5.vcf
+INOPT="--in-vcf"
+
+doEm=1
+doAmova=1
+printDistanceMatrix=1
+printJointGenotypeCountMatrix=1
+minInd=2
+doDist=1
+maxEmIter=100
+emTole="1e-10"
+rmInvarSites=1
+metadataFile=${DATADIR}/data0to5_metadata.txt
+formula="Individual~Population"
+
+ARGS=" \
+--verbose 0 \
+-doEM ${doEm} \
+-doAMOVA ${doAmova} \
+--printDistanceMatrix ${printDistanceMatrix} \
+--printJointGenotypeCountMatrix ${printJointGenotypeCountMatrix} \
+--minInd ${minInd} \
+-doDist ${doDist} \
+--maxEmIter ${maxEmIter} \
+--em-tole ${emTole} \
+--rm-invar-sites ${rmInvarSites} \
+-m ${metadataFile} \
+-f ${formula}
+"
+
+runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
+runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.amova.csv
+# ###############################################################################
+
+
+################################################################################
+# TEST 16
+ID="test16"
+INFILENAME=${DATADIR}/data0.truth.vcf
+INOPT="--in-vcf"
+
+doAmova=1
+printDistanceMatrix=1
+printJointGenotypeCountMatrix=1
+minInd=2
+doDist=2
+rmInvarSites=1
+metadataFile=${DATADIR}/data0to5_metadata.txt
+formula="Individual~Population"
+
+ARGS=" \
+--verbose 0 \
+-doEM ${doEm} \
+-doAMOVA ${doAmova} \
+--printDistanceMatrix ${printDistanceMatrix} \
+--printJointGenotypeCountMatrix ${printJointGenotypeCountMatrix} \
+--minInd ${minInd} \
+-doDist ${doDist} \
+--rm-invar-sites ${rmInvarSites} \
+-m ${metadataFile} \
+-f ${formula}
+"
+
+runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
+runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.amova.csv
+# ###############################################################################
+
 
 
 ${EXEC}

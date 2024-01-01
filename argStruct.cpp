@@ -394,10 +394,11 @@ argStruct* argStruct_get(int argc, char** argv) {
         else if (strcasecmp("--maxEmIter", arv) == 0) {
             args->maxEmIter = atoi(val);
 
-        }
-
-        else if (strcasecmp("--nThreads", arv) == 0 || strcasecmp("-P", arv) == 0) {
+        } else if (strcasecmp("--nThreads", arv) == 0 || strcasecmp("-P", arv) == 0) {
             args->nThreads = atoi(val);
+
+        } else if (strcasecmp("--rm-invar-sites", arv) == 0) {
+            args->rmInvarSites = atoi(val);
 
         } else if (strcasecmp("-h", arv) == 0 || strcasecmp("--help", arv) == 0) {
             print_help(stdout);
@@ -425,10 +426,10 @@ argStruct* argStruct_get(int argc, char** argv) {
 }
 
 void argStruct::check_arg_dependencies() {
-    if (0 != printJointGenotypeCountMatrix) {
-        // TODO implement this
-        ERROR("printJointGenotypeCountMatrix is not available.");
-    }
+    // if (0 != printJointGenotypeCountMatrix) {
+        // // TODO implement this
+        // ERROR("printJointGenotypeCountMatrix is not available.");
+    // }
 
     if (minInd == 0) {
         LOG("minInd is set to 0; will use sites with data for all individuals.")
@@ -626,6 +627,19 @@ void argStruct::check_arg_dependencies() {
             } else {
                 ERROR("-doPhylo %d is not a valid option.", doPhylo);
             }
+
+
+
+
+
+
+            if(args->rmInvarSites ){
+			}else{
+				//TODO req for some?
+				// ERROR("No analyses including invar sites are implemented yet"); //TODO
+			}
+
+
 
             //  else if (doPhylo == 1 && doDist == 0 && in_dm_fn == NULL) {
             //     fprintf(stderr, "\n[ERROR]\t-> -doPhylo %i requires -doDist 1 or --in-dm <file>.", doPhylo);

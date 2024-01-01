@@ -1,0 +1,9 @@
+Individual	Population
+popA_ind1	popA
+popA_ind2	popA
+popB_ind1	popB
+popB_ind2	popB
+popC_ind1	popC
+popC_ind2	popC
+popD_ind1	popD
+popD_ind2	popD

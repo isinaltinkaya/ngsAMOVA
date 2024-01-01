@@ -221,12 +221,12 @@ BUILDH = build.h
 
 $(BUILDH): 
 	$(info [INFO]    Writing build info to build.h)
-	$(shell echo '#define ngsAMOVA_MAKE_CXX ("$(CXX)")' > build.h)
-	$(shell echo '#define ngsAMOVA_MAKE_LIBS ("$(LIBS)")' >> build.h)
-	$(shell echo '#define ngsAMOVA_MAKE_FLAGS ("$(FLAGS)")' >> build.h)
-	$(shell echo '#define ngsAMOVA_MAKE_HTSSRC ("$(HTSSRC)")' >> build.h)
-	$(shell echo '#define ngsAMOVA_MAKE_CXXFLAGS ("$(CXXFLAGS)")' >> build.h)
-	$(shell echo '#define ngsAMOVA_MAKE_CPPFLAGS ("$(CPPFLAGS)")' >> build.h)
+	$(shell echo '#define NGSAMOVA_MAKE_CXX ("$(CXX)")' > build.h)
+	$(shell echo '#define NGSAMOVA_MAKE_LIBS ("$(LIBS)")' >> build.h)
+	$(shell echo '#define NGSAMOVA_MAKE_FLAGS ("$(FLAGS)")' >> build.h)
+	$(shell echo '#define NGSAMOVA_MAKE_HTSSRC ("$(HTSSRC)")' >> build.h)
+	$(shell echo '#define NGSAMOVA_MAKE_CXXFLAGS ("$(CXXFLAGS)")' >> build.h)
+	$(shell echo '#define NGSAMOVA_MAKE_CPPFLAGS ("$(CPPFLAGS)")' >> build.h)
 
 
 $(PROGRAM): $(OBJ) 
@@ -265,11 +265,18 @@ clean:
 
 ####################################################################################################
 ## [test]
-# - run unit tests
+# 
 
-.PHONY: test
+.PHONY: test testvg testall
+
 test:
 	bash test/runTests.sh
+
+testvg:
+	bash test/runTests.sh vg
+
+testall:
+	bash test/runTests.sh all
 
 ####################################################################################################
 ## [.activate_module]

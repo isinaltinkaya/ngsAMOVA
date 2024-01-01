@@ -1,0 +1,21 @@
+vcfgl [version: v0.4.1-a4eb562] [build: Dec 27 2023 09:45:11] [htslib: 1.15.1-20-g46c56fcc]
+
+Command: vcfgl --verbose 0 --threads 1 --seed 42 --input test/data/data0_msprime.vcf --output test/data/data0 --output-mode v --depth 100.000000 --error-rate 0.000000 --error-qs 0 --beta-variance -1.000000e+00 --gl-model 2 --gl1-theta 0.830000 --platform 0 --precise-gl 0 --i16-mapq 20  -explode 0 --rm-invar-sites 0 --rm-empty-sites 0 -doUnobserved 0 -doGVCF 0 -printPileup 0 -printTruth 1 -addGL 1 -addGP 0 -addPL 0 -addI16 0 -addQS 1 -addFormatDP 1 -addInfoDP 1 -addFormatAD 1 -addInfoAD 0 -addFormatADF 0 -addInfoADF 0 -addFormatADR 0 -addInfoADR 0
+
+
+Mon Jan  1 15:53:36 2024
+
+
+-> Log file: test/data/data0.arg
+-> Simulation output file: test/data/data0.vcf
+-> True genotypes output file: test/data/data0.truth.vcf
+
+
+-> Simulation finished successfully.
+
+Summary:
+	Number of samples: 8
+	Number of contigs: 1
+	Total number of sites simulated: 14
+	Number of sites included in simulation output file: 14
+	Number of sites skipped: 0

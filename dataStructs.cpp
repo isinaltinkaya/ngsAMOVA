@@ -201,10 +201,15 @@ metadataStruct::~metadataStruct() {
 
     DEVASSERT(i == nBits);
 
+	//TODO checkme when am i null
+	if(idxToLvlg != NULL){
     for (size_t bit = 0;bit < (size_t)nBits;++bit) {
+	if(idxToLvlg[bit] != NULL){
         FREE(idxToLvlg[bit]);
     }
+	}
     FREE(idxToLvlg);
+	}
 
     for (size_t lvl = 0; lvl < (size_t)nLevels; lvl++) {
         FREE(nIndPerStrata[lvl]);

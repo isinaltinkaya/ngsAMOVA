@@ -109,6 +109,7 @@ struct vcfData {
     /*
      * [nIndCmb][9+1]
      * last element contains total number of sites shared
+     * //TODO is this still the case? is this being used?
      */
 
 
@@ -127,7 +128,7 @@ struct vcfData {
 
     // \def pair_shared_nSites[nBlocks][nIndCmb]
     //      pair_shared_nSites[b][i] == number of sites shared between the individuals in the ith pair in block b
-    int** pair_shared_nSites = NULL;
+    int** pair_shared_nSites = NULL; //TODO is this used
 
 
     // \def snSites[nIndCmb]
@@ -157,6 +158,9 @@ struct vcfData {
 
     /// @brief get_rec_contig_id(i) - get the contig id of the contig with id i
     const char* get_contig_name(const int32_t i);
+
+
+    void print_JointGenotypeCountMatrix();
 };
 
 vcfData* vcfData_init(paramStruct* pars);

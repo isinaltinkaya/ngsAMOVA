@@ -6,9 +6,8 @@ void change_contig_reset_nSites() {
 
 }
 
-// NOTE in full genome arrays use pars->nSites
-// in contig arrays use site_i
-
+// NB> in full genome arrays use pars->nSites (for total)
+// in contig arrays use site_i (per contig)
 void arrays_nSites_expand(paramStruct* pars, lnglStruct* lngl, int** a1a2) {
     const int oldSize = pars->nSites_arrays_size;
     ASSERT(pars->nSites_arrays_size == lngl->size1);
@@ -178,7 +177,7 @@ glData::glData(vcfData* vcfd) {
         } else if (3 == n_gls) {
             return;
         } else {
-            ERROR("Found %d values in the GL field at %s:%ld.", n_values, vcfd->get_contig_name(), vcfd->rec->pos + 1);
+            ERROR("Found %d values (%d GLs) in the GL field at %s:%ld.", n_values, n_gls, vcfd->get_contig_name(), vcfd->rec->pos + 1);
         }
     } else {
         // e.g. A, UNOBSERVED -> 3 GLs
@@ -400,7 +399,15 @@ int read_site_with_alleles(const int site_i, vcfData* vcfd, paramStruct* pars) {
         NEVER;
     }
 
-    int b1, b2;
+    int b1 = -1;
+    int b2 = -1;
+
+    ASSERT(nAlleles != 0);
+
+    if (1 == nAlleles) {
+        IO::vprint(2, "Skipping site at %s:%ld. Reason: No data found at site.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
+        return(1);
+    }
 
     // if REF==ALLELE_UNOBSERVED
     if (0 == vcfd->allele_unobserved) {
@@ -409,16 +416,17 @@ int read_site_with_alleles(const int site_i, vcfData* vcfd, paramStruct* pars) {
         // NEVER; //TODO this is only supported if major minor file or refalt file or an estimation method for these is defined; add proper check and handling
 
         // check if ALT is set to any allele, maybe site has data but no ref allele specified
-        if (1 == nAlleles) {
-            // ALT is not set to any allele, so no data at site
-            IO::vprint(2, "Skipping site at %s:%ld. Reason: No data found at site.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
-            return(1);
-        }
+
+        // if 1==nAlleles ALT is not set to any allele, so no data at site
+        // this is already skipped above
 
         if (2 == nAlleles) {
             // ALT is set but REF is not, so probably an invariable site with no REF allele specified
-            IO::vprint(2, "Skipping site at %s:%ld. Reason: Site is not variable.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
-            return(1);
+
+            if (args->rmInvarSites) {
+                IO::vprint(2, "Skipping site at %s:%ld. Reason: Site is not variable.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
+                return(1);
+            }
         }
 
         b1 = BASE_UNOBSERVED;
@@ -426,38 +434,94 @@ int read_site_with_alleles(const int site_i, vcfData* vcfd, paramStruct* pars) {
 
 
     } else if (1 == vcfd->allele_unobserved) {
+
         // NEVER;//TODO
 
         // if ALT==ALLELE_UNOBSERVED
 
         if (2 == nAlleles) {
             // invariable site
-            IO::vprint(2, "Skipping site at %s:%ld. Reason: Site is not variable.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
-            return(1);
+            if (args->rmInvarSites) {
+                IO::vprint(2, "Skipping site at %s:%ld. Reason: Site is not variable.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
+                return(1);
+            }
         }
 
         b1 = acgt_charToInt[(int)vcfd->rec->d.allele[0][0]];
         b2 = BASE_UNOBSERVED;
 
     } else if (-1 == vcfd->allele_unobserved) {
+        // NEVER;//TODO
         // if no unobserved alt allele notation is found
 
         if (1 == nAlleles) {
             // Invariable
+            if (args->rmInvarSites) {
+                IO::vprint(2, "Skipping site at %s:%ld. Reason: Site is not variable.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
+                return(1);
+            }
+        } else {
+            b2 = acgt_charToInt[(int)vcfd->rec->d.allele[1][0]];
+        }
+
+        b1 = acgt_charToInt[(int)vcfd->rec->d.allele[0][0]];
+
+    } else {
+
+        // unobserved allele notation is found but is not a1 or a2
+        b1 = acgt_charToInt[(int)vcfd->rec->d.allele[0][0]];
+        b2 = acgt_charToInt[(int)vcfd->rec->d.allele[1][0]];
+
+    }
+
+
+    if (args->rmInvarSites && args->doDist != 2) {
+        int32_t* ads = NULL;
+        int32_t n_ads = 0;
+        int32_t n = 0;
+        n = bcf_get_format_int32(vcfd->hdr, vcfd->rec, "AD", &ads, &n_ads);
+        if (n <= 0) {
+            ERROR("Could not read AD tag from the VCF file. AD tag is required for removing invariable sites via --rm-invar-sites 1.");
+        }
+
+
+        // make sure that AD is non-0 for at least 2 alleles 
+        int n_non0[nAlleles];
+        for (int i = 0; i < nAlleles; ++i) {
+            n_non0[i] = 0;
+        }
+        // loop through samples 
+        for (int i = 0; i < vcfd->nInd; ++i) {
+            // loop through alleles
+            for (int j = 0; j < nAlleles; ++j) {
+                if (ads[i * nAlleles + j] > 0) {
+                    n_non0[j]++;
+                }
+            }
+        }
+        int tot_non0 = 0;
+        for (int i = 0; i < nAlleles; ++i) {
+            if (n_non0[i] > 0) {
+                tot_non0++;
+            }
+        }
+        FREE(ads);
+        if (tot_non0 < 2) {
             IO::vprint(2, "Skipping site at %s:%ld. Reason: Site is not variable.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
             return(1);
         }
 
-        b1 = acgt_charToInt[(int)vcfd->rec->d.allele[0][0]];
-        b2 = acgt_charToInt[(int)vcfd->rec->d.allele[1][0]];
+
+
     }
 
     pars->a1a2[pars->nSites][0] = b1;
     pars->a1a2[pars->nSites][1] = b2;
 
-    if (b1 == b2) {  // debug
-        ERROR("Ancestral/Major allele cannot be the same as the derived/minor allele.");
-    }
+
+    // DEVASSERT(b1 != -1);
+    // DEVASSERT(b2 != -1);
+    DEVASSERT(b1 != b2);
 
     //TODO
     // DEVPRINT("b1: %d, b2: %d\n", b1, b2);
@@ -580,6 +644,8 @@ int site_read_GL(const int contig_i, const int site_i, vcfData* vcfd, paramStruc
             sample_lngls[1] = (double)LOG2LN(sample_lgls[a1a2]);
             sample_lngls[2] = (double)LOG2LN(sample_lgls[a2a2]);
 
+            // fprintf(stdout, "%f,%f,%f\n", sample_lngls[0], sample_lngls[1], sample_lngls[2]);
+
 
             for (int indi2 = indi + 1; indi2 < nInd; indi2++) {
                 if (includeInds[indi2]) {
@@ -698,7 +764,42 @@ int site_read_GT(const int contig_i, const int site_i, vcfData* vcfd, paramStruc
     int gta1 = -1;
     int gta2 = -1;
     int pair_idx = -1;
-    for (int i1 = 0; i1 < nInd; ++i1) {
+
+    if (args->rmInvarSites) {
+
+        int tot_nder = 0;
+
+        for (int i = 0; i < nInd; ++i) {
+
+            if (includeInds[i]) {
+
+                i1_nder = -1;
+                gta1 = -1;
+                gta2 = -1;
+
+                i1_gts = gts.data + i * PROGRAM_PLOIDY;
+
+                gta1 = bcf_gt_allele(i1_gts[0]);
+                gta2 = bcf_gt_allele(i1_gts[1]);
+
+                i1_nder = recAlleles2a1a2[gta1] + recAlleles2a1a2[gta2];
+                tot_nder += i1_nder;
+
+            }
+
+        }
+
+
+        if (tot_nder == 0) {
+            IO::vprint(2, "Skipping site at %s:%ld. Reason: Site is not variable.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
+            return(1);
+        } else if (tot_nder == nInd * PROGRAM_PLOIDY) {
+            IO::vprint(2, "Skipping site at %s:%ld. Reason: Site is not variable.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
+            return(1);
+        }
+    }
+
+    for (int i1 = 0; i1 < nInd - 1; ++i1) {
 
         if (includeInds[i1]) {
 
@@ -765,6 +866,8 @@ int site_read_GT(const int contig_i, const int site_i, vcfData* vcfd, paramStruc
         }
 
     }
+
+
     return(0);
 }
 
@@ -822,6 +925,7 @@ vcfData* vcfData_init(paramStruct* pars) {
 
     int pidx = 0;
 
+    //TODO check for loops
     for (int i1 = 0; i1 < pars->nInd - 1;++i1) {
         for (int i2 = i1 + 1; i2 < pars->nInd;++i2) {
             pidx = nCk_idx(pars->nInd, i1, i2);
@@ -864,7 +968,7 @@ vcfData* vcfData_init(paramStruct* pars) {
         vcfd->lngl = new lnglStruct(vcfd->nGT, pars->nInd);
 
         // \def jointGenotypeMatrix[nIndCmb][nJointClasses]
-        // jointGenotypeMatrix[i][j] == Value for pair j at joint class i
+        // jointGenotypeMatrix[i][j] == Value for pair i at joint class j
         vcfd->jointGenotypeMatrixGL = (double**)malloc(pars->nIndCmb * sizeof(double*));
         vcfd->snSites = (int*)malloc(pars->nIndCmb * sizeof(int));
         for (int i = 0; i < pars->nIndCmb; i++) {
@@ -930,6 +1034,7 @@ void vcfData_destroy(vcfData* v) {
     }
 
     if (NULL != v->jointGenotypeMatrixGL) {
+        v->print_JointGenotypeCountMatrix();
         for (int i = 0;i < v->nIndCmb;++i) {
             FREE(v->jointGenotypeMatrixGL[i]);
         }
@@ -937,6 +1042,7 @@ void vcfData_destroy(vcfData* v) {
     }
 
     if (NULL != v->jointGenotypeMatrixGT) {
+        v->print_JointGenotypeCountMatrix();
         for (int i = 0;i < v->nIndCmb;++i) {
             FREE(v->jointGenotypeMatrixGT[i]);
         }
@@ -1078,12 +1184,12 @@ void readSites(vcfData* vcfd, paramStruct* pars, blobStruct* blob) {
                 skip_site = site_read_GL(contig_i, site_i, vcfd, pars);
             } else {
                 // TODOdragon
-                // skip_site = get_JointGenotypeMatrix_GT(contig_i, site_i, vcfd, pars, -1);
+                // skip_site = get_jointGenotypeMatrixGT(contig_i, site_i, vcfd, pars, -1);
                 skip_site = site_read_GT(contig_i, site_i, vcfd, pars);
             }
 
             if (skip_site != 0) {
-                IO::vprint(1, "Skipping site at %s:%ld", vcfd->get_contig_name(), vcfd->rec->pos + 1);
+                IO::vprint(1, "Skipped site at %s:%ld", vcfd->get_contig_name(), vcfd->rec->pos + 1);
                 pars->totSites++;
 
                 continue;
@@ -1108,38 +1214,52 @@ void readSites(vcfData* vcfd, paramStruct* pars, blobStruct* blob) {
 }
 
 //TODO
-// void vcfData::print_JointGenotypeCountMatrix() {
-    // if (outFiles->out_jgcd_fs != NULL) {
-        // outFiles->out_jgcd_fs->kbuf = kbuf_init();
-        // kstring_t *kbuf = outFiles->out_jgcd_fs->kbuf;
-        // if (args->doDist == 1) {
-            // for (int i = 0; i < nIndCmb; i++) {
-                // ksprintf(kbuf, "%i,", i);
-                // for (int j = 0; j < nJointClasses + 1; j++) {
-                    // ksprintf(kbuf, "%f", JointGenotypeCountMatrixGL[i][j]);
-                    // if (j == nJointClasses) {
-                        // ksprintf(kbuf, "\n");
-                    // } else {
-                        // ksprintf(kbuf, ",");
-                    // }
-                // }
-            // }
-        // } else if (args->doDist == 2) {
-            // for (int i = 0; i < nIndCmb; i++) {
-                // ksprintf(kbuf, "%i,", i);
-                // for (int j = 0; j < nJointClasses + 1; j++) {
-                    // ksprintf(kbuf, "%i", jointGenotypeMatrixGT[i][j]);
-                    // if (j == nJointClasses) {
-                        // ksprintf(kbuf, "\n");
-                    // } else {
-                        // ksprintf(kbuf, ",");
-                    // }
-                // }
-            // }
-        // }
-        // outFiles->out_jgcd_fs->kbuf_write();
-    // }
-// }
+//TODO  231231 add condensed form (order G1 G2 vs G2 G1 does not matter; sum these)
+void vcfData::print_JointGenotypeCountMatrix() {
+    if (outFiles->out_jgcd_fs != NULL) {
+        outFiles->out_jgcd_fs->kbuf = kbuf_init();
+        kstring_t* kbuf = outFiles->out_jgcd_fs->kbuf;
+        if (args->doDist == 1) {
+            for (int i = 0; i < nIndCmb; i++) {
+                ksprintf(kbuf, "%i,", i);
+                for (int j = 0; j < nJointClasses; j++) {
+                    ksprintf(kbuf, "%f", jointGenotypeMatrixGL[i][j]);
+                    if (j == nJointClasses - 1) {
+                        ksprintf(kbuf, "\n");
+                    } else {
+                        ksprintf(kbuf, ",");
+                    }
+                }
+            }
+            // print expectations 
+            for (int i = 0; i < nIndCmb; i++) {
+                ksprintf(kbuf, "%i,", i);
+                for (int j = 0; j < nJointClasses; j++) {
+                    double exp = jointGenotypeMatrixGL[i][j] * ((double)snSites[i]);
+                    ksprintf(kbuf, "%f", exp);
+                    if (j == nJointClasses - 1) {
+                        ksprintf(kbuf, "\n");
+                    } else {
+                        ksprintf(kbuf, ",");
+                    }
+                }
+            }
+        } else if (args->doDist == 2) {
+            for (int i = 0; i < nIndCmb; i++) {
+                ksprintf(kbuf, "%i,", i);
+                for (int j = 0; j < nJointClasses; j++) {
+                    ksprintf(kbuf, "%i", jointGenotypeMatrixGT[i][j]);
+                    if (j == nJointClasses - 1) {
+                        ksprintf(kbuf, "\n");
+                    } else {
+                        ksprintf(kbuf, ",");
+                    }
+                }
+            }
+        }
+        outFiles->out_jgcd_fs->kbuf_write();
+    }
+}
 
 
 void vcfData::_print(FILE* fp) {
@@ -1177,3 +1297,4 @@ int vcfData::records_next() {
 
     return 1;
 }
+
