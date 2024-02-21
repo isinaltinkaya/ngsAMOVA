@@ -10,6 +10,9 @@
 
 struct pairStruct;
 
+
+//TODO rm namespace, it is unnecessary
+
 //********************************************************************************
 //*****************************  IO  *********************************************
 //********************************************************************************
@@ -86,8 +89,8 @@ namespace IO {
     bool isGzFile(const char* fn);
 
     namespace readFile {
-        char* getFirstLine(const char* fn);
         char* getFirstLine(FILE* fp);
+        char* getLine(FILE* fp);
 
         char* readToBuffer(const char* fn);
 

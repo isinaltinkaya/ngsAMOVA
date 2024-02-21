@@ -3,7 +3,6 @@
  */
 
 
-
  //TODO CHECK Projects/AMOVA/ngsAMOVA changes!!
 
 #include "amova.h"
@@ -22,8 +21,6 @@
 #include "vcfReader.h"
 #include "ibd.h"
 
- // TODO check size_t
-using size_t = decltype(sizeof(int));
 
 void input_VCF(paramStruct* pars) {
 
@@ -36,14 +33,15 @@ void input_VCF(paramStruct* pars) {
     }
 
     metadataStruct* metadata = NULL;
-    if (require_metadata()) {
+    if (PROGRAM_NEEDS_METADATA) {
         if (NULL == args->in_mtd_fn) {
             ERROR("Requested analyses requiring metadata but no metadata file was provided.");
         } else {
             if (NULL != args->formula) {
-                metadata = metadataStruct_get(pars);
+                metadata = metadataStruct_read(pars->formula);
+
             } else {
-                NEVER;  // this should already be checked in require_formula()
+                NEVER;  // this should already be checked in PROGRAM_NEEDS_FORMULA
             }
         }
     }
@@ -52,52 +50,32 @@ void input_VCF(paramStruct* pars) {
 
     distanceMatrixStruct* distanceMatrix = NULL;
 
-    blobStruct* blobSt = NULL;
-
+    blobStruct* blobs = NULL;
     if (0 < args->nBootstraps) {
-        blobSt = blobStruct_get(vcfd, pars);
+        blobs = blobStruct_get(vcfd, pars);
     }
 
 
-    char** indNames = NULL;
+    strArray* indNames = NULL;
 
     if (metadata != NULL) {
         indNames = metadata->indNames;
     } else {
-        indNames = (char**)pars->indNames;
+        if (pars->indNames != NULL) {
+            indNames = pars->indNames;
+        }
+
     }
 
 
-    distanceMatrix = distanceMatrixStruct_get(pars, vcfd, indNames, blobSt);
-
-    // if (require_itemLabels()) {
-
-        //     for (int i = 0; i < bcf_hdr_nsamples(vcfd->hdr); i++)
-        //     {
-        //         ASSERT(vcfd->hdr->samples != NULL);
-        //         ASSERT(vcfd->hdr->samples[i] != NULL);
-        //         ASSERT(pars->indNames != NULL);
-        //         pars->indNames->add(vcfd->hdr->samples[i]);
-        //     }
-
-        // }
-
-    vcfData_destroy(vcfd);
+    distanceMatrix = distanceMatrixStruct_get(pars, vcfd, indNames, blobs);
 
     // ---- ANALYSES ------------------------------------------------------------ //
 
     // ---- AMOVA
-    amovaStruct* amova = NULL;
     if (args->doAMOVA != 0) {
-        amova = amovaStruct_get(distanceMatrix, metadata);
-
-        if (0 < args->nBootstraps) {
-            spawnThreads_amovaBootstrap(metadata, blobSt);
-            blobSt->bootstraps->print_confidenceInterval(stderr);
-            delete(blobSt);
-        }
-
-        delete(amova);
+        amovaStruct* amova = amovaStruct_get(distanceMatrix, metadata, blobs);
+        amovaStruct_destroy(amova);
     }
 
     // ---- dXY
@@ -128,13 +106,20 @@ void input_VCF(paramStruct* pars) {
         delete(njSt);
     }
 
-    delete(metadata);
-    delete(distanceMatrix);
+    vcfData_destroy(vcfd);
+    if (metadata != NULL) {
+        metadataStruct_destroy(metadata);
+    }
+    if (blobs != NULL) {
+        delete(blobs);
+    }
+    distanceMatrixStruct_destroy(distanceMatrix);
 
 }
 
 
 void input_DM(paramStruct* pars) {
+
     if (args->blockSize != 0) {
         ERROR("-blockSize is not supported for distance matrix input.");
     }
@@ -142,22 +127,25 @@ void input_DM(paramStruct* pars) {
     distanceMatrixStruct* distanceMatrix = distanceMatrixStruct_read(pars);
 
     metadataStruct* metadata = NULL;
-    if (require_metadata()) {
+    if (PROGRAM_NEEDS_METADATA) {
         if (NULL == args->in_mtd_fn) {
             ERROR("Requested analyses requiring metadata but no metadata file was provided.");
         } else {
             if (NULL != args->formula) {
-                metadata = metadataStruct_get(pars);
+                metadata = metadataStruct_read(pars->formula);
                 // distanceMatrix->set_item_labels(metadata->indNames);
             } else {
-                NEVER;  // this should already be checked in require_formula()
+                NEVER;  // this should already be checked in PROGRAM_NEEDS_FORMULA
             }
         }
     }
 
     if (args->doAMOVA != 0) {
-        amovaStruct* amova = amovaStruct_get(distanceMatrix, metadata);
-        delete(amova);
+        if (0 < args->nBootstraps) {
+            ERROR("Bootstrapping is not supported for distance matrix input.");
+        }
+        amovaStruct* amova = amovaStruct_get(distanceMatrix, metadata, NULL);
+        amovaStruct_destroy(amova);
     }
 
     dxyStruct* dxySt = NULL;
@@ -182,9 +170,9 @@ void input_DM(paramStruct* pars) {
         delete(njSt);
     }
 
-    delete(metadata);
+    metadataStruct_destroy(metadata);
 
-    delete(distanceMatrix);
+    distanceMatrixStruct_destroy(distanceMatrix);
 }
 
 int main(int argc, char** argv) {
@@ -208,6 +196,9 @@ int main(int argc, char** argv) {
         ERROR("Input file type not recognized.");
     }
 
+
+    fprintf(stderr, "\n[INFO]\tDone.\n\n");
+
     // == CLEANUP ==
     argStruct_destroy(args);
     paramStruct_destroy(pars);
@@ -215,3 +206,4 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+

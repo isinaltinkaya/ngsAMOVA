@@ -116,16 +116,9 @@ extern argStruct* args;
  *
  *
  *
- * @field nThreads		number of threads
  * @field mEmIter		maximum number of iterations allowed for em
  *
  * @field seed			random seed for bootstrapping
- *
- * @field nBootstraps	number of bootstraps to be performed for AMOVA significance test
- *
- * 						bootstraps[0] = original data
- * 						bootstraps[1..nBootstraps] = bootstrapped data
- * 							size is nBootstraps+1
  *
  *
  * @field printMatrix           [default = 0]
@@ -163,6 +156,8 @@ struct argStruct {
 
     char* command = NULL;
 
+    // the formula in the raw text form as it is in the argument
+    // e.g. "Individual ~ Region/Population/Subpopulation"
     char* formula = NULL;
 
     int doAMOVA = 0;

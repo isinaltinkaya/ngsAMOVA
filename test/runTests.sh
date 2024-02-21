@@ -212,8 +212,8 @@ minInd=2
 doDist=1
 maxEmIter=100
 emTole="1e-10"
-metadataFile=${DATADIR}/metadata_with_header_1lvl.tsv
-formula="Individual~Population"
+metadataFile=${DATADIR}/metadata_Individual_Population.tsv
+formula="Individual ~Population "
 
 
 ARGS=" \
@@ -226,7 +226,7 @@ ARGS=" \
 --maxEmIter ${maxEmIter} \
 --em-tole ${emTole} \
 -m ${metadataFile} \
--f ${formula}
+-f '${formula}'
 "
 
 
@@ -246,7 +246,7 @@ doEm=0
 doAmova=1
 minInd=2
 doDist=3
-metadataFile=${DATADIR}/metadata_with_header_1lvl.tsv
+metadataFile=${DATADIR}/metadata_Individual_Region_Population_Subpopulation.tsv
 formula="Individual~Population"
 
 ARGS=" \
@@ -256,7 +256,7 @@ ARGS=" \
 --minInd ${minInd} \
 -doDist ${doDist} \
 -m ${metadataFile} \
--f ${formula}
+-f '${formula}'
 "
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
@@ -274,8 +274,8 @@ minInd=2
 doDist=1
 maxEmIter=100
 emTole="1e-10"
-metadataFile=${DATADIR}/metadata_with_header_2lvl.tsv
-formula="Individual~Region/Population"
+metadataFile=${DATADIR}/metadata_Individual_Region_Population.tsv
+formula="Individual~Region /Population"
 
 ARGS=" \
 --verbose 0 \
@@ -286,7 +286,7 @@ ARGS=" \
 --maxEmIter ${maxEmIter} \
 --em-tole ${emTole} \
 -m ${metadataFile} \
--f ${formula}
+-f '${formula}'
 "
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
@@ -304,7 +304,7 @@ doAmova=1
 minInd=2
 doDist=3
 nThreads=0
-metadataFile=${DATADIR}/metadata_with_header_2lvl.tsv
+metadataFile=${DATADIR}/metadata_Individual_Region_Population_Subpopulation_groupNotUniq.tsv
 formula="Individual~Population"
 
 ARGS=" \
@@ -315,7 +315,7 @@ ARGS=" \
 -doDist ${doDist} \
 --nThreads ${nThreads} \
 -m ${metadataFile} \
--f ${formula}
+-f '${formula}'
 "
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
@@ -331,7 +331,7 @@ doEm=0
 doAmova=1
 minInd=2
 doDist=2
-metadataFile=${DATADIR}/metadata_with_header_1lvl.tsv
+metadataFile=${DATADIR}/metadata_Individual_Population.tsv
 formula="Individual~Population"
 
 ARGS=" \
@@ -341,7 +341,7 @@ ARGS=" \
 --minInd ${minInd} \
 -doDist ${doDist} \
 -m ${metadataFile} \
--f ${formula}
+-f '${formula}'
 "
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
@@ -357,7 +357,7 @@ doEm=0
 doAmova=1
 minInd=2
 doDist=2
-metadataFile=${DATADIR}/metadata_with_header_1lvl.tsv
+metadataFile=${DATADIR}/metadata_Individual_Population.tsv
 formula="Individual~Population"
 
 ARGS=" \
@@ -367,7 +367,7 @@ ARGS=" \
 --minInd ${minInd} \
 -doDist ${doDist} \
 -m ${metadataFile} \
--f ${formula}
+-f '${formula}'
 "
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
@@ -385,7 +385,7 @@ doDist=1
 maxEmIter=50
 emTole="1e-5"
 nThreads=4
-metadataFile=${DATADIR}/sim_demes_v2-model1_metadata_2lvl_with_header.tsv
+metadataFile=${DATADIR}/sim_demes_v2-model1_metadata_Individual_Region_Population.tsv 
 formula="Individual~Region/Population"
 
 ARGS=" \
@@ -397,7 +397,7 @@ ARGS=" \
 --em-tole ${emTole} \
 -P ${nThreads} \
 -m ${metadataFile} \
--f ${formula}
+-f '${formula}'
 "
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
@@ -410,14 +410,14 @@ INFILENAME=${DATADIR}/test_s9_d1_1K.vcf
 INOPT="--in-vcf"
 
 doDist=2
-metadataFile=${DATADIR}/metadata_with_header_1lvl.tsv
+metadataFile=${DATADIR}/metadata_Individual_Population.tsv
 formula="Individual~Region/Population"
 doPhylo=1
 
 ARGS=" \
 --verbose 0 \
 -doDist ${doDist} \
--f ${formula} \
+-f '${formula}' \
 -doPhylo ${doPhylo}
 "
 
@@ -437,7 +437,7 @@ minInd=2
 doDist=1
 maxEmIter=100
 emTole="1e-10"
-metadataFile=${DATADIR}/metadata_with_header_1lvl.tsv
+metadataFile=${DATADIR}/metadata_Individual_Population.tsv
 formula="Individual~Population"
 
 ARGS=" \
@@ -450,7 +450,7 @@ ARGS=" \
 --maxEmIter ${maxEmIter} \
 --em-tole ${emTole} \
 -m ${metadataFile} \
--f ${formula}
+-f '${formula}'
 "
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
@@ -485,7 +485,7 @@ ARGS=" \
 --em-tole ${emTole} \
 --rm-invar-sites ${rmInvarSites} \
 -m ${metadataFile} \
--f ${formula}
+-f '${formula}'
 "
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
@@ -523,7 +523,7 @@ ARGS=" \
 --em-tole ${emTole} \
 --rm-invar-sites ${rmInvarSites} \
 -m ${metadataFile} \
--f ${formula}
+-f '${formula}'
 "
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
@@ -559,7 +559,7 @@ ARGS=" \
 --em-tole ${emTole} \
 --rm-invar-sites ${rmInvarSites} \
 -m ${metadataFile} \
--f ${formula}
+-f '${formula}'
 "
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
@@ -597,7 +597,7 @@ ARGS=" \
 --em-tole ${emTole} \
 --rm-invar-sites ${rmInvarSites} \
 -m ${metadataFile} \
--f ${formula}
+-f '${formula}'
 "
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
@@ -633,7 +633,7 @@ ARGS=" \
 --em-tole ${emTole} \
 --rm-invar-sites ${rmInvarSites} \
 -m ${metadataFile} \
--f ${formula}
+-f '${formula}'
 "
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
@@ -671,7 +671,7 @@ ARGS=" \
 --em-tole ${emTole} \
 --rm-invar-sites ${rmInvarSites} \
 -m ${metadataFile} \
--f ${formula}
+-f '${formula}'
 "
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
@@ -704,7 +704,7 @@ ARGS=" \
 -doDist ${doDist} \
 --rm-invar-sites ${rmInvarSites} \
 -m ${metadataFile} \
--f ${formula}
+-f '${formula}'
 "
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"

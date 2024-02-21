@@ -1,13 +1,14 @@
+#include "amova.h"
 #include "bootstrap.h"
 
 #include <algorithm>
 
+
+// TODO allow using whole contigs as blocks
+// TODO make it work with region and regions, we need to get ncontigs from the region filtered vcf
+
 blobStruct* blobStruct_get(vcfData* vcf, paramStruct* pars) {
     fprintf(stderr, "\n\t-> --nBootstraps %d is set, will perform %d bootstraps for AMOVA significance testing.\n", args->nBootstraps, args->nBootstraps);
-
-    if (args->nBootstraps < 0) {
-        ERROR("nBootstraps should be a positive integer or 0, but found %d.", args->nBootstraps);
-    }
 
     blobStruct* blob = NULL;
 
@@ -31,6 +32,7 @@ blobStruct* blobStruct_get(vcfData* vcf, paramStruct* pars) {
     return blob;
 }
 
+
 bootstrapDataset* bootstrapDataset_get(vcfData* vcfd, paramStruct* pars, blobStruct* blobSt) {
     bootstrapDataset* bootstraps = new bootstrapDataset(pars, args->nBootstraps, blobSt->nBlocks);
 
@@ -45,6 +47,7 @@ bootstrapDataset* bootstrapDataset_get(vcfData* vcfd, paramStruct* pars, blobStr
 
     return bootstraps;
 }
+
 
 // / @brief sample an index from a set of size n
 /// @param n
@@ -75,8 +78,8 @@ void blobStruct::addBlock() {
     ++nBlocks;
     if (nBlocks > 1) {
 
-        REALLOC(blocks, nBlocks, blockStruct**);
-        REALLOC(blockPtrs, nBlocks, int**);
+        REALLOC(blockStruct**, blocks, nBlocks);
+        REALLOC(int**, this->blockPtrs, this->nBlocks);
 
     } else if (nBlocks == 1) {
         blocks = (blockStruct**)malloc(nBlocks * sizeof(blockStruct*));
@@ -122,6 +125,7 @@ blobStruct* blobStruct_read_tab(const char* fn) {
         // tab file positions are 1-based, but blockStruct positions are 0-based
         // so -1 to make it 0-based
 
+    // TODO make it work with region and regions, we need to get ncontigs from the region filtered vcf
         // both tab file start and blockStruct start are inclusive
         blob->blocks[nBlocks]->start = start_int - 1;
         ASSERTM(start_int > 0, "Start position must be greater than 0. Note: Tab files have 1-based indexing with [start:inclusive, end:inclusive].");
@@ -206,58 +210,41 @@ blobStruct* blobStruct_read_bed(const char* fn) {
     return blob;
 }
 
-void blobStruct::print() {
-    if (0 == args->printBlocksTab)
-        return;
-
-    fprintf(stderr, "\n[INFO]\t-> Writing blocks tab file: %s\n", outFiles->out_blockstab_fs->fn);
-    outFiles->out_blockstab_fs->kbuf = kbuf_init();
-
-    // blocks tab file = 1-based, inclusive start, inclusive end
-    // internal representation = 0-based, inclusive start, exclusive end
-    // convert internal representation to blocks tab file representation
-    for (int bi = 0; bi < nBlocks; ++bi) {
-        ksprintf(outFiles->out_blockstab_fs->kbuf, "%s\t%d\t%d\n", blocks[bi]->chr, blocks[bi]->start + 1, blocks[bi]->end);
-    }
-    outFiles->out_blockstab_fs->kbuf_write();
-}
-
 blobStruct* blobStruct_populate_blocks_withSize(vcfData* vcf) {
-    // TODO make it work with region and regions, we need to get ncontigs from the region filtered vcf
-    // maybe just add a lazy check afterwards to skip empty blocks due to site filtering?
+
+    // TODO maybe just add a lazy check afterwards to skip empty blocks due to site filtering?
     if (args->in_regions_tab_fn != NULL || args->in_regions_bed_fn != NULL || args->in_region != NULL) {
-        ERROR("Block definitions cannot be used with region definitions, yet.")
+        ERROR("Block definitions cannot be used with region definitions, yet."); //TODO add feature
     }
 
-    const int blockSize = args->blockSize;
+    const int targeted_blockSize = args->blockSize;
+    int current_blockSize = targeted_blockSize;
 
     blobStruct* blob = new blobStruct();
 
-    int nBlocks = 0;
+
+    int totnBlocks = 0;
     for (int ci = 0; ci < vcf->nContigs; ci++) {
-        int nBlocks_perContig = 0;
+
         const int contigSize = vcf->hdr->id[BCF_DT_CTG][ci].val->info[0];
 
-        if (blockSize < contigSize) {
-            if (contigSize % blockSize == 0) {
-                nBlocks_perContig = contigSize / blockSize;
-
-            } else {
-                // +1 to account for the remainder (last block)
-                nBlocks_perContig = (contigSize / blockSize) + 1;
-            }
-            ASSERT(nBlocks_perContig > 0);
-            ASSERT(nBlocks_perContig != 0);
-
+        if (targeted_blockSize > contigSize) {
+            LOG("Size of the contig %s (%d) is smaller than the targeted block size (%d). Setting the block size to the size of the contig.", vcf->hdr->id[BCF_DT_CTG][ci].key, contigSize, targeted_blockSize);
+            current_blockSize = contigSize;
         } else {
-            ERROR("Contig \'%s\' is smaller than the given block size (%d). Please use a smaller block size or exclude this contig from the analysis.", vcf->hdr->id[BCF_DT_CTG][ci].key, blockSize);
+            current_blockSize = targeted_blockSize;
         }
 
-        ASSERT(nBlocks_perContig > 1);
+        // +1 to account for the remainder (last block)
+        const int nBlocks_perContig = (contigSize % current_blockSize == 0) ? contigSize / current_blockSize : (contigSize / current_blockSize) + 1;
+        ASSERT(nBlocks_perContig > 0);
+
+        LOG("Generating %d block%c of size %d for contig %s", nBlocks_perContig, (nBlocks_perContig > 1) ? 's' : '\0', current_blockSize, vcf->hdr->id[BCF_DT_CTG][ci].key);
 
         for (int bi = 0; bi < nBlocks_perContig; bi++) {
+
             blob->addBlock();
-            int blockStart = bi * blockSize;
+            int blockStart = bi * current_blockSize;
 
             blob->blocks[bi]->start = blockStart;
 
@@ -267,23 +254,28 @@ blobStruct* blobStruct_populate_blocks_withSize(vcfData* vcf) {
                 // since the size of the last block might be smaller than the block size
                 blob->blocks[bi]->end = contigSize;
             } else {
-                blob->blocks[bi]->end = blockStart + blockSize;
+                blob->blocks[bi]->end = blockStart + current_blockSize;
             }
 
             blob->blocks[bi]->chr = strdup(vcf->hdr->id[BCF_DT_CTG][ci].key);
         }
-        nBlocks += nBlocks_perContig;
-    }
-    ASSERT(nBlocks == blob->nBlocks);
 
-    ASSERT(nBlocks != 0);
-    ASSERT(nBlocks != 1);
-    if (nBlocks == 1) {
-        WARN("Only 1 block was created. Please use a smaller block size or exclude this contig from the analysis.");
+        totnBlocks += nBlocks_perContig;
     }
+
+
+    for (int ci = 0; ci < vcf->nContigs; ci++) {
+    }
+
+    ASSERT(totnBlocks == blob->nBlocks);
+    ASSERT(totnBlocks != 0);
+
+
 
     return blob;
 }
+
+
 
 void bootstrapDataset::print() {
     if (1 != DEV)
@@ -351,4 +343,21 @@ bootstrapReplicate::~bootstrapReplicate() {
     FREE(rBlocks);
     delete amova;
     delete distanceMatrix;
+}
+
+
+void blobStruct::print() {
+    if (0 == args->printBlocksTab)
+        return;
+
+    fprintf(stderr, "\n[INFO]\t-> Writing blocks tab file: %s\n", outFiles->out_blockstab_fs->fn);
+    outFiles->out_blockstab_fs->kbuf = kbuf_init();
+
+    // blocks tab file = 1-based, inclusive start, inclusive end
+    // internal representation = 0-based, inclusive start, exclusive end
+    // convert internal representation to blocks tab file representation
+    for (int bi = 0; bi < nBlocks; ++bi) {
+        ksprintf(outFiles->out_blockstab_fs->kbuf, "%s\t%d\t%d\n", blocks[bi]->chr, blocks[bi]->start + 1, blocks[bi]->end);
+    }
+    outFiles->out_blockstab_fs->kbuf_write();
 }

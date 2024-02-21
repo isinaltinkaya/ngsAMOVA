@@ -8,31 +8,27 @@ void setInputFileType(paramStruct* pars, int inputFileType) {
     pars->in_ft = pars->in_ft | inputFileType;
 }
 
-bool require_formula(void) {
-    if (0 != args->doAMOVA) {
-        return (true);
-    }
-
-    return (false);
-}
-
-bool require_metadata(void) {
-    if (0 != args->doAMOVA) {
-        return (true);
-    }
-
-    return (false);
-}
-
-
 
 paramStruct* paramStruct_init(argStruct* args) {
+
     paramStruct* pars = new paramStruct;
+
+    pars->nSites = 0;
+    pars->totSites = 0;
+    pars->nSites_arrays_size = NSITES_BUF_INIT;
+    pars->nContigs = 0;
+    pars->nInd = 0;
+    pars->nIndCmb = 0;
+    pars->a1a2 = NULL;
+    pars->formula = NULL;
+    pars->ibd = NULL;
+    pars->pidx2inds = NULL;
+    pars->DATETIME = NULL;
+    pars->indNames = NULL; // set in vcfReader
 
     pars->DATETIME = (char*)malloc(1024 * sizeof(char));
     sprintf(pars->DATETIME, "%s", get_time());
 
-    pars->nSites_arrays_size = NSITES_BUF_INIT;
 
     pars->a1a2 = (int**)malloc(pars->nSites_arrays_size * sizeof(int*));
     ASSERT(NULL != pars->a1a2);
@@ -53,27 +49,22 @@ paramStruct* paramStruct_init(argStruct* args) {
         setInputFileType(pars, IN_DM);
     }
 
-    pars->nSites = 0;
-    pars->totSites = 0;
-    pars->nContigs = 0;
 
-    if (require_formula()) {
+    if (PROGRAM_NEEDS_FORMULA) {
         if (NULL != args->formula) {
-            pars->formula = formulaStruct_get(args->formula);
+            pars->formula = formulaStruct_read(args->formula);
         } else {
             ERROR("Specified analyses require formula (`--formula/-f`)");
         }
     }
 
-    pars->nIndCmb = 0;
-    pars->nInd = 0;
 
 
-    return pars;
+    return(pars);
 }
 
 void paramStruct_destroy(paramStruct* pars) {
-    FREE(pars->DATETIME);
+
 
     for (int i = 0;i < pars->nSites_arrays_size;++i) {
         FREE(pars->a1a2[i]);
@@ -84,11 +75,12 @@ void paramStruct_destroy(paramStruct* pars) {
         formulaStruct_destroy(pars->formula);
     }
 
-    if (NULL != pars->indNames) {
-        for (int i = 0;i < pars->nInd;++i) {
-            FREE(pars->indNames[i]);
+    if (pars->ibd != NULL) {
+        for (size_t i = 0;i < (size_t)pars->nIndCmb;++i) {
+            FREE(pars->ibd->pairScores[i]);
         }
-        FREE(pars->indNames);
+        FREE(pars->ibd->pairScores);
+        delete pars->ibd;
     }
 
     if (NULL != pars->pidx2inds) {
@@ -98,17 +90,11 @@ void paramStruct_destroy(paramStruct* pars) {
         FREE(pars->pidx2inds);
     }
 
+    FREE(pars->DATETIME);
 
-
-
-    if (pars->ibd != NULL) {
-        for (size_t i = 0;i < (size_t)pars->nIndCmb;++i) {
-            FREE(pars->ibd->pairScores[i]);
-        }
-        FREE(pars->ibd->pairScores);
-        delete pars->ibd;
+    if (NULL != pars->indNames) {
+        strArray_destroy(pars->indNames);
     }
-
 
     delete pars;
 }
@@ -136,9 +122,3 @@ void check_consistency_args_pars(paramStruct* pars) {
     }
 }
 
-void paramStruct::validate() {
-    ASSERT(nIndCmb > 0);
-    ASSERT(nInd > 0);
-    ASSERT(nSites > 0);
-    ASSERT(totSites > 0);
-}

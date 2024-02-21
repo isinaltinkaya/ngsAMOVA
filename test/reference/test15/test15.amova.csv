@@ -8,8 +8,10 @@ df,Among_Individual_within_Population,4
 SSD,Among_Individual_within_Population,0.310950
 MSD,Among_Individual_within_Population,0.077738
 Phi,Population_in_Total,-0.060482
-Variance_coefficient,a,2.000000
+Variance_coefficient,c_0_0,2.000000
+Variance_coefficient,c_0_1,1.000000
+Variance_coefficient,c_1_1,1.000000
 Variance_component,Population,-0.004434
-Variance_component,Individual,0.077738
 Percentage_variance,Population,-6.048150
+Variance_component,Individual,0.077738
 Percentage_variance,Individual,106.048150

@@ -21,12 +21,13 @@ lnglStruct::~lnglStruct() {
 }
 
 
-distanceMatrixStruct* distanceMatrixStruct_get(paramStruct* pars, vcfData* vcfd, char** indNames, blobStruct* blob) {
-    distanceMatrixStruct* dm = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, indNames);
+distanceMatrixStruct* distanceMatrixStruct_get(paramStruct* pars, vcfData* vcfd, strArray* indNames, blobStruct* blob) {
+
+    distanceMatrixStruct* dm = distanceMatrixStruct_init(pars->nInd, pars->nIndCmb, args->squareDistance, indNames);
 
     if (NULL != blob) {
         for (int rep = 0; rep < blob->bootstraps->nReplicates; ++rep) {
-            blob->bootstraps->replicates[rep]->distanceMatrix = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, indNames);
+            blob->bootstraps->replicates[rep]->distanceMatrix = distanceMatrixStruct_init(pars->nInd, pars->nIndCmb, args->squareDistance, indNames);
         }
     }
 
@@ -44,6 +45,9 @@ distanceMatrixStruct* distanceMatrixStruct_get(paramStruct* pars, vcfData* vcfd,
     return (dm);
 }
 
+
+
+
 void get_distanceMatrix_GL(paramStruct* pars, distanceMatrixStruct* distanceMatrix, vcfData* vcfd, blobStruct* blob) {
     readSites(vcfd, pars, blob);
     if (1 == args->doEM) {
@@ -53,7 +57,9 @@ void get_distanceMatrix_GL(paramStruct* pars, distanceMatrixStruct* distanceMatr
     NEVER;
 }
 
+
 void get_distanceMatrix_GT(paramStruct* pars, distanceMatrixStruct* distanceMatrix, vcfData* vcfd, blobStruct* blob) {
+
     //TODO checkme blob reading
     if (NULL == blob) {
         readSites(vcfd, pars, blob);
@@ -144,485 +150,419 @@ void get_distanceMatrix_GT(paramStruct* pars, distanceMatrixStruct* distanceMatr
         FREE(vcfd->pair_shared_nSites);
         FREE(vcfd->jgcd_gt);
     }
+
 }
 
-metadataStruct::metadataStruct(int nInd) {
-    ASSERT(nInd > 0);
-    nLevels = 0;
-    indKeys = (uint64_t*)malloc(nInd * sizeof(uint64_t));
-    indNames = (char**)malloc(nInd * sizeof(char*));
 
-    groupNames = (char***)malloc(1 * sizeof(char**));
-    groupNames[0] = (char**)malloc(1 * sizeof(char*));
-    // nGroupsAtLevel = (int *)calloc(1, sizeof(int));
-    levelNames = (char**)malloc(1 * sizeof(char*));
 
-    lvlgToIdx = (int**)malloc(1 * sizeof(int*));
-    ASSERT(lvlgToIdx != NULL);
-    lvlgToIdx[0] = (int*)malloc(1 * sizeof(int));
-    lvlgToIdx[0][0] = -1;
 
-    nIndPerStrata = NULL;
+metadataStruct* metadataStruct_read(formulaStruct* formula) {
 
-    lvlStartPos = (int*)malloc(1 * sizeof(int));
-
-    for (int i = 0; i < nInd; i++) {
-        indKeys[i] = 0;
-    }
-
-    idxToLvlg = (int**)malloc(1 * sizeof(int*));
-
-    groupKeys = (uint64_t*)malloc(MAX_N_BITS * sizeof(uint64_t));
-    for (size_t i = 0; i < MAX_N_BITS; i++) {
-        groupKeys[i] = 0;
-    }
-}
-
-metadataStruct::~metadataStruct() {
-    FREE(indKeys);
-
-    for (size_t ind = 0; ind < (size_t)nInd; ind++) {
-        FREE(indNames[ind]);
-    }
-    FREE(indNames);
-    FREE(groupKeys);
-
-    // dragon
-    int i = 0;
-    for (size_t lvl = 0; lvl < (size_t)nLevels; lvl++) {
-        for (size_t g = 0; g < (size_t)nGroupsAtLevel[lvl]; g++) {
-            FREE(groupNames[lvl][g]);
-            ++i;
-        }
-        FREE(groupNames[lvl]);
-        FREE(levelNames[lvl]);
-        FREE(lvlgToIdx[lvl]);
-    }
-
-    DEVASSERT(i == nBits);
-
-	//TODO checkme when am i null
-	if(idxToLvlg != NULL){
-    for (size_t bit = 0;bit < (size_t)nBits;++bit) {
-	if(idxToLvlg[bit] != NULL){
-        FREE(idxToLvlg[bit]);
-    }
-	}
-    FREE(idxToLvlg);
-	}
-
-    for (size_t lvl = 0; lvl < (size_t)nLevels; lvl++) {
-        FREE(nIndPerStrata[lvl]);
-    }
-
-    FREE(nGroupsAtLevel);
-
-    FREE(groupNames);
-
-    FREE(levelNames[nLevels]);
-    FREE(levelNames);
-
-    FREE(lvlgToIdx);
-
-    FREE(nIndPerStrata);
-
-    FREE(lvlStartPos);
-}
-
-metadataStruct* metadataStruct_get(paramStruct* pars) {
-    ASSERT(pars->nInd > 0);
-    ASSERT(args->formula != NULL);
-    metadataStruct* mtd = new metadataStruct(pars->nInd);
+    metadataStruct* mtd = metadataStruct_init(formula->formulaTokens->len);
 
     FILE* fp = IO::getFile(args->in_mtd_fn, "r");
 
-    char* buf = IO::readFile::getFirstLine(fp);
+    // -> process the metadata header
 
-    int nLevels = 0;
+    const size_t nLevels = formula->formulaTokens->len;
+    size_t formula_tokidx; // index of the current token in the formula
 
-    int hdr_col_idx = -1;  // 0-based for indexing
+    size_t groupidx;
 
-    // split the header into tokens
-    char* hdrtok = strtok(buf, METADATA_DELIMS);
-    while (hdrtok != NULL) {
-        ++hdr_col_idx;
-
-        // if token from metadata file is found in formula
-        int col_lvl_i = pars->formula->setFormulaTokenIdx(hdrtok, hdr_col_idx);
-        if (col_lvl_i > -1) {
-            mtd->addLevelName(hdrtok, col_lvl_i);
-            ++nLevels;
-        }
-        hdrtok = strtok(NULL, METADATA_DELIMS);
+    //
+    // maps: formula token idx (level idx) -> metadata column idx
+    // e.g. metadata file header: "Individual,Population,Etc,Region,Subpopulation"
+    // 		formula: "Individual ~ Region/Population/Subpopulation"
+    // 		= {3,2,0,1}
+    //                Individual:lvl=4; lvlidx=3
+    //                             Region:lvl=1; lvlidx=0
+    //                                    Population:lvl=2; lvlidx=1
+    //                                               Subpopulation:lvl=3; lvlidx=2
+    int mtdcol2lvlidx[nLevels];
+    for (size_t i = 0; i < nLevels; ++i) {
+        mtdcol2lvlidx[i] = -2;
     }
-    FREE(buf);
 
-    // exclude the left-hand-side of the formula (i.e. Individual column) from the number of hierarchical levels count
-    nLevels--;
+    char* hdr = NULL;
 
-    if (-1 == nLevels) {
+    hdr = IO::readFile::getFirstLine(fp);
+
+
+    int nLevelsFound = 0;
+    size_t hdr_colidx = 0; // column index in metadata file header
+    for (char* hdrtok = strtok(hdr, "\t"); hdrtok != NULL; hdrtok = strtok(NULL, "\t")) {
+        // try to match the token to one of the formula tokens
+
+        if (formula->formulaTokens->find(hdrtok, &formula_tokidx)) {
+            nLevelsFound++;
+            IO::vprint(2, "Found column %s in metadata file that is also in the formula. Processing.", hdrtok);
+
+            if (mtd->levelNames->contains(hdrtok)) {
+                ERROR("Level name %s is duplicated in the metadata file header.\n", hdrtok);
+            }
+
+            mtd->levelNames->add_to(hdrtok, formula_tokidx);
+            mtdcol2lvlidx[hdr_colidx] = formula_tokidx;
+        } else {
+            mtdcol2lvlidx[hdr_colidx] = -1;
+        }
+
+        ++hdr_colidx;
+    }
+    FREE(hdr);
+
+    if (nLevelsFound != nLevels) {
+        ERROR("Not all hierarchical levels supplied by the formula '%s' were found in the header of the metadata file %s. Please make sure that the names defined in the formula are present in the metadata file.\n", args->formula, args->in_mtd_fn);
+    }
+
+
+    if (0 == mtd->levelNames->len) {
         ERROR("No hierarchical levels found in metadata file. Please make sure that the names defined in the formula are present in the metadata file.\n");
-    } else if (0 == nLevels) {
+    }
+    if (1 == mtd->levelNames->len) {
         ERROR("Only one hierarchical level found in metadata file.");
     }
-
-    ASSERT(nLevels <= MAX_N_HIER_LEVELS);
-
-    if (IO::verbose(2)) {
-        pars->formula->print(stderr);
+    if (mtd->levelNames->len != (size_t)mtd->nLevels) {
+        ERROR("Not all hierarchical levels found in metadata file. Please make sure that the names defined in the formula are present in the metadata file.\n");
     }
 
-    mtd->nLevels = nLevels;
-
-
-
-
-    mtd->nGroupsAtLevel = (int*)calloc(nLevels, sizeof(int));
-
-    REALLOC(mtd->groupNames, nLevels, char***);
-
-    REALLOC(mtd->lvlgToIdx, nLevels, int**);
-    for (int i = 1; i < nLevels; i++) {
-        mtd->lvlgToIdx[i] = (int*)calloc(1, sizeof(int));
+    if (feof(fp)) {
+        ERROR("Metadata file reached EOF after reading the header. Please make sure that the file is not empty.\n");
     }
 
-    formulaStruct_validate(pars->formula, nLevels);
+    size_t colidx;
+    size_t lvlidx;
+    size_t prev_lvlidx;
+    size_t indidx;
 
-    int nRows = 0;
-    int nCols = 0;
-    int nCols_prev = 0;
-    int nInd = 0;
+    indidx = 0;
 
-    int col_i = 0;
-
-    // associate the individuals to the index of groups at each level
-    // indToGroupIdx[nInd][nLevels] = index of the group at each level
-    //
-    // usage: indToGroupIdx[ind_i][lvl_i] = index of the group at lvl_i that ind_i belongs to
-    ASSERT(pars->nInd > 0);
-    int** indToGroupIdx = (int**)malloc(pars->nInd * sizeof(int*));
-    for (int i = 0; i < pars->nInd; i++) {
-        indToGroupIdx[i] = (int*)malloc(nLevels * sizeof(int));
-        for (int j = 0; j < nLevels; j++) {
-            indToGroupIdx[i][j] = -1;
-        }
-    }
-
-    int nBits_needed = 0;
 
     char* line = NULL;
-    size_t len = 0;
-    // loop through the rest of the file, one line per individual
-    while ((getline(&line, &len, fp)) != -1) {
-        ++nRows;
+    size_t buf_size = FGETS_BUF_SIZE;
+    char* full_line = NULL;
+    full_line = (char*)malloc(FGETS_BUF_SIZE * sizeof(char));
+    ASSERT(NULL != full_line);
+    memset(full_line, '\0', buf_size);
+    size_t full_line_len = 0;
+    bool missing_newline = false;
 
-        col_i = 0;
+    char** lvlCols = (char**)malloc(nLevels * sizeof(char*));
 
-        // split by delimiters
-        char* col = strtok(line, METADATA_DELIMS);
+    int nRowsProcessed = 0;
 
-        while (col != NULL) {  // loop through cols
+    while (!(feof(fp))) { // row loop
 
-            // individual column (left hand side of formula)
-            if (col_i == pars->formula->formulaTokenIdx[0]) {
-                // check if individual id is already in indNames
-                for (size_t ind = 0; ind < (size_t)nInd; ind++) {
-                    if ((mtd->indNames[ind] != NULL) && (strcmp(mtd->indNames[ind], col) == 0)) {
-                        fprintf(stderr, "\n[ERROR]\t-> Individual %s is duplicated in the metadata file.\n", col);
-                        exit(1);
+
+        /// ----------------- read the current line (the row) ----------------- ///
+        // read until the current line (the row) is fully read
+        line = fgets(full_line, buf_size, fp);
+
+        if (feof(fp)) {
+            break;
+        }
+
+        if (NULL == line) {
+            if (ferror(fp)) {
+                ERROR("Could not read the metadata file: %s\n", args->in_mtd_fn);
+            }
+        }
+
+        missing_newline = feof(fp); // if line != NULL and EOF, then the file is missing newline
+        full_line_len = strlen(full_line);
+
+        if (full_line_len == 0) {
+            ERROR("Problem reading the metadata file %s at line %d. Please make sure that the file is not empty and that the columns are separated by tabs.\n", args->in_mtd_fn, nRowsProcessed);
+        }
+
+        while (('\n' != full_line[full_line_len - 1]) && (!missing_newline)) {
+            // line was not fully read
+            DEVPRINT("Line was not fully read, increasing buffer size from %ld to %ld\n", buf_size, buf_size * 2);
+            buf_size *= 2;
+            REALLOC(char*, full_line, buf_size);
+
+            fgets(full_line + full_line_len, buf_size - full_line_len, fp);
+            full_line_len = strlen(full_line);
+            missing_newline = feof(fp);
+            continue;
+        }
+
+        if (!missing_newline) {
+            full_line[full_line_len - 1] = '\0';
+        }
+        ++nRowsProcessed;
+        /// ----------------- read the current line (the row) ----------------- ///
+
+        // -> row is ready to be processed
+
+
+        // -> column loop
+
+        // ptrs to columns ordered by level (from level 1 to L; e.g. Ind~Reg/Pop -> {Reg,Pop,Ind} with L=3)
+        for (size_t i = 0; i < nLevels; ++i) {
+            lvlCols[i] = NULL;
+        }
+        colidx = 0;
+        nLevelsFound = 0;
+        for (char* colptr = strtok(full_line, "\t"); colptr != NULL; colptr = strtok(NULL, "\t")) {
+
+            if (mtdcol2lvlidx[colidx] == -1) {
+
+                IO::vprint(2, "Skipping column %s (with index %ld) in metadata file ", colptr, colidx);
+                colidx++;
+                continue;
+            }
+            ASSERT(mtdcol2lvlidx[colidx] != -2);
+            lvlCols[mtdcol2lvlidx[colidx]] = colptr;
+            nLevelsFound++;
+
+            colidx++;
+        }
+        if (nLevelsFound == 0) {
+            ERROR("Problem reading the metadata file %s at line %d. Please make sure that the file is not empty and that the columns are separated by tabs.\n", args->in_mtd_fn, nRowsProcessed);
+        }
+
+        for (size_t lvli = 0; lvli < nLevels - 1; ++lvli) {
+            ASSERT(lvlCols[lvli] != NULL);
+        }
+
+        char* tmp = NULL;
+        char* newGroupName = NULL;
+        for (size_t lvli = 0; lvli < nLevels - 1; ++lvli) {
+            // to make sure each hierarchical level group name is unique within its level
+            // add append all the higher level group names to it
+            // (excl individual level since it is unique by definition; no need to append anything to it)
+            // e.g.
+            // Region Population Ind
+            // reg1 pop1 ind1
+            // reg2 pop1 ind2
+            //
+            // to differentiate two pop1's, rename pop1s as reg1_pop1 and reg2_pop1, respectively
+            //
+            // since we process levels in hierarchical order, we can just append the one level higher group names to the current group name if not the first level
+            tmp = lvlCols[lvli];
+            newGroupName = NULL;
+
+            if (lvli != 0) {
+                ASSERT(lvlCols[lvli - 1] != NULL);
+
+
+                newGroupName = (char*)malloc(strlen(lvlCols[lvli - 1]) + strlen(tmp) + 2); // +2 for the _ and \0
+                strcpy(newGroupName, lvlCols[lvli - 1]);
+                strcat(newGroupName, "_");
+                strcat(newGroupName, tmp);
+                lvlCols[lvli] = newGroupName;
+            }
+            // if lvli==0
+            // no new group name assigned
+            // since already set to the colptr; do nothing; 
+            // but make sure you dont free it later to avoid double free
+
+        }
+
+
+
+        if (0 == colidx) {
+            ERROR("Found empty line in metadata file. Please make sure that your metadata file does not contain empty lines.\n");
+        }
+
+        if (colidx + 1 < nLevels) {
+            ERROR("Found %ld columns in metadata file but expected %ld. Please make sure that your metadata file does not contain empty columns.\n", colidx + 1, nLevels);
+        }
+
+
+
+        // -> start with the individual column (lvl=nLevels, lvlidx=nLevels-1)
+
+        // check if individual id is already in indNames
+        if (mtd->indNames->contains(lvlCols[nLevels - 1])) {
+            // it should not be already in indNames since we populate it here, this means multiple individuals have the same id 
+            ERROR("Individual name %s is duplicated in the metadata file.\n", lvlCols[nLevels - 1]);
+        }
+        size_t x = mtd->indNames->add(lvlCols[nLevels - 1]);
+        ASSERT(x == indidx);
+
+
+        IO::vprint(2, "Found individual with name:%s (index: %d) in the metadata file.", mtd->indNames->d[mtd->indNames->len - 1], indidx);
+
+        colidx = 0;
+
+        size_t parent_groupIndices[nLevels];
+
+        for (lvlidx = 0;lvlidx < (size_t)nLevels - 1;++lvlidx) {
+
+            bool isFound = mtd->groupNames->find(lvlCols[lvlidx], &groupidx);
+
+
+            if (!isFound) { // new group
+
+                groupidx = mtd->groupNames->add(lvlCols[lvlidx]);
+
+                if (0 != groupidx) {
+                    size_tArray** tmp = NULL;
+                    tmp = (size_tArray**)realloc(mtd->group2indIndices, (mtd->nGroups + 1) * sizeof(size_tArray*));
+                    ASSERT(tmp != NULL);
+                    tmp[mtd->nGroups] = size_tArray_alloc(1);
+                    mtd->group2indIndices = tmp;
+
+                    tmp = (size_tArray**)realloc(mtd->group2pairIndices, (mtd->nGroups + 1) * sizeof(size_tArray*));
+                    ASSERT(tmp != NULL);
+                    tmp[mtd->nGroups] = size_tArray_alloc(1);
+                    mtd->group2pairIndices = tmp;
+
+                    tmp = (size_tArray**)realloc(mtd->group2subgroupIndices, (mtd->nGroups + 1) * sizeof(size_tArray*));
+                    ASSERT(tmp != NULL);
+                    mtd->group2subgroupIndices = tmp;
+
+                    if (lvlidx == (size_t)(nLevels - 2)) {
+                        mtd->group2subgroupIndices[groupidx] = NULL;
+                    } else {
+                        mtd->group2subgroupIndices[groupidx] = size_tArray_alloc(1);
                     }
+
+
+                } else {
+                    // 0 == groupidx
+                    // 0 == mtd->nGroups
+                    // first group ever; mem already allocated in metadataStruct constructor (but mtd->nGroups is still 0)
                 }
-                mtd->indNames[nInd] = strdup(col);
-                IO::vprint(2, "Found individual with name:%s sidx:%d", mtd->indNames[nInd], nInd);
-            } else {
-                // loop through the rest of the tokens, i.e. the hierarchical levels in order high->low
-                // e.g. Region, Population, Subpopulation
-                for (int tok_i = 1; tok_i < pars->formula->nTokens; tok_i++) {
-                    // if the column index matches the formula token index
-                    if (col_i == pars->formula->formulaTokenIdx[tok_i]) {
-                        // hierarchical level index, excluding the individual column
-                        int lvl_idx = tok_i - 1;
 
-                        // index of the group at level, e.g. {pop1, pop2, pop3} -> pop2 grp_i == 1
-                        int grp_i = -1;
+                mtd->group2levelIndices->add(lvlidx);
 
-                        // check if group name is already in groupNames
-                        if (mtd->nGroupsAtLevel[lvl_idx] > 0) {
-                            for (size_t grp = 0; grp < (size_t)mtd->nGroupsAtLevel[lvl_idx]; grp++) {
-                                if (NULL != mtd->groupNames) {
-                                    if (strcmp(mtd->groupNames[lvl_idx][grp], col) == 0) {
-                                        grp_i = grp;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
+                mtd->level2groupIndices[lvlidx]->add(groupidx);
+                mtd->nGroups++;
 
-                        if (grp_i == -1) {
-                            ++nBits_needed;
-                            mtd->addGroup(lvl_idx, mtd->nGroupsAtLevel[lvl_idx], col);
-                            grp_i += mtd->nGroupsAtLevel[lvl_idx];
-                        }
+            }
 
-                        indToGroupIdx[nInd][lvl_idx] = grp_i;
-                        break;
-                    }
+            mtd->group2indIndices[groupidx]->add(indidx);
+            parent_groupIndices[lvlidx] = groupidx;
+
+#if DEV
+            fprintf(stderr, "\n\n--------------------------------------------------------------------------------\n");
+
+            fprintf(stderr, "\n--------> Group %s (groupidx=%ld) at level %ld has %ld parent groups\n", mtd->groupNames->d[groupidx], groupidx, lvlidx + 1, lvlidx);
+            /// number of parent groups == number of levels above the current level == lvlidx == (lvl-1)
+            if (lvlidx > 0) {
+                fprintf(stderr, "\n\tParent groups are:\n");
+            }
+            // printing in ascending level order
+            for (prev_lvlidx = 0; prev_lvlidx < lvlidx; ++prev_lvlidx) {
+                fprintf(stderr, "\t\t(%ld.)", lvlidx - prev_lvlidx);
+                fprintf(stderr, " %s (groupidx=%ld) from level %ld\n", mtd->groupNames->d[parent_groupIndices[prev_lvlidx]], parent_groupIndices[prev_lvlidx], prev_lvlidx + 1);
+            }
+            fprintf(stderr, "\n\n--------------------------------------------------------------------------------\n");
+#endif
+
+            for (prev_lvlidx = 0; prev_lvlidx < lvlidx; ++prev_lvlidx) {
+                if (!mtd->group2subgroupIndices[parent_groupIndices[prev_lvlidx]]->contains(groupidx)) {
+                    mtd->group2subgroupIndices[parent_groupIndices[prev_lvlidx]]->add(groupidx);
                 }
             }
 
-            ++col_i;
-            col = strtok(NULL, METADATA_DELIMS);
-            ++nCols;
+        }
 
-        }  // column in row loop (hierarchical levels for one individual)
-        nCols_prev = nCols;
-        if (nCols_prev != 0)
-            ASSERT(nCols == nCols_prev);
-        ASSERT(nCols > 0);
 
-        ++nInd;
-    }  // row loop (individuals)
+        // start from 1; 0 is not changed so still the old ptr; no need to free
+        // ind level is also unchanged (lvlCols[nLevels-1] is still the same ptr)
+        lvlCols[0] = NULL;
+        for (size_t i = 1; i < nLevels - 1; ++i) {
+            FREE(lvlCols[i]);
+        }
+        lvlCols[nLevels - 1] = NULL;
 
-    FREE(line);
 
-    // TODO
-    ASSERT(nBits_needed < 64);
+        // finished processing the line; get ready for the next line
+        memset(full_line, '\0', buf_size);
 
-    // ASSERT(nInd == pars->nInd;
-    if (nInd != pars->nInd) {
-        fprintf(stderr, "\n[ERROR]\tNumber of individuals in metadata file (%d) does not match the number of individuals in the VCF file (%d).\n", nInd, pars->nInd);
-        exit(1);
+        ++indidx;
+
+    } // row loop
+
+    FREE(lvlCols);
+
+
+
+
+# if DEV
+
+    fprintf(stderr, "\n\n\n\n--------------------------------------------------------------------------------\n");
+    size_t nGroupsTotal = mtd->groupNames->len;
+    for (size_t i = 0;i < nGroupsTotal;++i) {
+        size_tArray* tmp = mtd->group2subgroupIndices[i];
+        if (tmp != NULL) {
+            fprintf(stderr, "Group %ld (%s) has %ld subgroups\n", i, mtd->groupNames->d[i], tmp->len);
+            for (size_t j = 0;j < tmp->len;++j) {
+                if (j == 0)
+                    fprintf(stderr, "Subgroups are:\n");
+                fprintf(stderr, "\t%ld. %s (from level %ld)\n", j + 1, mtd->groupNames->d[tmp->d[j]], mtd->group2levelIndices->d[tmp->d[j]] + 1);
+            }
+        }
     }
 
-    // carries the previous bit from the parent group to the child group
-    int prev_bit = -1;
-    int bit_i = -1;
-    int grp_i = -1;
-    int nGroups_rollingSum = 0;
+    fprintf(stderr, "\n\n\n\n--------------------------------------------------------------------------------\n");
 
-    // print indToGroupIdx
-    for (int ind_i = 0; ind_i < pars->nInd; ind_i++) {
-        // resets for each individual
-        prev_bit = -1;
-        nGroups_rollingSum = 0;
+#endif 
 
-        for (int lvl_i = 0; lvl_i < nLevels; lvl_i++) {
-            // index of the group at level
-            grp_i = indToGroupIdx[ind_i][lvl_i];
 
-            bit_i = nGroups_rollingSum + grp_i;
+    mtd->nInd = indidx;
 
-            // check if the group is already processed == if the bit is already set
-            if (mtd->groupKeys[bit_i] == 0) {
-                mtd->lvlgToIdx[lvl_i][grp_i] = bit_i;
 
-                DEVASSERT(bit_i != -1);
-                REALLOC(mtd->idxToLvlg, ((bit_i + 1)), int**);
 
-                mtd->idxToLvlg[bit_i] = (int*)malloc(2 * sizeof(int));
+#if DEV
 
-                mtd->idxToLvlg[bit_i][0] = lvl_i;
-                mtd->idxToLvlg[bit_i][1] = grp_i;
 
-                mtd->setGroupKey(bit_i, lvl_i, grp_i, prev_bit);
+    fprintf(stderr, "\n\n\n\n--------------------------------------------------------------------------------\n");
+
+    fprintf(stderr, "In total, we have %ld levels, %d groups, and %d individuals\n", nLevels, mtd->nGroups, mtd->nInd);
+
+    for (size_t i = 0;i < (size_t)nLevels - 1;++i) {
+        fprintf(stderr, "\n\n// mtd->level2groupIndices->d[%ld] is an array of group indices at level %ld; it has %ld elements\n", i, i, mtd->level2groupIndices[i]->len);
+        fprintf(stderr, "-> Level %ld with name %s has %ld groups\n", i, mtd->levelNames->d[i], mtd->level2groupIndices[i]->len);
+        // the names of these groups are:
+        for (size_t j = 0;j < mtd->level2groupIndices[i]->len;++j) {
+            fprintf(stderr, "\t\t%ld. group idx=%ld with name %s\n", j + 1, mtd->level2groupIndices[i]->d[j], mtd->groupNames->d[mtd->level2groupIndices[i]->d[j]]);
+            fprintf(stderr, "\t\t\t-> this group has %ld individuals:\n", mtd->group2indIndices[mtd->level2groupIndices[i]->d[j]]->len);
+            for (size_t k = 0;k < mtd->group2indIndices[mtd->level2groupIndices[i]->d[j]]->len;++k) {
+                fprintf(stderr, "\t\t\t\t%ld. ind idx=%ld with name %s\n", k + 1, mtd->group2indIndices[mtd->level2groupIndices[i]->d[j]]->d[k], mtd->indNames->d[mtd->group2indIndices[mtd->level2groupIndices[i]->d[j]]->d[k]]);
             }
+        }
 
-            mtd->lvlStartPos[lvl_i] = nGroups_rollingSum;
+    }
+    fprintf(stderr, "\n\n--------------------------------------------------------------------------------\n");
+#endif
 
-            nGroups_rollingSum += mtd->nGroupsAtLevel[lvl_i];
-            prev_bit = bit_i;
-        }  // levels loop
 
-        // we can directly use lowest assoc level to assoc with individual:
-        // index lowest hierarchical level after individual to which ind_i belongs to
-        // in the groupKeys array is used to set the key of ind_i
+    size_t groupIndex;
+    size_t n;
+    size_t pair_idx = 0;
+    size_t indidx1;
+    size_t indidx2;
+    size_t* indsInGroup = NULL;
+    for (size_t lvlidx = 0;lvlidx < (size_t)nLevels - 1;++lvlidx) {
+        for (size_t g = 0;g < mtd->level2groupIndices[lvlidx]->len;++g) {
+            groupIndex = mtd->level2groupIndices[lvlidx]->d[g];
+            n = mtd->group2indIndices[groupIndex]->len;
+            indsInGroup = mtd->group2indIndices[groupIndex]->d;
+            for (size_t i1 = 0; i1 < n - 1; i1++) {
+                for (size_t i2 = i1 + 1; i2 < n; i2++) {
+                    indidx1 = indsInGroup[i1];
+                    indidx2 = indsInGroup[i2];
+                    pair_idx = (indidx1 * (2 * mtd->nInd - indidx1 - 1)) / 2 + (indidx2 - indidx1 - 1);
+                    mtd->group2pairIndices[groupIndex]->add(pair_idx);
+                }
+            }
+        }
+    }
 
-        // set to the group index at its own level
-        mtd->indKeys[ind_i] = indToGroupIdx[ind_i][nLevels - 1];
 
-        // OR set to the global group index i.e. the corresponding bit location
-        // indKeys[ind_i]=mtd->lvlgToIdx[nLevels-1][indToGroupIdx[ind_i][nLevels-1]];
 
-        // OR set to the key of the lowest level group associated with the individual
-        // indKeys[ind_i]=groupKeys[bit_i];
-
-    }  // individuals loop
-
-    LOG("Number of levels in metadata file: %d", nLevels);
-
-    mtd->nBits = nBits_needed;
-    mtd->nInd = nInd;
-    ASSERT(nRows == mtd->nInd);
-    ASSERT(pars->nInd == mtd->nInd);
-
-    mtd->getNIndPerStrata();
-
+    FREE(full_line);
     FCLOSE(fp);
-    for (int i = 0; i < pars->nInd; i++) {
-        FREE(indToGroupIdx[i]);
-    }
-    FREE(indToGroupIdx);
 
     return (mtd);
+
 }
 
-void metadataStruct::addLevelName(const char* levelName, const int level_idx) {
-    DEVASSERT(level_idx != -1);
-    REALLOC(levelNames, ((level_idx + 1)), char**);
-
-    IO::vprint(0, "\nFound hierarchical level: %s\n", levelName);
-    levelNames[level_idx] = strdup(levelName);
-    ASSERT(levelNames[level_idx] != NULL);
-}
-
-void metadataStruct::addGroup(int lvl, int g, char* name) {
-    IO::vprint(2, "Found new group: %s at level %ld with index %ld", name, lvl, g);
-
-    nGroupsAtLevel[lvl]++;
-
-    REALLOC(groupNames[lvl], ((g + 1)), char**);
-
-    groupNames[lvl][g] = NULL;
-
-    REALLOC(lvlgToIdx[lvl], ((g + 1)), int*);
-
-    // add group name
-    groupNames[lvl][g] = strdup(name);
-    ASSERT(groupNames[lvl][g] != NULL);
-}
-
-int metadataStruct::indsFromGroup(int ind1, int ind2, int globGrpIdx) {
-    ASSERT(ind1 != ind2);
-
-    int lvl = idxToLvlg[globGrpIdx][0];
-
-    int pos = MAX_N_BITS - lvlStartPos[lvl];
-    uint64_t i1 = get_indKey(ind1);
-    uint64_t i2 = get_indKey(ind2);
-
-    if (i1 == i2) {
-        return 1;
-    }
-
-    i1 = i1 << pos;
-    i2 = i2 << pos;
-
-    // xor the keys to check if they are the same after discarding the bits lower than the level at interest
-    if ((i1 ^ i2)) {
-        return 0;
-    }
-    return 1;
-}
-
-int metadataStruct::countIndsInGroup(int globIdx) {
-    int n = 0;
-    for (int i = 0; i < nInd; i++) {
-        // check if the individual's key is set at the globIdx location
-        // n+=BITCHECK(groupKeys[lvlgToIdx[nLevels-1][indKeys[i]]],globIdx);
-        n += BITCHECK(get_indKey(i), globIdx);
-    }
-    return n;
-}
-
-int metadataStruct::countIndsInGroup(int lvl, int localGrpIdx) {
-    int globIdx = lvlgToIdx[lvl][localGrpIdx];
-    int n = 0;
-    for (int i = 0; i < nInd; i++) {
-        // check if the individual's key is set at the globIdx location
-        // n+=BITCHECK(groupKeys[lvlgToIdx[nLevels-1][indKeys[i]]],globIdx);
-        n += BITCHECK(get_indKey(i), globIdx);
-    }
-    return n;
-}
-
-int metadataStruct::indFromGroup(int ind_i, int lvl_i, int localGrpIdx) {
-    int globIdx = lvlgToIdx[lvl_i][localGrpIdx];
-    return BITCHECK(get_indKey(ind_i), globIdx);
-}
-
-void metadataStruct::getNIndPerStrata() {
-    ASSERT(nInd > 0);
-    ASSERT(nLevels > 0);
-    nIndPerStrata = (int**)malloc(sizeof(int*) * nLevels);
-    for (int lvl = 0; lvl < nLevels; lvl++) {
-        nIndPerStrata[lvl] = (int*)malloc(sizeof(int) * nGroupsAtLevel[lvl]);
-        for (int g = 0; g < nGroupsAtLevel[lvl]; g++) {
-            nIndPerStrata[lvl][g] = countIndsInGroup(lvl, g);
-        }
-    }
-}
-
-int metadataStruct::groupFromParentGroup(int plvl, int pg, int lvl, int g) {
-    // PRINT_BITKEY(groupKeys[lvlgToIdx[plvl][pg]], nBits);
-    // fprintf(stderr,"\n\n\nComparing parent with level %d idx %d to child with level %d idx %d\n", plvl, pg, lvl, g);
-    // TODO
-    return ((groupKeys[lvlgToIdx[plvl][pg]] & groupKeys[lvlgToIdx[lvl][g]]) == groupKeys[lvlgToIdx[plvl][pg]]);
-}
-
-int metadataStruct::countNSubgroupAtLevel(int plvl, int pg, int lvl) {
-    ASSERT(lvl > plvl);
-    int n = 0;
-    for (int g = 0; g < nGroupsAtLevel[lvl]; g++) {
-        n += groupFromParentGroup(plvl, pg, lvl, g);
-    }
-    return n;
-}
-
-int metadataStruct::whichLevel1(const char* levelName) {
-    // nLevels+1 bc levelNames[0]="Individual" so it has nLevels+1 elements
-    for (int i = 0; i < nLevels + 1; i++) {
-        if (strcmp(levelName, levelNames[i]) == 0) {
-            return i;
-        }
-    }
-    fprintf(stderr, "\n[ERROR][whichLevel1]\tCould not find level %s in the metadata file\n", levelName);
-    exit(1);
-}
-
-void metadataStruct::print_indKeys() {
-    // print all individual keys
-    for (size_t ind = 0; ind < (size_t)nInd; ind++) {
-        char str[65];
-        char* p = str;
-
-        int localGrpIdx = indKeys[ind];
-        int globIdx = lvlgToIdx[nLevels - 1][localGrpIdx];
-
-        for (int bit = nBits - 1; bit > -1; bit--) {
-            p += sprintf(p, "%d", BITCHECK(groupKeys[globIdx], bit));
-        }
-        IO::vprint(0, "Individual %s is associated with the lowest-level-group at level %d with index %d, the associated group is named %s and has a key value %ld and 0b: %s", indNames[ind], nLevels - 1, indKeys[ind], groupNames[nLevels - 1][localGrpIdx], groupKeys[nLevels - 1], str);
-    }
-}
-
-void metadataStruct::print_groupKeys() {
-    IO::vprint(0, "-> Printing group keys, nLevels: %d, nBits: %d\n", nLevels, nBits);
-
-    // loop through all the groups in all levels
-    for (int globIdx = 0; globIdx < nBits; globIdx++) {
-        int lvl = idxToLvlg[globIdx][0];
-        int g = idxToLvlg[globIdx][1];
-
-        char str[65];
-        char* p = str;
-        // loop through all the bits used in keys
-        for (int bit = nBits - 1; bit > -1; bit--) {
-            p += sprintf(p, "%d", BITCHECK(groupKeys[globIdx], bit));
-        }
-        IO::vprint(0, "Group idx:%d name:%s have key val:%ld lvl:%d groupIdxAtLvl:%d 0b:%s", globIdx, groupNames[lvl][g], groupKeys[globIdx], lvl, g, str);
-    }
-}
-
-// TODO is this the proper way to do this?
-/// @brief calculate buffer size for CSV output
-/// @param n_vals number of values
-/// @param max_digits maximum number of digits
-/// @return buffer size
-const int calculateBufferSizeCsv(const int n_vals, const int max_digits) {
-    // max_digits + 1 = 1 comma
-    // result + 2 = 1 newline at the end + 1 null terminator
-    return ((n_vals * (max_digits + 1)) + 2);
-}
 
 void distanceMatrixStruct::print() {
     if (0 == args->printDistanceMatrix)
@@ -647,59 +587,55 @@ void distanceMatrixStruct::print() {
     outFiles->out_dm_fs->kbuf_write();
 }
 
-distanceMatrixStruct::distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquared_, char** itemLabels_) {
-    nIndCmb = nIndCmb_;
-    nInd = nInd_;
-    M = new double[nIndCmb];
-    for (int i = 0; i < nIndCmb; i++) {
-        M[i] = 0.0;
+distanceMatrixStruct* distanceMatrixStruct_init(int in_nInd, int in_nIndCmb, bool in_isSquared, strArray* in_itemLabels) {
+
+    distanceMatrixStruct* ret = (distanceMatrixStruct*)malloc(sizeof(distanceMatrixStruct));
+
+    DEVASSERT(in_nInd > 0);
+    DEVASSERT(in_nIndCmb > 0);
+
+    ret->nIndCmb = in_nIndCmb;
+    ret->nInd = in_nInd;
+
+    ret->M = (double*)malloc(in_nIndCmb * sizeof(double));
+    for (size_t i = 0; i < (size_t)in_nIndCmb; ++i) {
+        ret->M[i] = 0.0;
     }
-    isSquared = isSquared_;
+    ret->isSquared = in_isSquared;
 
-    // if (itemLabels_ != NULL) {
-        // itemLabels = (char **)malloc(nInd * sizeof(char *));
-        // for (int i = 0; i < nInd; i++) {
-            // itemLabels[i] = strdup(itemLabels_[i]);
-        // }
-    // }
-
-    inds2idx = (int**)malloc(nInd * sizeof(int*));
-    for (int i = 0; i < nInd; i++) {
-        inds2idx[i] = (int*)malloc(nInd * sizeof(int));
+    //TODO require item labels one way or another
+    ret->itemLabels = NULL;
+    if (in_itemLabels != NULL) {
+        ret->itemLabels = in_itemLabels;
     }
 
-    idx2inds = (int**)malloc(nIndCmb * sizeof(int*));
+    //TODO rm?
+    ret->inds2idx = (int**)malloc(in_nInd * sizeof(int*));
+    ASSERT(ret->inds2idx != NULL);
+    for (int i = 0; i < in_nInd; i++) {
+        ret->inds2idx[i] = (int*)malloc(in_nInd * sizeof(int));
+    }
+
+    // TODO rm?
+    ret->idx2inds = (int**)malloc(in_nIndCmb * sizeof(int*));
+    ASSERT(ret->idx2inds != NULL);
     int pair_idx = 0;
-    for (int i1 = 0; i1 < nInd - 1; i1++) {
-        for (int i2 = i1 + 1; i2 < nInd; i2++) {
-            idx2inds[pair_idx] = (int*)malloc(2 * sizeof(int));
-            inds2idx[i1][i2] = pair_idx;
-            inds2idx[i2][i1] = pair_idx;
-            idx2inds[pair_idx][0] = i1;
-            idx2inds[pair_idx][1] = i2;
+    for (int i1 = 0; i1 < in_nInd - 1; i1++) {
+        for (int i2 = i1 + 1; i2 < in_nInd; i2++) {
+            ret->idx2inds[pair_idx] = (int*)malloc(2 * sizeof(int));
+            ret->inds2idx[i1][i2] = pair_idx;
+            ret->inds2idx[i2][i1] = pair_idx;
+            ret->idx2inds[pair_idx][0] = i1;
+            ret->idx2inds[pair_idx][1] = i2;
+
+            // TODO this may not be necessary anymore 
+            ASSERT(pair_idx == (i1 * (2 * in_nInd - i1 - 1)) / 2 + (i2 - i1 - 1));
+
             pair_idx++;
         }
     }
-}
-distanceMatrixStruct::~distanceMatrixStruct() {
-    delete[] M;
 
-    // if (itemLabels != NULL) {
-        // for (int i = 0; i < nInd; i++) {
-            // FREE(itemLabels[i]);
-        // }
-        // FREE(itemLabels);
-    // }
-//
-    for (int i = 0; i < nInd; i++) {
-        FREE(inds2idx[i]);
-    }
-    FREE(inds2idx);
-
-    for (int i = 0; i < nIndCmb; i++) {
-        FREE(idx2inds[i]);
-    }
-    FREE(idx2inds);
+    return(ret);
 }
 
 distanceMatrixStruct* distanceMatrixStruct_read(paramStruct* pars) {
@@ -708,7 +644,7 @@ distanceMatrixStruct* distanceMatrixStruct_read(paramStruct* pars) {
 
     int n_vals = 0;
 
-    // TODO
+    // TODO update this, currently it is failing when fgets buf size is not enough
     if (IO::isGzFile(args->in_dm_fn) == 1) {
         size_t buf_size = FGETS_BUF_SIZE;
         size_t* buf_size_ptr = &buf_size;
@@ -721,7 +657,7 @@ distanceMatrixStruct* distanceMatrixStruct_read(paramStruct* pars) {
         while (tok != NULL) {
             if (n_vals > dm_vals_size) {
                 dm_vals_size = dm_vals_size * 2;
-                REALLOC(dm_vals, dm_vals_size, double*);
+                REALLOC(double*, dm_vals, dm_vals_size);
             }
             dm_vals[n_vals] = atof(tok);
             n_vals++;
@@ -744,7 +680,7 @@ distanceMatrixStruct* distanceMatrixStruct_read(paramStruct* pars) {
             while (tok != NULL) {
                 if (n_vals > dm_vals_size) {
                     dm_vals_size = dm_vals_size * 2;
-                    REALLOC(dm_vals, dm_vals_size, double*);
+                    REALLOC(double*, dm_vals, dm_vals_size);
                 }
                 dm_vals[n_vals] = atof(tok);
                 n_vals++;
@@ -763,7 +699,7 @@ distanceMatrixStruct* distanceMatrixStruct_read(paramStruct* pars) {
     LOG("Number of individuals: %d. This is calculated based on the number of values in the distance matrix (%d).\n", pars->nInd, n_vals);
     END_LOGSECTION;
 
-    distanceMatrixStruct* dMS = new distanceMatrixStruct(pars->nInd, pars->nIndCmb, args->squareDistance, NULL);
+    distanceMatrixStruct* dMS = distanceMatrixStruct_init(pars->nInd, pars->nIndCmb, args->squareDistance, NULL);
     dMS->isSquared = args->squareDistance;
 
     if (args->squareDistance == 1) {
@@ -780,115 +716,26 @@ distanceMatrixStruct* distanceMatrixStruct_read(paramStruct* pars) {
     return dMS;
 }
 
-void trimSpaces(char* str) {
-    ASSERT(NULL != str);
 
-    int len = strlen(str);
-    if (len == 0) {
-        ERROR("String is empty (len=0)");
-    }
 
-    // remove leading spaces
-    int start = 0;
-    while (isspace(str[start]) && start < len) {
-        start++;
-    }
-
-    // remove trailing spaces
-    int end = len - 1;
-    while (isspace(str[end]) && end >= start) {
-        end--;
-    }
-
-    // move characters to the beginning of the array
-    int i;
-    for (i = start; i <= end; i++) {
-        str[i - start] = str[i];
-    }
-
-    // add null terminator
-    str[end - start + 1] = '\0';
-    if (strlen(str) == 0) {
-        ERROR("String is empty (len=0)");
-    }
-}
-
-void formulaStruct_validate(formulaStruct* fos, const int nLevels) {
-    // validate that all tokens in formula has a corresponding column index in metadata
-    for (int i = 0; i < fos->nTokens; i++) {
-        if (fos->formulaTokenIdx[i] == -1) {
-            ERROR("Formula token \"%s\" does not have a corresponding column in metadata.", fos->formulaTokens[i]);
-        }
-    }
-    ASSERT(fos->nTokens == nLevels + 1);
-
-    if (nLevels > MAX_N_HIER_LEVELS) {
-        fprintf(stderr, "\n[ERROR]\tNumber of levels (%d) exceeds the maximum number of levels allowed (%d).\n", nLevels, MAX_N_HIER_LEVELS);
-        exit(1);
-    }
-
-    // all is ok, shrink and ready to go
-    fos->shrink();
-}
 
 void formulaStruct_destroy(formulaStruct* fos) {
-    FREE(fos->formula);
-    for (int i = 0; i < fos->nTokens; i++) {
-        FREE(fos->formulaTokens[i]);
-    }
-    FREE(fos->formulaTokens);
-    FREE(fos->formulaTokenIdx);
 
-    delete fos;
+    strArray_destroy(fos->formulaTokens);
+
+    FREE(fos);
+
 }
 
-void formulaStruct::print(FILE* fp) {
-    fprintf(fp, "\nFormula: %s", formula);
-    fprintf(fp, "\nTokens: %i\n", nTokens);
-    // for (int i = 0; i < nTokens; i++)
-    // {
-    // 	fprintf(fp, "\tToken %d (%s) corresponds to column %d in metadata.\n", i, formulaTokens[i], formulaTokenIdx[i]);
-    // }
-    // fprintf(fp, "\n");
-}
 
-int formulaStruct::setFormulaTokenIdx(const char* mtd_tok, const int mtd_col_idx) {
-    for (int i = 0; i < nTokens; i++) {
-        if (strcmp(formulaTokens[i], mtd_tok) == 0) {
-            formulaTokenIdx[i] = mtd_col_idx;
-            return i;
-        }
-    }
-    IO::vprint(1, "Ignoring the column \"%s\" in metadata file. Reason: Level \"%s\" from metadata header not found in formula (%s).", mtd_tok, mtd_tok, formula);
-    return -1;
-}
 
-// @brief shrink - shrink the size of the arrays defined with default max values to the actual size needed
-void formulaStruct::shrink() {
-    REALLOC(formulaTokens, nTokens, char**);
-    REALLOC(formulaTokenIdx, nTokens, int*);
-}
+formulaStruct* formulaStruct_read(const char* formula) {
 
-/// @brief formulaStruct_get initialize the formulaStruct
-/// @param formula formula string
-/// @return pointer to formulaStruct
-/// @example formula = 'Samples ~ Continents/Regions/Populations'
-formulaStruct* formulaStruct_get(const char* formula) {
     if (formula == NULL) {
-        fprintf(stderr, "\n[ERROR]\tNo formula provided. Please provide a formula of the form y ~ x1/x2/.../xn via the --formula option.\n");
-        exit(1);
+        ERROR("No formula provided. Please provide a formula of the form y ~ x1/x2/.../xn via the --formula option.");
     }
-    formulaStruct* fos = new formulaStruct;
 
-    fos->nTokens = 0;
-
-    fos->formula = strdup(formula);
-    fos->formulaTokens = (char**)malloc(MAX_N_FORMULA_TOKENS * sizeof(char*));
-    fos->formulaTokenIdx = (int*)malloc(MAX_N_FORMULA_TOKENS * sizeof(int));
-
-    for (int i = 0; i < MAX_N_FORMULA_TOKENS; ++i) {
-        fos->formulaTokenIdx[i] = -1;
-    }
+    formulaStruct* fos = formulaStruct_init();
 
     // pointer to the first character of formula string
     const char* p = formula;
@@ -896,6 +743,8 @@ formulaStruct* formulaStruct_get(const char* formula) {
     /// ------------------------------------------------------------
     /// get the first token - y (before the tilde ~)
     /// from the formula of form y ~ x1/x2/.../xn
+
+    char* indtok = NULL;
 
     // skip until the tilde ~
     while (*p != '\0') {
@@ -913,15 +762,17 @@ formulaStruct* formulaStruct_get(const char* formula) {
 
     // check if anything is left in the remaning formula string
     if (*p == '\0') {
-        fprintf(stderr, "\n[ERROR]\tFormula \"%s\" is not valid: No token found after '~'. \n", formula);
-        exit(1);
+        ERROR("Invalid formula \"%s\": No token found after '~'. Please provide a formula of the form y ~ x1/x2/.../xn.", formula);
     }
 
     char* token = strndup(formula, p - formula - 1);  // -1 to remove the tilde
     trimSpaces(token);
-    fos->formulaTokens[0] = strdup(token);
-    fos->nTokens++;
-    IO::vprint(1, "Found new token \"%s\" in formula \"%s\".\n", token, formula);
+
+    indtok = strdup(token);
+
+    fos->formulaTokens = strArray_init();
+
+    IO::vprint(1, "Found the first token \"%s\" in formula \"%s\".\n", token, formula);
 
     /// ------------------------------------------------------------
     /// get remaining tokens - x(s) (after the tilde ~)
@@ -929,6 +780,7 @@ formulaStruct* formulaStruct_get(const char* formula) {
 
     // point to the rest of the string
     const char* pstart = p;
+
     while (*p != '\0') {
         if (*p == '~') {
             fprintf(stderr, "\n[ERROR]\tFormula \"%s\" is not valid: Found more than one '~'. \n", formula);
@@ -938,8 +790,7 @@ formulaStruct* formulaStruct_get(const char* formula) {
             FREE(token);
             token = strndup(pstart, p - pstart);
             trimSpaces(token);
-            fos->formulaTokens[fos->nTokens] = strdup(token);
-            fos->nTokens++;
+            fos->formulaTokens->add(token);
             IO::vprint(1, "Found new token \"%s\" in formula \"%s\".\n", token, formula);
             pstart = p + 1;
         }
@@ -949,25 +800,25 @@ formulaStruct* formulaStruct_get(const char* formula) {
             FREE(token);
             token = strndup(pstart, p - pstart);
             trimSpaces(token);
-            fos->formulaTokens[fos->nTokens] = strdup(token);
-            fos->nTokens++;
+            fos->formulaTokens->add(token);
             IO::vprint(1, "Found new token \"%s\" in formula \"%s\".\n", token, formula);
         }
+
     }
 
-    if (fos->nTokens == 0) {
-        fprintf(stderr, "\n[ERROR]\tFormula \"%s\" is not valid: No tokens found.\n", fos->formula);
-        exit(1);
-    } else if (fos->nTokens == 1) {
-        fprintf(stderr, "\n[ERROR]\tFormula \"%s\" is not valid: Only one token found.\n", fos->formula);
-        exit(1);
+    fos->formulaTokens->add(indtok);
+
+    if (fos->formulaTokens->len == 0) {
+        ERROR("Formula \"%s\" is not valid: No tokens found.", formula);
+    } else if (fos->formulaTokens->len == 1) {
+        ERROR("Formula \"%s\" is not valid: Found only one token (%s). Please provide a formula of the form y ~ x1/x2/.../xn.", formula, formula);
     }
 
-    fprintf(stderr, "\n\t-> Formula %s has %d tokens:\n", fos->formula, fos->nTokens);
-    for (int i = 0; i < fos->nTokens; ++i) {
-        fprintf(stderr, "\t\t-> %s\n", fos->formulaTokens[i]);
-    }
 
     FREE(token);
-    return fos;
+    FREE(indtok);
+    return (fos);
 }
+
+
+

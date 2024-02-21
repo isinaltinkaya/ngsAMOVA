@@ -9,15 +9,15 @@ void change_contig_reset_nSites() {
 // NB> in full genome arrays use pars->nSites (for total)
 // in contig arrays use site_i (per contig)
 void arrays_nSites_expand(paramStruct* pars, lnglStruct* lngl, int** a1a2) {
-    const int oldSize = pars->nSites_arrays_size;
-    ASSERT(pars->nSites_arrays_size == lngl->size1);
-    const int newSize = oldSize + 4096;
+    const size_t oldSize = (size_t)pars->nSites_arrays_size;
+    ASSERT((size_t)pars->nSites_arrays_size == lngl->size1);
+    const size_t newSize = oldSize + 4096;
     pars->nSites_arrays_size = newSize;
     lngl->size1 = newSize;
 
     if (lngl != NULL) {
         lngl->size1 = newSize;
-        REALLOC(lngl->d, lngl->size1, double**);
+        REALLOC(double**, lngl->d, lngl->size1);
 
         for (size_t i = oldSize; i < lngl->size1;++i) {
             lngl->d[i] = (double*)malloc(lngl->size2 * sizeof(double));
@@ -29,7 +29,7 @@ void arrays_nSites_expand(paramStruct* pars, lnglStruct* lngl, int** a1a2) {
     }
 
     if (a1a2 != NULL) {
-        REALLOC(pars->a1a2, pars->nSites_arrays_size, int**);
+        REALLOC(int**, pars->a1a2, pars->nSites_arrays_size);
 
         for (size_t i = oldSize; i < newSize;++i) {
             pars->a1a2[i] = (int*)malloc(2 * sizeof(int));
@@ -147,9 +147,8 @@ int require_unpack() {
     return(val);
 }
 
-// TODO .vcf vcf.gz .bcf .bcf.gz .*.csi .*.tbi
 int require_index(paramStruct* pars) {
-    if (pars->in_ft & IN_VCF) {
+    if (INPUT_IS_VCF) {
         if (NULL != args->in_region) {
             return (IDX_CSI);
         }
@@ -533,7 +532,6 @@ int read_site_with_alleles(const int site_i, vcfData* vcfd, paramStruct* pars) {
 // return 1: skip site for all individuals
 int site_read_GL(const int contig_i, const int site_i, vcfData* vcfd, paramStruct* pars) {
 
-    const int nAlleles = vcfd->rec->n_allele;
 
     int ret;
     if (0 != (ret = read_site_with_alleles(site_i, vcfd, pars))) {
@@ -731,10 +729,9 @@ int site_read_GT(const int contig_i, const int site_i, vcfData* vcfd, paramStruc
     int32_t* i2_gts = NULL;
 
 
-    int a1_base = pars->a1a2[pars->nSites][0];
-    int a2_base = pars->a1a2[pars->nSites][1];
-
-    int ind_a1_base, ind_a2_base;
+    // int a1_base = pars->a1a2[pars->nSites][0];
+    // int a2_base = pars->a1a2[pars->nSites][1];
+    // int ind_a1_base, ind_a2_base;
 
 
     int recAlleles2a1a2[nAlleles];
@@ -1004,10 +1001,9 @@ vcfData* vcfData_init(paramStruct* pars) {
     END_LOGSECTION;
 
 
-    pars->indNames = (char**)malloc(pars->nInd * sizeof(char*));
+    pars->indNames = strArray_alloc(pars->nInd);
     for (int i = 0;i < pars->nInd;++i) {
-        pars->indNames[i] = (char*)strdup(vcfd->hdr->samples[i]);
-
+        pars->indNames->add(vcfd->hdr->samples[i]);
     }
 
     vcfd->nContigs = vcfd->hdr->n[BCF_DT_CTG];
@@ -1015,7 +1011,7 @@ vcfData* vcfData_init(paramStruct* pars) {
 
     check_consistency_args_pars(pars);
 
-    return vcfd;
+    return(vcfd);
 }
 
 void vcfData_destroy(vcfData* v) {
@@ -1145,7 +1141,7 @@ void readSites(vcfData* vcfd, paramStruct* pars, blobStruct* blob) {
                 }
             }
 
-            if (pars->nSites >= pars->nSites_arrays_size) {
+            if (pars->nSites >= (size_t)pars->nSites_arrays_size) {
                 arrays_nSites_expand(pars, vcfd->lngl, pars->a1a2);
             }
 

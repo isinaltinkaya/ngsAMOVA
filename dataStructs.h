@@ -2,22 +2,485 @@
 #define __DATA_STRUCTS__
 
 #include "argStruct.h"
-#include "bootstrap.h"
-#include "io.h"
 #include "mathUtils.h"
 #include "paramStruct.h"
 #include "vcfReader.h"
 
+
+// TODO VERY IMPORTANT TODO!!!!!
+// !! MATCH THE INDNAMES IN THE VCF FILE WITH THE INDNAMES IN THE METADATA FILE
+
+
 /* FORWARD DECLARATIONS ----------------------------------------------------- */
 
+namespace IO {
+    void validateString(const char* str);
+    int verbose(const int verbose_threshold);
+    void vprint(const char* format, ...);
+    void vprint(const int verbose_threshold, const char* format, ...);
+    void vprint(FILE* fp, const int verbose_threshold, const char* format, ...);
+    void vvprint(FILE* fp, const int verbose_threshold, const char* format, ...);
+}
+
+
 struct blobStruct;
-struct amovaStruct;
 
 typedef struct lnglStruct lnglStruct;
 typedef struct distanceMatrixStruct distanceMatrixStruct;
-typedef struct metadataStruct metadataStruct;
 typedef struct vcfData vcfData;
 typedef struct indPairThreads indPairThreads;
+
+typedef struct intArray intArray;
+
+struct intArray {
+
+    /// @var d - array of int data
+    int* d;
+
+    /// @var size - size of d
+    size_t size;
+
+    /// @var len - length of the currently used part of d (
+    /// @note 
+    /// len   = position right after the last element in use in d
+    ///         the next element will be added at position len
+    /// len-1 = gives the index of the last element in d
+    /// if intArray size is preallocated, len may be < size-1
+    /// if len == 0 the data is empty
+    /// if len == size the data is full
+    /// len can never be > size
+    size_t len;
+
+    /// @brief add - add an int
+    /// @param i int to add
+    /// @return size_t index of the newly added int
+    size_t add(const int i) {
+
+        // note: can never happen since during initialization d is mallocated with size 1 and size is set to 1
+        // if (0 == this->size) {
+        //     this->size = 1;
+        //     this->d = (int*)malloc(sizeof(int));
+        //     ASSERT(this->d != NULL);
+        // }
+
+        if (this->len == this->size) {
+            this->size++;
+            int* tmp = NULL;
+            tmp = (int*)realloc(this->d, this->size * sizeof(int));
+            ASSERT(tmp != NULL);
+            this->d = tmp;
+        } else if (this->len > this->size) {
+            NEVER;
+        }
+
+
+        this->d[this->len] = i;
+        this->len++;
+        return (this->len - 1);
+    }
+
+    bool is_full(void) {
+        return(this->len == this->size);
+    }
+
+    /// @brief find - get index of the given value in the intArray
+    /// @param val - int value to search for
+    /// @param val_idx - pointer to the variable to store the index of the given int (if found)
+    /// @return bool true if the given int is found, false otherwise
+    bool find(const int val, size_t* val_idx) {
+        for (size_t i = 0;i < this->len;++i) {
+            if (val == this->d[i]) {
+                *val_idx = i;
+                return(true);
+            }
+        }
+        return(false);
+    }
+
+    /// @brief contains - check if the given value is in the intArray
+    /// @param val - int value to search for
+    /// @return bool true if the given int is found, false otherwise
+    bool contains(const int val) {
+        for (size_t i = 0;i < this->len;++i) {
+            if (val == this->d[i]) {
+                return(true);
+            }
+        }
+        return(false);
+    }
+
+
+    /// @brief get - get the value at the given index
+    /// @param idx index of the value to get
+    /// @return int value at the given index
+    int get(const size_t idx) {
+        ASSERT(idx < this->size);
+        ASSERT(idx <= this->len);
+        return (this->d[idx]);
+    }
+
+    /// @brief clear - clear the intArray
+    /// @note does not free memory
+    void clear(void) {
+        this->len = 0;
+    }
+
+};
+
+inline intArray* intArray_alloc(const size_t size) {
+    ASSERT(size > 0);
+    intArray* ret = (intArray*)malloc(sizeof(intArray));
+    ASSERT(ret != NULL);
+    ret->d = NULL;
+    ret->d = (int*)malloc(size * sizeof(int));
+    ASSERT(ret->d != NULL);
+    ret->size = size;
+    ret->len = 0;
+    return(ret);
+}
+
+inline intArray* intArray_init(void) {
+    intArray* ret = (intArray*)malloc(sizeof(intArray));
+    ASSERT(ret != NULL);
+    ret->d = NULL;
+    ret->d = (int*)malloc(sizeof(int));
+    ASSERT(ret->d != NULL);
+    ret->size = 1;
+    ret->len = 0;
+    return(ret);
+}
+
+inline intArray* intArray_init(const int founder_val) {
+    intArray* ret = (intArray*)malloc(sizeof(intArray));
+    ASSERT(ret != NULL);
+    ret->d = NULL;
+    ret->d = (int*)malloc(sizeof(int));
+    ASSERT(ret->d != NULL);
+    ret->d[0] = founder_val;
+    ret->size = 1;
+    ret->len = 1;
+    return(ret);
+}
+
+inline void intArray_destroy(intArray* ia) {
+    FREE(ia->d);
+    FREE(ia);
+}
+
+typedef struct size_tArray size_tArray;
+struct size_tArray {
+
+    /// @var d - array of 
+    size_t* d;
+
+    /// @var size - size of d
+    size_t size;
+
+    /// @var len - position right after the last element in use in d
+    /// @note 
+    /// len-1 gives the index of the last element in d
+    /// if size_tArray size is preallocated, len may be < size-1
+    size_t len;
+
+    /// @brief add - add a size_t
+    /// @param i size_t to add
+    /// @return size_t index of the newly added size_t
+    size_t add(const size_t i) {
+
+        // if (0 == this->size) {
+        //     this->size = 1;
+        //     this->d = (size_t*)malloc(sizeof(size_t));
+        //     ASSERT(this->d != NULL);
+        // }
+
+        if (this->len == this->size) {
+            this->size++;
+            size_t* tmp = NULL;
+            tmp = (size_t*)realloc(this->d, this->size * sizeof(size_t));
+            ASSERT(tmp != NULL);
+            this->d = tmp;
+            tmp = NULL;
+
+        } else if (this->len > this->size) {
+            NEVER;
+        }
+
+
+        this->d[this->len] = i;
+        this->len++;
+        return (this->len - 1);
+    }
+
+
+    /// @brief set_val - set the value at the given index
+    /// @param val 
+    /// @param idx 
+    /// @note use with caution, does not check if the index is already in use, and does not track if any of the previous vals are set/unset
+    void set_val(const size_t val, const size_t idx) {
+        ASSERT(idx < this->size);
+        ASSERT(idx >= this->len);
+        this->d[idx] = val;
+        if (len == idx) {
+            this->len++;
+        }
+        return;
+    }
+
+
+
+
+    /// @brief find - get index of the given value in the size_tArray
+    /// @param val - size_t value to search for
+    /// @param val_idx - pointer to the variable to store the index of the given size_t (if found)
+    /// @return bool true if the given size_t is found, false otherwise
+    bool find(const size_t val, size_t* val_idx) {
+        for (size_t i = 0;i < this->len;++i) {
+            if (val == this->d[i]) {
+                *val_idx = i;
+                return(true);
+            }
+        }
+        return(false);
+    }
+
+    /// @brief contains - check if the given value is in the size_tArray
+    /// @param val - size_t value to search for
+    /// @return bool true if the given size_t is found, false otherwise
+    bool contains(const size_t val) {
+        for (size_t i = 0;i < this->len;++i) {
+            if (val == this->d[i]) {
+                return(true);
+            }
+        }
+        return(false);
+    }
+
+    /// @brief get - get the value at the given index
+    /// @param idx index of the value to get
+    /// @return size_t value at the given index
+    size_t get(const size_t idx) {
+        ASSERT(idx < this->size);
+        ASSERT(idx <= this->len);
+        return (this->d[idx]);
+    }
+
+    /// @brief clear - clear the size_tArray
+    /// @note does not free memory
+    void clear(void) {
+        this->len = 0;
+    }
+
+};
+
+inline size_tArray* size_tArray_alloc(const size_t size) {
+    ASSERT(size > 0);
+    size_tArray* ret = (size_tArray*)malloc(sizeof(size_tArray));
+    ASSERT(ret != NULL);
+    ret->d = NULL;
+    ret->d = (size_t*)malloc(size * sizeof(size_t));
+    ASSERT(ret->d != NULL);
+    ret->size = size;
+    ret->len = 0;
+    return(ret);
+}
+
+inline size_tArray* size_tArray_init(void) {
+    size_tArray* ret = (size_tArray*)malloc(sizeof(size_tArray));
+    ASSERT(ret != NULL);
+    ret->d = NULL;
+    ret->d = (size_t*)malloc(sizeof(size_t));
+    ASSERT(ret->d != NULL);
+    ret->size = 1;
+    ret->len = 0;
+    return(ret);
+}
+
+/// @brief size_tArray_init - allocate memory for a size_tArray and initialize it with a founder value
+inline size_tArray* size_tArray_init(const size_t founder_val) {
+    size_tArray* ret = (size_tArray*)malloc(sizeof(size_tArray));
+    ret->d = (size_t*)malloc(sizeof(size_t));
+    ASSERT(ret->d != NULL);
+    ret->size = 1;
+    ret->d[0] = founder_val;
+    ret->len = 1;
+    return(ret);
+}
+
+inline void size_tArray_destroy(size_tArray* sa) {
+    FREE(sa->d);
+    FREE(sa);
+}
+
+typedef struct strArray strArray;
+struct strArray {
+
+    /// @var d - array of char* data
+    char** d;
+
+    /// @var size - size of d
+    size_t size;
+
+    /// @var len - position right after the last element in use in d
+    /// @note
+    /// len-1 gives the index of the last element in d
+    /// if strArray size is preallocated, len may be < size-1
+    size_t len;
+
+    /// @brief add - add a string (char*)
+    /// @param str string to add
+    /// @return size_t index of the newly added string (char*)
+    size_t add(const char* str) {
+
+        ASSERT(str != NULL);
+
+        if (this->len == this->size) {
+            this->size++;
+            char** tmp = NULL;
+            DEVASSERT(NULL != this->d);
+            tmp = (char**)realloc(this->d, this->size * sizeof(char*));
+            ASSERT(tmp != NULL);
+            this->d = tmp;
+            this->d[this->len] = NULL;
+        } else if (this->len > this->size) {
+            NEVER;
+        }
+
+        this->d[this->len] = strdup(str);
+        ASSERT(this->d[this->len] != NULL);
+        this->len++;
+        return (this->len - 1);
+    }
+
+    void add_to(const char* val, const size_t idx) {
+        ASSERT(idx < this->size);
+        ASSERT(this->size > 0);
+        ASSERT(NULL != this->d);
+        ASSERT(NULL == this->d[idx]);
+        this->d[idx] = strdup(val);
+        ASSERT(this->d[idx] != NULL);
+        if (len == idx) {
+            this->len++;
+        } else if (len < idx) {
+            this->len = idx + 1;
+        }
+        return;
+    }
+
+    /// @brief find - get index of the given value in the strArray
+    /// @param val - str (char*) value to search for
+    /// @param val_idx - pointer to the variable to store the index of the given str (if found)
+    /// @return bool true if the given str is found, false otherwise
+    bool find(const char* val, size_t* val_idx) {
+        ASSERT(val != NULL);
+        for (size_t i = 0;i < this->len;++i) {
+            // can be NULL if a specific value is set using add_to which skipped 1 or more indices
+            if (NULL != this->d[i]) {
+                if (0 == strcmp(val, this->d[i])) {
+                    *val_idx = i;
+                    return(true);
+                }
+            }
+        }
+        return(false);
+    }
+
+    /// @brief contains - check if the given value is in the strArray
+    /// @param val - str (char*) value to search for
+    /// @return bool true if the given str is found, false otherwise
+    bool contains(const char* val) {
+        ASSERT(val != NULL);
+        DEVASSERT(this->d != NULL);
+        for (size_t i = 0;i < this->len;++i) {
+            // can be NULL if a specific value is set using add_to which skipped 1 or more indices
+            if (NULL != this->d[i]) {
+                if (0 == strcmp(val, this->d[i])) {
+                    return(true);
+                }
+            }
+        }
+        return(false);
+    }
+
+    /// @brief get - get the value at the given index
+    /// @param idx index of the value to get
+    /// @return char* value at the given index
+    char* get(const size_t idx) {
+        ASSERT(idx < this->size);
+        if (idx < this->len) {
+            return (this->d[idx]);
+        }
+        return(NULL);
+    }
+
+    void clear(void) {
+        for (size_t i = 0;i < this->len;++i) {
+            FREE(this->d[i]);
+        }
+        this->len = 0;
+    }
+
+};
+
+inline strArray* strArray_init(void) {
+    strArray* ret = (strArray*)malloc(sizeof(strArray));
+    ASSERT(ret != NULL);
+    ret->d = NULL;
+    ret->size = 1;
+    ret->len = 0;
+    ret->d = (char**)malloc(sizeof(char*));
+    ASSERT(ret->d != NULL);
+    ret->d[0] = NULL;
+    return(ret);
+}
+
+inline strArray* strArray_init(const char* founder_val) {
+    ASSERT(founder_val != NULL);
+
+    strArray* ret = (strArray*)malloc(sizeof(strArray));
+    ASSERT(ret != NULL);
+    ret->d = NULL;
+    ret->size = 1;
+    ret->len = 1;
+
+    ret->d = (char**)malloc(sizeof(char*));
+    ASSERT(ret->d != NULL);
+    ret->d[0] = strdup(founder_val);
+    ASSERT(ret->d[0] != NULL);
+    return(ret);
+}
+
+/// @brief strArray_alloc - allocate memory for a strArray
+/// @param size size of the strArray to allocate
+/// @return strArray* pointer to the allocated strArray
+inline strArray* strArray_alloc(const size_t size) {
+    ASSERT(size > 0);
+
+    strArray* ret = (strArray*)malloc(sizeof(strArray));
+    ASSERT(ret != NULL);
+
+    ret->d = NULL;
+    ret->d = (char**)malloc(size * sizeof(char*));
+    ASSERT(ret->d != NULL);
+    for (size_t i = 0;i < size;++i) {
+        ret->d[i] = NULL;
+    }
+    ret->len = 0;
+    ret->size = size;
+    return(ret);
+}
+
+inline void strArray_destroy(strArray* sa) {
+    for (size_t i = 0;i < sa->size;++i) {
+        if (sa->d[i] != NULL) {
+            FREE(sa->d[i]);
+        }
+    }
+    FREE(sa->d);
+    FREE(sa);
+}
+
+
+
 
 void spawnThreads_pairEM(paramStruct* pars, vcfData* vcfd, distanceMatrixStruct* distMatrix);
 void setInputFileType(paramStruct* pars, int inFileType);
@@ -49,50 +512,42 @@ struct lnglStruct {
 
 
 struct formulaStruct {
-    // @nTokens number of tokens in the formula
-    // e.g. formula: "Individual ~ Region/Population/Subpopulation"
-    // 		nTokens = 4
-    // 		corresponds to 3 hierarchical levels (Region, Population, Subpopulation)
-    // 		thus nTokens == nLevels + 1
-    int nTokens = 0;
 
-    // the formula in the raw text form as it is in the argument
-    // e.g. "Individual ~ Region/Population/Subpopulation"
-    char* formula = NULL;
+    /// @var formulaTokens
+     // array of tokens in the formula, in hierarchical order
+     // e.g. formula: "Individual ~ Region/Population/Subpopulation"
+     // 		formulaTokens = {"Region","Population","Subpopulation","Individual"}
+     //                   lvl =   1      , 2          , 3             , 0
+     //                lvlidx =   0      , 1          , 2             , 3
+    strArray* formulaTokens;
 
-    // @formulaTokens
-    // array of tokens in the formula
-    // e.g. formula: "Individual ~ Region/Population/Subpopulation"
-    // 		formulaTokens = {"Individual","Region","Population","Subpopulation"}
-    char** formulaTokens;
+    void print(FILE* fp) {
+        fprintf(fp, "\nFormula: %s\n", args->formula);
+        fprintf(fp, "\nFormula has %ld tokens.\n", this->formulaTokens->len);
+        fprintf(fp, "Formula tokens:\n");
+        for (size_t i = 0;i < this->formulaTokens->len;++i) {
+            fprintf(fp, "\t%s\n", this->formulaTokens->d[i]);
+        }
+        fprintf(fp, "\n");
+    }
 
-    // @formulaTokenIdx[nTokens]
-    //
-    // maps index of the token in formula to index of the corresponding column in metadata file
-    // formulaTokenIdx[indexOfTokenInFormula] = indexOfTokenInMetadataFile
-    //
-    // e.g. metadata file header: "Individual,Population,Etc,Region,Subpopulation"
-    // 		formula: "Individual ~ Region/Population/Subpopulation"
-    // 		formulaTokenIdx = {0,3,1,2}
-    int* formulaTokenIdx;
-
-    void print(FILE* fp);
-
-    /// match the given metadata token with formula tokens
-    /// @param mtd_tok 		- metadata token to match
-    /// @param mtd_col_idx	- index of the metadata column containing mtd_tok
-    /// @return int			- index if found any match, -1 otherwise
-    int setFormulaTokenIdx(const char* mtd_tok, const int mtd_col_idx);
-
-    // TODO deprec
-    //  @brief shrink - shrink the size of the arrays defined with default max values to the actual size needed
-    void shrink();
 };
-formulaStruct* formulaStruct_get(const char* formula);
-void formulaStruct_validate(formulaStruct* fos, const int nLevels);
+
+inline formulaStruct* formulaStruct_init(void) {
+    formulaStruct* ret = (formulaStruct*)malloc(sizeof(formulaStruct));
+    ASSERT(ret != NULL);
+    ret->formulaTokens = NULL;
+    return(ret);
+}
+
+/// @brief formulaStruct_read - create a formulaStruct from a formula string
+/// @param formula formula string
+/// @return pointer to newly created formulaStruct
+/// @example formula = 'Individual ~ Region/Population/Subpopulation'
+formulaStruct* formulaStruct_read(const char* formula);
 void formulaStruct_destroy(formulaStruct* fos);
 
-distanceMatrixStruct* distanceMatrixStruct_get(paramStruct* pars, vcfData* vcfd, char** indNames, blobStruct* blob);
+distanceMatrixStruct* distanceMatrixStruct_get(paramStruct* pars, vcfData* vcfd, strArray* indNames, blobStruct* blob);
 
 // prepare distance matrix using genotype likelihoods
 void get_distanceMatrix_GL(paramStruct* pars, distanceMatrixStruct* distanceMatrix, vcfData* vcfd, blobStruct* blob);
@@ -100,11 +555,6 @@ void get_distanceMatrix_GL(paramStruct* pars, distanceMatrixStruct* distanceMatr
 // prepare distance matrix using genotypes
 // prepare distance matrix using genotypes + construct block bootstrapping distance matrix at the same time
 void get_distanceMatrix_GT(paramStruct* pars, distanceMatrixStruct* distanceMatrix, vcfData* vcfd, blobStruct* blob);
-
-/// trim spaces from the beginning and end of a char* (inplace)
-/// @param str - char* to trim
-void trimSpaces(char* str);
-
 
 /**
  * @brief distanceMatrixStruct stores the distance matrix
@@ -121,23 +571,44 @@ struct distanceMatrixStruct {
 
     // idx2inds[pair_index][0] = index of the first individual in the pair
     // idx2inds[pair_index][1] = index of the second individual in the pair
-    int** idx2inds = NULL;
+    int** idx2inds;
 
     // inds2idx[i1][i2] = index of the pair (i1,i2) in the distance matrix
-    int** inds2idx = NULL;
+    int** inds2idx;
 
-    // char **itemLabels = NULL;
+    // pointer to the labels of the items in the distance matrix
+    strArray* itemLabels;
 
-    int nInd = 0;
-    int nIndCmb = 0;
-    int isSquared = -1;
-
-    distanceMatrixStruct(int nInd_, int nIndCmb_, int isSquared_, char** itemLabels_);
-    ~distanceMatrixStruct();
+    int nInd;
+    int nIndCmb;
+    bool isSquared;
 
     void print();
 
 };
+
+distanceMatrixStruct* distanceMatrixStruct_init(int in_nInd, int in_nIndCmb, bool in_isSquared, strArray* in_itemLabels);
+
+inline void distanceMatrixStruct_destroy(distanceMatrixStruct* dms) {
+
+    FREE(dms->M);
+
+    dms->itemLabels = NULL;
+
+    //TODO probably unnec
+    for (int i = 0; i < dms->nInd; i++) {
+        FREE(dms->inds2idx[i]);
+    }
+    FREE(dms->inds2idx);
+
+    for (int i = 0; i < dms->nIndCmb; i++) {
+        FREE(dms->idx2inds[i]);
+    }
+    FREE(dms->idx2inds);
+
+    FREE(dms);
+}
+
 
 /// @brief read distance matrix from distance matrix csv file
 /// @param in_dm_fp input distance matrix file
@@ -145,219 +616,156 @@ struct distanceMatrixStruct {
 /// @return distance matrix double*
 distanceMatrixStruct* distanceMatrixStruct_read(paramStruct* pars);
 
+/// @note
+/// each new group name is added to groupNames and is given a group identifier index 
+///
+/// number of groups at level i = level2groupIndices[i]->len
+/// index of the i-th group at level j = level2groupIndices[j]->d[i]
+///
+/// number of pairs of individuals that belong to group with index i = group2pairIndices[i]->len
+/// array of pairs of individuals (pair indices) that belong to the group with index i = group2pairIndices[i]->d
+///
+/// number of individuals that belong to group with index i = group2indIndices[i]->len
+/// array of individuals that belong to the group with index i = group2indIndices[i]->d
+///
+/// number of groups that are subgroups of the group with index i = group2subgroupIndices[i]->len
+/// array of groups that are subgroups of the group with index i = group2subgroupIndices[i]->d
+///
 struct metadataStruct {
-    // total number of individuals in the entire dataset
-    int nInd = 0;
 
-    // number of hierarchical levels excluding the lowest level (i.e. individual)
-    int nLevels = 0;
+    // total number of levels
+    // e.g. individual, region, population, subpopulation
+    //      nLevels = 4
+    int nLevels;
 
-    int** nIndPerStrata = NULL;
+    int nGroups;
 
-    // Individual to Group Bitset Association
-    // --------------------------------------
-    //
-    // ind, region, population
-    // ind1, reg1, pop1
-    // ind2, reg1, pop1
-    // ind3, reg1, pop2
-    // ind4, reg2, pop3
-    //
-    // association:
-    // 		reg1, reg2, pop1, pop2, pop3
-    // ind1,1,    0,    1,    0,    0
-    // ind2,1,    0,    1,    0,    0
-    // ind3,1,    0,    0,    1,    0
-    // ind4,1,    1,    0,    0,    1
+    int nInd;
 
-    // groupKeys[nBits]
-    // access: groupKeys[bit] = group key for the group represented by 'bit'th bit
-    // reg1 = 10000
-    // reg2 = 01000
-    // pop1 = 10100 // member of reg1
-    // pop2 = 10010 // member of reg1
-    // pop3 = 01001 // member of reg2
-    uint64_t* groupKeys = NULL;
-
-    // indKeys[nInd]
-    // for ind3, which is from reg1 and pop2
-    // ind3's key = pop2's key stored at ind3's index
-    uint64_t* indKeys = NULL;
-
-    // nGroups[nLevels]
-    // access: nGroups[h_i] = number of groups at level h_i
-    int* nGroupsAtLevel = NULL;
-
-    // (lvl, g) -> lvlg_idx lut
-    // lvl = hierarchical level
-    // g = group index at level lvl
-    // e.g. {reg1,reg2,pop1,pop2,pop3}
-    // 		(0,1) -> 1 (lvl 0, group at index 1 in lvl 0)==reg2
-    // 		(1,2) -> 4 (lvl 1, group at index 2 in lvl 1)==pop3
-    // lvlgToIdx[lvl][g] = idx
-    // idxToLvlg[idx][0] = lvl
-    // idxToLvlg[idx][1] = g
-    int** lvlgToIdx = NULL;
-    int** idxToLvlg = NULL;
-
-    // indNames[i] = name of individual i (char *)
-    char** indNames = NULL;
-
-    // groupNames[max_n_levels][max_n_groups_per_level][max_group_name_length]
-    // access: groupNames[0][0] = "group1"
-    char*** groupNames = NULL;
-
-    // levelNames[nLevels+1] = {individual, level1, level2, ..., level_n}
+    // \def levelNames->d[nLevels]
     // names of levels in the hierarchy (e.g. region, population, subpopulation, individual)
-    // NOTE: levelNames[0] = "individual", therefore the indexing is shifted by +1
-    char** levelNames = NULL;
+    // in the hierarchical order
+    // e.g. formula: "Individual ~ Region/Population/Subpopulation"
+    //      levelNames = {"Region","Population","Subpopulation","Individual"}
+    strArray* levelNames;
 
-    // lvlStartPos[lvl] = index of the first bit in the group key corresponding to the group at level lvl
-    int* lvlStartPos = NULL;
+    // \def indNames->d[nInds]
+    // indNames->d[i] = name of individual i (char *)
+    strArray* indNames;
 
-    // [nBits] total number of bits used in the construction of individual keys
-    // e.g. metadata table
-    // ind1, reg1, pop1, subpop1
-    // ind2, reg1, pop1, subpop1
-    // ind3, reg1, pop2, subpop2
-    // ind4, reg2, pop2, subpop3
-    // nBits = size of {reg1, reg2} + size of {pop1, pop2} + size of {subpop1, subpop2, subpop3} = 2 + 2 + 3 = 7
-    int nBits = 0;
+    // \def groupNames->d[nGroups]
+    // N.B. does not contain individual names
+    strArray* groupNames;
 
-    metadataStruct(int nInd);
-    ~metadataStruct();
+    size_tArray** level2groupIndices;
 
-    void print_indKeys();
-    void print_groupKeys();
-    void printAll();
+    size_tArray* group2levelIndices;
 
-    void resize();
+    //TODO rm "Indices" from "indIndices" and use "inds" instead, and do this for all
+    size_tArray** group2indIndices;
 
-    uint64_t get_indKey(int ind_i) {
-        ASSERT(ind_i < nInd);
-        return groupKeys[lvlgToIdx[nLevels - 1][indKeys[ind_i]]];
-    }
+    size_tArray** group2pairIndices;
 
-    int get_lvlgidx(int lvl, int g) {
-        return (lvl * nGroupsAtLevel[lvl - 1] + g);
-    }
+    size_tArray** group2subgroupIndices;
 
-    /// @param lvl:		hierarchical level of the group to add
-    /// @param g:	group index at level lvl of the group to add
-    /// @param name:	name of the group to add
-    void addGroup(int lvl, int g, char* name);
-
-    void setGroupKey(int bit_i, int lvl, int g, int prev_bit) {
-        // fprintf(stderr, "setting the key for group %s at level %d (bit %d) with parent %d (bit %d) with key %ld (bit %d)\n", groupNames[lvl][g], lvl, bit_i, lvl-1, prev_bit, groupKeys[prev_bit], prev_bit);
-        // DEVPRINT("groupName[%d][%d] = %s", lvl, g, groupNames[lvl][g]);
-
-        // if not the first group at this level (prev_bit != -1)
-        // prev_bit is the bit_i of the parent group
-        // carry the parent's key at groupKeys[prev_bit] to the child group at bit_i
-
-        if (prev_bit != -1) {
-            ASSERT(groupKeys[prev_bit] > 0);
-            groupKeys[bit_i] = groupKeys[prev_bit];
-            // DEVPRINT("group %s at level %d group_idx_in_level %d has a parent %s at level %d group_idx_in_level %d. the parent's key is set to %ld. the group has a key of %ld before setting it", groupNames[lvl][g], lvl, g, groupNames[parent_lvl][parent_g], parent_lvl, parent_g , groupKeys[prev_bit], groupKeys[bit_i]);
-        } else {
-            groupKeys[bit_i] = 0;
-            // DEVPRINT("group %s at level %d group_idx_in_level %d without parent. the group has a key of %ld before setting it", groupNames[lvl][g], lvl, g, groupKeys[bit_i]);
-        }
-
-        // set the bit assigned for representing this group
-        // if no parent, it starts from 0 as all keys are initialized to 0 during construction
-        // if parent, it starts from the parent's key as the parent's key is carried to the child
-        BITSET(groupKeys[bit_i], bit_i);
-        // DEVPRINT("group %s after setting the key %ld", groupNames[lvl][g], groupKeys[bit_i]);
-    }
-
-    /// @brief addLevelName - add a level name to the metadata structure
-    /// @param levelName  - name of the level
-    /// @param level_idx  - index of the level
-    void addLevelName(const char* levelName, const int level_idx);
-
-    // discard the bits lower than the level at interest
-    // e.g.  (lvl3 \isSubsetOf lvl2 \isSubsetOf lvl1)
-    //
-    // number of groups at level 1: 4 == |{reg1,reg2,reg3,reg4}|
-    // number of groups at level 2: 3 == |{pop1,pop2,pop3}|
-    // number of groups at level 3: 5 == |{subpop1,subpop2,subpop3,subpop4,subpop5}|
-    //
-    // assume pop3 is a subset of reg1
-    // lvlStartPos={0,4,7}
-    //
-    // if we are checking if ind4 belongs to pop3, which is a group at level 2(1based)
-    // we discard the bits representing the groups at level 3(1based)
-    //
-    // pop3 key:
-    // 1000 0010 0000 0000 0000 0000 0000 0000
-    // ^	^  ^
-    // |	|  |_ 7 == lvlStartPos for level 3(1based)
-    // |    |_ 4 == lvlStartPos for level 2(1based)
-    // |_ 0 == lvlStartPos for level 1(1based)
-    //
-    //
-    // assume ind4 key: (ind4 is from subpop5, subpop5 is from pop3, pop3 is from reg1)
-    // 1000 0010 0001 0000 0000 0000 0000 0000
-    // ^	^  ^==============================
-    //			we can discard these bits starting from the 7th bit
-    //
-
-    /// @brief indsFromGroup - check if both of the given individuals belong to a given group
-    /// @param ind1
-    /// @param ind2
-    /// @param globGrpIdx
-    /// @return
-    int indsFromGroup(int ind1, int ind2, int globGrpIdx);
-
-    // TODO
-    //  int indPairFromGroup(int pair_idx, int globGrpIdx);
-
-    /// @brief countIndsInGroup - count the number of individuals in a given group
-    /// @param lvl  - hierarchical level of the group
-    /// @param localGrpIdx - group index at level lvl (local to the level)
-    /// @return  - number of individuals in the group
-    int countIndsInGroup(int lvl, int localGrpIdx);
-
-    /// @brief countIndsInGroup - count the number of individuals in a given group
-    /// @param globIdx - group index (global, == its bit)
-    /// @return  - number of individuals in the group
-    int countIndsInGroup(int globIdx);
-
-    /// @brief indFromGroup - check if a given individual belongs to a given group
-    /// @param ind_i
-    /// @param lvl_i
-    /// @param localGrpIdx
-    /// @return 1 if the individual belongs to the group, 0 otherwise
-    int indFromGroup(int ind_i, int lvl_i, int localGrpIdx);
-
-    /// @brief getNIndPerStrata - count the number of individuals in each strata
-    /// and save it in the nIndPerStrata array
-    void getNIndPerStrata();
-
-    /// @brief groupFromParentGroup - check if a given group is a children of a given parent group at a given level
-    /// @param plvl		- parent level
-    /// @param pg		- parent group index (local)
-    /// @param lvl 		- level of the children group to check
-    /// @param g		- children group index (local)
-    /// @return			1 if the group is a children of the parent group, 0 otherwise
-    int groupFromParentGroup(int plvl, int pg, int lvl, int g);
-
-    /// @brief countNSubgroupAtLevel - count the number of subgroups a given group has at a given level
-    /// @param plvl
-    /// @param pg
-    /// @param lvl
-    /// @return
-    int countNSubgroupAtLevel(int plvl, int pg, int lvl);
-
-    /// @brief whichLevel - get the 1-based level index of a given level name
-    /// @param levelName  - name of the level
-    /// @return index of the level, throw an error if the level name is not found
-    int whichLevel1(const char* levelName);
 };
 
-metadataStruct* metadataStruct_get(paramStruct* pars);
-void metadataStruct_destroy(metadataStruct* mtd);
+/// @param n_levels number of hierarchical levels in the formula (i.e. formulaStruct->formulaTokens->len)
+inline metadataStruct* metadataStruct_init(const int in_nLevels) {
+
+    metadataStruct* ret = (metadataStruct*)malloc(sizeof(metadataStruct));
+    ASSERT(ret != NULL);
+
+    ret->nLevels = in_nLevels;
+    ret->nGroups = 0;
+    ret->nInd = 0;
+
+    ret->levelNames = NULL;
+    ret->levelNames = strArray_alloc(in_nLevels);
+
+    ret->indNames = NULL;
+    ret->indNames = strArray_init();
+
+    ret->groupNames = NULL;
+    ret->groupNames = strArray_init();
+
+    size_t nLevelsExclInd = in_nLevels - 1;
+
+    ret->level2groupIndices = NULL;
+    ret->level2groupIndices = (size_tArray**)malloc(nLevelsExclInd * sizeof(size_tArray*));
+    ASSERT(ret->level2groupIndices != NULL);
+    for (size_t i = 0;i < (size_t)nLevelsExclInd;++i) {
+        ret->level2groupIndices[i] = NULL;
+        ret->level2groupIndices[i] = size_tArray_alloc(1);
+    }
+
+    ret->group2levelIndices = NULL;
+    ret->group2levelIndices = size_tArray_alloc(1);
+
+
+
+    ret->group2indIndices = NULL;
+    ret->group2indIndices = (size_tArray**)malloc(sizeof(size_tArray*));
+    ASSERT(ret->group2indIndices != NULL);
+    ret->group2indIndices[0] = NULL;
+    ret->group2indIndices[0] = size_tArray_alloc(1);
+
+    ret->group2pairIndices = NULL;
+    ret->group2pairIndices = (size_tArray**)malloc(sizeof(size_tArray*));
+    ASSERT(ret->group2pairIndices != NULL);
+    ret->group2pairIndices[0] = NULL;
+    ret->group2pairIndices[0] = size_tArray_alloc(1);
+
+
+    ret->group2subgroupIndices = NULL;
+    ret->group2subgroupIndices = (size_tArray**)malloc(sizeof(size_tArray*));
+    ASSERT(ret->group2subgroupIndices != NULL);
+    ret->group2subgroupIndices[0] = NULL;
+    ret->group2subgroupIndices[0] = size_tArray_alloc(1);
+
+    return(ret);
+
+}
+
+
+/// @brief read metadata from metadata file into metadataStruct
+metadataStruct* metadataStruct_read(formulaStruct* formula);
+
+
+
+inline void metadataStruct_destroy(metadataStruct* mtd) {
+
+    strArray_destroy(mtd->levelNames);
+    strArray_destroy(mtd->indNames);
+    strArray_destroy(mtd->groupNames);
+
+
+    for (size_t i = 0;i < (size_t)mtd->nLevels - 1;++i) {
+        size_tArray_destroy(mtd->level2groupIndices[i]);
+    }
+    FREE(mtd->level2groupIndices);
+
+    for (size_t i = 0;i < (size_t)mtd->nGroups;++i) {
+
+        size_tArray_destroy(mtd->group2indIndices[i]);
+
+        size_tArray_destroy(mtd->group2pairIndices[i]);
+        if (NULL != mtd->group2subgroupIndices[i]) {
+            // is null if the group is in the last level
+            // thus effective size in use for this array is actually nGroups-nGroupsAtLastLevel
+            size_tArray_destroy(mtd->group2subgroupIndices[i]);
+        }
+    }
+
+    size_tArray_destroy(mtd->group2levelIndices);
+
+    FREE(mtd->group2indIndices);
+    FREE(mtd->group2pairIndices);
+    FREE(mtd->group2subgroupIndices);
+
+    FREE(mtd);
+}
+
 
 struct indPairThreads {
 
@@ -372,5 +780,41 @@ struct indPairThreads {
         pidx = pairIndex;
     }
 };
+
+inline void trimSpaces(char* str) {
+    char* ptr = str;
+    char* end = NULL;
+
+    // skip leading spaces and find the start of the non-space chars
+    while (*ptr && isspace((unsigned char)*ptr)) {
+        ++ptr;
+    }
+
+    if (*ptr == '\0') {
+        // it is all spaces!?
+        ERROR("Found empty string.");
+    }
+
+    // find the end of the str and set end to the position of last non-space char
+    for (char* tmp = ptr; *tmp; ++tmp) {
+        if (!isspace((unsigned char)*tmp)) {
+            end = tmp;
+        }
+    }
+
+    if (ptr != str) {
+        // we have leading spaces
+        // shift the non-space chars to the beginning
+        char* dest = str;
+        while (ptr <= end) {
+            *dest++ = *ptr++;
+        }
+        *dest = '\0'; // terminate the shifted str
+    } else {
+        // no leading spaces
+        // terminate the str at the last non-space char
+        *(end + 1) = '\0';
+    }
+}
 
 #endif  // __DATA_STRUCTS__

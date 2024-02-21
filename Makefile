@@ -203,8 +203,7 @@ DEP := $(OBJ:.o=.d)
 FLAGS := $(CPPFLAGS) $(CXXFLAGS)
 
 
-# Versioning
-VERSION = v0.1
+VERSION = v0.2
 
 ifneq ($(wildcard .git),)
 VERSION := $(VERSION)-$(shell git describe --always)
@@ -267,16 +266,14 @@ clean:
 ## [test]
 # 
 
-.PHONY: test testvg testall
+.PHONY: test test-%
 
 test:
 	bash test/runTests.sh
 
-testvg:
-	bash test/runTests.sh vg
+test-%:
+	bash test/runTests.sh $*
 
-testall:
-	bash test/runTests.sh all
 
 ####################################################################################################
 ## [.activate_module]

@@ -140,12 +140,8 @@ njStruct::njStruct(distanceMatrixStruct* dms, paramStruct* pars) {
 
         if (i < totL) {
             if (pars->indNames != NULL) {
-                DEVASSERT(pars->indNames != NULL);
-                ASSERT(i <= pars->nInd);
-                DEVASSERT(pars->indNames[i] != NULL);
                 DEVASSERT(nodeLabels != NULL);
-                nodeLabels[i] = strdup(pars->indNames[i]);
-                // nodeLabels = pars->indNames->vals;
+                nodeLabels[i] = strdup(pars->indNames->get(i));
                 // ASSERT(nodeLabels!=NULL);
             } else {
                 char label[100];

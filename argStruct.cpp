@@ -418,6 +418,18 @@ argStruct* argStruct_get(int argc, char** argv) {
     }
     IO::outFilesStruct_init(outFiles);
 
+
+    CHECK_ARG_INTERVAL_INT(args->nThreads, 0, 100, "-P/--nThreads");
+    if (0 == args->nThreads) {
+        args->nThreads = 1;
+    }
+
+    CHECK_ARG_INTERVAL_INT(args->nBootstraps, 0, 100000, "-nb/--nBootstraps");
+
+
+    //TODO option array with option mapped to str 
+
+
     args->check_arg_dependencies();
     args->print();
     args->print(stderr);
@@ -633,11 +645,11 @@ void argStruct::check_arg_dependencies() {
 
 
 
-            if(args->rmInvarSites ){
-			}else{
-				//TODO req for some?
-				// ERROR("No analyses including invar sites are implemented yet"); //TODO
-			}
+            if (args->rmInvarSites) {
+            } else {
+                //TODO req for some?
+                // ERROR("No analyses including invar sites are implemented yet"); //TODO
+            }
 
 
 

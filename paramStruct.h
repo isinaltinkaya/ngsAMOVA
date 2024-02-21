@@ -3,9 +3,19 @@
 
 #include "shared.h"
 
+typedef struct strArray strArray;
 typedef struct paramStruct paramStruct;
 typedef struct formulaStruct formulaStruct;
 typedef struct ibdStruct ibdStruct;
+
+#define INPUT_IS_VCF \
+    ( (pars->in_ft & IN_VCF) )
+
+#define PROGRAM_NEEDS_METADATA \
+    ( ( 0!= args->doAMOVA ) )
+
+#define PROGRAM_NEEDS_FORMULA \
+    ( ( 0!= args->doAMOVA ) )
 
 
 /*
@@ -25,48 +35,39 @@ typedef struct ibdStruct ibdStruct;
  * @field der					derived allele
  */
 struct paramStruct {
+
     // number of sites non skipped for all individuals
     // nSites may not be !=totSites if minInd is set
     // or if a site is missing for all inds
     size_t nSites;    // number of sites not-skipped for all individuals
     size_t totSites;  // total number of sites processed
 
-    // a1: major/ref/ancestral allele
-    // a2: minor/alt/derived allele
-    // a1a2[site] = {base_a1,base_a2}
-    // where base_* is 0 for A, 1 for C, 2 for G, 3 for T, 4 for BASE_UNOBSERVED
-    int** a1a2 = NULL;
-
     int nSites_arrays_size;
-
     int nContigs;
-
-    formulaStruct* formula = NULL;
-
-    // ------------
-    ibdStruct* ibd = NULL;
-    // ------------
-
     int nInd;
     int nIndCmb;
 
-    int** pidx2inds = NULL;
 
     // input file type from enum
     int in_ft = 0;
 
-    char* DATETIME = NULL;
+    // a1: major/ref/ancestral allele
+    // a2: minor/alt/derived allele
+    // a1a2[site] = {base_a1,base_a2}
+    // where base_* is 0 for A, 1 for C, 2 for G, 3 for T, 4 for BASE_UNOBSERVED
+    int** a1a2;
 
-    // PRINT FUNCTIONS
-    void printLut(FILE* fp);
+    formulaStruct* formula;
 
-    void init_LUTs();
+    // ------------
+    ibdStruct* ibd;
+    // ------------
 
-    // validate that parameters make sense
-    // e.g. nInd > 0
-    void validate();
+    int** pidx2inds;
 
-    char** indNames = NULL;
+    char* DATETIME;
+
+    strArray* indNames;
 
 };
 
@@ -77,15 +78,6 @@ paramStruct* paramStruct_init(argStruct* args);
 void paramStruct_destroy(paramStruct* p);
 
 void check_consistency_args_pars(paramStruct* pars);
-
-// REQUIRE 
-// in form require_object
-// check if any of the specified analyses require object
-
-bool require_formula(void);
-bool require_metadata(void);
-bool require_itemLabels(void);
-
 
 
 #endif  // __PARAM_STRUCT__

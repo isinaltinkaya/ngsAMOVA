@@ -171,7 +171,6 @@ void readSites_doIbd(vcfData* vcfd, paramStruct* pars) {
 				int a2a2 = 2;
 
 				float* sample_lgls = NULL;
-				double* sample_lngls = NULL;
 
 
 				for (int indi = 0; indi < nInd; indi++) {
@@ -270,9 +269,9 @@ void readSites_doIbd(vcfData* vcfd, paramStruct* pars) {
 			// precalculate the dose pair ibd scores
 			//
 			// getIbdScores
-			int nIndices = 6;
+			// int nIndices = 6;
 			int N_DOSES = 3;
-			int index = -1;
+			// int index = -1;
 			for (int dose1 = 0; dose1 < N_DOSES; ++dose1) {
 				for (int dose2 = dose1; dose2 < N_DOSES; ++dose2) {
 					ibdScores_lut[dosePairIndex[dose1][dose2]] = pars->ibd->ibdScore(dose1, dose2, maf);
@@ -488,7 +487,7 @@ int get_ibd_segments(const char* contigName, paramStruct* pars, int* site2pos) {
 
 			//TODO work with multiple contigs
 
-			for (int site = 0;site < pars->nSites;site++) {
+			for (int site = 0;site < (int)pars->nSites;site++) {
 
 				thisScore = 0.0;
 
@@ -965,7 +964,7 @@ ibdStruct::ibdStruct(vcfData* vcfd, paramStruct* pars) {
 
 
 	this->pairScores = (double**)malloc(pars->nIndCmb * sizeof(double*));
-	for (size_t i = 0;i < pars->nIndCmb;++i) {
+	for (size_t i = 0;i < (size_t)pars->nIndCmb;++i) {
 		this->pairScores[i] = (double*)malloc(BUF_NSITES * sizeof(double));
 	}
 

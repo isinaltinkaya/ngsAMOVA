@@ -33,6 +33,73 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
+
+#define CHECK_ARG_INTERVAL_INT(argval, minval, maxval, argstr) \
+do { \
+    if (((argval) < (minval)) || ((argval) > (maxval)) ) { \
+        \
+            ERROR("[Bad argument value: '%s %d'] Allowed range is [%d,%d]", (argstr), (argval), (minval), (maxval)); \
+    } \
+} while (0);
+
+
+#define CHECK_ARG_INTERVAL_DBL(argval, minval, maxval, argstr) \
+do { \
+    if (((argval) < (minval)) || ((argval) > (maxval)) ) { \
+        \
+            ERROR("[Bad argument value: '%s %f'] Allowed range is [%f,%f]", (argstr), (argval), (minval), (maxval)); \
+    } \
+} while (0);
+
+#define CHECK_ARG_INTERVAL_IE_DBL(argval, minval, maxval, argstr) \
+do { \
+    if (((argval) < (minval)) || ((argval) >= (maxval)) ) { \
+        \
+            ERROR("[Bad argument value: '%s %f'] Allowed range is [%f,%f]", (argstr), (argval), (minval), (maxval)); \
+    } \
+} while (0);
+
+
+#define CHECK_ARG_INTERVAL_II_DBL(argval, minval, maxval, argstr) \
+do { \
+    if (((argval) < (minval)) || ((argval) > (maxval)) ) { \
+        \
+            ERROR("[Bad argument value: '%s %f'] Allowed range is [%f,%f]", (argstr), (argval), (minval), (maxval)); \
+    } \
+} while (0);
+
+
+#define CHECK_ARG_INTERVAL_EI_DBL(argval, minval, maxval, argstr) \
+do { \
+    if (((argval) <= (minval)) || ((argval) > (maxval)) ) { \
+        \
+            ERROR("[Bad argument value: '%s %f'] Allowed range is [%f,%f]", (argstr), (argval), (minval), (maxval)); \
+    } \
+} while (0);
+
+
+#define CHECK_ARG_INTERVAL_EE_DBL(argval, minval, maxval, argstr) \
+do { \
+    if (((argval) <= (minval)) || ((argval) >= (maxval)) ) { \
+        \
+            ERROR("[Bad argument value: '%s %f'] Allowed range is [%f,%f]", (argstr), (argval), (minval), (maxval)); \
+    } \
+} while (0);
+
+
+
+#define CHECK_ARG_INTERVAL_01(argval, argstr) \
+do { \
+    if ( ((argval)!=0) && ((argval)!=1) ) { \
+        \
+            ERROR("Argument %s with value %d is out of range. Allowed values are 0 (for on/enable) and 1 (for off/disable)", (argstr), (argval)); \
+    } \
+} while (0);
+
+
+
+
+
 /*
  * Macro:[DBL_MAX_DIG_TOPRINT]
  * 	maximum number of digits needed to print a double
@@ -48,46 +115,51 @@
 #define DBL_MAX_DIG_TOPRINT 3 + DBL_MANT_DIG - DBL_MIN_EXP
  // TODO deprecated
 
- /*
-  * Macro:[AT]
-  * inject the file and line info as string
-  */
+/*
+ * Macro:[AT]
+ * inject the file and line info as string
+ */
 #define STRINGIFY(x) #x
 #define ASSTR(x) STRINGIFY(x)
 #define AT __FILE__ ":" ASSTR(__LINE__)
 
+
+ /*
+  * Macro:[ERROR]
+  * print a custom error message and exit the program
+  */
+#define ERROR(...)  \
+    do{ \
+        fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, __FUNCTION__, __LINE__); \
+        fprintf(stderr, __VA_ARGS__); \
+        fprintf(stderr, "\n*******\n"); \
+        exit(1); \
+    } while (0);
+
   /*
-   * Macro:[ERROR]
-   * print a custom error message and exit the program
+   * Macro:[NEVER]
+   * indicates that a point in the code should never be reached
    */
-#define ERROR(...) \
-do{ \
-    fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, __FUNCTION__, __LINE__); \
-    fprintf(stderr, __VA_ARGS__); \
-    fprintf(stderr, "\n*******\n"); \
-    exit(1); \
-} while (0);
+#define NEVER \
+    do{ \
+        fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, __FUNCTION__, __LINE__); \
+        fprintf(stderr, "Control should never reach this point; please report this to the developers."); \
+        fprintf(stderr, "\n*******\n"); \
+        exit(1); \
+    } while (0);
+
 
    /*
-    * Macro:[NEVER]
-    * indicates that a point in the code should never be reached
+    * Macro:[ASSERT]
+    * evaluate an expression, works the same way as the C-macro assert
+    * except that DEBUG does not affect it (it is always active)
+    * also prints the file and line info and exits the program
+    * if the expression evaluates to false
     */
-#define NEVER \
-do{ \
-    ERROR("Control should never reach this point; please report this to the developers."); \
-} while (0);
-
-    /*
-     * Macro:[ASSERT]
-     * evaluate an expression, works the same way as the C-macro assert
-     * except that DEBUG does not affect it (it is always active)
-     * also prints the file and line info and exits the program
-     * if the expression evaluates to false
-     */
 #define ASSERT_EXPAND(x) x
 #define ASSERT(expr)                                                        \
     do {                                                                    \
-        if (!(ASSERT_EXPAND(expr))){ \
+        if (!(ASSERT_EXPAND(expr))){                                        \
             fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d) %s\n*******\n", \
                     __FILE__, __FUNCTION__, __LINE__, #expr);               \
             exit(1);                                                        \
@@ -95,10 +167,10 @@ do{ \
     } while (0);
 
 
-     /*
-     * Macro:[WARN]
-     * print a custom warning message
-     */
+    /*
+    * Macro:[WARN]
+    * print a custom warning message
+    */
 #define WARN(...)                                                            \
 do {                                                                     \
 	fprintf(stderr, "\n\n[WARNING](%s/%s:%d): ", __FILE__, __FUNCTION__, \
@@ -107,10 +179,10 @@ do {                                                                     \
 	fprintf(stderr, "\n");                                               \
 } while (0);
 
-     /*
-     * Macro:[VWARN]
-     * print a custom warning message if verbose is set
-     */
+    /*
+    * Macro:[VWARN]
+    * print a custom warning message if verbose is set
+    */
 #define VWARN(...)                                                 \
 do {                                                           \
 	if (0 != args->verbose) {                                  \
@@ -123,10 +195,10 @@ do {                                                           \
 
 
 
-     //TODO also write to argsfile
-          /*
-           * Macro:[LOG]
-           */
+    //TODO also write to argsfile
+         /*
+          * Macro:[LOG]
+          */
 #define LOG(...) \
 do{ \
     fprintf(stderr, "\n[LOG](%s)\t", __FUNCTION__); \
@@ -134,11 +206,11 @@ do{ \
 } while (0);
 
 
-           /*
-            * Macro:[BEGIN_LOGSECTION]
-            * print a custom message to stderr
-            * indicating the start of a new section in the log
-            */
+          /*
+           * Macro:[BEGIN_LOGSECTION]
+           * print a custom message to stderr
+           * indicating the start of a new section in the log
+           */
 
 #define BEGIN_LOGSECTION \
 do{ \
@@ -152,11 +224,11 @@ do{ \
 }while (0);
 
 
-            /*
-            * Macro:[ASSERTM]
-            * shortcut to evaluate an expression, works the same way as ASSERT macro
-            * but also prints a custom message
-            */
+           /*
+           * Macro:[ASSERTM]
+           * shortcut to evaluate an expression, works the same way as ASSERT macro
+           * but also prints a custom message
+           */
 #define ASSERTM(expr, msg)                                                                               \
 do{ \
     if (!(expr)) {                                                                                       \
@@ -167,51 +239,51 @@ do{ \
 } while (0);
 
 
-            /*
-             * Macro:[REALLOC] - safe realloc
-             * Macro:[REALLOCA] - safe realloc with auto dimension multiplication
-             * 						i.e. newsize * (sizeof *ptr)
-             *
-             * check if reallocation was successful
-             * on success, set original pointer to new memory
-             * otherwise print error message and exit
-             *
-             *
-             * e.g. int *p=(int*)malloc( 2*sizeof(int) );
-             *
-             *      then
-             *
-             * 		int *tmp = realloc(p, 10*sizeof(int) );
-             * 		if(tmp!=NULL){
-             * 			p=tmp;
-             * 		}else{
-             * 			exit(1);
-             * 		}
-             *
-             * 		== becomes ==
-             *
-             * 		REALLOC(p,10, int*);
-             *
-             *
-             */
-
-#define REALLOC(p, size, type) \
+           /*
+            * Macro:[REALLOC] - safe realloc with auto dimension multiplication
+            * 						i.e. newsize * (sizeof *ptr)
+            *
+            * check if reallocation was successful
+            * on success, set original pointer to new memory
+            * otherwise print error message and exit
+            *
+            *
+            * e.g. int *p=(int*)malloc( 2*sizeof(int) );
+            *
+            *      then
+            *
+            * 		int *tmp = realloc(p, 10*sizeof(int) );
+            * 		if(tmp!=NULL){
+            * 			p=tmp;
+            * 		}else{
+            * 			exit(1);
+            * 		}
+            *
+            * 		== becomes ==
+            *
+            * 		REALLOC(int*,p,10);
+            *
+            *
+            */
+#define REALLOC(type, p, size) \
 	do{ \
-		void* tmp = (void*) realloc(((p)),((size_t) ((size))) * sizeof( *((p)) )); \
-		if(NULL == tmp) { \
-			fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, __FUNCTION__, __LINE__); \
-			fprintf(stderr, "Failed to reallocate memory\n");                                        \
-			fprintf(stderr, "\n*******\n");                                                          \
-			exit(1);                                                                                 \
-		} \
-		(p) = (type) tmp; \
-	}while(0);
+		void* tmp = (void*) realloc(((p)), (((size)) * sizeof( *((p)) ))); \
+        if (NULL == tmp) { \
+            fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, __FUNCTION__, __LINE__); \
+            fprintf(stderr, "Failed to reallocate memory\n");                                        \
+            fprintf(stderr, "\n*******\n");                                                          \
+            exit(1);                                                                                 \
+        } \
+        (p) = (type) tmp; \
+        tmp = NULL; \
+    } while (0);
 
 
-#define MALLOC(p, size, type)  \
+#define MALLOC(type, p, size)  \
 	do{ \
-		p = ( ((type)) ) malloc ( (size) * sizeof( *((p))) ); \
-		if(NULL == p) { \
+        ((p)) = NULL; \
+		((p)) = ( ((type)) ) malloc ( ((size)) * sizeof( *((p))) ); \
+		if(NULL == ((p))) { \
 			fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, __FUNCTION__, __LINE__); \
 			fprintf(stderr, "Failed to allocate memory\n");                                        \
 			fprintf(stderr, "\n*******\n");                                                          \
@@ -219,14 +291,14 @@ do{ \
 		} \
 	}while(0);
 
-             /*
-              * Macro:[FREE]
-              * force free
-              *
-              * shortcut to free memory and set pointer to NULL
-              * and catch double free
-              * throw error if pointer is NULL
-              */
+            /*
+             * Macro:[FREE]
+             * force free
+             *
+             * shortcut to free memory and set pointer to NULL
+             * and catch double free
+             * throw error if pointer is NULL
+             */
 #define FREE(x)                                 \
 	do{ \
 		if (NULL != x) {                            \
@@ -239,10 +311,10 @@ do{ \
 
 
 
-              /*
-              * Macro:[FCLOSE]
-              * shortcut to check if file is open and close it
-              */
+             /*
+             * Macro:[FCLOSE]
+             * shortcut to check if file is open and close it
+             */
 #define FCLOSE(expr)                                                                                 \
 if (expr) {                                                                                      \
 if (fclose(expr) != 0) {                                                                     \
@@ -252,10 +324,10 @@ exit(1);                                                                        
 expr = NULL;                                                                                 \
 }
 
-              /*
-              * Macro:[BGZCLOSE]
-              * shortcut to check if bgzFile is open and close it
-              */
+             /*
+             * Macro:[BGZCLOSE]
+             * shortcut to check if bgzFile is open and close it
+             */
 #define BGZCLOSE(expr)                                                                               \
 if (expr) {                                                                                      \
 if (bgzf_close(expr) != 0) {                                                                 \
@@ -265,10 +337,10 @@ exit(1);                                                                        
 expr = NULL;                                                                                 \
 }
 
-              /*
-              * Macro:[GZCLOSE]
-              * shortcut to check if gzFile is open and close it
-              */
+             /*
+             * Macro:[GZCLOSE]
+             * shortcut to check if gzFile is open and close it
+             */
 #define GZCLOSE(expr)                                                                                \
 if (expr) {                                                                                      \
 if (gzclose(expr) != Z_OK) {                                                                 \
@@ -278,16 +350,16 @@ exit(1);                                                                        
 expr = Z_NULL;                                                                               \
 }
 
-              /* -> BIT MANIPULATION MACROS ------------------------------------------------*/
+             /* -> BIT MANIPULATION MACROS ------------------------------------------------*/
 
-              /* Macro:[BITSET]
-              * set a specific bit in x
-              *
-              * @param x		the variable to set the bit in
-              * @param bit	the bit to set
-              * @return		x is modified in place
-              */
-              // #define BITSET(x, bit) ((x) |= (1ULL << (bit)))
+             /* Macro:[BITSET]
+             * set a specific bit in x
+             *
+             * @param x		the variable to set the bit in
+             * @param bit	the bit to set
+             * @return		x is modified in place
+             */
+             // #define BITSET(x, bit) ((x) |= (1ULL << (bit)))
 #define BITSET(x, bit)                                      \
 if ((bit) < 0 || (bit) >= 64) {                         \
 fprintf(stderr, "Invalid bit number: %d\n", (bit)); \
@@ -361,8 +433,6 @@ exit(1);                                            \
 // maximum number of tokens allowed in amova formula string
 #define MAX_N_FORMULA_TOKENS 10
 
-#define MAX_N_HIER_LEVELS 10
-// TODO
 #define MAX_N_GROUPS_PER_LEVEL 10
 
 #define MAX_N_BITS 64
@@ -392,7 +462,9 @@ exit(1);                                            \
 #define BUF_NTOTSITES 4096
 
 #define FREAD_BUF_SIZE 4096
-#define FGETS_BUF_SIZE 25600
+
+// TODO check all references
+#define FGETS_BUF_SIZE 1024
 
 #define NSITES_BUF_INIT 4096
 
