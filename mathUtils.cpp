@@ -1,6 +1,6 @@
 #include "mathUtils.h"
 
-double MATH::MEAN(double *arr, int size) {
+double MATH::MEAN(double* arr, int size) {
     double mean = 0.0;
     for (int x = 0; x < size; x++) {
         mean += arr[x];
@@ -8,7 +8,7 @@ double MATH::MEAN(double *arr, int size) {
     return ((double)mean / (double)size);
 }
 
-double MATH::SD(double *arr, int size) {
+double MATH::SD(double* arr, int size) {
     double mean = MATH::MEAN(arr, size);
     double sd = 0.0;
     for (int x = 0; x < size; x++) {
@@ -99,7 +99,7 @@ int nC2(const int n) {
 // F = M[2][1] = M[7]
 // I = M[2][2] = M[8]
 
-double MATH::SUM(double *M) {
+double MATH::SUM(double* M) {
     double sum = 0.0;
     for (int x = 0; x < 9; x++) {
         sum += M[x];
@@ -107,7 +107,7 @@ double MATH::SUM(double *M) {
     return sum;
 }
 
-double MATH::SUM(int *M) {
+double MATH::SUM(int* M) {
     double sum = 0.0;
     for (int x = 0; x < 9; x++) {
         sum += M[x];
@@ -127,7 +127,7 @@ double MATH::MEAN(double M[3][3]) {
     return mean;
 }
 
-double MATH::MEAN(double *M) {
+double MATH::MEAN(double* M) {
     double mean = 0.0;
     for (int x = 0; x < 9; x++) {
         mean += M[x];
@@ -135,7 +135,7 @@ double MATH::MEAN(double *M) {
     return (double)mean / 9.0;
 }
 
-double MATH::MEAN(int *M) {
+double MATH::MEAN(int* M) {
     double mean = 0.0;
     for (int x = 0; x < 9; x++) {
         mean += M[x];
@@ -155,7 +155,7 @@ double MATH::VAR(double M[3][3]) {
     return (double)i / (double)(N - 1);
 }
 
-double MATH::VAR(double *M) {
+double MATH::VAR(double* M) {
     double i = 0.0;
     double N = 9.0;
     for (int x = 0; x < N; x++) {
@@ -164,7 +164,7 @@ double MATH::VAR(double *M) {
     return (double)i / (double)(N - 1);
 }
 
-double MATH::VAR(int *M) {
+double MATH::VAR(int* M) {
     double i = 0.0;
     double N = 9.0;
     for (int x = 0; x < N; x++) {
@@ -177,11 +177,11 @@ double MATH::SD(double M[3][3]) {
     return sqrt(MATH::VAR(M));
 }
 
-double MATH::SD(double *M) {
+double MATH::SD(double* M) {
     return sqrt(MATH::VAR(M));
 }
 
-double MATH::SD(int *M) {
+double MATH::SD(int* M) {
     return sqrt(MATH::VAR(M));
 }
 
@@ -199,7 +199,7 @@ double MATH::Sij(double M[3][3]) {
     return x;
 }
 
-double MATH::Sij(double *M) {
+double MATH::Sij(double* M) {
     double A = (double)M[0];
     double I = (double)M[8];
     double B = (double)M[3];
@@ -213,7 +213,7 @@ double MATH::Sij(double *M) {
     return x;
 }
 
-double MATH::Sij(int *M, int S) {
+double MATH::Sij(int* M, int S) {
     double x = 0.0;
 
     double A = (double)M[0] / (double)S;
@@ -244,7 +244,7 @@ double MATH::Dij(double M[3][3]) {
     return x;
 }
 
-double MATH::Dij(double *M) {
+double MATH::Dij(double* M) {
     double A = (double)M[0];
     double I = (double)M[8];
     double B = (double)M[3];
@@ -259,7 +259,7 @@ double MATH::Dij(double *M) {
 }
 
 //TODO ?? 
-double MATH::Dij(int *M, int S) {
+double MATH::Dij(int* M, int S) {
     double x = 0.0;
 
     double A = (double)M[0] / (double)S;
@@ -291,7 +291,7 @@ double MATH::Fij(double M[3][3]) {
     return x;
 }
 
-double MATH::Fij(double *M) {
+double MATH::Fij(double* M) {
     double x = 0.0;
 
     double C = (double)M[6];
@@ -307,7 +307,7 @@ double MATH::Fij(double *M) {
     return x;
 }
 
-double MATH::Fij(int *M, int S) {
+double MATH::Fij(int* M, int S) {
     double x = 0.0;
 
     double C = (double)M[6] / (double)S;
@@ -334,7 +334,7 @@ double MATH::IBS0(double M[3][3]) {
     return x;
 }
 
-double MATH::IBS0(double *M) {
+double MATH::IBS0(double* M) {
     double x = 0.0;
 
     double C = (double)M[6];
@@ -345,7 +345,7 @@ double MATH::IBS0(double *M) {
     return x;
 }
 
-double MATH::IBS0(int *M, int S) {
+double MATH::IBS0(int* M, int S) {
     double x = 0.0;
 
     double C = (double)M[6] / (double)S;
@@ -369,7 +369,7 @@ double MATH::IBS1(double M[3][3]) {
     return x;
 }
 
-double MATH::IBS1(double *M) {
+double MATH::IBS1(double* M) {
     double x = 0.0;
 
     double B = (double)M[3];
@@ -382,7 +382,7 @@ double MATH::IBS1(double *M) {
     return x;
 }
 
-double MATH::IBS1(int *M, int S) {
+double MATH::IBS1(int* M, int S) {
     double x = 0.0;
 
     double B = (double)M[3] / (double)S;
@@ -407,7 +407,7 @@ double MATH::IBS2(double M[3][3]) {
     return x;
 }
 
-double MATH::IBS2(double *M) {
+double MATH::IBS2(double* M) {
     double x = 0.0;
 
     double A = (double)M[0];
@@ -419,7 +419,7 @@ double MATH::IBS2(double *M) {
     return x;
 }
 
-double MATH::IBS2(int *M, int S) {
+double MATH::IBS2(int* M, int S) {
     double x = 0.0;
 
     double A = (double)M[0] / (double)S;
@@ -445,7 +445,7 @@ double MATH::R0(double M[3][3]) {
     return x;
 }
 
-double MATH::R0(double *M) {
+double MATH::R0(double* M) {
     double x = 0.0;
 
     double C = (double)M[6];
@@ -457,7 +457,7 @@ double MATH::R0(double *M) {
     return x;
 }
 
-double MATH::R0(int *M, int S) {
+double MATH::R0(int* M, int S) {
     double x = 0.0;
 
     double C = (double)M[6] / (double)S;
@@ -489,7 +489,7 @@ double MATH::R1(double M[3][3]) {
     return x;
 }
 
-double MATH::R1(double *M) {
+double MATH::R1(double* M) {
     double x = 0.0;
 
     double E = (double)M[4];
@@ -505,7 +505,7 @@ double MATH::R1(double *M) {
     return x;
 }
 
-double MATH::R1(int *M, int S) {
+double MATH::R1(int* M, int S) {
     double x = 0.0;
 
     double E = (double)M[4] / (double)S;
@@ -543,7 +543,7 @@ double MATH::Kin(double M[3][3]) {
     return x;
 }
 
-double MATH::Kin(double *M) {
+double MATH::Kin(double* M) {
     double x = 0.0;
 
     double E = (double)M[4];
@@ -559,7 +559,7 @@ double MATH::Kin(double *M) {
     return x;
 }
 
-double MATH::Kin(int *M, int S) {
+double MATH::Kin(int* M, int S) {
     double x = 0.0;
 
     double E = (double)M[4] / (double)S;

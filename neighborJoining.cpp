@@ -1,39 +1,182 @@
 #include "neighborJoining.h"
 
-void njStruct::print() {
-    fprintf(stderr, "\n[INFO]\t-> Writing the Neighbor-Joining tree to the output file %s (format: Newick)", outFiles->out_nj_fs->fn);
-    outFiles->out_nj_fs->kbuf = kbuf_init();
-    kstring_t* kbuf = outFiles->out_nj_fs->kbuf;
 
-    // if unrooted tree, choose an arbitrary node as the root for printing
-    int node = nTreeNodes - 1;
-    print_leaf_newick(node, kbuf);
+nj_t* nj_init(dmat_t* dmat, const size_t which_dmat) {
 
-    // close the tree
-    ksprintf(kbuf, ";\n");
+    nj_t* nj = (nj_t*)malloc(sizeof(nj_t));
+    ASSERT(nj != NULL);
 
-    outFiles->out_nj_fs->kbuf_write();
+    // -> init
+    nj->nEdges = 0;
+    nj->nNodes = 0;
+    nj->nParents = 0;
+    nj->nNeighbors = 0;
+    nj->nTreeNodePairs = 0;
+    nj->nTreeNodes = 0;
+    nj->nTreeEdges = 0;
+    nj->L = 0;
+    nj->names = NULL;
+    nj->nEdgesPerParentNode = NULL;
+    nj->parentToEdgeIdx = NULL;
+    nj->neighborIdx = NULL;
+    nj->NJD = NULL;
+    nj->edgeLengths = NULL;
+    nj->edgeNodes = NULL;
+    // <- init
+
+    // -> set 
+
+    nj->names = dmat->names;
+
+    // init the number of leaf nodes
+    nj->L = nj->names->len;
+
+    // an unrooted tree with n leaves has 2n-2 nodes and 2n-3 edges
+    nj->nTreeNodes = (2 * nj->L) - 2;
+    nj->nTreeEdges = nj->nTreeNodes - 1;
+
+    nj->nParents = nj->nTreeNodes - nj->L;
+    const size_t nParents = nj->nParents;
+
+    nj->nEdgesPerParentNode = (int*)malloc(nParents * sizeof(int));
+    ASSERT(nj->nEdgesPerParentNode != NULL);
+    for (size_t i = 0; i < nParents; ++i) {
+        nj->nEdgesPerParentNode[i] = 0;
+    }
+
+    nj->parentToEdgeIdx = (int**)malloc(nParents * sizeof(int*));
+    ASSERT(nj->parentToEdgeIdx != NULL);
+    for (size_t i = 0; i < nParents; ++i) {
+        nj->parentToEdgeIdx[i] = NULL;
+        nj->parentToEdgeIdx[i] = (int*)malloc(1 * sizeof(int));
+        ASSERT(nj->parentToEdgeIdx[i] != NULL);
+        nj->parentToEdgeIdx[i][0] = -1;
+    }
+
+    nj->nTreeNodePairs = (nj->nTreeNodes * (nj->nTreeNodes - 1)) / 2;
+
+    nj->NJD = (double*)malloc(nj->nTreeNodePairs * sizeof(double));
+    ASSERT(nj->NJD != NULL);
+    for (size_t i = 0; i < nj->nTreeNodePairs; ++i) {
+        nj->NJD[i] = 0.0;
+    }
+    for (size_t i = 0; i < nj->names->len; ++i) {
+        for (size_t j = i + 1; j < nj->names->len; ++j) {
+            size_t idx = MATRIX_GET_INDEX_LTED_IJ(j, i);
+            nj->NJD[idx] = dmat->matrix[which_dmat][idx];
+        }
+    }
+
+    nj->edgeLengths = (double*)malloc(nj->nTreeEdges * sizeof(double));
+    ASSERT(nj->edgeLengths != NULL);
+    nj->edgeNodes = (int**)malloc(nj->nTreeEdges * sizeof(int*));
+    ASSERT(nj->edgeNodes != NULL);
+    for (int i = 0; i < nj->nTreeEdges; ++i) {
+        nj->edgeNodes[i] = (int*)malloc(2 * sizeof(int));
+        ASSERT(nj->edgeNodes[i] != NULL);
+        nj->edgeNodes[i][0] = -1;
+        nj->edgeNodes[i][1] = -1;
+        nj->edgeLengths[i] = -1.0;
+    }
+
+
+    // number of neighbors identified in the previous iterations == nNodes-2
+    // since we terminate the iterations when nNodes==2, so we don't need to
+    // save the 2 neighbors identified in the last iteration
+    ASSERT(nj->nTreeNodes > 2);
+    ASSERT(nj->nTreeNodes > 2);
+    nj->neighborIdx = (int*)malloc((nj->nTreeNodes - 2) * sizeof(int));
+    for (int i = 0; i < (nj->nTreeNodes - 2); ++i) {
+        nj->neighborIdx[i] = -1;
+    }
+
+    return(nj);
 }
 
-void njStruct::print_leaf_newick(int node, kstring_t* kbuf) {
-    // fprintf(stderr,"\nReceived node: %s idx:%d", nodeLabels[node], node);
+void nj_destroy(nj_t* nj) {
+    FREE(nj->nEdgesPerParentNode);
+    for (size_t i = 0; i < nj->nParents; ++i) {
+        FREE(nj->parentToEdgeIdx[i]);
+    }
+    FREE(nj->parentToEdgeIdx);
+    FREE(nj->edgeLengths);
+    for (size_t i = 0; i < nj->nTreeEdges; ++i) {
+        FREE(nj->edgeNodes[i]);
+    }
+    FREE(nj->NJD);
+    FREE(nj->edgeNodes);
+    FREE(nj->neighborIdx);
+    FREE(nj);
+    return;
+}
+
+
+static void nj_add_edge(nj_t* nj, int parentNode, int childNode, double edgeLength) {
+    DEVASSERT(parentNode > childNode);
+    // DEVPRINT("adding edge. parentNode: %d childNode: %d edgeLength: %f nj->L: %d nj->nEdges: %d", parentNode, childNode, edgeLength, nj->L, nj->nEdges);
+
+    nj->edgeLengths[nj->nEdges] = edgeLength;
+    nj->edgeNodes[nj->nEdges][0] = parentNode;
+    nj->edgeNodes[nj->nEdges][1] = childNode;
+
+    int parentNodeParentIdx = parentNode - nj->L;
+    DEVASSERT(parentNodeParentIdx >= 0);
+    nj->parentToEdgeIdx[parentNodeParentIdx] = (int*)realloc(nj->parentToEdgeIdx[parentNodeParentIdx], (nj->nEdgesPerParentNode[parentNodeParentIdx] + 1) * sizeof(int));
+    nj->parentToEdgeIdx[parentNodeParentIdx][nj->nEdgesPerParentNode[parentNodeParentIdx]] = nj->nEdges;
+    nj->nEdgesPerParentNode[parentNodeParentIdx]++;
+
+    ASSERT(parentNode > childNode);
+    nj->NJD[MATRIX_GET_INDEX_LTED_IJ(parentNode, childNode)] = edgeLength;
+
+    ++nj->nEdges;
+
+}
+
+
+// printing the neighbor-joining tree in newick format:
+//
+// e.g. '(D,C,(A,B));'
+//
+// ei = edge index (0-based) (== index in edgeNodes[ei] edgeLengths[ei])
+// L0 = length of edge with index ei=0 (== edgeLengths[0])
+// ...
+//
+// then, the newick format is:
+// '(D:L4,C:L3,(A:L0,B:L1):L2);'
+//            (A,B) is an internal node
+//            edgeNodes[0] => {parentNode1, A}
+//            edgeNodes[1] => {parentNode1, B}
+//
+//          edgeNodes[2] => {parentNode2, parentNode1}
+//         edgeNodes[3] => {parentNode2, C}
+//        edgeNodes[4] => {parentNode2, D}
+//
+// edgeNodes[edge_index][0] = parent node
+            // edgeNodes[edge_index][1] = child node
+
+void nj_print_leaf_newick(nj_t* nj, int node, kstring_t* kbuf) {
 
     // node - index of the node in the list of all nodes
     // L - number of leaf nodes
     // nodeIdxInParents - index of the given node in the list of parent nodes
     //      <0 if node is a leaf node (i.e. not in the list of parent nodes)
-    //      >=0 if node is an internal node (i.e. in the list of parent nodes)
-    int nodeIdxInParents = node - L;
+                //      >=0 if node is an internal node (i.e. in the list of parent nodes)
+
+    static const int L = nj->L;
+    const int nodeIdxInParents = node - L;
+
+    static int* nEdgesPerParentNode = nj->nEdgesPerParentNode;
+    static int** parentToEdgeIdx = nj->parentToEdgeIdx;
+    static double* edgeLengths = nj->edgeLengths;
+    static int** edgeNodes = nj->edgeNodes;
 
     if (nodeIdxInParents < 0) {
         // node := leaf node
-
-        ksprintf(kbuf, "%s", nodeLabels[node]);
+        ksprintf(kbuf, "%s", nj->names->d[node]);
         return;
     } else {
         // node := internal node
-
-        ASSERT(nEdgesPerParentNode[nodeIdxInParents] > 0);
+        DEVASSERT(nEdgesPerParentNode[nodeIdxInParents] > 0);
 
         // loop over all edges that are connected to the given parent node 'node'
         for (int edge_i = 0; edge_i < nEdgesPerParentNode[nodeIdxInParents]; ++edge_i) {
@@ -43,13 +186,12 @@ void njStruct::print_leaf_newick(int node, kstring_t* kbuf) {
             }
 
             // % recursive call
-            print_leaf_newick(edgeNodes[parentToEdgeIdx[nodeIdxInParents][edge_i]][1], kbuf);
+            nj_print_leaf_newick(nj, edgeNodes[parentToEdgeIdx[nodeIdxInParents][edge_i]][1], kbuf);
             // %
 
             ksprintf(kbuf, ":%f", edgeLengths[edge_i]);
-            //ksprintf(kbuf, ":%.*f", (int)DBL_MAXDIG10,edgeLengths[edge_i]);
 
-                        // there are multiple edges && this is the last edge
+            // there are multiple edges && this is the last edge
             if ((nEdgesPerParentNode[nodeIdxInParents] > 1) && (edge_i == nEdgesPerParentNode[nodeIdxInParents] - 1)) {
                 ksprintf(kbuf, ")");
             } else {
@@ -59,448 +201,258 @@ void njStruct::print_leaf_newick(int node, kstring_t* kbuf) {
     }
 }
 
-void njStruct::_print(void) {
-    fprintf(stderr, "node1_id,node2_id,edge_length\n");
+void nj_print(nj_t* nj) {
+    fprintf(stderr, "\n[INFO]\t-> Writing the Neighbor-Joining tree to the output file %s (format: Newick)", outFiles->out_nj_fs->fn);
+    outFiles->out_nj_fs->kbuf = kbuf_init();
+    kstring_t* kbuf = outFiles->out_nj_fs->kbuf;
 
-    for (int i = 0; i < nTreeEdges; i++) {
-        fprintf(stderr, "%s,%s,%f\n", nodeLabels[edgeNodes[i][0]], nodeLabels[edgeNodes[i][1]], edgeLengths[i]);
-    }
+    // if unrooted tree, choose an arbitrary node as the root for printing
+    int node = nj->nTreeNodes - 1;
+    nj_print_leaf_newick(nj, node, kbuf);
+
+    // close the tree
+    ksprintf(kbuf, ";\n");
+    outFiles->out_nj_fs->kbuf_write();
+    return;
 }
 
-njStruct::njStruct(distanceMatrixStruct* dms, paramStruct* pars) {
-    DistanceMatrixSt = dms;
 
-    // initialize the number of leaf nodes
-    totL = DistanceMatrixSt->nInd;
-    L = totL;
-    iterL = totL;
 
-    // an unrooted tree with n leaves has 2n-2 nodes and 2n-3 edges
-    nTreeNodes = (2 * totL) - 2;
-    nTreeEdges = nTreeNodes - 1;
+void nj_run(nj_t* nj) {
 
-    nParents = nTreeNodes - L;
+    int iterL = nj->L; // number of leaf nodes in the current iteration
 
-    nEdgesPerParentNode = (int*)calloc(nParents, sizeof(int));
+    // totL - total number of leaf nodes
+    // n.b. includes all new nodes added since we add them to the end of list
+    // so starts at L and should be equal to nTreeNodes at the end
+    int totL = nj->L;
 
-    parentToEdgeIdx = (int**)malloc(nParents * sizeof(int*));
-    for (int i = 0; i < nParents; ++i) {
-        parentToEdgeIdx[i] = (int*)malloc(1 * sizeof(int));
-        parentToEdgeIdx[i][0] = -1;
-    }
-
-    nTreeNodePairs = (nTreeNodes * (nTreeNodes - 1)) / 2;
-    NJD = (double*)malloc(nTreeNodePairs * sizeof(double));
-    for (int i = 0; i < nTreeNodePairs; ++i) {
-        NJD[i] = 0.0;
-    }
-
-    // number of neighbor joining iterations needed to build the tree
-    nTreeIterations = totL - 2;
-
-    edgeLengths = (double*)malloc(nTreeEdges * sizeof(double));
-
-    edgeNodes = (int**)malloc(nTreeEdges * sizeof(int*));
-    for (int i = 0; i < nTreeEdges; ++i) {
-        edgeNodes[i] = (int*)malloc(2 * sizeof(int));
-        edgeNodes[i][0] = -1;
-        edgeNodes[i][1] = -1;
-
-        edgeLengths[i] = -1.0;
-    }
-
-    items2idx = (int**)malloc(nTreeNodes * sizeof(int*));
-    for (int i = 0; i < nTreeNodes; ++i) {
-        items2idx[i] = (int*)malloc(nTreeNodes * sizeof(int));
-        for (int j = 0; j < nTreeNodes; ++j) {
-            items2idx[i][j] = -1;
-        }
-    }
-
-    int idx = 0;
-    for (int i1 = 0; i1 < nTreeNodes - 1; i1++) {
-        for (int i2 = i1 + 1; i2 < nTreeNodes; i2++) {
-            items2idx[i1][i2] = idx;
-            items2idx[i2][i1] = idx;
-            idx++;
-        }
-    }
-
-    nodeLabels = (char**)malloc(nTreeNodes * sizeof(char*));
-    for (int i = 0; i < nTreeNodes; ++i) {
-        if (i < totL) {
-            for (int j = i + 1; j < totL; ++j) {
-                int new_index = items2idx[i][j];
-                int old_index = DistanceMatrixSt->inds2idx[i][j];
-                ASSERT(new_index >= 0);
-                ASSERT(old_index >= 0);
-                NJD[new_index] = DistanceMatrixSt->M[old_index];
-            }
-        }
-
-        if (i < totL) {
-            if (pars->indNames != NULL) {
-                DEVASSERT(nodeLabels != NULL);
-                nodeLabels[i] = strdup(pars->indNames->get(i));
-                // ASSERT(nodeLabels!=NULL);
-            } else {
-                char label[100];
-                sprintf(label, "item%d", i);
-                nodeLabels[i] = strdup(label);
-            }
-        } else {
-            char label[100];
-            sprintf(label, "node%d", i);
-            nodeLabels[i] = strdup(label);
-        }
-    }
-
-    // number of neighbors identified in the previous iterations == nNodes-2
-    // since we terminate the iterations when nNodes==2, so we don't need to
-    // save the 2 neighbors identified in the last iteration
-    ASSERT(nTreeNodes > 2);
-    neighborIdx = (int*)malloc((nTreeNodes - 2) * sizeof(int));
-    for (int i = 0; i < (nTreeNodes - 2); ++i) {
-        neighborIdx[i] = -1;
-    }
-}
-
-njStruct::~njStruct() {
-    FREE(NJD);
-    for (int i = 0; i < nTreeNodes; ++i) {
-        FREE(nodeLabels[i]);
-        FREE(items2idx[i]);
-    }
-    FREE(nodeLabels);
-    FREE(items2idx);
-
-    for (int i = 0; i < nTreeEdges; ++i) {
-        FREE(edgeNodes[i]);
-    }
-    FREE(edgeNodes);
-    FREE(edgeLengths);
-    FREE(neighborIdx);
-    FREE(nEdgesPerParentNode);
-    for (int i = 0; i < nParents; ++i) {
-        FREE(parentToEdgeIdx[i]);
-    }
-    FREE(parentToEdgeIdx);
-}
-
-int njStruct::isNeighbor(int nodeIndex) {
-    int ni = 0;
-    while (ni < nNeighbors) {
-        if (neighborIdx[ni] == nodeIndex)
-            return 1;
-        ni++;
-    }
-    return 0;
-}
-
-void njIteration(njStruct* nji) {
-    nji->iter++;
-
-    //---------------------------------------------------------------------
-    // TOTAL DISTANCES
-    //
-    // TotalDistance[i] == sum of all pairwise distances for pairs containing ind i
-
-    double TotalDistances[nji->totL];
-    for (int i = 0; i < nji->totL; ++i) {
+    const int nTreeIterations = nj->L - 2; // number of neighbor joining iterations needed to build the tree
+    double TotalDistances[nj->nTreeNodes];
+    double NetDivergence[nj->nTreeNodes];
+    double AdjustedDistances[nj->nTreeNodePairs];
+    for (size_t i = 0; i < nj->nTreeNodes; ++i) {
         TotalDistances[i] = 0.0;
+        NetDivergence[i] = 0.0;
+    }
+    for (size_t i = 0; i < nj->nTreeNodePairs; ++i) {
+        AdjustedDistances[i] = 0.0;
     }
 
-    double dist = 0.0;
-    for (int i1 = 0; i1 < nji->totL - 1; i1++) {
-        if (nji->isNeighbor(i1) == 1)
-            continue;
 
-        for (int i2 = i1 + 1; i2 < nji->totL; i2++) {
-            if (nji->isNeighbor(i2) == 1)
-                continue;
+    for (int nji = 0; nji < nTreeIterations; ++nji) {
 
-            int px = nji->items2idx[i1][i2];
-
-            ASSERT(px >= 0);
-            dist = nji->NJD[px];
-            TotalDistances[i1] += dist;
-            TotalDistances[i2] += dist;
-        }
-    }
-
-    //---------------------------------------------------------------------
-    // NET DIVERGENCE
-    //
-    // calculate the net divergence of each node ==TotalDistance[i]/(nNodesAtIteration-2)
-    double NetDivergence[nji->totL] = { 0.0 };
-
-    // divident (nNodesAtIteration-2)
-    // since we add to the end of the same array - thus grow L
-    // we need to do nTreeNodes-L
-    // to get the actual number of leaf nodes at iteration,
-    double div = (double)(nji->iterL - 2.0);
-    for (int i = 0; i < nji->totL; i++) {
-        if (nji->isNeighbor(i) == 1)
-            continue;
-        NetDivergence[i] = TotalDistances[i] / div;
-    }
-
-    //---------------------------------------------------------------------
-    // ADJUSTED DISTANCES
-    //
-    double AdjustedDistances[nji->totL][nji->totL];
-    for (int i = 0; i < nji->totL; ++i) {
-        for (int j = 0; j < nji->totL; ++j) {
-            AdjustedDistances[i][j] = -1.0;
-        }
-    }
-
-    // find the pair of nodes with the smallest adjusted distance (==neighbors)
-    int min_i1 = -1;
-    int min_i2 = -1;
-    double min_dist = 0.0;
-    dist = 0.0;
-
-    for (int i1 = 0; i1 < nji->totL - 1; i1++) {
-        if (nji->isNeighbor(i1) == 1)
-            continue;
-
-        for (int i2 = i1 + 1; i2 < nji->totL; i2++) {
-            if (nji->isNeighbor(i2) == 1)
-                continue;
-
-            int px = nji->items2idx[i1][i2];
-            dist = nji->NJD[px];
-            AdjustedDistances[i1][i2] = dist - NetDivergence[i1] - NetDivergence[i2];
-
-            if (min_i1 == -1) {
-                min_i1 = i1;
-                min_i2 = i2;
-                min_dist = dist;
-            } else if (AdjustedDistances[i1][i2] < AdjustedDistances[min_i1][min_i2]) {
-                min_i1 = i1;
-                min_i2 = i2;
-                min_dist = dist;
-            }
-        }
-    }
-    ASSERT(min_i1 >= 0);
-    ASSERT(min_i2 >= 0);
-
-    int parentNode = nji->newParentNode(min_i1, min_i2);
-
-    // --------------------------------------------------------------------
-    // SET CHILD NODES
-
-    // calculate the distance from the new node to each child node
-    // child1:
-    // d(min_i1,new_node) = ( d(min_i1,min_i2) + NetDivergence[min_i1] - NetDivergence[min_i2] ) / 2
-    double dist1 = (0.5 * min_dist) + (0.5 * (NetDivergence[min_i1] - NetDivergence[min_i2]));
-
-    // child2:
-    // d(min_i2,new_node) = ( d(min_i1,min_i2) + NetDivergence[min_i2] - NetDivergence[min_i1] ) / 2
-    double dist2 = min_dist - dist1;
-
-    if (args->handle_neg_branch_length == 1) {
-
-
-        // -> handle negative branch lengths
+        //---------------------------------------------------------------------
+        // TOTAL DISTANCES
         //
-        // if a branch length < 0:
-        // set branch length to zero
-        // and transfer the difference to the adjacent branch length (+= - orig_len)
-        // so that the total distance between an adjacent pair of terminal nodes remains unaffected 
-        // (see Kuhner and Felsenstein 1994)
-        if (dist1 < 0) {
-            WARN("Observed negative branch length at (%d,%d) distance 1 (%f). Transferring the abs(distance 1) to the adjacent branch distance 2 (before: %f).", nji->items2idx[min_i1][parentNode], nji->items2idx[min_i2][parentNode], dist1, dist2);
-            dist2 = dist2 - dist1;
-            dist1 = 0.0;
-            ASSERT(dist2 >= 0.0);
-        } else if (dist2 < 0) {
-            WARN("Observed negative branch length at (%d,%d) distance 2 (%f). Transferring the abs(distance 2) to the adjacent branch distance 1 (before: %f).", nji->items2idx[min_i1][parentNode], nji->items2idx[min_i2][parentNode], dist2, dist1);
-            dist1 = dist1 - dist2;
-            dist2 = 0.0;
-            ASSERT(dist1 >= 0.0);
+        // TotalDistance[i] == sum of all pairwise distances for pairs containing ind i
+        for (size_t i = 0; i < (size_t)totL; ++i) {
+            TotalDistances[i] = 0.0; // clear for iteration nji
         }
-    }
 
-    nji->addEdge(parentNode, min_i1, dist1);
-    nji->NJD[nji->items2idx[min_i1][parentNode]] = dist1;
+        double dist = 0.0;
+        size_t ni;
+        for (int i1 = 1; i1 < totL; ++i1) {
 
-    nji->addEdge(parentNode, min_i2, dist2);
-    nji->NJD[nji->items2idx[min_i2][parentNode]] = dist2;
+            // continue if i1 is neighbor
+            for (ni = 0; ni < (size_t)nj->nNeighbors && nj->neighborIdx[ni] != i1; ++ni);
+            if (ni < (size_t)nj->nNeighbors) continue;
 
-    // --------------------------------------------------------------------
+            for (int i2 = 0; i2 < i1; ++i2) {
 
-    // calculate the distance from the new node to each non-child node
-    for (int i = 0; i < nji->totL; i++) {
-        if (nji->isNeighbor(i) == 1)
-            continue;
+                // continue if i2 is neighbor
+                for (ni = 0; ni < (size_t)nj->nNeighbors && nj->neighborIdx[ni] != i2; ++ni);
+                if (ni < (size_t)nj->nNeighbors) continue;
 
-        // calculate the distance from the new node to the non-child node
-        // d(i,new_node) = ( d(i,min_i1) + d(i,min_i2) - d(min_i1,min_i2) ) / 2
-
-        int px1 = nji->items2idx[i][min_i1];
-        int px2 = nji->items2idx[i][min_i2];
-
-        ASSERT(px1 >= 0);
-        ASSERT(px2 >= 0);
-        nji->NJD[nji->items2idx[i][parentNode]] = 0.5 * (nji->NJD[px1] + nji->NJD[px2] - min_dist);
-    }
-
-    nji->totL++;
-
-    // terminate when 2 nodes left; add the edge between them
-    if (nji->iter == nji->nTreeIterations - 1) {
-        for (int i1 = 0; i1 < nji->totL - 1; i1++) {
-            if (nji->isNeighbor(i1) == 1)
-                continue;
-
-            for (int i2 = i1 + 1; i2 < nji->totL; i2++) {
-                if (nji->isNeighbor(i2) == 1)
-                    continue;
-
-                int px = nji->items2idx[i1][i2];
-                nji->addEdge(i2, i1, nji->NJD[px]);
-                ASSERT(nji->totL == nji->nTreeNodes);
-                return;
-            }
-        }
-    }
-    nji->iterL--;
-}
-
-void njStruct::addEdge(int parentNode, int childNode, double edgeLength) {
-
-    edgeLengths[nEdges] = edgeLength;
-    edgeNodes[nEdges][0] = parentNode;
-    edgeNodes[nEdges][1] = childNode;
-
-    int parentNodeParentIdx = parentNode - L;
-    parentToEdgeIdx[parentNodeParentIdx] = (int*)realloc(parentToEdgeIdx[parentNodeParentIdx], (nEdgesPerParentNode[parentNodeParentIdx] + 1) * sizeof(int));
-    parentToEdgeIdx[parentNodeParentIdx][nEdgesPerParentNode[parentNodeParentIdx]] = nEdges;
-    nEdgesPerParentNode[parentNodeParentIdx]++;
-
-    NJD[items2idx[parentNode][childNode]] = edgeLength;
-    ++nEdges;
-}
-
-int njStruct::newParentNode(int child1, int child2) {
-    // add the children to the neighborIdx list so that they will be excluded from the next iterations
-    neighborIdx[nNeighbors] = child1;
-    nNeighbors++;
-    neighborIdx[nNeighbors] = child2;
-    nNeighbors++;
-
-    // tree has L nodes, last node has index L-1
-    // the new parent is added at the end of the list
-    // so the index of the new node is L
-    // the L++ incrementation is at the end of the njIteration function
-    return totL;
-}
-
-njStruct* njStruct_get(paramStruct* pars, dxyStruct* dxy) {
-    ASSERT(dxy != NULL);
-    njStruct* nj = new njStruct(dxy, pars);
-
-    for (int i = 0; i < nj->nTreeIterations; i++) {
-        njIteration(nj);
-    }
-    ASSERT(nj->nEdges == nj->nTreeEdges);
-    ASSERT(nj->totL == nj->nTreeNodes);
-    ASSERT(nj->iterL == nj->nTreeNodes);
-    ASSERT(nj->iter == nj->nTreeIterations);
-
-    return nj;
-}
-
-njStruct* njStruct_get(paramStruct* pars, distanceMatrixStruct* dms) {
-    ASSERT(dms != NULL);
-    njStruct* nj = new njStruct(dms, pars);
-
-    for (int i = 0; i < nj->nTreeIterations; i++) {
-        njIteration(nj);
-    }
-
-    nj->print();
-    return nj;
-}
-
-// TODO do this with a template type for both dxy and distanceMatrix
-njStruct::njStruct(dxyStruct* dxy, paramStruct* pars) {
-    // TODO -limit to only one level dxy
-
-    dxySt = dxy;
-
-    // initialize the number of leaf nodes
-    // get number of pairs of objects (individuals or groups) in the distance matrix
-    totL = (1 + (sqrt(1 + (8 * dxySt->nDxy)))) / 2;
-    iterL = totL;
-
-    // an unrooted tree with n leaves has 2n-2 nodes and 2n-3 edges
-    nTreeNodes = (2 * totL) - 2;
-    nTreeEdges = nTreeNodes - 1;
-
-    nTreeNodePairs = (nTreeNodes * (nTreeNodes - 1)) / 2;
-    NJD = (double*)malloc(nTreeNodePairs * sizeof(double));
-    for (int i = 0; i < nTreeNodePairs; ++i) {
-        NJD[i] = 0.0;
-    }
-
-    // number of neighbor joining iterations needed to build the tree
-    nTreeIterations = totL - 2;
-
-    edgeLengths = (double*)malloc(nTreeEdges * sizeof(double));
-
-    edgeNodes = (int**)malloc(nTreeEdges * sizeof(int*));
-    for (int i = 0; i < nTreeEdges; ++i) {
-        edgeNodes[i] = (int*)malloc(2 * sizeof(int));
-        edgeNodes[i][0] = -1;
-        edgeNodes[i][1] = -1;
-
-        edgeLengths[i] = -1.0;
-    }
-
-    items2idx = (int**)malloc(nTreeNodes * sizeof(int*));
-    for (int i = 0; i < nTreeNodes; ++i) {
-        items2idx[i] = (int*)malloc(nTreeNodes * sizeof(int));
-        for (int j = 0; j < nTreeNodes; ++j) {
-            items2idx[i][j] = -1;
-        }
-    }
-
-    int idx = 0;
-    for (int i1 = 0; i1 < nTreeNodes - 1; i1++) {
-        for (int i2 = i1 + 1; i2 < nTreeNodes; i2++) {
-            items2idx[i1][i2] = idx;
-            items2idx[i2][i1] = idx;
-            idx++;
-        }
-    }
-
-    nodeLabels = (char**)malloc(nTreeNodes * sizeof(char*));
-    for (int i = 0; i < nTreeNodes; ++i) {
-        if (i < totL) {
-            for (int j = i + 1; j < totL; ++j) {
-                int new_index = items2idx[i][j];
-                int old_index = nCk_idx(totL, i, j);
-                ASSERT(new_index >= 0);
-                ASSERT(old_index >= 0);
-                NJD[new_index] = dxy->dxyArr[old_index];
+                dist = nj->NJD[MATRIX_GET_INDEX_LTED_IJ(i1, i2)];
+                TotalDistances[i1] += dist;
+                TotalDistances[i2] += dist;
             }
         }
 
-        // TODO get groupnames, do this after changing dxy to be one struct per level
-        char label[100];
-        sprintf(label, "node%d", i);
-        nodeLabels[i] = strdup(label);
-    }
+        //---------------------------------------------------------------------
+        // NET DIVERGENCE
+        //
+        // calculate the net divergence of each node ==TotalDistance[i]/(nNodesAtIteration-2)
+        for (size_t i = 0; i < totL; i++) {
+            NetDivergence[i] = 0.0; // clear for iteration nji
+        }
 
-    // number of neighbors identified in the previous iterations == nNodes-2
-    // since we terminate the iterations when nNodes==2, so we don't need to
-    // save the 2 neighbors identified in the last iteration
-    neighborIdx = (int*)malloc((nTreeNodes - 2) * sizeof(int));
-    for (int i = 0; i < (nTreeNodes - 2); ++i) {
-        neighborIdx[i] = -1;
+        // divident (nNodesAtIteration-2)
+        // since we add to the end of the same array - thus grow L
+        // we need to do nTreeNodes-L
+        // to get the actual number of leaf nodes at iteration,
+        double div = (double)(iterL - 2.0);
+        for (int i = 0; i < totL; ++i) {
+
+            // continue if i is neighbor
+            for (ni = 0; ni < (size_t)nj->nNeighbors && nj->neighborIdx[ni] != i; ++ni);
+            if (ni < (size_t)nj->nNeighbors) continue;
+
+            NetDivergence[i] = TotalDistances[i] / div;
+        }
+
+        //---------------------------------------------------------------------
+        // ADJUSTED DISTANCES
+        //
+        for (size_t i = 0; i < nj->nTreeNodePairs; ++i) {
+            AdjustedDistances[i] = 0.0;
+        }
+
+        // find the pair of nodes with the smallest adjusted distance (==neighbors)
+        int min_i1 = -1;
+        int min_i2 = -1;
+        double min_dist = 0.0;
+        dist = 0.0;
+
+        for (int i1 = 0; i1 < totL - 1; ++i1) {
+
+            // continue if i1 is neighbor
+            for (ni = 0; ni < (size_t)nj->nNeighbors && nj->neighborIdx[ni] != i1; ++ni);
+            if (ni < (size_t)nj->nNeighbors) continue;
+
+            for (int i2 = i1 + 1; i2 < totL; ++i2) {
+
+                // continue if i2 is neighbor
+                for (ni = 0; ni < (size_t)nj->nNeighbors && nj->neighborIdx[ni] != i2; ++ni);
+                if (ni < (size_t)nj->nNeighbors) continue;
+
+                size_t pidx = MATRIX_GET_INDEX_LTED_IJ(i2, i1);
+
+                dist = nj->NJD[pidx];
+                AdjustedDistances[pidx] = dist - NetDivergence[i1] - NetDivergence[i2];
+
+                if (min_i1 == -1) {
+                    min_i1 = i1;
+                    min_i2 = i2;
+                    min_dist = dist;
+                } else if (AdjustedDistances[pidx] < AdjustedDistances[MATRIX_GET_INDEX_LTED_IJ(min_i2, min_i1)]) {
+                    min_i1 = i1;
+                    min_i2 = i2;
+                    min_dist = dist;
+                }
+            }
+        }
+
+        DEVASSERT(min_i1 >= 0);
+        DEVASSERT(min_i2 >= 0);
+
+        // --------------------------------------------------------------------
+        // -> add new parent node
+        // add the children to the neighborIdx list so that they will be excluded from the next iterations
+
+        // child1: min_i1
+        nj->neighborIdx[nj->nNeighbors] = min_i1;
+        nj->nNeighbors++;
+        // child2: min_i2
+        nj->neighborIdx[nj->nNeighbors] = min_i2;
+        nj->nNeighbors++;
+
+        // tree has L nodes, last node has index L-1
+        // the new parent is added at the end of the list
+        // so the index of the new node is L
+        // the L++ incrementation is at the end of the njIteration function
+        int parentNode = totL;
+        // --------------------------------------------------------------------
+
+
+
+        // --------------------------------------------------------------------
+        // -> set child nodes
+
+        // calculate the distance from the new node to each child node
+        // child1:
+        // d(min_i1,new_node) = ( d(min_i1,min_i2) + NetDivergence[min_i1] - NetDivergence[min_i2] ) / 2
+        double dist1 = (0.5 * min_dist) + (0.5 * (NetDivergence[min_i1] - NetDivergence[min_i2]));
+
+        // child2:
+        // d(min_i2,new_node) = ( d(min_i1,min_i2) + NetDivergence[min_i2] - NetDivergence[min_i1] ) / 2
+        double dist2 = min_dist - dist1;
+
+        if (args->handle_neg_branch_length == 1) {
+
+
+            // -> handle negative branch lengths
+            //
+            // if a branch length < 0:
+            // set branch length to zero
+            // and transfer the difference to the adjacent branch length (+= - orig_len)
+            // so that the total distance between an adjacent pair of terminal nodes remains unaffected 
+            // (see Kuhner and Felsenstein 1994)
+            if (dist1 < 0) {
+                // WARN("Observed negative branch length at (%d,%d) distance 1 (%f). Transferring the abs(distance 1) to the adjacent branch distance 2 (before: %f).", nj->items2idx[min_i1][parentNode], nj->items2idx[min_i2][parentNode], dist1, dist2);
+                //TODO upd warning
+                dist2 = dist2 - dist1;
+                dist1 = 0.0;
+                ASSERT(dist2 >= 0.0);
+            } else if (dist2 < 0) {
+                // WARN("Observed negative branch length at (%d,%d) distance 2 (%f). Transferring the abs(distance 2) to the adjacent branch distance 1 (before: %f).", nj->items2idx[min_i1][parentNode], nj->items2idx[min_i2][parentNode], dist2, dist1);
+                // TODO upd warning
+                dist1 = dist1 - dist2;
+                dist2 = 0.0;
+                ASSERT(dist1 >= 0.0);
+            }
+        }
+
+        DEVASSERT(parentNode > min_i1);
+        DEVASSERT(parentNode > min_i1);
+        nj_add_edge(nj, parentNode, min_i1, dist1);
+        nj->NJD[MATRIX_GET_INDEX_LTED_IJ(parentNode, min_i1)] = dist1;
+
+        DEVASSERT(parentNode > min_i2);
+        DEVASSERT(parentNode > min_i2);
+        nj_add_edge(nj, parentNode, min_i2, dist2);
+        nj->NJD[MATRIX_GET_INDEX_LTED_IJ(parentNode, min_i2)] = dist2;
+
+        // --------------------------------------------------------------------
+
+        // calculate the distance from the new node to each non-child node
+        for (int i = 0; i < totL; ++i) {
+
+            // continue if i is neighbor
+            for (ni = 0; ni < (size_t)nj->nNeighbors && nj->neighborIdx[ni] != i; ++ni);
+            if (ni < (size_t)nj->nNeighbors) continue;
+
+            size_t px1 = (i < min_i1) ? (MATRIX_GET_INDEX_LTED_IJ(min_i1, i)) : (MATRIX_GET_INDEX_LTED_IJ(i, min_i1));
+
+            size_t px2 = (i < min_i2) ? (MATRIX_GET_INDEX_LTED_IJ(min_i2, i)) : (MATRIX_GET_INDEX_LTED_IJ(i, min_i2));
+
+            size_t px = (i < parentNode) ? (MATRIX_GET_INDEX_LTED_IJ(parentNode, i)) : (MATRIX_GET_INDEX_LTED_IJ(i, parentNode));
+
+
+            // calculate the distance from the new node to the non-child node
+            // d(i,new_node) = ( d(i,min_i1) + d(i,min_i2) - d(min_i1,min_i2) ) / 2
+            nj->NJD[px] = 0.5 * (nj->NJD[px1] + nj->NJD[px2] - min_dist);
+
+
+        }
+
+        totL++;
+
+        // terminate when 2 nodes left; add the edge between them
+        if (nji == nTreeIterations - 1) {
+            for (int i1 = 0; i1 < totL - 1; ++i1) {
+
+                // continue if i1 is neighbor
+                for (ni = 0; ni < (size_t)nj->nNeighbors && nj->neighborIdx[ni] != i1; ++ni);
+                if (ni < (size_t)nj->nNeighbors) continue;
+
+                for (int i2 = i1 + 1;i2 < totL;++i2) {
+
+                    // continue if i2 is neighbor
+                    for (ni = 0; ni < (size_t)nj->nNeighbors && nj->neighborIdx[ni] != i2; ++ni);
+                    if (ni < (size_t)nj->nNeighbors) continue;
+
+                    nj_add_edge(nj, i2, i1, nj->NJD[MATRIX_GET_INDEX_LTED_IJ(i2, i1)]);
+
+                    DEVASSERT(totL == nj->nTreeNodes);
+                }
+            }
+        }
+        iterL--;
     }
+    DEVASSERT(nj->nNeighbors == nj->nTreeNodes - 2);
+    return;
 }
+
+

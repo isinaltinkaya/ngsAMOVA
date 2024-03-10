@@ -2,6 +2,11 @@
 
 #include "dataStructs.h"
 
+//TODO update with dmat_t
+
+
+#if 0
+
 dxyStruct::dxyStruct() {
     dxyArr = (double*)malloc(_dxyArr * sizeof(double));
     groupNames1 = (char**)malloc(_dxyArr * sizeof(char*));
@@ -302,3 +307,5 @@ dxyStruct* dxyStruct_get(paramStruct* pars, distanceMatrixStruct* dMS, metadataS
 
     return dxyS;
 }
+
+#endif

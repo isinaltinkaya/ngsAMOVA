@@ -2,15 +2,7 @@
 
 #include  "vcfReader.h"
 
-//TODO
-// replace the site_get_n_derived_alleles etc with the newest functions
-
-//////////////////////////
-///
-///
 ///// if (args->minInd ) does not work with doibd
-///
-//////////////////////////
 
 const int dosePairIndex[3][3] = { {0,1,5}, {1,2,3}, {5,3,4} };
 
@@ -154,11 +146,29 @@ void readSites_doIbd(vcfData* vcfd, paramStruct* pars) {
 		double score = 0.0;
 
 
+		float* lgls = NULL;
 		/// -------------------
 		if (args->doIbd == 1) {
 
-			glData lgls(vcfd);
-			bool ind_is_missing[nInd] = { false };
+			int size_e = 0;
+			int n_gls = 0;
+			int n_missing_ind = 0;
+			int n_values = bcf_get_format_float(vcfd->hdr, vcfd->rec, "GL", &lgls, &size_e);
+			if (n_values <= 0) {
+				ERROR("Could not read GL tag from the VCF file.");
+			}
+			n_gls = n_values / pars->nInd;
+
+
+			// if (n_gls < ngt_to_use) {
+			//     IO::vprint(2, "Skipping site at %s:%ld. Reason: Number of GLs is less than the number of GLs needed to perform the specified analysis (%d).\n", vcfd->get_contig_name(), vcfd->rec->pos + 1, ngt_to_use);
+			//     return(1);
+			// }
+
+			bool ind_is_missing[nInd];
+			for (int i = 0; i < nInd; ++i) {
+				ind_is_missing[i] = false;
+			}
 
 			do {
 
@@ -175,7 +185,7 @@ void readSites_doIbd(vcfData* vcfd, paramStruct* pars) {
 
 				for (int indi = 0; indi < nInd; indi++) {
 
-					sample_lgls = lgls.data + indi * lgls.n_gls;
+					sample_lgls = lgls + indi * n_gls;
 
 					if (bcf_float_is_missing(sample_lgls[0])) {
 						// missing data check 1
@@ -184,12 +194,12 @@ void readSites_doIbd(vcfData* vcfd, paramStruct* pars) {
 					} else {
 						// missing data check 2
 						int z = 1;
-						for (int i = 1; i < lgls.n_gls; ++i) {
+						for (int i = 1; i < n_gls; ++i) {
 							if (sample_lgls[0] == sample_lgls[i]) {
 								++z;
 							}
 						}
-						if (z == lgls.n_gls) {
+						if (z == n_gls) {
 							// missing data (all gl values are the same)
 							ind_is_missing[indi] = true;
 							continue;
@@ -205,11 +215,12 @@ void readSites_doIbd(vcfData* vcfd, paramStruct* pars) {
 						// ind_is_missing[indi] = true;
 
 
+					float* indgls = lgls + indi * n_gls;
 
 
-					lngl[lngls_ind_start + 0] = (double)LOG2LN(lgls.ind_ptr(indi)[a1a1]);
-					lngl[lngls_ind_start + 1] = (double)LOG2LN(lgls.ind_ptr(indi)[a1a2]);
-					lngl[lngls_ind_start + 2] = (double)LOG2LN(lgls.ind_ptr(indi)[a2a2]);
+					lngl[lngls_ind_start + 0] = (double)LOG2LN(indgls[a1a1]);
+					lngl[lngls_ind_start + 1] = (double)LOG2LN(indgls[a1a2]);
+					lngl[lngls_ind_start + 2] = (double)LOG2LN(indgls[a2a2]);
 
 
 					double mmax = lngl[lngls_ind_start + 0];
@@ -260,7 +271,6 @@ void readSites_doIbd(vcfData* vcfd, paramStruct* pars) {
 
 
 
-
 		} else if (args->doIbd == 2) {
 
 
@@ -287,17 +297,21 @@ void readSites_doIbd(vcfData* vcfd, paramStruct* pars) {
 
 			do {
 
-				vcfd->site_gts_get(*a1, *a2);
-				if (!vcfd->gts->pass_minInd_threshold(nInd)) {
-					skip_site = 1;
-					break;
-				}
+				// vcfd->site_gts_get(*a1, *a2);
+				//TODO get a1 a2
+
+				//TODO check minind thres
+				// if (!vcfd->gts->pass_minInd_threshold(nInd)) {
+				// 	skip_site = 1;
+				// 	break;
+				// }
 
 
 
 				for (int ind = 0; ind < nInd; ++ind) {
 
-					int ind_nder = vcfd->gts->get_n_derived_alleles_ind(ind);
+					// int ind_nder = vcfd->gts->get_n_derived_alleles_ind(ind);
+					int ind_nder = 0; //TODO 
 					if (-2 == ind_nder) {
 						// individual's allelic state cannot be found in d.allele
 						NEVER;
@@ -331,7 +345,8 @@ void readSites_doIbd(vcfData* vcfd, paramStruct* pars) {
 				if (false == has_ac_tag) {
 					int sum_nder = 0;
 					for (int ind = 0; ind < nInd; ++ind) {
-						int ind_nder = vcfd->gts->get_n_derived_alleles_ind(ind);
+						// int ind_nder = vcfd->gts->get_n_derived_alleles_ind(ind);
+						int ind_nder = 0; // TODO
 						if (ind_nder != -1) {
 							sum_nder += ind_nder;
 						}
@@ -369,8 +384,10 @@ void readSites_doIbd(vcfData* vcfd, paramStruct* pars) {
 
 						} else {
 
-							int dose1 = vcfd->gts->get_n_derived_alleles_ind(i1);
-							int dose2 = vcfd->gts->get_n_derived_alleles_ind(i2);
+							// int dose1 = vcfd->gts->get_n_derived_alleles_ind(i1);
+							int dose1 = 0; //TODO
+							// int dose2 = vcfd->gts->get_n_derived_alleles_ind(i2);
+							int dose2 = 0; //TODO
 
 
 							if (dose1 == -1 || dose2 == -1) {
@@ -405,6 +422,11 @@ void readSites_doIbd(vcfData* vcfd, paramStruct* pars) {
 		} else {
 			NEVER;
 		}
+
+		if (lgls != NULL) {
+			FREE(lgls);
+		}
+
 		/// -------------------
 
 		site2pos[site_i] = vcfd->rec->pos + 1;
@@ -950,7 +972,7 @@ double ibdStruct::hbdScore(int dose, double fB) {
 ibdStruct::ibdStruct(vcfData* vcfd, paramStruct* pars) {
 
 
-	this->nInd = vcfd->nInd;
+	this->nInd = pars->nInd;
 	if (args->doIbd == 2) {
 		this->maxErrorArray = errorArray(args->ibdseq_errormax);
 	}
@@ -963,8 +985,9 @@ ibdStruct::ibdStruct(vcfData* vcfd, paramStruct* pars) {
 	this->hbdScores = (double*)malloc(3 * sizeof(double));
 
 
-	this->pairScores = (double**)malloc(pars->nIndCmb * sizeof(double*));
-	for (size_t i = 0;i < (size_t)pars->nIndCmb;++i) {
+	const size_t nIndCmb = (size_t)(nInd * (nInd - 1) / 2);
+	this->pairScores = (double**)malloc(nIndCmb * sizeof(double*));
+	for (size_t i = 0;i < nIndCmb;++i) {
 		this->pairScores[i] = (double*)malloc(BUF_NSITES * sizeof(double));
 	}
 

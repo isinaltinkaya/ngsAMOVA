@@ -198,6 +198,13 @@ runTest(){
 
 }
 
+
+
+################################################################################
+# TEST0
+# unit tests
+${EXEC} -doUnitTests 1
+
 ################################################################################
 # TEST1
 ID="test1"
@@ -205,6 +212,9 @@ INFILENAME=${DATADIR}/test_s9_d1_1K.vcf
 INOPT="--in-vcf"
 
 
+bcfSrc=1 # source: gl
+doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
+doJGTM=1
 doEm=1
 doAmova=1
 printDistanceMatrix=1
@@ -217,7 +227,9 @@ formula="Individual ~Population "
 
 
 ARGS=" \
---verbose 0 \
+--bcf-src ${bcfSrc} \
+-doMajorMinor ${doMajorMinor} \
+-doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
 --printDistanceMatrix ${printDistanceMatrix} \
@@ -242,15 +254,18 @@ ID="test2"
 INFILENAME=${TESTWD}/test1.distance_matrix.csv
 INOPT="--in-dm"
 
+bcfSrc=0 # no bcf source since input is distance matrix
+doJGTM=0
 doEm=0
 doAmova=1
 minInd=2
-doDist=3
+doDist=1
 metadataFile=${DATADIR}/metadata_Individual_Region_Population_Subpopulation.tsv
 formula="Individual~Population"
 
 ARGS=" \
---verbose 0 \
+--bcf-src ${bcfSrc} \
+-doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
 --minInd ${minInd} \
@@ -262,12 +277,18 @@ ARGS=" \
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
 runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.amova.csv
 
+
 ################################################################################
 # TEST 3
 ID="test3"
 INFILENAME=${DATADIR}/test_s9_d1_1K.vcf
 INOPT="--in-vcf"
 
+
+bcfSrc=1 # source: gl tag
+doMajorMinor=2 # alleles from alleles file
+inMajorMinor=${DATADIR}/test_s9_d1_1K_majorminor.tsv
+doJGTM=1
 doEm=1
 doAmova=1
 minInd=2
@@ -278,7 +299,10 @@ metadataFile=${DATADIR}/metadata_Individual_Region_Population.tsv
 formula="Individual~Region /Population"
 
 ARGS=" \
---verbose 0 \
+--bcf-src ${bcfSrc} \
+-doMajorMinor ${doMajorMinor} \
+--in-majorminor ${inMajorMinor} \
+-doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
 --minInd ${minInd} \
@@ -295,20 +319,24 @@ runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.a
 ################################################################################
 # TEST 4
 ID="test4"
-INFILENAME=${DATADIR}/test_s9_d1_1K_mtd1_maxIter100_tole10.distance_matrix.csv
+INFILENAME=${TESTWD}/test1.distance_matrix.csv
+
 
 INOPT="--in-dm"
 
+bcfSrc=0 # no bcf source since input is distance matrix
+doJGTM=0
 doEm=0
 doAmova=1
 minInd=2
-doDist=3
+doDist=1
 nThreads=0
 metadataFile=${DATADIR}/metadata_Individual_Region_Population_Subpopulation_groupNotUniq.tsv
 formula="Individual~Population"
 
 ARGS=" \
---verbose 0 \
+--bcf-src ${bcfSrc} \
+-doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
 --minInd ${minInd} \
@@ -319,7 +347,7 @@ ARGS=" \
 "
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
-runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${TESTWD}/test1.amova.csv
+runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/test2/test2.amova.csv
 
 ################################################################################
 # TEST 5
@@ -327,15 +355,21 @@ ID="test5"
 INFILENAME=${DATADIR}/test_s9_d1_1K.vcf
 INOPT="--in-vcf"
 
+
+bcfSrc=2 # source: gt tag 
+doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
+doJGTM=1
 doEm=0
 doAmova=1
 minInd=2
-doDist=2
+doDist=1
 metadataFile=${DATADIR}/metadata_Individual_Population.tsv
 formula="Individual~Population"
 
 ARGS=" \
---verbose 0 \
+--bcf-src ${bcfSrc} \
+-doMajorMinor ${doMajorMinor} \
+-doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
 --minInd ${minInd} \
@@ -353,15 +387,22 @@ ID="test6"
 INFILENAME=${DATADIR}/test_s9_d1_1K.vcf
 INOPT="--in-vcf"
 
+bcfSrc=2 # source: gt tag
+doMajorMinor=2 # alleles from alleles file
+inMajorMinor=${DATADIR}/test_s9_d1_1K_majorminor.tsv
+doJGTM=1
 doEm=0
 doAmova=1
 minInd=2
-doDist=2
+doDist=1
 metadataFile=${DATADIR}/metadata_Individual_Population.tsv
 formula="Individual~Population"
 
 ARGS=" \
---verbose 0 \
+--bcf-src ${bcfSrc} \
+-doMajorMinor ${doMajorMinor} \
+--in-majorminor ${inMajorMinor} \
+-doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
 --minInd ${minInd} \
@@ -379,6 +420,9 @@ ID="test7"
 INFILENAME=${DATADIR}/sim_demes_v2-model1-1-rep0-d2.bcf
 INOPT="--in-vcf"
 
+bcfSrc=1 # source: gl tag
+doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
+doJGTM=1
 doEm=1
 doAmova=1
 doDist=1
@@ -389,7 +433,9 @@ metadataFile=${DATADIR}/sim_demes_v2-model1_metadata_Individual_Region_Populatio
 formula="Individual~Region/Population"
 
 ARGS=" \
---verbose 0 \
+--bcf-src ${bcfSrc} \
+-doMajorMinor ${doMajorMinor} \
+-doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
 -doDist ${doDist} \
@@ -409,13 +455,18 @@ ID="test8"
 INFILENAME=${DATADIR}/test_s9_d1_1K.vcf
 INOPT="--in-vcf"
 
-doDist=2
+bcfSrc=2 # source: gt tag
+doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
+doJGTM=1
+doDist=1
 metadataFile=${DATADIR}/metadata_Individual_Population.tsv
 formula="Individual~Region/Population"
 doPhylo=1
 
 ARGS=" \
---verbose 0 \
+--bcf-src ${bcfSrc} \
+-doMajorMinor ${doMajorMinor} \
+-doJGTM ${doJGTM} \
 -doDist ${doDist} \
 -f '${formula}' \
 -doPhylo ${doPhylo}
@@ -430,6 +481,9 @@ ID="test9"
 INFILENAME=${DATADIR}/test_s9_d1_1K_2contigs.vcf
 INOPT="--in-vcf"
 
+bcfSrc=1 # source: gl tag
+doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
+doJGTM=1
 doEm=1
 doAmova=1
 printDistanceMatrix=1
@@ -441,7 +495,9 @@ metadataFile=${DATADIR}/metadata_Individual_Population.tsv
 formula="Individual~Population"
 
 ARGS=" \
---verbose 0 \
+--bcf-src ${bcfSrc} \
+-doMajorMinor ${doMajorMinor} \
+-doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
 --printDistanceMatrix ${printDistanceMatrix} \
@@ -458,11 +514,14 @@ runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.a
 # ###############################################################################
 
 ################################################################################
-# TEST 10
+# TEST10
 ID="test10"
 INFILENAME=${DATADIR}/data0.vcf
 INOPT="--in-vcf"
 
+bcfSrc=1 # source: gl tag
+doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
+doJGTM=1
 doEm=1
 doAmova=1
 printDistanceMatrix=1
@@ -475,7 +534,9 @@ metadataFile=${DATADIR}/data0to5_metadata.txt
 formula="Individual~Population"
 
 ARGS=" \
---verbose 0 \
+--bcf-src ${bcfSrc} \
+-doMajorMinor ${doMajorMinor} \
+-doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
 --printDistanceMatrix ${printDistanceMatrix} \
@@ -496,11 +557,14 @@ runTestDiff ${ID} ${TESTWD}/${ID}.distance_matrix.csv ${SCRIPTDIR}/reference/${I
 # ###############################################################################
 
 ################################################################################
-# TEST 11
+# TEST11
 ID="test11"
 INFILENAME=${DATADIR}/data1.vcf
 INOPT="--in-vcf"
 
+bcfSrc=1 # source: gl tag
+doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
+doJGTM=1
 doEm=1
 doAmova=1
 printDistanceMatrix=1
@@ -513,7 +577,9 @@ metadataFile=${DATADIR}/data0to5_metadata.txt
 formula="Individual~Population"
 
 ARGS=" \
---verbose 0 \
+--bcf-src ${bcfSrc} \
+-doMajorMinor ${doMajorMinor} \
+-doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
 --printDistanceMatrix ${printDistanceMatrix} \
@@ -532,11 +598,14 @@ runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.a
 # ###############################################################################
 
 ################################################################################
-# TEST 12
+# TEST12
 ID="test12"
 INFILENAME=${DATADIR}/data2.vcf
 INOPT="--in-vcf"
 
+bcfSrc=1 # source: gl tag
+doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
+doJGTM=1
 doEm=1
 doAmova=1
 printDistanceMatrix=1
@@ -549,7 +618,9 @@ metadataFile=${DATADIR}/data0to5_metadata.txt
 formula="Individual~Population"
 
 ARGS=" \
---verbose 0 \
+--bcf-src ${bcfSrc} \
+-doMajorMinor ${doMajorMinor} \
+-doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
 --printDistanceMatrix ${printDistanceMatrix} \
@@ -570,11 +641,14 @@ runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/test15/test15
 
 
 ################################################################################
-# TEST 13
+# TEST13
 ID="test13"
 INFILENAME=${DATADIR}/data3.vcf
 INOPT="--in-vcf"
 
+bcfSrc=1 # source: gl tag
+doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
+doJGTM=1
 doEm=1
 doAmova=1
 printDistanceMatrix=1
@@ -587,7 +661,9 @@ metadataFile=${DATADIR}/data0to5_metadata.txt
 formula="Individual~Population"
 
 ARGS=" \
---verbose 0 \
+--bcf-src ${bcfSrc} \
+-doMajorMinor ${doMajorMinor} \
+-doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
 --printDistanceMatrix ${printDistanceMatrix} \
@@ -606,11 +682,14 @@ runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.a
 
 
 ################################################################################
-# TEST 14
+# TEST14
 ID="test14"
 INFILENAME=${DATADIR}/data4.vcf
 INOPT="--in-vcf"
 
+bcfSrc=1 # source: gl tag
+doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
+doJGTM=1
 doEm=1
 doAmova=1
 printDistanceMatrix=1
@@ -623,7 +702,9 @@ metadataFile=${DATADIR}/data0to5_metadata.txt
 formula="Individual~Population"
 
 ARGS=" \
---verbose 0 \
+--bcf-src ${bcfSrc} \
+-doMajorMinor ${doMajorMinor} \
+-doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
 --printDistanceMatrix ${printDistanceMatrix} \
@@ -642,11 +723,14 @@ runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.a
 
 
 ################################################################################
-# TEST 15
+# TEST15
 ID="test15"
 INFILENAME=${DATADIR}/data5.vcf
 INOPT="--in-vcf"
 
+bcfSrc=1 # source: gl tag
+doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
+doJGTM=1
 doEm=1
 doAmova=1
 printDistanceMatrix=1
@@ -660,7 +744,9 @@ metadataFile=${DATADIR}/data0to5_metadata.txt
 formula="Individual~Population"
 
 ARGS=" \
---verbose 0 \
+--bcf-src ${bcfSrc} \
+-doMajorMinor ${doMajorMinor} \
+-doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
 --printDistanceMatrix ${printDistanceMatrix} \
@@ -680,29 +766,32 @@ runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.a
 
 
 ################################################################################
-# TEST 16
+# TEST16
 ID="test16"
 INFILENAME=${DATADIR}/data0.truth.vcf
 INOPT="--in-vcf"
 
+bcfSrc=2 # source: gt tag
+doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
 doAmova=1
 printDistanceMatrix=1
 printJointGenotypeCountMatrix=1
 minInd=2
-doDist=2
+doDist=1
 rmInvarSites=1
 metadataFile=${DATADIR}/data0to5_metadata.txt
 formula="Individual~Population"
 
 ARGS=" \
---verbose 0 \
--doEM ${doEm} \
+--bcf-src ${bcfSrc} \
+-doMajorMinor ${doMajorMinor} \
+-doJGTM ${doJGTM} \
 -doAMOVA ${doAmova} \
 --printDistanceMatrix ${printDistanceMatrix} \
 --printJointGenotypeCountMatrix ${printJointGenotypeCountMatrix} \
+--rm-invar-sites ${rmInvarSites} \
 --minInd ${minInd} \
 -doDist ${doDist} \
---rm-invar-sites ${rmInvarSites} \
 -m ${metadataFile} \
 -f '${formula}'
 "
@@ -711,6 +800,50 @@ runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
 runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.amova.csv
 # ###############################################################################
 
+
+################################################################################
+# TEST17
+ID="test17"
+# same data as data4 but with different alleles read with alleles file
+# so result is expected to be the same as test14
+INFILENAME=${DATADIR}/data6.vcf 
+INOPT="--in-vcf"
+
+bcfSrc=1 # source: gl tag
+doMajorMinor=2 # alleles from alleles file
+inMajorMinor=${DATADIR}/data6_majorminor.tsv
+doJGTM=1
+doEm=1
+doAmova=1
+printDistanceMatrix=1
+minInd=2
+doDist=1
+maxEmIter=100
+emTole="1e-10"
+rmInvarSites=1
+metadataFile=${DATADIR}/data0to5_metadata.txt
+formula="Individual~Population"
+
+ARGS=" \
+--bcf-src ${bcfSrc} \
+-doMajorMinor ${doMajorMinor} \
+--in-majorminor ${inMajorMinor} \
+-doJGTM ${doJGTM} \
+-doEM ${doEm} \
+-doAMOVA ${doAmova} \
+--printDistanceMatrix ${printDistanceMatrix} \
+--minInd ${minInd} \
+-doDist ${doDist} \
+--maxEmIter ${maxEmIter} \
+--em-tole ${emTole} \
+--rm-invar-sites ${rmInvarSites} \
+-m ${metadataFile} \
+-f '${formula}'
+"
+
+runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
+runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.amova.csv
+# ###############################################################################
 
 
 ${EXEC}

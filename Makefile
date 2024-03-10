@@ -203,7 +203,7 @@ DEP := $(OBJ:.o=.d)
 FLAGS := $(CPPFLAGS) $(CXXFLAGS)
 
 
-VERSION = v0.2
+VERSION = v0.3
 
 ifneq ($(wildcard .git),)
 VERSION := $(VERSION)-$(shell git describe --always)

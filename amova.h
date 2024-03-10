@@ -6,10 +6,6 @@
 #include "mathUtils.h"
 
 
-/// @brief GET_UPTRID_MATRIX_IJ - get the i,j element of an upper triangular matrix 
-/// @note matrix is stored as a 1D array of size (n*(n+1))/2; including the diagonal
-#define GET_UPTRID_MATRIX_IJ(i, j) ( ((i) > (j)) ? ( ((i)*((i)+1))/2 + (j) ) : ( ((j)*((j)+1))/2 + (i) ) )
-
 struct distanceMatrixStruct;
 typedef struct metadataStruct metadataStruct;
 struct amovaBootstrapThreads;
@@ -278,7 +274,8 @@ inline void amovaStruct_destroy(amovaStruct* amv) {
 }
 
 
-amovaStruct* amovaStruct_get(distanceMatrixStruct* dm, metadataStruct* mtd, blobStruct* blob);
+// amovaStruct* amovaStruct_get(distanceMatrixStruct* dm, metadataStruct* mtd, blobStruct* blob);
+amovaStruct* amovaStruct_get(paramStruct* pars, metadataStruct* mtd, blobStruct* blobs);
 
 
 

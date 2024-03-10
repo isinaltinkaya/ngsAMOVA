@@ -3,7 +3,6 @@
 
 #include <algorithm>
 
-
 // TODO allow using whole contigs as blocks
 // TODO make it work with region and regions, we need to get ncontigs from the region filtered vcf
 
@@ -90,6 +89,7 @@ void blobStruct::addBlock() {
     blocks[nBlocks - 1] = (blockStruct*)malloc(sizeof(blockStruct));
     blockPtrs[nBlocks - 1] = (int*)malloc(sizeof(int));
 }
+
 
 //     - 1-based
 //     - [start:included, end:included]
@@ -212,7 +212,6 @@ blobStruct* blobStruct_read_bed(const char* fn) {
 
 blobStruct* blobStruct_populate_blocks_withSize(vcfData* vcf) {
 
-    // TODO maybe just add a lazy check afterwards to skip empty blocks due to site filtering?
     if (args->in_regions_tab_fn != NULL || args->in_regions_bed_fn != NULL || args->in_region != NULL) {
         ERROR("Block definitions cannot be used with region definitions, yet."); //TODO add feature
     }
@@ -342,7 +341,6 @@ bootstrapReplicate::bootstrapReplicate(int nBlocks) {
 bootstrapReplicate::~bootstrapReplicate() {
     FREE(rBlocks);
     delete amova;
-    delete distanceMatrix;
 }
 
 

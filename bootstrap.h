@@ -92,7 +92,7 @@ struct blobStruct {
     void get_bootstrap_replicates(vcfData* vcfd, bootstrapReplicate* bRep);
 };
 
-blobStruct* blobStruct_get(vcfData* vcf, paramStruct* pars, distanceMatrixStruct* dMS, metadataStruct* mS, formulaStruct* formulaSt);
+blobStruct* blobStruct_get(vcfData* vcf, paramStruct* pars, distanceMatrixStruct* dMS, metadataStruct* mS);
 blobStruct* blobStruct_get(vcfData* vcf, paramStruct* pars);
 blobStruct* blobStruct_read_bed(const char* fn);
 blobStruct* blobStruct_read_tab(const char* fn);
@@ -142,8 +142,6 @@ struct bootstrapDataset {
 
 bootstrapDataset* bootstrapDataset_get(vcfData* vcfd, paramStruct* pars, blobStruct* blobSt);
 
-// distanceMatrixStruct *get_distanceMatrix_GL_bootstrapReplicate(const int nInd, const int nIndCmb, const int squareDistance, bootstrapReplicate *bRep, vcfData *vcfd, paramStruct *pars);
-// distanceMatrixStruct *get_distanceMatrix_GT_bootstrapReplicate(const int nInd, const int nIndCmb, const int squareDistance, vcfData *vcfd, paramStruct *pars, blobStruct *blob, const int rep);
 void get_distanceMatrix_GT(paramStruct* pars, distanceMatrixStruct* distanceMatrix, vcfData* vcfd, blobStruct* blob);
 
 #endif  // __BOOTSTRAP__

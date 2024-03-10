@@ -119,10 +119,11 @@ FILE* IO::getFile(const char* fn, const char* mode) {
 const char* IO::getFileExtension(const char* fn) {
     const char* dot = strrchr(fn, '.');
     // if there is no dot or the dot is the first character in the string, return NULL
-    if (dot == NULL || dot == fn)
+    if (dot == NULL || dot == fn) {
         return NULL;
+    }
     // otherwise, return the dot+1 (the file extension)
-    return dot + 1;
+    return(dot + 1);
 }
 
 bool IO::isGzFile(const char* fn) {
@@ -254,10 +255,6 @@ char* IO::readFile::getLine(FILE* fp) {
 
     bool missing_newline = false;
 
-    // //TODO tryme below1
-    // MALLOC(char*, full_line, buf_size);
-
-
     while (1) {
 
         line = fgets(full_line, buf_size, fp);
@@ -317,9 +314,6 @@ char* IO::readFile::getFirstLine(FILE* fp) {
     size_t full_line_len = 0;
 
     bool missing_newline = false;
-
-    // //TODO tryme below1
-    // MALLOC(char*, full_line, buf_size);
 
     if (feof(fp)) {
         ERROR("File reached end before reading the first line.");
@@ -409,57 +403,6 @@ int IO::inspectFile::count_nCols(const char* line, const char* delims) {
     }
     return count;
 }
-
-// //TODO DEPRECATED?
-// /// @brief IO::validateFile::Metadata validate metadata file (input=BCF)
-// /// @param in_mtd_fp pointer to metadata file
-// /// @param nInds number of individuals
-// /// @param keyCols key columns
-// /// @param FORMULA formula
-// /// @param delims delimiters
-// /// @param HAS_COLNAMES 1 if file has header
-// /// @return number of columns if successful, exits with error otherwise
-// int IO::validateFile::Metadata(FILE *in_mtd_fp, int nInds, int *keyCols,
-// 							   formulaStruct *FORMULA, const char *delims, int HAS_COLNAMES)
-// {
-
-// 	ASSERT(fseek(in_mtd_fp, 0, SEEK_SET) == 0);
-// 	int nRows = IO::inspectFile::count_nRows(in_mtd_fp, HAS_COLNAMES);
-// 	if (nRows == -1)
-// 	{
-// 		fprintf(stderr, "\n[ERROR]\tCould not count number of rows in Metadata file.\n\n");
-// 		exit(1);
-// 	}
-// 	if (nRows == 0)
-// 	{
-// 		fprintf(stderr, "\n[ERROR]\tMetadata file is empty.\n\n");
-// 		exit(1);
-// 	}
-// 	if (nRows == 1)
-// 	{
-// 		fprintf(stderr, "\n[ERROR]\tMetadata file contains only one row.\n\n");
-// 		exit(1);
-// 	}
-// 	if (nRows != nInds)
-// 	{
-// 		fprintf(stderr, "\n[ERROR]\tNumber of rows in Metadata file (%d) does not match number of individuals (%d).\n\n", nRows, nInds);
-// 		exit(1);
-// 	}
-
-// 	// compare number of tokens in formulaStruct to number of columns in Metadata file
-
-// 	char *firstLine = IO::readFile::getFirstLine(in_mtd_fp);
-// 	int nCols = IO::inspectFile::count_nCols(firstLine, delims);
-// 	fprintf(stderr, "\n\t-> Number of columns in input Metadata file: %d\n", nCols);
-
-// 	if (FORMULA != NULL)
-// 	{
-// 		if (nCols < FORMULA->nTokens)
-// 		{
-// 			fprintf(stderr, "\n[ERROR]\tNumber of columns in Metadata file (%d) is less than number of tokens in formula (%d).\n\n", nCols, FORMULA->nTokens);
-// 			exit(1);
-// 		}
-// 	}
 
 IO::outputStruct::outputStruct(const char* fn_, const char* suffix, int fc_) {
     fc = OUTFC(fc_);

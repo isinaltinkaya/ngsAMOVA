@@ -5,7 +5,7 @@
 #include "io.h"
 #include "mathUtils.h"
 
-// TODO dxystruct is also a distancematrixstruct template
+#if 0
 
 /// @brief dxyStruct - structure for dxy analysis results
 ///
@@ -25,10 +25,10 @@ typedef struct dxyStruct {
 
     size_t _dxyArr = 100;  // initial value for malloc; will be increased if needed
 
-    double *dxyArr;
-    char **groupNames1;
-    char **groupNames2;
-    char **levelNames;
+    double* dxyArr;
+    char** groupNames1;
+    char** groupNames2;
+    char** levelNames;
 
     void print();
     void print_struct();
@@ -39,20 +39,23 @@ typedef struct dxyStruct {
 
     /// @brief estimate_dxy_2groups - estimate pairwise dxy between two groups
     /// @return number of dxy values estimated (==1 since only one pair of groups:
-    int estimate_dxy_2groups(const int local_idx1, const int local_idx2, const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars);
+    int estimate_dxy_2groups(const int local_idx1, const int local_idx2, const int lvl, distanceMatrixStruct* dMS, metadataStruct* mtd, paramStruct* pars);
 
     /// @brief estimate_dxy_allGroupsAtLevel - estimate pairwise dxy between all groups at a given level
     /// @return number of dxy values estimated (==number of pairs of groups)
-    int estimate_dxy_allGroupsAtLevel(const int lvl, distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars);
+    int estimate_dxy_allGroupsAtLevel(const int lvl, distanceMatrixStruct* dMS, metadataStruct* mtd, paramStruct* pars);
 
     /// @brief estimate_dxy_allLevels - estimate pairwise dxy between all groups at all levels
     /// @return number of dxy values estimated (==number of pairs of groups)
-    int estimate_dxy_allLevels(distanceMatrixStruct *dMS, metadataStruct *mtd, paramStruct *pars);
+    int estimate_dxy_allLevels(distanceMatrixStruct* dMS, metadataStruct* mtd, paramStruct* pars);
 
 } dxyStruct;
 
 // read dxyStruct from dxy file
-dxyStruct *dxyStruct_read(paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd);
-dxyStruct *dxyStruct_get(paramStruct *pars, distanceMatrixStruct *dMS, metadataStruct *mtd);
+dxyStruct* dxyStruct_read(paramStruct* pars, distanceMatrixStruct* dMS, metadataStruct* mtd);
+dxyStruct* dxyStruct_get(paramStruct* pars, distanceMatrixStruct* dMS, metadataStruct* mtd);
+
+#endif 
+
 
 #endif

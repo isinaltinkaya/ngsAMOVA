@@ -68,9 +68,12 @@ inline void amova_run_shared(amovaStruct* amv) {
     size_t itj;
     double val;
 
+    size_t idx;
 
     // -> get vmat
+    // store UTID vmat matrix as LTID with i=itj and j=iti
 
+    idx = 0;
     for (iti = 0;iti < nLevels;++iti) {
         for (itj = iti;itj < nLevels;++itj) {
 
@@ -116,13 +119,15 @@ inline void amova_run_shared(amovaStruct* amv) {
                 }
             } while (0);
 
-            amv->vmat[GET_UPTRID_MATRIX_IJ(iti, itj)] = val;
+            amv->vmat[idx] = val;
+            ++idx;
 
         }
     }
 
     // -> get cmat
 
+    idx = 0;
     for (iti = 0;iti < nLevels;++iti) {
         for (itj = iti;itj < nLevels;++itj) {
 
@@ -144,7 +149,8 @@ inline void amova_run_shared(amovaStruct* amv) {
                 double left;
                 double right;
 
-                left = amv->vmat[GET_UPTRID_MATRIX_IJ(iti, itj)];
+                // left = amv->vmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)];
+                left = amv->vmat[idx];
 
                 if (iti == 0) {
 
@@ -165,7 +171,7 @@ inline void amova_run_shared(amovaStruct* amv) {
 
                 } else {
                     // 1 < i <= j (0 < iti <= itj)
-                    right = amv->vmat[GET_UPTRID_MATRIX_IJ(iti - 1, itj)];
+                    right = amv->vmat[MATRIX_GET_INDEX_UTID_IJ(iti - 1, itj, nLevels)];
 
                 }
 
@@ -173,15 +179,17 @@ inline void amova_run_shared(amovaStruct* amv) {
 
             } while (0);
 
-            amv->cmat[GET_UPTRID_MATRIX_IJ(iti, itj)] = val;
+            // amv->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)] = val;
+            amv->cmat[idx] = val;
 
+            ++idx;
         }
     }
 
 
     for (iti = 0;iti < nLevels;++iti) {
         // itj==iti
-        const size_t idx = GET_UPTRID_MATRIX_IJ(iti, iti);
+        const size_t idx = MATRIX_GET_INDEX_UTID_IJ(iti, iti, nLevels);
         amv->lmat[idx] = 1.0 / amv->cmat[idx];
     }
 
@@ -198,9 +206,9 @@ inline void amova_run_shared(amovaStruct* amv) {
         for (size_t itj = iti + 1;itj < nLevels;++itj) {
             sum = 0.0;
             for (size_t p = iti + 1;p <= itj;++p) {
-                sum += amv->cmat[GET_UPTRID_MATRIX_IJ(iti, p)] * amv->lmat[GET_UPTRID_MATRIX_IJ(p, itj)];
+                sum += amv->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, p, nLevels)] * amv->lmat[MATRIX_GET_INDEX_UTID_IJ(p, itj, nLevels)];
             }
-            amv->lmat[GET_UPTRID_MATRIX_IJ(iti, itj)] = -1.0 * (sum / amv->cmat[GET_UPTRID_MATRIX_IJ(iti, iti)]);
+            amv->lmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)] = -1.0 * (sum / amv->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, iti, nLevels)]);
 
         }
     }
@@ -216,9 +224,12 @@ struct simple_pthread_data_t {
 
 void* amova_run_private(void* data) {
 
-    amovaStruct* amv = (amovaStruct*)((simple_pthread_data_t*)data)->shared_data;
-    distanceMatrixStruct* dm = (distanceMatrixStruct*)((simple_pthread_data_t*)data)->private_data;
     const size_t runidx = (size_t)((simple_pthread_data_t*)data)->job_id;
+
+    amovaStruct* amv = (amovaStruct*)((simple_pthread_data_t*)data)->shared_data;
+    dmat_t* dm = (dmat_t*)((simple_pthread_data_t*)data)->private_data;
+    double* matrix = dm->matrix[runidx];
+
     metadataStruct* mtd = amv->metadata;
     double* ss_total = amv->ss_total + runidx;
     double* ssd_total = amv->ssd_total + runidx;
@@ -264,7 +275,7 @@ void* amova_run_private(void* data) {
             nPairsInGroup = mtd->group2pairIndices[groupIndex]->len;
 
             for (p = 0; p < nPairsInGroup; ++p) {
-                sum += dm->M[pairsInGroup[p]];
+                sum += matrix[pairsInGroup[p]];
             }
 
             ss[lvlidx] += sum / nIndsInGroup;
@@ -274,8 +285,8 @@ void* amova_run_private(void* data) {
     }
 
     // -> ss total
-    for (int j = 0; j < dm->nIndCmb; ++j) {
-        *ss_total += dm->M[j];
+    for (size_t j = 0; j < dm->size; ++j) {
+        *ss_total += matrix[j];
     }
     *ss_total = *ss_total / nInd;
 
@@ -320,16 +331,19 @@ void* amova_run_private(void* data) {
         ++lvlidx;
     }
 
-    // msd total = ssd total / df total
     *msd_total = *ssd_total / amv->df_total;
 
     /// -----------------------------------------------------------------------
     /// -> SIGMA SQUARED (VARIANCE COMPONENTS)
 
+    size_t idx;
+    idx = 0;
     for (iti = 0;iti < nLevels;++iti) {
         sigmasq[iti] = 0.0;
         for (itj = iti; itj < nLevels; ++itj) {
-            sigmasq[iti] += msd[itj] * amv->lmat[GET_UPTRID_MATRIX_IJ(iti, itj)];
+            // sigmasq[iti] += msd[itj] * amv->lmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)];
+            sigmasq[iti] += msd[itj] * amv->lmat[idx];
+            ++idx;
         }
     }
     amv->sigmasq_total[0] = 0.0;
@@ -359,7 +373,6 @@ void* amova_run_private(void* data) {
         }
         phi_xt[iti] = sum / amv->sigmasq_total[0];
     }
-
 
     return(NULL);
 
@@ -419,14 +432,14 @@ void amovaStruct_print_as_csv(amovaStruct* amv, metadataStruct* mtd) {
     }
 
     // phi_xt
-    for (size_t iti = 0;iti < mtd->nLevels - 1;++iti) {
+    for (size_t iti = 0;iti < (size_t)(mtd->nLevels - 1);++iti) {
         ksprintf(kbuf, "Phi,%s_in_Total,%f\n", mtd->levelNames->d[iti], amv->phi_xt[0][iti]);
     }
 
 
     for (size_t iti = 0;iti < nLevels;++iti) {
         for (size_t itj = iti;itj < nLevels;++itj) {
-            ksprintf(kbuf, "Variance_coefficient,c_%ld_%ld,%f\n", iti, itj, amv->cmat[GET_UPTRID_MATRIX_IJ(iti, itj)]);
+            ksprintf(kbuf, "Variance_coefficient,c_%ld_%ld,%f\n", iti, itj, amv->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)]);
         }
     }
 
@@ -514,14 +527,118 @@ void amovaStruct_print_as_table(FILE* fp, amovaStruct* amv, metadataStruct* mtd)
 }
 
 
-amovaStruct* amovaStruct_get(distanceMatrixStruct* dm, metadataStruct* mtd, blobStruct* blobs) {
+// amovaStruct* amovaStruct_get(distanceMatrixStruct* dm, metadataStruct* mtd, blobStruct* blobs) {
+
+//     // nRuns = n bootstrap runs + 1 (the original run)
+//     const size_t nRuns = (size_t)args->nBootstraps + 1;
+
+//     amovaStruct* amova = amovaStruct_init(mtd, nRuns);
+
+//     const size_t maxnThreads = (args->nThreads == 0) ? 1 : args->nThreads;
+
+//     amova_run_shared(amova);
+
+//     pthread_t threads[nRuns];
+//     simple_pthread_data_t data[nRuns];
+
+//     int nJobsAlive = 0;
+
+//     size_t run_to_wait = 0;
+//     size_t runidx = 0;
+
+//     while (runidx < nRuns) {
+
+//         while (1) {
+//             if (nJobsAlive < maxnThreads) {
+//                 break;
+//             }
+//             while (nJobsAlive >= maxnThreads) {
+//                 // wait for the run that was sent first
+//                 if (0 != pthread_join(threads[run_to_wait], NULL)) {
+//                     ERROR("Problem with joining the thread.");
+//                 }
+//                 ++run_to_wait;
+//                 nJobsAlive--;
+//             }
+//         }
+
+//         data[runidx].job_id = runidx;
+//         data[runidx].shared_data = (void*)amova;
+//         data[runidx].private_data = (void*)dm;
+
+//         if (0 != pthread_create(&threads[runidx], NULL, amova_run_private, (void*)&data[runidx])) {
+//             ERROR("Problem with the spawning thread.");
+//         }
+//         nJobsAlive++;
+
+//         ++runidx;
+//     }
+
+//     while (nJobsAlive > 0) {
+//         if (0 != pthread_join(threads[run_to_wait], NULL)) {
+//             ERROR("Problem with joining the thread.");
+//         }
+//         ++run_to_wait;
+//         nJobsAlive--;
+//     }
+
+//     //     //TODO HERE BURADAKALDIN!
+//         // const int nReplicates = blob->bootstraps->nReplicates;
+//             // THREADS[i] = new amovaBootstrapThreads(blob->bootstraps->replicates[i]->amova, blob->bootstraps->replicates[i]->distanceMatrix, mtd);
+
+//         // //TODO change these with new vals
+//         // blob->bootstraps->nPhiValues = (mtd->nLevels * 2) - 3;
+//         // blob->bootstraps->phiValues = (double**)malloc(blob->bootstraps->nPhiValues * sizeof(double*));
+
+//         // for (int i = 0; i < blob->bootstraps->nPhiValues; i++) {
+//         //     blob->bootstraps->phiValues[i] = (double*)malloc(nReplicates * sizeof(double));
+
+//         //     for (int r = 0; r < nReplicates; r++) {
+//         //         // blob->bootstraps->phiValues[i][r] = THREADS[r]->amova->phi[i];
+//         //     }
+//         // }
+
+//     amovaStruct_print_as_csv(amova, mtd);
+
+//     // if (0 < args->nBootstraps) {
+//     //     spawnThreads_amovaBootstrap(metadata, blobs);
+//     //     blobs->bootstraps->print_confidenceInterval(stderr);
+//     // }
+
+// // if (0 < args->nBootstraps) {
+// //     ASSERT(blobs != NULL);
+
+
+// //     spawnThreads_amovaBootstrap(mtd, blobs);
+// //     blobs->bootstraps->print_confidenceInterval(stderr);
+// // }
+
+
+// // if (0 == doAmova(amova, dm, metadata)) {
+// //     fprintf(stderr, "\n[INFO]\t-> Finished running AMOVA");
+// //     if (0 < args->nBootstraps) {
+// //         fprintf(stderr, " for the original dataset.\n");
+// //     } else {
+// //         fprintf(stderr, ".\n");
+// //     }
+
+// // if (args->printAmovaTable == 1) {
+//     // amova->print_as_table(stdout);
+//     //TODO make this to print file instead
+// // }
+
+//     return (amova);
+// }
+
+
+amovaStruct* amovaStruct_get(paramStruct* pars, metadataStruct* mtd, blobStruct* blobs) {
 
     // nRuns = n bootstrap runs + 1 (the original run)
     const size_t nRuns = (size_t)args->nBootstraps + 1;
 
     amovaStruct* amova = amovaStruct_init(mtd, nRuns);
 
-    const size_t maxnThreads = (args->nThreads == 0) ? 1 : args->nThreads;
+    const int maxnThreads = (args->nThreads == 0) ? 1 : args->nThreads;
 
     amova_run_shared(amova);
 
@@ -551,7 +668,7 @@ amovaStruct* amovaStruct_get(distanceMatrixStruct* dm, metadataStruct* mtd, blob
 
         data[runidx].job_id = runidx;
         data[runidx].shared_data = (void*)amova;
-        data[runidx].private_data = (void*)dm;
+        data[runidx].private_data = (void*)pars->dm;
 
         if (0 != pthread_create(&threads[runidx], NULL, amova_run_private, (void*)&data[runidx])) {
             ERROR("Problem with the spawning thread.");

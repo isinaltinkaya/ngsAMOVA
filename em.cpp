@@ -1,96 +1,35 @@
 #include "em.h"
 
-// TODO add better thread management
-void spawnThreads_pairEM(paramStruct* pars, vcfData* vcfd, distanceMatrixStruct* distanceMatrix) {
-	pthread_t pairThreads[pars->nIndCmb];
-	indPairThreads** THREADS = new indPairThreads * [pars->nIndCmb];
+typedef struct ptdata_t ptdata_t;
+struct ptdata_t {
+	size_t i1pos;
+	size_t i2pos;
+	size_t pairidx;
+	double* em;
+	double* pm;
+	vcfData* vcfd;
+};
 
-	for (int pidx = 0; pidx < pars->nIndCmb; ++pidx) {
-		THREADS[pidx] = new indPairThreads(vcfd, pars, pidx);
-	}
-
-	int nJobs_sent = 0;
-
-	for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
-		if (nJobs_sent == args->nThreads) {
-			int t = 0;
-			while (nJobs_sent > 0) {
-				t = pidx - nJobs_sent;
-
-				if (pthread_join(pairThreads[t], NULL) != 0) {
-					ERROR("Problem with joining thread.");
-				} else {
-					nJobs_sent--;
-				}
-			}
-		}
-		if (pthread_create(&pairThreads[pidx], NULL, t_EM_optim_jgd_gl3, THREADS[pidx]) == 0) {
-			nJobs_sent++;
-		} else {
-			ERROR("Problem with spawning thread.");
-		}
-	}
-
-	// finished indPair loop
-	int t = 0;
-	while (nJobs_sent > 0) {
-		t = pars->nIndCmb - nJobs_sent;
-		if (pthread_join(pairThreads[t], NULL) != 0) {
-			ERROR("Problem with joining thread.");
-		} else {
-			nJobs_sent--;
-		}
-	}
-
-	for (int pidx = 0; pidx < pars->nIndCmb; pidx++) {
-
-		if (vcfd->snSites[pidx] > 0) {
-			if (args->squareDistance == 1) {
-				// if(pidx==1)NEVER;
-				distanceMatrix->M[pidx] = (double)SQUARE((MATH::Dij(vcfd->jointGenotypeMatrixGL[pidx])));
-			} else {
-				distanceMatrix->M[pidx] = (double)MATH::Dij(vcfd->jointGenotypeMatrixGL[pidx]);
-			}
-		} else {
-			ERROR("Pair %d has no sites shared. This is currently not allowed.", pidx);
-		}
-
-		delete THREADS[pidx];
-	}
-
-	delete[] THREADS;
-}
-
-void* t_EM_optim_jgd_gl3(void* p) {
-	indPairThreads* THREAD = (indPairThreads*)p;
-
-	if (EM_optim_jgd_gl3(THREAD) != 0) {
-		NEVER;
-	}
-	return (0);
-}
-
-int EM_optim_jgd_gl3(indPairThreads* tdata) {
-	// does not allow cases where pair has no shared sites
+int em_optimize_jgtmat9(ptdata_t* tdata) {
 
 	vcfData* vcfd = tdata->vcfd;
-	paramStruct* pars = tdata->pars;
-	double** lngl = tdata->vcfd->lngl->d;
+	const size_t i1pos = tdata->i1pos;
+	const size_t i2pos = tdata->i2pos;
+	const size_t  pairidx = tdata->pairidx;
+
+	double* em = tdata->em;
+	double* pm = tdata->pm;
+
+	double* sitelngl = NULL;
 
 	const double tole = args->tole;
-	const int n_gt = vcfd->nGT;
-	const int pidx = tdata->pidx;
-	const int i1 = pars->pidx2inds[pidx][0];
-	const int i2 = pars->pidx2inds[pidx][1];
-	const int i1_pos = n_gt * i1;
-	const int i2_pos = n_gt * i2;
+
+
 	const int max_iter = args->maxEmIter;
 
 	double sum = 0.0;
 	double d = 0.0;
 	double tmp = 0.0;
-
-	double* m_optim = vcfd->jointGenotypeMatrixGL[pidx];
 
 	int n_iter = 0;
 
@@ -107,11 +46,11 @@ int EM_optim_jgd_gl3(indPairThreads* tdata) {
 	double i2gl1 = NEG_INF;
 	double i2gl2 = NEG_INF;
 
-
 	// em iteration 0
 	// starts before while to get shared_nSites without loop cost
-	for (size_t s = 0; s < pars->nSites; ++s) {
+	for (size_t s = 0; s < (size_t)vcfd->nSites; ++s) {
 
+		sitelngl = vcfd->lngl->d[s];
 		// 0 <- (a1,a1)
 		// 1 <- (a1,a2) or (a2,a1)
 		// 2 <- (a2,a2)
@@ -124,19 +63,18 @@ int EM_optim_jgd_gl3(indPairThreads* tdata) {
 		// 		2	  |	2		5		8
 		//
 		//
-		// double* t=vcfd->jointGenotypeMatrixGL[pidx];
 
-		if (NEG_INF == (i1gl0 = lngl[s][i1_pos])) {
+		if (NEG_INF == (i1gl0 = sitelngl[i1pos])) {
 			continue;
-		} else if (NEG_INF == (i1gl1 = lngl[s][i1_pos + 1])) {
+		} else if (NEG_INF == (i1gl1 = sitelngl[i1pos + 1])) {
 			continue;
-		} else if (NEG_INF == (i1gl2 = lngl[s][i1_pos + 2])) {
+		} else if (NEG_INF == (i1gl2 = sitelngl[i1pos + 2])) {
 			continue;
-		} else if (NEG_INF == (i2gl0 = lngl[s][i2_pos])) {
+		} else if (NEG_INF == (i2gl0 = sitelngl[i2pos])) {
 			continue;
-		} else if (NEG_INF == (i2gl1 = lngl[s][i2_pos + 1])) {
+		} else if (NEG_INF == (i2gl1 = sitelngl[i2pos + 1])) {
 			continue;
-		} else if (NEG_INF == (i2gl2 = lngl[s][i2_pos + 2])) {
+		} else if (NEG_INF == (i2gl2 = sitelngl[i2pos + 2])) {
 			continue;
 		}
 
@@ -150,15 +88,15 @@ int EM_optim_jgd_gl3(indPairThreads* tdata) {
 		// }
 
 		// expectation
-		TMP[0] = m_optim[0] * exp(i1gl0 + i2gl0);
-		TMP[1] = m_optim[1] * exp(i1gl1 + i2gl0);
-		TMP[2] = m_optim[2] * exp(i1gl2 + i2gl0);
-		TMP[3] = m_optim[3] * exp(i1gl0 + i2gl1);
-		TMP[4] = m_optim[4] * exp(i1gl1 + i2gl1);
-		TMP[5] = m_optim[5] * exp(i1gl2 + i2gl1);
-		TMP[6] = m_optim[6] * exp(i1gl0 + i2gl2);
-		TMP[7] = m_optim[7] * exp(i1gl1 + i2gl2);
-		TMP[8] = m_optim[8] * exp(i1gl2 + i2gl2);
+		TMP[0] = em[0] * exp(i1gl0 + i2gl0);
+		TMP[1] = em[1] * exp(i1gl1 + i2gl0);
+		TMP[2] = em[2] * exp(i1gl2 + i2gl0);
+		TMP[3] = em[3] * exp(i1gl0 + i2gl1);
+		TMP[4] = em[4] * exp(i1gl1 + i2gl1);
+		TMP[5] = em[5] * exp(i1gl2 + i2gl1);
+		TMP[6] = em[6] * exp(i1gl0 + i2gl2);
+		TMP[7] = em[7] * exp(i1gl1 + i2gl2);
+		TMP[8] = em[8] * exp(i1gl2 + i2gl2);
 		sum = TMP[0] + TMP[1] + TMP[2] + TMP[3] + TMP[4] + TMP[5] + TMP[6] + TMP[7] + TMP[8];
 		ESFS[0] += TMP[0] / sum;
 		ESFS[1] += TMP[1] / sum;
@@ -175,43 +113,44 @@ int EM_optim_jgd_gl3(indPairThreads* tdata) {
 	// maximization
 	d = 0.0;
 	tmp = ESFS[0] / shared_nSites;
-	d += fabs(tmp - m_optim[0]);
-	m_optim[0] = tmp;
+	d += fabs(tmp - em[0]);
+	em[0] = tmp;
 	ESFS[0] = 0.0;
 	tmp = ESFS[1] / shared_nSites;
-	d += fabs(tmp - m_optim[1]);
-	m_optim[1] = tmp;
+	d += fabs(tmp - em[1]);
+	em[1] = tmp;
 	ESFS[1] = 0.0;
 	tmp = ESFS[2] / shared_nSites;
-	d += fabs(tmp - m_optim[2]);
-	m_optim[2] = tmp;
+	d += fabs(tmp - em[2]);
+	em[2] = tmp;
 	ESFS[2] = 0.0;
 	tmp = ESFS[3] / shared_nSites;
-	d += fabs(tmp - m_optim[3]);
-	m_optim[3] = tmp;
+	d += fabs(tmp - em[3]);
+	em[3] = tmp;
 	ESFS[3] = 0.0;
 	tmp = ESFS[4] / shared_nSites;
-	d += fabs(tmp - m_optim[4]);
-	m_optim[4] = tmp;
+	d += fabs(tmp - em[4]);
+	em[4] = tmp;
 	ESFS[4] = 0.0;
 	tmp = ESFS[5] / shared_nSites;
-	d += fabs(tmp - m_optim[5]);
-	m_optim[5] = tmp;
+	d += fabs(tmp - em[5]);
+	em[5] = tmp;
 	ESFS[5] = 0.0;
 	tmp = ESFS[6] / shared_nSites;
-	d += fabs(tmp - m_optim[6]);
-	m_optim[6] = tmp;
+	d += fabs(tmp - em[6]);
+	em[6] = tmp;
 	ESFS[6] = 0.0;
 	tmp = ESFS[7] / shared_nSites;
-	d += fabs(tmp - m_optim[7]);
-	m_optim[7] = tmp;
+	d += fabs(tmp - em[7]);
+	em[7] = tmp;
 	ESFS[7] = 0.0;
 	tmp = ESFS[8] / shared_nSites;
-	d += fabs(tmp - m_optim[8]);
-	m_optim[8] = tmp;
+	d += fabs(tmp - em[8]);
+	em[8] = tmp;
 	ESFS[8] = 0.0;
 
 	++n_iter;
+
 
 
 	while (d > tole) {
@@ -221,33 +160,35 @@ int EM_optim_jgd_gl3(indPairThreads* tdata) {
 			break;
 		}
 
-		for (size_t s = 0; s < pars->nSites; ++s) {
+		for (size_t s = 0; s < (size_t)vcfd->nSites; ++s) {
 
-			if (NEG_INF == (i1gl0 = lngl[s][i1_pos])) {
+			sitelngl = vcfd->lngl->d[s];
+
+			if (NEG_INF == (i1gl0 = sitelngl[i1pos])) {
 				continue;
-			} else if (NEG_INF == (i1gl1 = lngl[s][i1_pos + 1])) {
+			} else if (NEG_INF == (i1gl1 = sitelngl[i1pos + 1])) {
 				continue;
-			} else if (NEG_INF == (i1gl2 = lngl[s][i1_pos + 2])) {
+			} else if (NEG_INF == (i1gl2 = sitelngl[i1pos + 2])) {
 				continue;
-			} else if (NEG_INF == (i2gl0 = lngl[s][i2_pos])) {
+			} else if (NEG_INF == (i2gl0 = sitelngl[i2pos])) {
 				continue;
-			} else if (NEG_INF == (i2gl1 = lngl[s][i2_pos + 1])) {
+			} else if (NEG_INF == (i2gl1 = sitelngl[i2pos + 1])) {
 				continue;
-			} else if (NEG_INF == (i2gl2 = lngl[s][i2_pos + 2])) {
+			} else if (NEG_INF == (i2gl2 = sitelngl[i2pos + 2])) {
 				continue;
 			}
 
 
 			// expectation
-			TMP[0] = m_optim[0] * exp(i1gl0 + i2gl0);
-			TMP[1] = m_optim[1] * exp(i1gl1 + i2gl0);
-			TMP[2] = m_optim[2] * exp(i1gl2 + i2gl0);
-			TMP[3] = m_optim[3] * exp(i1gl0 + i2gl1);
-			TMP[4] = m_optim[4] * exp(i1gl1 + i2gl1);
-			TMP[5] = m_optim[5] * exp(i1gl2 + i2gl1);
-			TMP[6] = m_optim[6] * exp(i1gl0 + i2gl2);
-			TMP[7] = m_optim[7] * exp(i1gl1 + i2gl2);
-			TMP[8] = m_optim[8] * exp(i1gl2 + i2gl2);
+			TMP[0] = em[0] * exp(i1gl0 + i2gl0);
+			TMP[1] = em[1] * exp(i1gl1 + i2gl0);
+			TMP[2] = em[2] * exp(i1gl2 + i2gl0);
+			TMP[3] = em[3] * exp(i1gl0 + i2gl1);
+			TMP[4] = em[4] * exp(i1gl1 + i2gl1);
+			TMP[5] = em[5] * exp(i1gl2 + i2gl1);
+			TMP[6] = em[6] * exp(i1gl0 + i2gl2);
+			TMP[7] = em[7] * exp(i1gl1 + i2gl2);
+			TMP[8] = em[8] * exp(i1gl2 + i2gl2);
 			sum = TMP[0] + TMP[1] + TMP[2] + TMP[3] + TMP[4] + TMP[5] + TMP[6] + TMP[7] + TMP[8];
 			ESFS[0] += TMP[0] / sum;
 			ESFS[1] += TMP[1] / sum;
@@ -265,48 +206,158 @@ int EM_optim_jgd_gl3(indPairThreads* tdata) {
 		// maximization
 		d = 0.0;
 		tmp = ESFS[0] / shared_nSites;
-		d += fabs(tmp - m_optim[0]);
-		m_optim[0] = tmp;
+		d += fabs(tmp - em[0]);
+		em[0] = tmp;
 		ESFS[0] = 0.0;
 		tmp = ESFS[1] / shared_nSites;
-		d += fabs(tmp - m_optim[1]);
-		m_optim[1] = tmp;
+		d += fabs(tmp - em[1]);
+		em[1] = tmp;
 		ESFS[1] = 0.0;
 		tmp = ESFS[2] / shared_nSites;
-		d += fabs(tmp - m_optim[2]);
-		m_optim[2] = tmp;
+		d += fabs(tmp - em[2]);
+		em[2] = tmp;
 		ESFS[2] = 0.0;
 		tmp = ESFS[3] / shared_nSites;
-		d += fabs(tmp - m_optim[3]);
-		m_optim[3] = tmp;
+		d += fabs(tmp - em[3]);
+		em[3] = tmp;
 		ESFS[3] = 0.0;
 		tmp = ESFS[4] / shared_nSites;
-		d += fabs(tmp - m_optim[4]);
-		m_optim[4] = tmp;
+		d += fabs(tmp - em[4]);
+		em[4] = tmp;
 		ESFS[4] = 0.0;
 		tmp = ESFS[5] / shared_nSites;
-		d += fabs(tmp - m_optim[5]);
-		m_optim[5] = tmp;
+		d += fabs(tmp - em[5]);
+		em[5] = tmp;
 		ESFS[5] = 0.0;
 		tmp = ESFS[6] / shared_nSites;
-		d += fabs(tmp - m_optim[6]);
-		m_optim[6] = tmp;
+		d += fabs(tmp - em[6]);
+		em[6] = tmp;
 		ESFS[6] = 0.0;
 		tmp = ESFS[7] / shared_nSites;
-		d += fabs(tmp - m_optim[7]);
-		m_optim[7] = tmp;
+		d += fabs(tmp - em[7]);
+		em[7] = tmp;
 		ESFS[7] = 0.0;
 		tmp = ESFS[8] / shared_nSites;
-		d += fabs(tmp - m_optim[8]);
-		m_optim[8] = tmp;
+		d += fabs(tmp - em[8]);
+		em[8] = tmp;
 		ESFS[8] = 0.0;
 
 		++n_iter;
 
 	}
 
-	DEVASSERT(vcfd->snSites[pidx] == shared_nSites);
 
-	return 0;
+	if (shared_nSites == 0) {
+		ERROR("Pair %ld has no sites shared. This is currently not allowed.", pairidx);
+		//TODO drop pair instead?
+		//TODO check for this in GT too
+	}
+
+
+
+	pm[0] = em[0];
+	em[0] = em[0] * shared_nSites;
+	pm[1] = em[1];
+	em[1] = em[1] * shared_nSites;
+	pm[2] = em[2];
+	em[2] = em[2] * shared_nSites;
+	pm[3] = em[3];
+	em[3] = em[3] * shared_nSites;
+	pm[4] = em[4];
+	em[4] = em[4] * shared_nSites;
+	pm[5] = em[5];
+	em[5] = em[5] * shared_nSites;
+	pm[6] = em[6];
+	em[6] = em[6] * shared_nSites;
+	pm[7] = em[7];
+	em[7] = em[7] * shared_nSites;
+	pm[8] = em[8];
+	em[8] = em[8] * shared_nSites;
+
+	return(0);
+
 }
+
+void* t_em_optimize_jgtmat9(void* data) {
+	ptdata_t* tdata = (ptdata_t*)data;
+	if (0 != em_optimize_jgtmat9(tdata)) {
+		NEVER;
+	}
+	return(NULL);
+}
+
+
+
+void spawnThreads_em_optimize_jgtmat(jgtmat_t* jgtm, paramStruct* pars, vcfData* vcfd) {
+
+
+	const int nInd = pars->nInd;
+	const size_t nRuns = (size_t)(nInd * (nInd - 1) / 2);
+
+	pthread_t threads[nRuns];
+	ptdata_t tdata[nRuns];
+
+	const int ngt = vcfd->nGT;
+
+	size_t pairidx = 0;
+	for (size_t i1 = 0; i1 < (size_t)pars->nInd;++i1) {
+		for (size_t i2 = 0;i2 < i1;++i2) {
+			tdata[pairidx].vcfd = vcfd;
+			tdata[pairidx].pairidx = pairidx;
+			tdata[pairidx].i1pos = ngt * i1;
+			tdata[pairidx].i2pos = ngt * i2;
+			tdata[pairidx].em = jgtm->em[pairidx];
+			tdata[pairidx].pm = jgtm->pm[pairidx];
+			++pairidx;
+		}
+	}
+
+
+	const int maxnThreads = (args->nThreads == 0) ? 1 : args->nThreads;
+
+	int nJobsAlive = 0;
+	size_t run_to_wait = 0;
+	size_t runidx = 0;
+
+	ASSERT(maxnThreads > 0);
+
+	while (runidx < nRuns) {
+
+		while (1) {
+			if (nJobsAlive < maxnThreads) {
+				break;
+			}
+			while (nJobsAlive >= maxnThreads) {
+				// wait for the run that was sent first
+				if (0 != pthread_join(threads[run_to_wait], NULL)) {
+					ERROR("Problem with joining the thread.");
+				}
+				++run_to_wait;
+				nJobsAlive--;
+			}
+		}
+
+		if (0 != pthread_create(&threads[runidx], NULL, t_em_optimize_jgtmat9, &tdata[runidx])) {
+			ERROR("Problem with the spawning thread.");
+		}
+		nJobsAlive++;
+
+		++runidx;
+	}
+
+	while (nJobsAlive > 0) {
+		if (0 != pthread_join(threads[run_to_wait], NULL)) {
+			ERROR("Problem with joining the thread.");
+		}
+		++run_to_wait;
+		nJobsAlive--;
+	}
+
+
+	return;
+}
+
+
+
+
 

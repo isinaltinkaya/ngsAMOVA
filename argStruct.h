@@ -1,8 +1,6 @@
 #ifndef __ARG_STRUCT__
 #define __ARG_STRUCT__
 
-
-// #include "io.h"
 #include "shared.h"
 
 typedef struct argStruct argStruct;
@@ -160,12 +158,21 @@ struct argStruct {
     // e.g. "Individual ~ Region/Population/Subpopulation"
     char* formula = NULL;
 
-    int doAMOVA = 0;
+
+    int doJGTM = 0;
+    int doDist = 0;
+
     int doEM = 0;
+
+    int doAMOVA = 0;
     int doDxy = 0;
     int doPhylo = 0;
-    int doDist = 0;
     int doIbd = 0;
+    int doMajorMinor = 0;
+
+    int doUnitTests = 0;
+
+    int bcfSrc = 0;
 
     int handle_neg_branch_length = 0;
 
@@ -173,8 +180,6 @@ struct argStruct {
     int printDistanceMatrix = 0;
     int printJointGenotypeCountMatrix = 0;
     int printBlocksTab = 0;
-
-    int squareDistance = 1;
 
     char* dxyGroups = NULL;
     char* dxyLevels = NULL;
@@ -201,7 +206,6 @@ struct argStruct {
     double ibdseq_ibdtrim = 0.0;
 
 
-
     int nThreads = 1;
     int rmInvarSites = 0;
     int seed = -1;
@@ -214,6 +218,7 @@ struct argStruct {
     int windowSize = 0;
     int* keyCols = NULL;
     int printDev = 0;
+
 
     void print(FILE* fp);
     void print();

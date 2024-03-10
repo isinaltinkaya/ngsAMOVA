@@ -12,16 +12,58 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <time.h>
-
 #include <limits>
 
 #include "argStruct.h"
 #include "dev.h"
 #include "lookup.h"
 
+#define ARG_DOEM_3GL 1
+#define ARG_DOEM_10GL 2
+
 #define PROGRAM_NEEDS_INDNAMES \
     ( ((0 != (args->doPhylo))))
 
+#define INPUT_IS_VCF \
+    ( (pars->in_ft & IN_VCF) )
+
+#define INPUT_IS_DM \
+    ( (pars->in_ft & IN_DM) )
+
+#define PROGRAM_NEEDS_METADATA \
+    ( ( 0!= args->doAMOVA ) )
+
+#define PROGRAM_NEEDS_FORMULA \
+    ( ( 0!= args->doAMOVA ) )
+
+
+
+
+/// ----------------------------------------------------------------------- ///
+// ARGUMENT VALUES
+
+#define ARG_DOMAJORMINOR_NONE (0)
+
+#define ARG_DOMAJORMINOR_BCF_REFALT1 (1)
+
+#define ARG_DOMAJORMINOR_INFILE (2)
+
+#define PROGRAM_WILL_USE_ALLELES_REF_ALT1 \
+    ( ((args->doMajorMinor) == ARG_DOMAJORMINOR_BCF_REFALT1) )
+
+
+/// ----------------------------------------------------------------------- ///
+// BCF DATA SOURCE TAGS
+
+#define ARG_INTPLUS_BCFSRC_FMT_GL (1<<0)
+#define ARG_INTPLUS_BCFSRC_FMT_GT (1<<1)
+
+
+#define PROGRAM_WILL_USE_BCF_FMT_GL \
+    ( (args->bcfSrc & ARG_INTPLUS_BCFSRC_FMT_GL) )
+
+#define PROGRAM_WILL_USE_BCF_FMT_GT \
+    ( (args->bcfSrc & ARG_INTPLUS_BCFSRC_FMT_GT) )
 
 
 /* ========================================================================== */
@@ -32,6 +74,34 @@
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
+
+
+/// @brief MATRIX_GET_INDEX_* - get the index of the given i,j pair in the given * type matrix
+///
+/// LTED: assume i>j
+///       for(i=1;i<n;++i) for(j=0;j<i;++j)
+#define MATRIX_GET_INDEX_LTED_IJ(i,j) (((i)*((i)-1)/2+(j)))
+
+/// LTID: assume i<=j
+///       for(i=0;i<n;++i) for(j=0;j<=i;++j)
+#define MATRIX_GET_INDEX_LTID_IJ(i,j) (((i)*((i)+1)/2+(j)))
+
+/// UTED: assume i<j
+///       for(i=0;i<n-1;++i) for(j=i+1;j<n;++j)
+#define MATRIX_GET_INDEX_UTED_IJ(i,j,n) ((((i)*(n))-((i)*((i)+3))/2+(j)-1))
+
+/// UTID: assume i>=j
+///       for(i=0;i<n;++i) for(j=i;j<n;++j)
+#define MATRIX_GET_INDEX_UTID_IJ(i,j,n) ((((i)*(n))-((i)*((i)+1))/2+(j)))
+
+/// @brief MATRIX_GET_IJ_FROM_LTED_INDEX - get the i,j pair from the given linear index in a UTED matrix
+#define MATRIX_GET_IJ_FROM_UTED_INDEX(idx,n,i,j) \
+do{ \
+    (i) = (n) - 2 - floor(sqrt(-8 * (lidx) + 4 * (n) * ((n) - 1) - 7) / 2.0 - 0.5); \
+    (j) = (idx) + (i) + 1 - (n) * ((n) - 1) / 2 + ((n) - (i)) * (((n) - (i)) - 1) / 2; \
+}while(0); 
+
 
 
 #define CHECK_ARG_INTERVAL_INT(argval, minval, maxval, argstr) \
@@ -221,6 +291,13 @@ do{ \
 #define END_LOGSECTION \
 do{ \
     fprintf(stderr, "\n________________________________________\n"); \
+}while (0);
+
+#define BEGIN_LOGSECTION_MSG(msg) \
+do{ \
+    fprintf(stderr, "\n________________________________________\n"); \
+    fprintf(stderr, "[LOG]\t-> Program is now at <%s/%s>\n", __FILE__, __FUNCTION__); \
+    fprintf(stderr, "[LOG]\t-> %s\n", msg); \
 }while (0);
 
 
