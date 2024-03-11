@@ -5,57 +5,79 @@
 #include "io.h"
 #include "mathUtils.h"
 
-#if 0
 
-/// @brief dxyStruct - structure for dxy analysis results
+
+/// @brief dxy_t - structure for dxy analysis results
 ///
 /// @field kbuf - kstring buffer for printing
-/// @field nDxy - number of dxy values
+/// @field n - number of dxy values
 /// @field dxy - array of dxy values
-/// @field groupNames1 - array of group names for group 1 corresponding to dxy values
-/// @field groupNames2 - array of group names for group 2 corresponding to dxy values
-/// @field levelNames - array of level names corresponding to dxy values
+/// @field g1names_p - array of group names for group 1 corresponding to dxy values
+/// @field g2names_p - array of group names for group 2 corresponding to dxy values
+/// @field levelnames_p - array of level names corresponding to dxy values
 ///
 /// @details
-/// dxy[i] is the dxy value between groupNames1[i] and groupNames2[i] (at levelNames[i])
+/// dxy[i] is the dxy value between g1names_p[i] and g2names_p[i] (at levelnames_p[i])
 ///
-typedef struct dxyStruct {
-    // number of dxy values
-    int nDxy = 0;
+typedef struct dxy_t {
 
-    size_t _dxyArr = 100;  // initial value for malloc; will be increased if needed
+    /// @var nLevels - number of levels in the metadata (excluding the "individual" level)
+    size_t nLevels;
 
-    double* dxyArr;
-    char** groupNames1;
-    char** groupNames2;
-    char** levelNames;
-
-    void print();
-    void print_struct();
-    void expand();
-
-    dxyStruct();
-    ~dxyStruct();
-
-    /// @brief estimate_dxy_2groups - estimate pairwise dxy between two groups
-    /// @return number of dxy values estimated (==1 since only one pair of groups:
-    int estimate_dxy_2groups(const int local_idx1, const int local_idx2, const int lvl, distanceMatrixStruct* dMS, metadataStruct* mtd, paramStruct* pars);
-
-    /// @brief estimate_dxy_allGroupsAtLevel - estimate pairwise dxy between all groups at a given level
-    /// @return number of dxy values estimated (==number of pairs of groups)
-    int estimate_dxy_allGroupsAtLevel(const int lvl, distanceMatrixStruct* dMS, metadataStruct* mtd, paramStruct* pars);
-
-    /// @brief estimate_dxy_allLevels - estimate pairwise dxy between all groups at all levels
-    /// @return number of dxy values estimated (==number of pairs of groups)
-    int estimate_dxy_allLevels(distanceMatrixStruct* dMS, metadataStruct* mtd, paramStruct* pars);
-
-} dxyStruct;
-
-// read dxyStruct from dxy file
-dxyStruct* dxyStruct_read(paramStruct* pars, distanceMatrixStruct* dMS, metadataStruct* mtd);
-dxyStruct* dxyStruct_get(paramStruct* pars, distanceMatrixStruct* dMS, metadataStruct* mtd);
-
-#endif 
+    /// @var n - number of dxy values (number of pairwise group comparisons)
+    size_t n;
 
 
-#endif
+    /// @var d - dxy data (array of dxy values)
+    double* d;
+
+    /// @var dm - array of distance matrices per level
+    /// @size mtd->nLevels - 1 (excluding the "individual" level)
+    /// @note dm[i] can be NULL if level is skipped (e.g. only one group at that level)
+    /// @note check if dm[i] is NULL before using/freeing it
+    dmat_t** dm;
+
+    /// @var g1names_p - array of pointers to group names for group 1 corresponding to the dxy values
+    /// @size n
+    /// @note only the pointers are stored, the actual group names are stored in the metadataStruct
+    /// @note free only the array, not the pointers
+    char** g1names_p;
+
+    /// @var g2names_p - array of pointers to group names for group 2 corresponding to the dxy values
+    /// @size n
+    /// @note only the pointers are stored, the actual group names are stored in the metadataStruct
+    /// @note free only the array, not the pointers
+    char** g2names_p;
+
+
+    /// @var levelnames_p - array of pointers to level names corresponding to the dxy values
+    /// @size n
+    /// @note only the pointers are stored, the actual level names are stored in the metadataStruct
+    /// @note free only the array, not the pointers
+    char** levelnames_p;
+
+} dxy_t;
+
+dxy_t* dxy_read(paramStruct* pars, dmat_t* dmat, metadataStruct* mtd);
+dxy_t* dxy_get(paramStruct* pars, dmat_t* dmat, metadataStruct* mtd);
+
+inline void dxy_destroy(dxy_t* dxy) {
+    FREE(dxy->d);
+    FREE(dxy->g1names_p);
+    FREE(dxy->g2names_p);
+    FREE(dxy->levelnames_p);
+    for (size_t i = 0;i < dxy->nLevels;++i) {
+        if (dxy->dm[i] != NULL) {
+            dmat_destroy(dxy->dm[i]);
+        }
+    }
+    FREE(dxy->dm);
+    FREE(dxy);
+    return;
+}
+
+void dxy_print(dxy_t* dxy);
+
+
+
+#endif // __DXY__

@@ -55,12 +55,6 @@ namespace IO {
     /// @example vprint(1, "Hello %s", "World"); // will print to fp if verbose >= 1
     void vprint(FILE* fp, const int verbose_threshold, const char* format, ...);
 
-    /// @brief <o> verbose print with threshold and file pointer, prints to both stderr and file
-    /// @param fp file pointer to print to
-    /// @param verbose_threshold threshold for printing the specified message
-    /// @example vprint(1, "Hello %s", "World"); // will print to both stderr and fp if verbose >= 1
-    void vvprint(FILE* fp, const int verbose_threshold, const char* format, ...);
-
     hts_idx_t* load_bcf_csi_idx(const char* fn);
     tbx_t* load_vcf_tabix_idx(const char* fn);
 

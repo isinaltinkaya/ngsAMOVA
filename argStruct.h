@@ -5,7 +5,7 @@
 
 typedef struct argStruct argStruct;
 
-extern u_char VERBOSE;
+extern uint8_t PROGRAM_VERBOSITY_LEVEL;
 extern argStruct* args;
 
 /*
@@ -88,13 +88,6 @@ extern argStruct* args;
  *                       [0] do NOT perform Dxy
  *                       [1] perform Dxy for all pairs of groups in each hierarchical level
  *                               in the metadata file
- *                       ["str"] perform Dxy for all pairs of groups in hierarchical level "str" in the metadata file
- *                               e.g. "Regions" will perform Dxy for all pairs of groups in the "Regions"
- *                       ["str1,str2,str3"] perform Dxy for all pairs of groups in the given group list {str1,str2,str3}
- *                               e.g. "pop1,pop2,pop3" will perform Dxy for pop1-pop2, pop1-pop3, pop2-pop3.
- *
- * @field doDxyStr       [default=""] Stores the string given to doDxy, if any
- *                       [""] do NOT perform Dxy OR perform Dxy using numeric argument
  *
  * @field doPhylo           [default=0]
  *                       [0] do NOT perform neighbor joining
@@ -219,9 +212,6 @@ struct argStruct {
     int* keyCols = NULL;
     int printDev = 0;
 
-
-    void print(FILE* fp);
-    void print();
 };
 
 //

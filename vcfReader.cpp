@@ -564,6 +564,15 @@ int site_read_GT(jgtmat_t* jgtm, vcfData* vcfd, paramStruct* pars) {
     int32_t* sample_gts = NULL;
     bool includeInds[nInd];
 
+    int skipSite = 0;
+
+
+    int32_t* i1_gts = NULL;
+    int32_t* i2_gts = NULL;
+    int8_t i1_nder = -1;
+    int8_t i2_nder = -1;
+
+
     for (int indi = 0; indi < nInd; ++indi) {
 
         includeInds[indi] = false;
@@ -580,133 +589,105 @@ int site_read_GT(jgtmat_t* jgtm, vcfData* vcfd, paramStruct* pars) {
             // only use sites shared across all individuals
             // so skip site when you first encounter nan
             if (0 == args->minInd) {
-                return(1);
+                skipSite = 1;
+                break;
             }
 
             // skip site if there are 2 inds and at least one of them is missing
             if (2 == nInd) {
-                return(1);
+                skipSite = 1;
+                break;
             }
 
             n_missing_ind++;
 
             // all individuals are missing
             if (nInd == n_missing_ind) {
-                return(1);
+                skipSite = 1;
+                break;
             }
 
             // skip site if minInd is defined and #non-missing inds=<nInd
             if (args->minInd != 2) {
                 if ((nInd - n_missing_ind) < args->minInd) {
                     IO::vprint(2, "Skipping site at %s:%ld. Reason: Number of non-missing individuals is less than the minimum number of individuals -minInd.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
-                    return(1);
+                    skipSite = 1;
+                    break;
                 }
             }
             continue;
         }
+        // -> not missing
         includeInds[indi] = true;
+
     }
 
-    // -> site passed all missingness filters
+    bool skipInd;
 
-
-
-    int32_t* i1_gts = NULL;
-    int32_t* i2_gts = NULL;
-    int i1_nder = -1;
-    int i2_nder = -1;
-
+    // -> rm invar sites based on GT
+    // @dragon
     if (args->rmInvarSites) {
         int tot_nder = 0;
         for (int i = 0; i < nInd; ++i) {
-            if (includeInds[i]) {
-                i1_gts = gts + i * PROGRAM_PLOIDY;
-                if (bcf_gt_allele(i1_gts[0]) == pars->a1a2[1]) {
-                    tot_nder++;
-                } else if (bcf_gt_allele(i1_gts[0]) == pars->a1a2[0]) {
-                    //
-                } else {
-                    NEVER;
-                }
-                if (bcf_gt_allele(i1_gts[1]) == pars->a1a2[1]) {
-                    tot_nder++;
-                } else if (bcf_gt_allele(i1_gts[1]) == pars->a1a2[0]) {
-                    //
-                } else {
-                    NEVER;
-                }
+            if (!includeInds[i]) {
+                continue;
+            }
+            skipInd = false;
+            i1_gts = gts + i * PROGRAM_PLOIDY;
+            if (bcf_gt_allele(i1_gts[0]) == pars->a1a2[1]) {
+                tot_nder++;
+            } else if (bcf_gt_allele(i1_gts[0]) == pars->a1a2[0]) {
+                //
+            } else {
+                skipInd = true;
+                continue;
+            }
+            if (bcf_gt_allele(i1_gts[1]) == pars->a1a2[1]) {
+                tot_nder++;
+            } else if (bcf_gt_allele(i1_gts[1]) == pars->a1a2[0]) {
+                //
+            } else {
+                skipInd = true;
+                continue;
             }
         }
         if (tot_nder == 0) {
             IO::vprint(2, "Skipping site at %s:%ld. Reason: Site is not variable.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
-            return(1);
+            skipSite = 1;
         } else if (tot_nder == nInd * PROGRAM_PLOIDY) {
             IO::vprint(2, "Skipping site at %s:%ld. Reason: Site is not variable.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
-            return(1);
+            skipSite = 1;
         }
     }
 
 
 
-    bool skipInd;
-
-    int gt1 = -1;
-    int gt2 = -1;
-    int pidx = 0;
-    for (int i1 = 1; i1 < nInd; ++i1) {
-
-        if (!includeInds[i1]) {
-            ++pidx;
-            continue;
+    do {
+        if (skipSite) {
+            break;
         }
 
-        skipInd = false;
-        i1_nder = 0;
-        i1_gts = gts + i1 * PROGRAM_PLOIDY;
-        gt1 = bcf_gt_allele(i1_gts[0]);
-        gt2 = bcf_gt_allele(i1_gts[1]);
+        int gt1 = -1;
+        int gt2 = -1;
+        int pidx = 0;
+        for (int i1 = 1; i1 < nInd; ++i1) {
 
-
-        if (gt1 == pars->a1a2[0]) {
-            // first base in genotype is ref allele
-        } else if (gt1 == pars->a1a2[1]) {
-            i1_nder++;
-        } else {
-            skipInd = true;
-        }
-
-        if (gt2 == pars->a1a2[0]) {
-            // second base in genotype is ref allele
-        } else if (gt2 == pars->a1a2[1]) {
-            i1_nder++;
-        } else {
-            skipInd = true;
-        }
-
-        if (skipInd) {
-            IO::vprint(2, "Skipping individual %d (%s) at site %s:%ld. Reason: Allele in genotype (%c) is not one of alleles to use (%c %c).", i1, vcfd->hdr->samples[i1], vcfd->get_contig_name(), vcfd->rec->pos + 1, vcfd->rec->d.allele[gt1][0], vcfd->rec->d.allele[0][0], vcfd->rec->d.allele[1][0]);
-            includeInds[i1] = false;
-            ++pidx;
-            continue;
-        }
-
-        for (int i2 = 0;i2 < i1; ++i2) {
-
-            if (!includeInds[i2]) {
+            if (!includeInds[i1]) {
                 ++pidx;
                 continue;
             }
 
             skipInd = false;
-            i2_nder = 0;
-            i2_gts = gts + i2 * PROGRAM_PLOIDY;
-            gt1 = bcf_gt_allele(i2_gts[0]);
-            gt2 = bcf_gt_allele(i2_gts[1]);
+            i1_nder = 0;
+            i1_gts = gts + i1 * PROGRAM_PLOIDY;
+            gt1 = bcf_gt_allele(i1_gts[0]);
+            gt2 = bcf_gt_allele(i1_gts[1]);
+
 
             if (gt1 == pars->a1a2[0]) {
                 // first base in genotype is ref allele
             } else if (gt1 == pars->a1a2[1]) {
-                i2_nder++;
+                i1_nder++;
             } else {
                 skipInd = true;
             }
@@ -714,25 +695,64 @@ int site_read_GT(jgtmat_t* jgtm, vcfData* vcfd, paramStruct* pars) {
             if (gt2 == pars->a1a2[0]) {
                 // second base in genotype is ref allele
             } else if (gt2 == pars->a1a2[1]) {
-                i2_nder++;
+                i1_nder++;
             } else {
                 skipInd = true;
             }
 
             if (skipInd) {
-                IO::vprint(2, "Skipping individual %d (%s) at site %s:%ld. Reason: Allele in genotype (%c) is not one of alleles to use (%c %c).", i2, vcfd->hdr->samples[i2], vcfd->get_contig_name(), vcfd->rec->pos + 1, vcfd->rec->d.allele[gt1][0], vcfd->rec->d.allele[0][0], vcfd->rec->d.allele[1][0]);
-                includeInds[i2] = false;
+                IO::vprint(2, "Skipping individual %d (%s) at site %s:%ld. Reason: Allele in genotype (%c) is not one of alleles to use (%c %c).", i1, vcfd->hdr->samples[i1], vcfd->get_contig_name(), vcfd->rec->pos + 1, vcfd->rec->d.allele[gt1][0], vcfd->rec->d.allele[0][0], vcfd->rec->d.allele[1][0]);
+                includeInds[i1] = false;
                 ++pidx;
                 continue;
             }
 
-            jgtm->m[pidx][(i1_nder * 3) + i2_nder]++;
-            ++pidx;
+            for (int i2 = 0;i2 < i1; ++i2) {
+
+                if (!includeInds[i2]) {
+                    ++pidx;
+                    continue;
+                }
+
+                skipInd = false;
+                i2_nder = 0;
+                i2_gts = gts + i2 * PROGRAM_PLOIDY;
+                gt1 = bcf_gt_allele(i2_gts[0]);
+                gt2 = bcf_gt_allele(i2_gts[1]);
+
+                if (gt1 == pars->a1a2[0]) {
+                    // first base in genotype is ref allele
+                } else if (gt1 == pars->a1a2[1]) {
+                    i2_nder++;
+                } else {
+                    skipInd = true;
+                }
+
+                if (gt2 == pars->a1a2[0]) {
+                    // second base in genotype is ref allele
+                } else if (gt2 == pars->a1a2[1]) {
+                    i2_nder++;
+                } else {
+                    skipInd = true;
+                }
+
+                if (skipInd) {
+                    IO::vprint(2, "Skipping individual %d (%s) at site %s:%ld. Reason: Allele in genotype (%c) is not one of alleles to use (%c %c).", i2, vcfd->hdr->samples[i2], vcfd->get_contig_name(), vcfd->rec->pos + 1, vcfd->rec->d.allele[gt1][0], vcfd->rec->d.allele[0][0], vcfd->rec->d.allele[1][0]);
+                    includeInds[i2] = false;
+                    ++pidx;
+                    continue;
+                }
+
+                jgtm->m[pidx][(i1_nder * 3) + i2_nder]++;
+                ++pidx;
+            }
+
         }
 
-    }
+    } while (0);
 
-    return(0);
+    FREE(gts);
+    return(skipSite);
 }
 
 vcfData* vcfData_init(paramStruct* pars) {

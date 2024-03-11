@@ -208,7 +208,7 @@ ${EXEC} -doUnitTests 1
 ################################################################################
 # TEST1
 ID="test1"
-INFILENAME=${DATADIR}/test_s9_d1_1K.vcf
+INFILENAME=${DATADIR}/test_s9_d1_1K_2contigs.vcf #2contig version of test_s9_d1_1K.vcf
 INOPT="--in-vcf"
 
 

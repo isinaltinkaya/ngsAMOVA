@@ -44,11 +44,11 @@ void input_VCF(paramStruct* pars) {
         }
     }
 
-
     blobStruct* blobs = NULL;
     if (0 < args->nBootstraps) {
         blobs = blobStruct_get(vcfd, pars);
     }
+
     // ---- GET JGTM ------------------------------------------------------------ //
 
     if (args->doJGTM) {
@@ -91,7 +91,7 @@ void input_VCF(paramStruct* pars) {
 
             dmat_get_distances_from_jgtmat(pars->jgtm, pars->dm);
             if (args->printDistanceMatrix) {
-                dmat_print(pars->dm);
+                dmat_write(pars->dm);
             }
 
         }
@@ -109,19 +109,16 @@ void input_VCF(paramStruct* pars) {
     }
 
     // ---- dXY
-#if 0
-    dxyStruct* dxySt = NULL;
+    dxy_t* dxySt = NULL;
     if (args->doDxy > 0) {
-        if (args->in_dxy_fn == NULL) {
-            //TODO update dm
-            // dxySt = dxyStruct_get(pars, distanceMatrix, metadata);
+        if (args->in_dxy_fn != NULL) {
+            // dxySt = dxy_read(pars, dmat, metadata);
+            //TODO
         } else {
-            //TODO update dm
-            // dxySt = dxyStruct_read(pars, distanceMatrix, metadata);
+            dxySt = dxy_get(pars, pars->dm, metadata);
         }
-        delete(dxySt);
+        // dont free yet, may be needed for dophylo
     }
-#endif
 
     // ---- NEIGHBOR JOINING
     nj_t* nj = NULL;
@@ -130,38 +127,28 @@ void input_VCF(paramStruct* pars) {
             if (pars->dm->n == 1) {
                 nj = nj_init(pars->dm, 0);
             } else {
-                NEVER;//TODO?
+                NEVER;//TODO
             }
             nj_run(nj);
             nj_print(nj);
         } else if (args->doPhylo == 2) {
             //TODO
-            // ASSERT(dxySt != NULL);
-            // nj = nj_init(pars->nInd, dxySt->dm);
-            // nj_run(nj);
+            if (dxySt->nLevels > 1) {
+                ERROR("Neighbor joining is not supported for dxy with more than one level.");
+            }
+            nj = nj_init(dxySt->dm[0], 0);
+            nj_run(nj);
             // nj_print(nj);
         }
         nj_destroy(nj);
     }
-    // njStruct* njSt = NULL;
-    // if (args->doPhylo != 0) {
-    //     if (args->doPhylo == 1) {
-    //         //TODO update dm
-    //         // njSt = njStruct_get(pars, distanceMatrix);
-    //     } else if (args->doPhylo == 2) {
-    //         if (args->doDxy != 0) {
-    //             ASSERT(dxySt != NULL);
-    //             njSt = njStruct_get(pars, dxySt);
-    //         } else {
-    //             ERROR("-doPhylo 2 requires -doDxy");
-    //         }
-    //     }
-    //     delete(njSt);
-    // }
 
     vcfData_destroy(vcfd);
     if (metadata != NULL) {
         metadataStruct_destroy(metadata);
+    }
+    if (dxySt != NULL) {
+        dxy_destroy(dxySt);
     }
     if (blobs != NULL) {
         delete(blobs);
@@ -172,7 +159,6 @@ void input_VCF(paramStruct* pars) {
 
 void input_DM(paramStruct* pars) {
 
-    // distanceMatrixStruct* distanceMatrix = distanceMatrixStruct_read(pars);
 
     metadataStruct* metadata = NULL;
     if (PROGRAM_NEEDS_METADATA) {
@@ -189,13 +175,12 @@ void input_DM(paramStruct* pars) {
 
     if (args->doDist) {
         uint8_t required_transform;
-        if (args->doAMOVA) {
-            required_transform = DMAT_TRANSFORM_SQUARE;
+        // if (args->doAMOVA) {
+            // TODO
+        required_transform = DMAT_TRANSFORM_SQUARE;
+        // } else {
             // required_transform = DMAT_TRANSFORM_NONE;
-        } else {
-            required_transform = DMAT_TRANSFORM_NONE;
-            NEVER; //TODO
-        }
+        // }
 
 
         if (args->nBootstraps > 0) {
@@ -207,7 +192,7 @@ void input_DM(paramStruct* pars) {
             //TODO match metadata->names dmat_t->names vcfd->hdr->samples
 
             if (args->printDistanceMatrix) {
-                dmat_print(pars->dm);
+                dmat_write(pars->dm);
             }
 
             // pars->dm = dmat_init(pars->nInd, dm_type, dm_method, dm_transform);
@@ -225,37 +210,43 @@ void input_DM(paramStruct* pars) {
         amovaStruct_destroy(amova);
     }
 
-#if 0
-    dxyStruct* dxySt = NULL;
+    dxy_t* dxySt = NULL;
     if (args->doDxy > 0) {
         if (args->in_dxy_fn == NULL) {
-            //TODO update dm
-            // dxySt = dxyStruct_get(pars, distanceMatrix, metadata);
+            dxySt = dxy_get(pars, pars->dm, metadata);
         } else {
-            //TODO update dm
-            // dxySt = dxyStruct_read(pars, distanceMatrix, metadata);
+            //TODO
+            // dxySt = dxy_read(pars, distanceMatrix, metadata);
         }
-        delete(dxySt);
+        dxy_destroy(dxySt);
     }
-#endif
 
-    // njStruct* njSt = NULL;
-    if (args->doPhylo != 0) {
+    // ---- NEIGHBOR JOINING
+    nj_t* nj = NULL;
+    if (args->doPhylo) {
         if (args->doPhylo == 1) {
-            //TODO update dm
-            // njSt = njStruct_get(pars, distanceMatrix);
+            if (pars->dm->n == 1) {
+                nj = nj_init(pars->dm, 0);
+            } else {
+                NEVER;//TODO
+            }
+            nj_run(nj);
+            nj_print(nj);
         } else if (args->doPhylo == 2) {
-
-            //TODO update with dmat_t 
-                        // ASSERT(dxySt != NULL);
-                        // njSt = njStruct_get(pars, dxySt);
+            //TODO
+            // if (dxySt->nLevels > 1) {
+                // ERROR("Neighbor joining is not supported for dxy with more than one level.");
+            // }
+            // nj = nj_init(pars->nInd, dxySt->dm[0]);
+            // nj_run(nj);
+            // nj_print(nj);
         }
-        // delete(njSt);
+        if (metadata != NULL) {
+            metadataStruct_destroy(metadata);
+        }
+        return;
+
     }
-
-    metadataStruct_destroy(metadata);
-
-    // distanceMatrixStruct_destroy(distanceMatrix);
 }
 
 int run_unit_tests(void) {

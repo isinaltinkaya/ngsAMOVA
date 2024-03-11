@@ -33,9 +33,12 @@ nj_t* nj_init(dmat_t* dmat, const size_t which_dmat) {
 
     // an unrooted tree with n leaves has 2n-2 nodes and 2n-3 edges
     nj->nTreeNodes = (2 * nj->L) - 2;
+    ASSERT(nj->nTreeNodes > 0);
     nj->nTreeEdges = nj->nTreeNodes - 1;
+    ASSERT(nj->nTreeEdges > 0);
 
     nj->nParents = nj->nTreeNodes - nj->L;
+    ASSERT(nj->nParents > 0);
     const size_t nParents = nj->nParents;
 
     nj->nEdgesPerParentNode = (int*)malloc(nParents * sizeof(int));
@@ -154,7 +157,7 @@ static void nj_add_edge(nj_t* nj, int parentNode, int childNode, double edgeLeng
 // edgeNodes[edge_index][0] = parent node
             // edgeNodes[edge_index][1] = child node
 
-void nj_print_leaf_newick(nj_t* nj, int node, kstring_t* kbuf) {
+static void nj_print_leaf_newick(nj_t* nj, int node, kstring_t* kbuf) {
 
     // node - index of the node in the list of all nodes
     // L - number of leaf nodes
@@ -205,7 +208,6 @@ void nj_print(nj_t* nj) {
     fprintf(stderr, "\n[INFO]\t-> Writing the Neighbor-Joining tree to the output file %s (format: Newick)", outFiles->out_nj_fs->fn);
     outFiles->out_nj_fs->kbuf = kbuf_init();
     kstring_t* kbuf = outFiles->out_nj_fs->kbuf;
-
     // if unrooted tree, choose an arbitrary node as the root for printing
     int node = nj->nTreeNodes - 1;
     nj_print_leaf_newick(nj, node, kbuf);
@@ -371,7 +373,6 @@ void nj_run(nj_t* nj) {
 
         if (args->handle_neg_branch_length == 1) {
 
-
             // -> handle negative branch lengths
             //
             // if a branch length < 0:
@@ -380,14 +381,12 @@ void nj_run(nj_t* nj) {
             // so that the total distance between an adjacent pair of terminal nodes remains unaffected 
             // (see Kuhner and Felsenstein 1994)
             if (dist1 < 0) {
-                // WARN("Observed negative branch length at (%d,%d) distance 1 (%f). Transferring the abs(distance 1) to the adjacent branch distance 2 (before: %f).", nj->items2idx[min_i1][parentNode], nj->items2idx[min_i2][parentNode], dist1, dist2);
-                //TODO upd warning
+                WARN("Observed negative branch length at (%d,%d) distance 1 (%f). Transferring the abs(distance 1) to the adjacent branch distance 2 (before: %f).", min_i1, min_i2, dist1, dist2);
                 dist2 = dist2 - dist1;
                 dist1 = 0.0;
                 ASSERT(dist2 >= 0.0);
             } else if (dist2 < 0) {
-                // WARN("Observed negative branch length at (%d,%d) distance 2 (%f). Transferring the abs(distance 2) to the adjacent branch distance 1 (before: %f).", nj->items2idx[min_i1][parentNode], nj->items2idx[min_i2][parentNode], dist2, dist1);
-                // TODO upd warning
+                WARN("Observed negative branch length at (%d,%d) distance 2 (%f). Transferring the abs(distance 2) to the adjacent branch distance 1 (before: %f).", min_i1, min_i2, dist2, dist1);
                 dist1 = dist1 - dist2;
                 dist2 = 0.0;
                 ASSERT(dist1 >= 0.0);

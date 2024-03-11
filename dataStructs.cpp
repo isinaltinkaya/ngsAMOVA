@@ -27,8 +27,10 @@ void jgtmat_get_srcgl(jgtmat_t* jgtm, paramStruct* pars, vcfData* vcfd, blobStru
     if (1 == args->doEM) {
         spawnThreads_em_optimize_jgtmat(jgtm, pars, vcfd);
         return;
+    } else {
+        ERROR("Nothing to do.");
     }
-    NEVER;
+    return;
 }
 
 void jgtmat_get_srcgt(jgtmat_t* jgtm, paramStruct* pars, vcfData* vcfd, blobStruct* blob) {
@@ -36,7 +38,14 @@ void jgtmat_get_srcgt(jgtmat_t* jgtm, paramStruct* pars, vcfData* vcfd, blobStru
 }
 
 
-void dmat_print(dmat_t* dmat) {
+void dmat_write(dmat_t* dmat) {
+    LOG("Writing distance matrix to %s\n", outFiles->out_dm_fs->fn);
+    outFiles->out_dm_fs->kbuf = kbuf_init();
+    dmat_print(dmat, outFiles->out_dm_fs->kbuf);
+    outFiles->out_dm_fs->kbuf_write();
+}
+
+void dmat_print(dmat_t* dmat, kstring_t* kstr) {
     if (0 == args->printDistanceMatrix) {
         return;
     }
@@ -49,51 +58,46 @@ void dmat_print(dmat_t* dmat) {
     }
 
 
-    LOG("Writing distance matrix to %s\n", outFiles->out_dm_fs->fn);
-
-    outFiles->out_dm_fs->kbuf = kbuf_init();
-
     // line 0: number of matrices
-    ksprintf(outFiles->out_dm_fs->kbuf, "%ld\n", dmat->n);
+    ksprintf(kstr, "%ld\n", dmat->n);
 
 
     // line 1: type
     if (DMAT_TYPE_LTED == dmat->type) {
-        ksprintf(outFiles->out_dm_fs->kbuf, "%s\n", "LTED");
+        ksprintf(kstr, "%s\n", "LTED");
     } else if (DMAT_TYPE_LTID == dmat->type) {
-        ksprintf(outFiles->out_dm_fs->kbuf, "%s\n", "LTID");
+        ksprintf(kstr, "%s\n", "LTID");
     } else if (DMAT_TYPE_UTED == dmat->type) {
-        ksprintf(outFiles->out_dm_fs->kbuf, "%s\n", "UTED");
+        ksprintf(kstr, "%s\n", "UTED");
     } else if (DMAT_TYPE_UTID == dmat->type) {
-        ksprintf(outFiles->out_dm_fs->kbuf, "%s\n", "UTID");
+        ksprintf(kstr, "%s\n", "UTID");
     } else if (DMAT_TYPE_FULL == dmat->type) {
-        ksprintf(outFiles->out_dm_fs->kbuf, "%s\n", "FULL");
+        ksprintf(kstr, "%s\n", "FULL");
     } else {
         NEVER;
     }
 
     // line 2: transformation
-    ksprintf(outFiles->out_dm_fs->kbuf, "%d\n", dmat->transform);
+    ksprintf(kstr, "%d\n", dmat->transform);
 
     // line 3: method
-    ksprintf(outFiles->out_dm_fs->kbuf, "%d\n", dmat->method);
+    ksprintf(kstr, "%d\n", dmat->method);
 
     // line 4: number of dmat->names
-    ksprintf(outFiles->out_dm_fs->kbuf, "%ld\n", dmat->names->len);
+    ksprintf(kstr, "%ld\n", dmat->names->len);
 
     // line 5: number of distances 
-    ksprintf(outFiles->out_dm_fs->kbuf, "%ld\n", dmat->size);
+    ksprintf(kstr, "%ld\n", dmat->size);
 
     // lines 6-X: dmat->names
     for (size_t i = 0;i < dmat->names->len;++i) {
-        ksprintf(outFiles->out_dm_fs->kbuf, "%s\n", dmat->names->d[i]);
+        ksprintf(kstr, "%s\n", dmat->names->d[i]);
     }
 
     // lines (X+1)-Y: distances 
     for (size_t p = 0; p < dmat->size; ++p) {
-        ksprintf(outFiles->out_dm_fs->kbuf, "%f\n", matrix[p]);
+        ksprintf(kstr, "%f\n", matrix[p]);
     }
-    outFiles->out_dm_fs->kbuf_write();
 
     return;
 }
@@ -184,9 +188,6 @@ metadataStruct* metadataStruct_read(paramStruct* pars) {
     size_t prev_lvlidx;
     size_t indidx;
 
-    indidx = 0;
-
-
     char* line = NULL;
     size_t buf_size = FGETS_BUF_SIZE;
     char* full_line = NULL;
@@ -200,6 +201,7 @@ metadataStruct* metadataStruct_read(paramStruct* pars) {
 
     int nRowsProcessed = 0;
 
+    indidx = 0;
     while (!(feof(fp))) { // row loop
 
 
@@ -455,32 +457,31 @@ metadataStruct* metadataStruct_read(paramStruct* pars) {
 
     mtd->nInd = indidx;
 
-
-
     //TODO verbose print this 
 
 
-    if (VERBOSE) {
+    // if (VERBOSE) {
+    // VRUN(
 
-        fprintf(stderr, "\n\n\n\n--------------------------------------------------------------------------------\n");
+    fprintf(stderr, "\n\n\n\n--------------------------------------------------------------------------------\n");
 
-        fprintf(stderr, "In total, we have %ld levels, %d groups, and %d individuals\n", nLevels, mtd->nGroups, mtd->nInd);
+    fprintf(stderr, "In total, we have %ld levels, %d groups, and %d individuals\n", nLevels, mtd->nGroups, mtd->nInd);
 
-        for (size_t i = 0;i < (size_t)nLevels - 1;++i) {
-            fprintf(stderr, "\n\n// mtd->level2groupIndices->d[%ld] is an array of group indices at level %ld; it has %ld elements\n", i, i, mtd->level2groupIndices[i]->len);
-            fprintf(stderr, "-> Level %ld with name %s has %ld groups\n", i, mtd->levelNames->d[i], mtd->level2groupIndices[i]->len);
-            // the names of these groups are:
-            for (size_t j = 0;j < mtd->level2groupIndices[i]->len;++j) {
-                fprintf(stderr, "\t\t%ld. group idx=%ld with name %s\n", j + 1, mtd->level2groupIndices[i]->d[j], mtd->groupNames->d[mtd->level2groupIndices[i]->d[j]]);
-                fprintf(stderr, "\t\t\t-> this group has %ld individuals:\n", mtd->group2indIndices[mtd->level2groupIndices[i]->d[j]]->len);
-                for (size_t k = 0;k < mtd->group2indIndices[mtd->level2groupIndices[i]->d[j]]->len;++k) {
-                    fprintf(stderr, "\t\t\t\t%ld. ind idx=%ld with name %s\n", k + 1, mtd->group2indIndices[mtd->level2groupIndices[i]->d[j]]->d[k], mtd->names->d[mtd->group2indIndices[mtd->level2groupIndices[i]->d[j]]->d[k]]);
-                }
+    for (size_t i = 0;i < (size_t)nLevels - 1;++i) {
+        fprintf(stderr, "\n\n// mtd->level2groupIndices->d[%ld] is an array of group indices at level %ld; it has %ld elements\n", i, i, mtd->level2groupIndices[i]->len);
+        fprintf(stderr, "-> Level %ld with name %s has %ld groups\n", i, mtd->levelNames->d[i], mtd->level2groupIndices[i]->len);
+        // the names of these groups are:
+        for (size_t j = 0;j < mtd->level2groupIndices[i]->len;++j) {
+            fprintf(stderr, "\t\t%ld. group idx=%ld with name %s\n", j + 1, mtd->level2groupIndices[i]->d[j], mtd->groupNames->d[mtd->level2groupIndices[i]->d[j]]);
+            fprintf(stderr, "\t\t\t-> this group has %ld individuals:\n", mtd->group2indIndices[mtd->level2groupIndices[i]->d[j]]->len);
+            for (size_t k = 0;k < mtd->group2indIndices[mtd->level2groupIndices[i]->d[j]]->len;++k) {
+                fprintf(stderr, "\t\t\t\t%ld. ind idx=%ld with name %s\n", k + 1, mtd->group2indIndices[mtd->level2groupIndices[i]->d[j]]->d[k], mtd->names->d[mtd->group2indIndices[mtd->level2groupIndices[i]->d[j]]->d[k]]);
             }
-
         }
-        fprintf(stderr, "\n\n--------------------------------------------------------------------------------\n");
+
     }
+    fprintf(stderr, "\n\n--------------------------------------------------------------------------------\n");
+    // );
 
 
     size_t n;
@@ -520,7 +521,9 @@ dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metad
 
     FILE* fp = NULL;
 
+    bool isGzFile = false;
     if (IO::isGzFile(args->in_dm_fn) == 1) {
+        isGzFile = true;
         kstring_t cmd = KS_INITIALIZE;
         ksprintf(&cmd, "zcat %s", args->in_dm_fn);
         fp = popen(cmd.s, "r");
@@ -539,7 +542,6 @@ dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metad
     ret->names_src = DMAT_NAMES_SRC_IN_DM_FILE;
     ret->matrix = NULL;
     ret->n = 0;
-
 
     int lineno = 0;
 
@@ -761,7 +763,12 @@ dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metad
         }
     }
 
-    FCLOSE(fp);
+    if (isGzFile) {
+        PCLOSE(fp);
+    } else {
+        FCLOSE(fp);
+
+    }
 
     // -> finished reading the distance matrix file
 

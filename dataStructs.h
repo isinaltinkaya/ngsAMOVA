@@ -22,7 +22,6 @@ namespace IO {
     void vprint(const char* format, ...);
     void vprint(const int verbose_threshold, const char* format, ...);
     void vprint(FILE* fp, const int verbose_threshold, const char* format, ...);
-    void vvprint(FILE* fp, const int verbose_threshold, const char* format, ...);
 }
 
 struct blobStruct;
@@ -794,6 +793,7 @@ inline void trimSpaces(char* str) {
 #define DMAT_METHOD_KIN 6
 #define DMAT_METHOD_R0 7
 #define DMAT_METHOD_R1 8
+#define DMAT_METHOD_DXY 9
 
 /// @brief DMAT_NAMES_SRC_* - source of the names in the distance matrix
 /// NONE: no names (names=NULL)
@@ -808,6 +808,8 @@ inline void trimSpaces(char* str) {
 /// <no cleaning>
 /// NOTE: currently not used
 #define DMAT_NAMES_SRC_METADATA_NAMES_PTR 3
+/// PRIVATE: names is allocated and used internally in the program
+#define DMAT_NAMES_SRC_PRIVATE 4
 
 typedef struct dmat_t dmat_t;
 
@@ -833,6 +835,7 @@ struct dmat_t {
     /// 6: Kin
     /// 7: R0
     /// 8: R1
+    /// 9: Dxy
     uint32_t method;
 
     /// @var size - size of a each matrix matrix[n]
@@ -891,6 +894,8 @@ inline dmat_t* dmat_init(const size_t nInd, const uint8_t type, const uint32_t m
         ret->names = names;
     } else if (ret->names_src == DMAT_NAMES_SRC_METADATA_NAMES_PTR) {
         ret->names = names;
+    } else if (ret->names_src == DMAT_NAMES_SRC_PRIVATE) {
+        // names is allocated and used internally in the program
     } else {
         NEVER;
     }
@@ -926,6 +931,8 @@ inline void dmat_destroy(dmat_t* d) {
         d->names = NULL;
     } else if (d->names_src == DMAT_NAMES_SRC_NONE) {
         NEVER;
+    } else if (d->names_src == DMAT_NAMES_SRC_PRIVATE) {
+        strArray_destroy(d->names);
     } else {
         NEVER;
     }
@@ -936,7 +943,9 @@ inline void dmat_destroy(dmat_t* d) {
 
 dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metadataStruct* metadata);
 
-void dmat_print(dmat_t* dmat);
+void dmat_write(dmat_t* dmat);
+void dmat_print(dmat_t* dmat, kstring_t* kstr);
+
 
 
 

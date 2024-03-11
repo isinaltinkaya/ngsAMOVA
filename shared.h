@@ -31,10 +31,10 @@
     ( (pars->in_ft & IN_DM) )
 
 #define PROGRAM_NEEDS_METADATA \
-    ( ( 0!= args->doAMOVA ) )
+    ( ( args->doAMOVA || args->doDxy ))
 
 #define PROGRAM_NEEDS_FORMULA \
-    ( ( 0!= args->doAMOVA ) )
+    ( ( args->doAMOVA || args->doDxy ))
 
 
 
@@ -82,6 +82,7 @@
 /// LTED: assume i>j
 ///       for(i=1;i<n;++i) for(j=0;j<i;++j)
 #define MATRIX_GET_INDEX_LTED_IJ(i,j) (((i)*((i)-1)/2+(j)))
+#define MATRIX_GET_INDEX_LTED_IJ_UNORDERED(i,j) (((i)>(j)) ? MATRIX_GET_INDEX_LTED_IJ(i,j) : MATRIX_GET_INDEX_LTED_IJ(j,i))
 
 /// LTID: assume i<=j
 ///       for(i=0;i<n;++i) for(j=0;j<=i;++j)
@@ -255,13 +256,21 @@ do {                                                                     \
     */
 #define VWARN(...)                                                 \
 do {                                                           \
-	if (0 != args->verbose) {                                  \
+	if (0 != VERBOSITY_LEVEL) {                                  \
 		fprintf(stderr, "\n\n[WARNING](%s/%s:%d): ", __FILE__, \
 				__FUNCTION__, __LINE__);                       \
 		fprintf(stderr, __VA_ARGS__);                          \
 		fprintf(stderr, "\n");                                 \
 	}                                                          \
 } while (0);
+
+#define VRUN(...) \
+do { \
+    if (0 != VERBOSITY_LEVEL) { \
+        __VA_ARGS__; \
+    } \
+} while (0);
+
 
 
 
@@ -401,6 +410,15 @@ exit(1);                                                                        
 expr = NULL;                                                                                 \
 }
 
+
+#define PCLOSE(fp) \
+do{ \
+    if(0!=pclose((fp))){ \
+        fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, #fp); \
+        exit(1); \
+    } \
+}while(0);
+
              /*
              * Macro:[BGZCLOSE]
              * shortcut to check if bgzFile is open and close it
@@ -515,7 +533,7 @@ exit(1);                                            \
 #define MAX_N_BITS 64
 
 // maximum level of verbosity allowed
-#define MAX_VERBOSE_LEVEL 7
+#define MAX_PROGRAM_VERBOSITY_LEVEL 3
 
 /*
 * Macro:[DBL_MAXDIG10]
@@ -584,14 +602,6 @@ void print_help(FILE* fp);
 
 /// print formula usage information; to be used in formula specific errors
 void print_help_formula(FILE* fp);
-
-// verbosity level external global variable
-// -v 0 or none -> 0000 0000 -> 0 -> verbose off [default, set in argStruct.cpp]
-// -v 1 -> 0000 0001 -> 1 -> set the first bit, 0-indexed (1-1=0) verbose on with level 1
-// -v 2 -> 0000 0010 -> 2 -> set the second bit, 0-indexed (2-1=1) verbose on with level 2
-// ... and so on, up to -v 8
-// -v 8 -> 1000 0000 -> 128 -> set the 8th bit, 0-indexed (8-1=7) verbose on with level 8
-extern u_char VERBOSE;
 
 const double NEG_INF = -std::numeric_limits<double>::infinity();
 

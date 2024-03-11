@@ -1,11 +1,9 @@
 #include "argStruct.h"
+#include "shared.h"
 
 #include "io.h"
 
-//  default: 0 (verbose mode off)
-u_char VERBOSE = 0;
-
-
+uint8_t PROGRAM_VERBOSITY_LEVEL = 0;
 argStruct* args = NULL;
 
 // TODO:
@@ -76,12 +74,7 @@ argStruct* argStruct_get(int argc, char** argv) {
         } else if (strcasecmp("-doEM", arv) == 0) {
             args->doEM = atoi(val);
         } else if (strcasecmp("-doDxy", arv) == 0) {
-            if (strIsNumeric(val)) {
-                args->doDxy = atoi(val);
-            } else {
-                args->doDxy = 999;  // indicates that a string is provided
-                args->doDxyStr = strdup(val);
-            }
+            args->doDxy = atoi(val);
         } else if ((strcasecmp("-doNeighborJoining", arv) == 0) || (strcasecmp("-doPhylo", arv) == 0)) {
             args->doPhylo = atoi(val);
         } else if ((strcasecmp("--handle-negative-branch", arv) == 0)) {
@@ -338,20 +331,12 @@ argStruct* argStruct_get(int argc, char** argv) {
         } else if (strcasecmp("--metadata", arv) == 0 || strcasecmp("-m", arv) == 0) {
             args->in_mtd_fn = strdup(val);
         } else if ((strcasecmp("--verbose", arv) == 0) || (strcasecmp("-v", arv) == 0)) {
-            if (atoi(val) == 0) {
-                // explicit verbose off, use the default value 0
-                fprintf(stderr, "[INFO]\t-> Verbosity disabled explicitly. Will not print any information.\n");
-            } else if (strIsNumeric(val)) {
-                int verbose_val = atoi(val) - 1;
-                if (verbose_val > MAX_VERBOSE_LEVEL) {
-                    verbose_val = MAX_VERBOSE_LEVEL;
-                    fprintf(stderr, "\n[WARN]\tVerbosity level is set to %d, which is greater than the maximum verbosity level %d. Setting verbosity level to MAX.\n", verbose_val, MAX_VERBOSE_LEVEL);
-                }
-                BITSET(VERBOSE, verbose_val);
-            } else {
-                ERROR("Invalid verbosity level provided: %s\n", val);
+            // allowed range: [0,3]
+            int vval = atoi(val);
+            if (vval > MAX_PROGRAM_VERBOSITY_LEVEL) {
+                vval = MAX_PROGRAM_VERBOSITY_LEVEL;
             }
-            fprintf(stderr, "\n[INFO]\t-> Verbosity level is set to %d.\n", WHICH_BIT_SET1(VERBOSE));
+            PROGRAM_VERBOSITY_LEVEL = vval;
         }
 
         else if (strcasecmp("--formula", arv) == 0 || strcasecmp("-f", arv) == 0) {
@@ -460,8 +445,6 @@ argStruct* argStruct_get(int argc, char** argv) {
 
 
     args->check_arg_dependencies();
-    args->print();
-    args->print(stderr);
 
     return args;
 }
@@ -600,9 +583,7 @@ void argStruct::check_arg_dependencies() {
     // -doDxy
     //              default: 0
     //              0: do not estimate dxy
-    //              1: estimate dxy from the distance matrix for all groups in each hierarchical level defined in the metadata file (requires: method to obtain distance matrix, metadata file)
-    //              2: estimate dxy from the distance matrix for the groups in metadata specified by the user via --dxy-groups (requires: method to obtain distance matrix, metadata file, --dxy-groups)
-    //              3: estimate dxy from the distance matrix for the groups in the hierarchical level specified by the user via --dxy-levels (requires: method to obtain distance matrix, metadata file, --dxy-levels)
+    //              1: estimate dxy from the distance matrix for all groups in all hierarchical levels defined in the metadata file (requires: method to obtain distance matrix, metadata file)
 
     // : (doDist 1,2 or in_ft == IN_DM), (--metadata-file <METADATA_FILE> or doDxyStr)
 
@@ -610,21 +591,9 @@ void argStruct::check_arg_dependencies() {
         //
     } else if (1 == doDxy) {
         IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doDxy 1");
-        // if (0 == doDist) {
-        //     ERROR("-doDxy %d requires -doDist != 0.", doDxy);
-        // }
-    } else if (2 == doDxy) {
-        IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doDxy 2");
-        IO::requireArgStr(dxyGroups, "--dxy-groups", "-doDxy 2");
-        // if (0 == doDist) {
-        //     ERROR("-doDxy %d requires -doDist != 0.", doDxy);
-        // }
-    } else if (3 == doDxy) {
-        IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doDxy 3");
-        IO::requireArgStr(dxyLevels, "--dxy-levels", "-doDxy 3");
-        // if (0 == doDist) {
-        //     ERROR("-doDxy %d requires -doDist != 0.", doDxy);
-        // }
+        if (args->in_mtd_fn == NULL) {
+            ERROR("-doDxy %d requires --metadata/-m <file>.", doDxy);
+        }
     } else {
         ERROR("-doDxy %d is not a valid option.", doDxy);
     }
@@ -808,20 +777,4 @@ void argStruct_destroy(argStruct* args) {
     }
 
     delete args;
-}
-
-// TODO
-void argStruct::print() {
-    if (NULL == outFiles->out_args_fs->kbuf) {
-        outFiles->out_args_fs->kbuf = kbuf_init();
-    }
-    kstring_t* kbuf = outFiles->out_args_fs->kbuf;
-
-    kputs("\nCommand: ", kbuf);
-    // ksprintf(kbuf, "%s", args->command);
-}
-
-void argStruct::print(FILE* fp) {
-    // fprintf(fp, "\nCommand: %s", args->command);//TODO
-    fprintf(fp, "\n");
 }

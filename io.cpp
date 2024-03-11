@@ -511,7 +511,9 @@ void IO::outputStruct::write(const char* buf) {
 
 void IO::outputStruct::kbuf_destroy_buffer() {
     if (NULL != this->kbuf) {
-        FREE(this->kbuf->s);
+        if (NULL != this->kbuf->s) {
+            FREE(this->kbuf->s);
+        }
         delete this->kbuf;
         this->kbuf = NULL;
     }
@@ -594,6 +596,9 @@ void IO::outFilesStruct_init(IO::outFilesStruct* ofs) {
     if (args->doPhylo > 0) {
         ofs->out_nj_fs = new IO::outputStruct(args->out_fnp, ".newick", OUTFC::NONE);
     }
+    if (args->doDxy) {
+        ofs->out_dxy_fs = new IO::outputStruct(args->out_fnp, ".dxy.csv", OUTFC::NONE);
+    }
 
     if (1 == DEV) {
         if (args->nBootstraps > 0) {
@@ -623,15 +628,8 @@ void IO::outFilesStruct_destroy(IO::outFilesStruct* ofs) {
     delete ofs;
 }
 
-int IO::verbose(const int verbose_threshold) {
-    if (verbose_threshold == 0) {
-        return 1;  // if checking against 0 (i.e. no verbose needed) return 1
-    }
-    return BITCHECK_ATLEAST(VERBOSE, verbose_threshold - 1);
-}
-
 void IO::vprint(const char* format, ...) {
-    if (VERBOSE) {
+    if (PROGRAM_VERBOSITY_LEVEL) {
         char str[1024];
 
         va_list args;
@@ -644,17 +642,7 @@ void IO::vprint(const char* format, ...) {
 }
 
 void IO::vprint(const int verbose_threshold, const char* format, ...) {
-    if (verbose_threshold == 0) {
-        char str[1024];
-
-        va_list args;
-        va_start(args, format);
-        vsprintf(str, format, args);
-        va_end(args);
-
-        fprintf(stderr, "\n[INFO]\t%s\n", str);
-    }
-    if (BITCHECK_ATLEAST(VERBOSE, (verbose_threshold - 1)) == 1) {
+    if (PROGRAM_VERBOSITY_LEVEL >= verbose_threshold) {
         char str[1024];
 
         va_list args;
@@ -667,7 +655,7 @@ void IO::vprint(const int verbose_threshold, const char* format, ...) {
 }
 
 void IO::vprint(FILE* fp, const int verbose_threshold, const char* format, ...) {
-    if (BITCHECK_ATLEAST(VERBOSE, (verbose_threshold - 1)) == 1) {
+    if (PROGRAM_VERBOSITY_LEVEL >= verbose_threshold) {
         char str[1024];
 
         va_list args;
@@ -676,20 +664,6 @@ void IO::vprint(FILE* fp, const int verbose_threshold, const char* format, ...) 
         va_end(args);
 
         fprintf(fp, "\n[INFO][VERBOSE>=%d]\t%s\n", verbose_threshold, str);
-    }
-}
-
-void IO::vvprint(FILE* fp, const int verbose_threshold, const char* format, ...) {
-    if (BITCHECK_ATLEAST(VERBOSE, (verbose_threshold - 1)) == 1) {
-        char str[1024];
-
-        va_list args;
-        va_start(args, format);
-        vsprintf(str, format, args);
-        va_end(args);
-
-        fprintf(fp, "\n[INFO][VERBOSE>=%d]\t%s\n", verbose_threshold, str);
-        fprintf(stderr, "\n[INFO][VERBOSE>=%d]\t%s\n", verbose_threshold, str);
     }
 }
 
