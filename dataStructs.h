@@ -7,11 +7,7 @@
 #include "vcfReader.h"
 
 
-/// ----------------------------------------------------------------------- ///
 
-
-
-/// TODO !! MATCH THE INDNAMES IN THE VCF FILE WITH THE INDNAMES IN THE METADATA FILE
 
 
 /* FORWARD DECLARATIONS ----------------------------------------------------- */
@@ -26,11 +22,12 @@ namespace IO {
 
 struct blobStruct;
 
-typedef struct lnglStruct lnglStruct;
 typedef struct vcfData vcfData;
 typedef struct indPairThreads indPairThreads;
 
 typedef struct intArray intArray;
+
+/// ----------------------------------------------------------------------- ///
 
 struct intArray {
 
@@ -504,29 +501,6 @@ inline void strArray_destroy(strArray* sa) {
 
 /* -------------------------------------------------------------------------- */
 
-struct lnglStruct {
-
-    /*
-     * lngl[nSites][nInd*nGT*double]
-     * genotype likelihoods in natural log
-     * for each individual at each site
-     *
-     *
-     */
-     // d[size1][size2]
-    double** d = NULL;
-
-    // size1 follows pars->nSites_arrays_size
-    size_t size1 = -1;
-
-    size_t size2 = -1;
-
-    lnglStruct(const int nGt, const int nInd);
-    ~lnglStruct();
-
-    void expand();
-
-};
 
 /// @brief read_formula_str - read the formula string into a strArray of formula tokens
 /// @param formula formula string
@@ -572,9 +546,10 @@ struct metadataStruct {
     //      levelNames = {"Region","Population","Subpopulation","Individual"}
     strArray* levelNames;
 
-    // \def names->d[nInds]
-    // names->d[i] = name of individual i (char *)
-    strArray* names;
+    // \def indNames->d[nInds]
+    // indNames->d[i] = name of individual i (char *)
+    /// @note free iff pars->metadata==NULL && PROGRAM_HAS_INPUT_VCF ; else it is ptr to pars->metadata->indNames
+    strArray* indNames;
 
     // \def groupNames->d[nGroups]
     // N.B. does not contain individual names
@@ -605,8 +580,8 @@ inline metadataStruct* metadataStruct_init(const int in_nLevels) {
     ret->levelNames = NULL;
     ret->levelNames = strArray_alloc(in_nLevels);
 
-    ret->names = NULL;
-    ret->names = strArray_init();
+    ret->indNames = NULL;
+    ret->indNames = strArray_init();
 
     ret->groupNames = NULL;
     ret->groupNames = strArray_init();
@@ -658,7 +633,7 @@ metadataStruct* metadataStruct_read(paramStruct* pars);
 inline void metadataStruct_destroy(metadataStruct* mtd) {
 
     strArray_destroy(mtd->levelNames);
-    strArray_destroy(mtd->names);
+    strArray_destroy(mtd->indNames);
     strArray_destroy(mtd->groupNames);
 
 
@@ -739,221 +714,11 @@ inline void trimSpaces(char* str) {
     }
 }
 
-/// ----------------------------------------------------------------------- ///
-/// DISTANCE MATRIX
-
-/// @brief DMAT_TYPE_* - type of the distance matrix
-///
-///  ___  ___  ___  (exclude=0,include=1)
-///   .    .  [0|1] -> diagonal
-///   .  [0|1]  .   -> lower triangular
-/// [0|1]  .    .   -> upper triangular
-///
-#define DMAT_TYPE_INCLUDE_DIAG (1<<0)
-#define DMAT_TYPE_INCLUDE_LOWER_TRI (1<<1)
-#define DMAT_TYPE_INCLUDE_UPPER_TRI (1<<2)
-/// LTED: lower triangular, excluding the diagonal
-/// (0<<2)|(1<<1)|(0<<0)
-#define DMAT_TYPE_LTED 2
-/// LTID: lower triangular, including the diagonal
-/// (0<<2)|(1<<1)|(1<<0)
-#define DMAT_TYPE_LTID 3
-/// UTED: upper triangular, excluding the diagonal
-/// (1<<2)|(0<<1)|(0<<0)
-#define DMAT_TYPE_UTED 4
-/// UTID: upper triangular, including the diagonal
-/// (1<<2)|(0<<1)|(1<<0)
-#define DMAT_TYPE_UTID 5
-/// FULL: full matrix
-/// (1<<2)|(1<<1)|(1<<0)
-#define DMAT_TYPE_FULL 7
-
-
-/// @brief DMAT_TRANSFORM_* - transformation applied to the distances in the matrix
-///
-/// NONE: not transformed
-#define DMAT_TRANSFORM_NONE 0
-/// SQUARE: val^2
-#define DMAT_TRANSFORM_SQUARE 1
-/// SQRT: sqrt(val) //TODO
-// #define DMAT_TRANSFORM_SQRT 2 
-/// ABS: absolute value (|val|) //TODO
-// #define DMAT_TRANSFORM_ABS 3
-/// PSEUDO_EUCLIDEAN: // TODO
-// #define DMAT_TRANSFORM_PSEUDO_EUCLIDEAN 4
-
-
-/// @brief DMAT_METHOD_* - method used in distance calculation (i.e. distance metric)
-#define DMAT_METHOD_DIJ 0
-#define DMAT_METHOD_SIJ 1
-#define DMAT_METHOD_FIJ 2
-#define DMAT_METHOD_IBS0 3
-#define DMAT_METHOD_IBS1 4
-#define DMAT_METHOD_IBS2 5
-#define DMAT_METHOD_KIN 6
-#define DMAT_METHOD_R0 7
-#define DMAT_METHOD_R1 8
-#define DMAT_METHOD_DXY 9
-
-/// @brief DMAT_NAMES_SRC_* - source of the names in the distance matrix
-/// NONE: no names (names=NULL)
-#define DMAT_NAMES_SRC_NONE 0
-/// IN_DM_FILE: names is allocated and read from the distance matrix input file
-/// <requires cleaning>
-#define DMAT_NAMES_SRC_IN_DM_FILE 1
-/// IN_VCF_FILE: names is pointer to the strArray* names in pars which was read from the VCF file
-/// <no cleaning>
-#define DMAT_NAMES_SRC_IN_VCF_PARS_PTR 2
-/// IN_METADATA_FILE: names is pointer to the strArray* names in metadataStruct
-/// <no cleaning>
-/// NOTE: currently not used
-#define DMAT_NAMES_SRC_METADATA_NAMES_PTR 3
-/// PRIVATE: names is allocated and used internally in the program
-#define DMAT_NAMES_SRC_PRIVATE 4
-
-typedef struct dmat_t dmat_t;
-
-/// @struct dmat_t - distance matrix struct 
-/// @brief  struct for n distance matrices 
-struct dmat_t {
-
-    /// @var type - type of the distance matrix 
-    /// @details bitset
-    uint8_t type;
-
-    /// @var transform - transformation applied to the distances in the matrix
-    uint32_t transform;
-
-    /// @var method - method used to calculate the distances in the matrix
-    /// @details
-    /// 0: Dij
-    /// 1: Sij
-    /// 2: Fij
-    /// 3: IBS0
-    /// 4: IBS1
-    /// 5: IBS2
-    /// 6: Kin
-    /// 7: R0
-    /// 8: R1
-    /// 9: Dxy
-    uint32_t method;
-
-    /// @var size - size of a each matrix matrix[n]
-    /// @details typically nIndCmb
-    size_t size;
-
-    /// @var names - array of names of the individuals in the distance matrix
-    /// @details
-    /// - if names_src == DMAT_NAMES_SRC_IN_DM_FILE, names is allocated and read from the distance matrix input file
-    /// - if names_src == DMAT_NAMES_SRC_IN_VCF_PARS_PTR, names is pointer to the strArray* names in pars which was read from the VCF file
-    /// - if names_src == DMAT_NAMES_SRC_METADATA_NAMES_PTR, names is pointer to the strArray* names in metadataStruct
-    /// - if names_src == DMAT_NAMES_SRC_NONE, names is NULL
-    strArray* names;
-    uint8_t names_src;
-
-    /// @var n - number of distance matrices
-    size_t n;
-
-    /// @var matrix - array of n 1D distance matrices of size 'size'
-    // matrix[n][size]
-    double** matrix;
-
-};
-
-
-inline dmat_t* dmat_init(const size_t nInd, const uint8_t type, const uint32_t method, const uint32_t transform, strArray* names, const uint8_t names_src) {
-
-    dmat_t* ret = NULL;
-    ret = (dmat_t*)malloc(sizeof(dmat_t));
-    ASSERT(ret != NULL);
-
-    switch (type) {
-    case DMAT_TYPE_LTED:
-    case DMAT_TYPE_UTED:
-        ret->size = (nInd * (nInd - 1)) / 2;
-        break;
-    case DMAT_TYPE_LTID:
-    case DMAT_TYPE_UTID:
-        ret->size = (nInd * (nInd + 1)) / 2;
-        break;
-    case DMAT_TYPE_FULL:
-        ret->size = nInd * nInd;
-        break;
-    default:
-        NEVER;
-    }
-
-    ret->type = type;
-    ret->transform = transform;
-    ret->method = method;
-
-    ret->n = (args->nBootstraps > 0) ? (1 + args->nBootstraps) : 1;
-
-    ret->names_src = names_src;
-    if (ret->names_src == DMAT_NAMES_SRC_IN_VCF_PARS_PTR) {
-        ret->names = names;
-    } else if (ret->names_src == DMAT_NAMES_SRC_METADATA_NAMES_PTR) {
-        ret->names = names;
-    } else if (ret->names_src == DMAT_NAMES_SRC_PRIVATE) {
-        // names is allocated and used internally in the program
-    } else {
-        NEVER;
-    }
-
-    ret->matrix = NULL;
-    ret->matrix = (double**)malloc(ret->n * sizeof(dmat_t*));
-    ASSERT(ret->matrix != NULL);
-
-    for (size_t i = 0; i < ret->n;++i) {
-        ret->matrix[i] = NULL;
-        ret->matrix[i] = (double*)malloc(ret->size * sizeof(double));
-        ASSERT(ret->matrix[i] != NULL);
-        for (size_t j = 0;j < ret->size;++j) {
-            ret->matrix[i][j] = 0.0;
-        }
-    }
-    return(ret);
-}
-
-
-
-inline void dmat_destroy(dmat_t* d) {
-    for (size_t i = 0; i < d->n;++i) {
-        FREE(d->matrix[i]);
-    }
-    FREE(d->matrix);
-
-    if (d->names_src == DMAT_NAMES_SRC_IN_DM_FILE) {
-        strArray_destroy(d->names);
-    } else if (d->names_src == DMAT_NAMES_SRC_IN_VCF_PARS_PTR) {
-        d->names = NULL;
-    } else if (d->names_src == DMAT_NAMES_SRC_METADATA_NAMES_PTR) {
-        d->names = NULL;
-    } else if (d->names_src == DMAT_NAMES_SRC_NONE) {
-        NEVER;
-    } else if (d->names_src == DMAT_NAMES_SRC_PRIVATE) {
-        strArray_destroy(d->names);
-    } else {
-        NEVER;
-    }
-
-    FREE(d);
-    return;
-}
-
-dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metadataStruct* metadata);
-
-void dmat_write(dmat_t* dmat);
-void dmat_print(dmat_t* dmat, kstring_t* kstr);
-
-
-
-
-
 typedef struct jgtmat_t jgtmat_t;
 struct jgtmat_t {
 
     // typically: nIndCmb (one matrix per ind pair)
+    // or nIndCmb*(args->nBootstraps+1) (for each bootstrap replicate+the orig)
     size_t n;      // number of matrices
 
     // - 9 (3x3) for MM Mm mm
@@ -964,79 +729,65 @@ struct jgtmat_t {
     // pm[n][size]
     double** pm;
 
-    // expected counts (from doEM with gl source)
-    // em[n][size]
-    double** em;
-
     // counts
     // m[n][size]
-    int** m;
+    uint64_t** m;
 
 };
 
-inline jgtmat_t* jgtmat_init(const size_t nIndCmb) {
+inline jgtmat_t* jgtmat_init(const size_t nmat) {
     jgtmat_t* ret = NULL;
     ret = (jgtmat_t*)malloc(sizeof(jgtmat_t));
     ASSERT(ret != NULL);
 
-    ret->n = nIndCmb;
+    ret->n = nmat;
     ret->pm = NULL;
-    ret->em = NULL;
     ret->m = NULL;
 
-
-    if (args->doJGTM == 1) {
+    if (ARG_DOJGTM_3GT == args->doJGTM) {
         ret->size = 9;
-    } else if (args->doJGTM == 2) {
+    } else if (ARG_DOJGTM_10GT == args->doJGTM) {
         ret->size = 100;
+    } else {
+        NEVER;
     }
 
-    ret->pm = (double**)malloc(ret->n * sizeof(double*));
-    ASSERT(ret->pm != NULL);
-    for (size_t i = 0;i < ret->n;++i) {
-        ret->pm[i] = NULL;
-        ret->pm[i] = (double*)malloc(ret->size * sizeof(double));
-        ASSERT(ret->pm[i] != NULL);
-        for (size_t ii = 0;ii < ret->size;++ii) {
-            ret->pm[i][ii] = 0.0;
-        }
-    }
     if (args->doEM) {
-        // TODO are counts really necessary??
-        ret->em = (double**)malloc(ret->n * sizeof(double*));
-        ASSERT(ret->em != NULL);
+        ret->pm = (double**)malloc(ret->n * sizeof(double*));
+        ASSERT(ret->pm != NULL);
         for (size_t i = 0;i < ret->n;++i) {
-            ret->em[i] = NULL;
-            ret->em[i] = (double*)malloc(ret->size * sizeof(double));
-            ASSERT(ret->em[i] != NULL);
+            ret->pm[i] = NULL;
+            ret->pm[i] = (double*)malloc(ret->size * sizeof(double));
+            ASSERT(ret->pm[i] != NULL);
             if (9 == ret->size) {
                 // use flat prior
-                ret->em[i][0] = FRAC_1_9;
-                ret->em[i][1] = FRAC_1_9;
-                ret->em[i][2] = FRAC_1_9;
-                ret->em[i][3] = FRAC_1_9;
-                ret->em[i][4] = FRAC_1_9;
-                ret->em[i][5] = FRAC_1_9;
-                ret->em[i][6] = FRAC_1_9;
-                ret->em[i][7] = FRAC_1_9;
-                ret->em[i][8] = FRAC_1_9;
+                ret->pm[i][0] = FRAC_1_9;
+                ret->pm[i][1] = FRAC_1_9;
+                ret->pm[i][2] = FRAC_1_9;
+                ret->pm[i][3] = FRAC_1_9;
+                ret->pm[i][4] = FRAC_1_9;
+                ret->pm[i][5] = FRAC_1_9;
+                ret->pm[i][6] = FRAC_1_9;
+                ret->pm[i][7] = FRAC_1_9;
+                ret->pm[i][8] = FRAC_1_9;
             } else if (100 == ret->size) {
                 // use flat prior
                 for (size_t j = 0;j < ret->size;++j) {
-                    ret->em[i][j] = 0.01;
+                    ret->pm[i][j] = 0.01;
                 }
             }
         }
     } else {
-        ret->m = (int**)malloc(ret->n * sizeof(int*));
+        ret->m = (uint64_t**)malloc(ret->n * sizeof(uint64_t*));
         ASSERT(ret->m != NULL);
         for (size_t i = 0;i < ret->n;++i) {
             ret->m[i] = NULL;
-            ret->m[i] = (int*)malloc(ret->size * sizeof(int));
+            ret->m[i] = (uint64_t*)malloc(ret->size * sizeof(uint64_t));
             ASSERT(ret->m[i] != NULL);
-            for (size_t ii = 0;ii < ret->size;++ii) {
-                ret->m[i][ii] = 0;
+            for (size_t j = 0;j < ret->size;++j) {
+                ret->m[i][j] = 0;
             }
+
         }
     }
 
@@ -1044,12 +795,6 @@ inline jgtmat_t* jgtmat_init(const size_t nIndCmb) {
 }
 
 inline void jgtmat_destroy(jgtmat_t* d) {
-    if (d->em != NULL) {
-        for (size_t i = 0;i < d->n;++i) {
-            FREE(d->em[i]);
-        }
-        FREE(d->em);
-    }
     if (d->m != NULL) {
         for (size_t i = 0;i < d->n;++i) {
             FREE(d->m[i]);
@@ -1066,8 +811,8 @@ inline void jgtmat_destroy(jgtmat_t* d) {
     return;
 }
 
-void jgtmat_get_srcgl(jgtmat_t* jgtm, paramStruct* pars, vcfData* vcfd, blobStruct* blob);
-void jgtmat_get_srcgt(jgtmat_t* jgtm, paramStruct* pars, vcfData* vcfd, blobStruct* blob);
+void jgtmat_get_srcgl(jgtmat_t* jgtm, paramStruct* pars, vcfData* vcfd);
+void jgtmat_get_srcgt(jgtmat_t* jgtm, paramStruct* pars, vcfData* vcfd);
 
 
 

@@ -1,147 +1,94 @@
 #ifndef __BOOTSTRAP__
 #define __BOOTSTRAP__
 
-#include "argStruct.h"
 #include "dataStructs.h"
-#include "paramStruct.h"
 #include "shared.h"
-#include "vcfReader.h"
 
 /* FORWARD DECLARATIONS ----------------------------------------------------- */
-struct distanceMatrixStruct;
-struct metadataStruct;
-struct vcfData;
-struct amovaStruct;
-
-typedef struct blockStruct blockStruct;
-typedef struct blobStruct blobStruct;
-typedef struct bootstrapReplicate bootstrapReplicate;
-typedef struct bootstrapDataset bootstrapDataset;
-
-
-typedef struct block_t block_t;
-typedef struct block_bootstrap_t block_bootstrap_t;
+typedef struct bblocks_t bblocks_t;
+typedef struct strArray strArray;
+void strArray_destroy(strArray* sa);
+typedef struct vcfData vcfData;
+typedef struct paramStruct paramStruct;
 
 /* -------------------------------------------------------------------------- */
 
-
-/// @brief block_t - structure for storing a single block
+/// @brief bblocks_sample_with_replacement - perform the block bootstrapping sampling with replacement
 /// @details
-///   positions are 0-based
-///   [start, end) - [inclusive start, exclusive end)
-struct block_t {
-    char* chr; // pointer to the chromosome name; not allocated
-    int start; // inclusive
-    int end;   // exclusive
-    int id;    // block id (index of the block in the blocks array)
-    // length = end - start
+/// sample the blocks with replacement for all individuals as to preserve the correlation structure
+void bblocks_sample_with_replacement(bblocks_t* bblocks);
+
+void bblocks_print_blocks_tab(bblocks_t* bblocks);
+void bblocks_print_bootstrap_samples(bblocks_t* bblocks);
+
+/// @brief bblocks_t - structure for storing bootstrap blocks
+/// @note positions: 0-based, [start, end)
+struct bblocks_t {
+
+    /// @var n_blocks - number of blocks
+    size_t n_blocks;
+
+    /// @var n_contigs - number of contigs
+    size_t n_contigs;
+
+    /// @var n_ind - number of individuals
+    size_t n_ind;
+
+    /// \def rblocks[nReps][n_blocks] = size_t index of the sampled block
+    size_t** rblocks;
+
+    /// @var nsites_per_block[n_blocks]
+    /// nsites_per_block[i] == number of sites in block i
+    uint64_t* nsites_per_block;
+
+    strArray* contig_names;
+
+    /// @var block_start_pos[n_blocks]
+    /// block_start_pos[i] == position (vcfd->rec->pos) of the start of block i
+    /// @note 0-based, inclusive [start
+    size_t* block_start_pos;
+
+    /// @var block_end_pos[n_blocks]
+    /// block_end_pos[i] == position (vcfd->rec->pos) of the end of block i
+    /// @note 0-based, exclusive end)
+    size_t* block_end_pos;
+
+    /// @var block_contig[n_blocks]
+    /// block_contig[i] == index of the contig (in contig_names) that block i belongs to
+    size_t* block_contig;
+
+
+    /// @var block_start_siteidx[n_blocks]
+    /// block_start_siteidx[i] == index of the first site that belongs to block i
+    /// @note site index refers to the set of sites the program did not skip and are included in the analysis
+    /// if all sites from all contigs are used, this set is of size for(c in contigs) size+=contignsites[c]
+    /// the max siteidx is ((vcfd->nSites)-1), the min is 0, and it is global through all contigs
+    /// vcfd->nSites==pars->nSites
+    /// this information is collected during sites reading
+    /// @note 0-based siteidx inclusive [start
+    /// @note block_end = (wb == nBlocks - 1) ? max_nsites : block_start_siteidx[wb + 1];
+    size_t* block_start_siteidx;
+
 };
 
+inline bblocks_t* bblocks_init(void) {
+    bblocks_t* bblocks = (bblocks_t*)malloc(sizeof(bblocks_t));
+    ASSERT(bblocks != NULL);
+    bblocks->n_blocks = 0;
+    bblocks->n_contigs = 0;
+    bblocks->n_ind = 0;
+    bblocks->nsites_per_block = NULL;
+    bblocks->block_start_pos = NULL;
+    bblocks->block_end_pos = NULL;
+    bblocks->block_contig = NULL;
+    bblocks->block_start_siteidx = NULL;
+    bblocks->contig_names = NULL;
+    return(bblocks);
+}
 
-struct block_bootstrap_t {
-    block_t* blocks;
-    int* blockPtrs;
-};
+void bblocks_destroy(bblocks_t* bblocks);
 
+void bblocks_get(bblocks_t* bblocks, vcfData* vcfd, paramStruct* pars);
 
-/// @brief blockStruct - structure for storing a single block
-/// @details
-///   positions are 0-based
-///   [start, end) - [inclusive start, exclusive end)
-struct blockStruct {
-    char* chr = NULL;
-    // const size_t chr; //TODO chr id instead
-    int start = 0;  // inclusive
-    int end = 0;    // exclusive
-    int len = 0;    // end - start; length of the block
-};
-// to access the data
-// if this block is not the last block in the contig
-// 		loop: from this_blockStart to next_blockStart
-// if this block is the last block in the contig
-// 		loop: from this_blockStart to the end of the contig
-// for (int gti = 0; gti < 3; gti++)
-// {
-// 	double x = vcfd->lngl[0][3 * vb + gti];
-// }
-
-/// @brief blobStruct - structure for storing all blocks
-struct blobStruct {
-    // Total number of blocks
-    int nBlocks = 0;
-
-    // /def blocks[nBlocks]
-    // blocks[i] == pointer to a blockStruct at index i
-    blockStruct** blocks = NULL;
-
-    // /def blockPtrs[nBlocks]
-    // blockPtrs[i] == pointer to the location of the data for block i
-    // e.g. blockPtrs[42] == index of the first site in block 42 in vcf data
-    int** blockPtrs = NULL;
-
-    bootstrapDataset* bootstraps = NULL;
-
-    ~blobStruct();
-
-    void addBlock();
-
-    void _print();
-
-    void print();
-
-    void get_bootstrap_replicates(vcfData* vcfd, bootstrapReplicate* bRep);
-};
-
-blobStruct* blobStruct_get(vcfData* vcf, paramStruct* pars, distanceMatrixStruct* dMS, metadataStruct* mS);
-blobStruct* blobStruct_get(vcfData* vcf, paramStruct* pars);
-blobStruct* blobStruct_read_bed(const char* fn);
-blobStruct* blobStruct_read_tab(const char* fn);
-blobStruct* blobStruct_populate_blocks_withSize(vcfData* vcf);
-
-void* blobStruct_destroy(blobStruct* blob);
-
-int sample_block_variant(metadataStruct* mtd, const int lvl, const int local_group_idx);
-
-bootstrapReplicate* get_bootstrap_replicate(vcfData* vcfd, blobStruct* blobSt);
-int sample_with_replacement(int n);
-
-struct bootstrapReplicate {
-    // /def rBlocks[nBlocks] - set of block ids
-    // sampled in the bootstrap replicate bootstrapReplicate
-    int* rBlocks = NULL;
-
-    distanceMatrixStruct* distanceMatrix = NULL;
-
-    amovaStruct* amova = NULL;
-
-    bootstrapReplicate(int nBlocks);
-    ~bootstrapReplicate();
-};
-
-struct bootstrapDataset {
-    // /def rep[nBootstraps]
-    // rep[i] == pointer to bootstrapData struct for ith bootstrap replicate
-    bootstrapReplicate** replicates = NULL;
-
-    int nReplicates = 0;
-    int nBlocks = 0;
-
-    // \def phiValues[indexOfPhiStatistic][nBootstrapReplicates]
-    // nPhiValues == (nLevels * 2)-3
-    double** phiValues = NULL;
-    int nPhiValues = 0;
-
-
-    void print_confidenceInterval(FILE* fp);
-
-    void print();
-
-    bootstrapDataset(paramStruct* pars, int nBootstraps_, int nBlocks_);
-    ~bootstrapDataset();
-};
-
-bootstrapDataset* bootstrapDataset_get(vcfData* vcfd, paramStruct* pars, blobStruct* blobSt);
-
-void get_distanceMatrix_GT(paramStruct* pars, distanceMatrixStruct* distanceMatrix, vcfData* vcfd, blobStruct* blob);
 
 #endif  // __BOOTSTRAP__

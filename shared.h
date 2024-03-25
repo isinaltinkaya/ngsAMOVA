@@ -21,14 +21,10 @@
 #define ARG_DOEM_3GL 1
 #define ARG_DOEM_10GL 2
 
+
+
 #define PROGRAM_NEEDS_INDNAMES \
     ( ((0 != (args->doPhylo))))
-
-#define INPUT_IS_VCF \
-    ( (pars->in_ft & IN_VCF) )
-
-#define INPUT_IS_DM \
-    ( (pars->in_ft & IN_DM) )
 
 #define PROGRAM_NEEDS_METADATA \
     ( ( args->doAMOVA || args->doDxy ))
@@ -36,16 +32,68 @@
 #define PROGRAM_NEEDS_FORMULA \
     ( ( args->doAMOVA || args->doDxy ))
 
+#define ARG_DOAMOVA_UNSET 0
+#define ARG_DOAMOVA_SINGLERUN 1
+#define ARG_DOAMOVA_BOOTSTRAP 2
+#define ARG_DOAMOVA_PERMTEST 3
+
+
+#define PROGRAM_WILL_PERFORM_BLOCK_BOOTSTRAPPING \
+    ( (args->doAMOVA==ARG_DOAMOVA_BOOTSTRAP))
+//TODO add block bootstrap test for nj and dxy
 
 
 
 /// ----------------------------------------------------------------------- ///
 // ARGUMENT VALUES
 
-#define ARG_DOMAJORMINOR_NONE (0)
+#define ARG_DOJGTM_UNSET 0
+#define ARG_DOJGTM_3GT 1
+#define ARG_DOJGTM_10GT 2
 
+#define ARG_INTPLUS_INPUT_UNSET      (0<<0)
+#define ARG_INTPLUS_INPUT_VCF        (1<<0)
+#define ARG_INTPLUS_INPUT_DM         (1<<1)
+#define ARG_INTPLUS_INPUT_MULTIDM    (1<<2)
+#define ARG_INTPLUS_INPUT_DXY        (1<<3)
+#define ARG_INTPLUS_INPUT_METADATA   (1<<4)
+#define ARG_INTPLUS_INPUT_MAJORMINOR (1<<5)
+#define ARG_INTPLUS_INPUT_ANCDER     (1<<6)
+#define ARG_INTPLUS_INPUT_BLOCKS     (1<<7)
+#define ARG_INTPLUS_INPUT_REGIONS    (1<<8)
+
+#define PROGRAM_HAS_INPUT_VCF \
+    ( (args->in_ft & ARG_INTPLUS_INPUT_VCF) )
+
+#define PROGRAM_HAS_INPUT_DM \
+    ( (args->in_ft & ARG_INTPLUS_INPUT_DM) )
+
+#define PROGRAM_HAS_INPUT_MULTIDM \
+    ( (args->in_ft & ARG_INTPLUS_INPUT_MULTIDM) )
+
+#define PROGRAM_HAS_INPUT_DXY \
+    ( (args->in_ft & ARG_INTPLUS_INPUT_DXY) )
+
+#define PROGRAM_HAS_INPUT_METADATA \
+    ( (args->in_ft & ARG_INTPLUS_INPUT_METADATA) )
+
+#define PROGRAM_HAS_INPUT_MAJORMINOR \
+    ( (args->in_ft & ARG_INTPLUS_INPUT_MAJORMINOR) )
+
+#define PROGRAM_HAS_INPUT_ANCDER \
+    ( (args->in_ft & ARG_INTPLUS_INPUT_ANCDER) )
+
+#define PROGRAM_HAS_INPUT_BLOCKS \
+    ( (args->in_ft & ARG_INTPLUS_INPUT_BLOCKS) )
+
+#define PROGRAM_HAS_INPUT_REGIONS \
+    ( (args->in_ft & ARG_INTPLUS_INPUT_REGIONS) )
+
+
+
+
+#define ARG_DOMAJORMINOR_UNSET (0)
 #define ARG_DOMAJORMINOR_BCF_REFALT1 (1)
-
 #define ARG_DOMAJORMINOR_INFILE (2)
 
 #define PROGRAM_WILL_USE_ALLELES_REF_ALT1 \
@@ -65,6 +113,8 @@
 #define PROGRAM_WILL_USE_BCF_FMT_GT \
     ( (args->bcfSrc & ARG_INTPLUS_BCFSRC_FMT_GT) )
 
+#define PROGRAM_WILL_USE_RNG \
+    ( (args->doAMOVA==ARG_DOAMOVA_BOOTSTRAP) || (args->doAMOVA==ARG_DOAMOVA_PERMTEST) )
 
 /* ========================================================================== */
 /* MACRO DEFINITIONS ======================================================== */
@@ -111,7 +161,7 @@ do { \
         \
             ERROR("[Bad argument value: '%s %d'] Allowed range is [%d,%d]", (argstr), (argval), (minval), (maxval)); \
     } \
-} while (0);
+} while(0)
 
 
 #define CHECK_ARG_INTERVAL_DBL(argval, minval, maxval, argstr) \
@@ -120,7 +170,7 @@ do { \
         \
             ERROR("[Bad argument value: '%s %f'] Allowed range is [%f,%f]", (argstr), (argval), (minval), (maxval)); \
     } \
-} while (0);
+} while(0)
 
 #define CHECK_ARG_INTERVAL_IE_DBL(argval, minval, maxval, argstr) \
 do { \
@@ -128,7 +178,7 @@ do { \
         \
             ERROR("[Bad argument value: '%s %f'] Allowed range is [%f,%f]", (argstr), (argval), (minval), (maxval)); \
     } \
-} while (0);
+} while(0)
 
 
 #define CHECK_ARG_INTERVAL_II_DBL(argval, minval, maxval, argstr) \
@@ -137,7 +187,7 @@ do { \
         \
             ERROR("[Bad argument value: '%s %f'] Allowed range is [%f,%f]", (argstr), (argval), (minval), (maxval)); \
     } \
-} while (0);
+} while(0)
 
 
 #define CHECK_ARG_INTERVAL_EI_DBL(argval, minval, maxval, argstr) \
@@ -146,7 +196,7 @@ do { \
         \
             ERROR("[Bad argument value: '%s %f'] Allowed range is [%f,%f]", (argstr), (argval), (minval), (maxval)); \
     } \
-} while (0);
+} while(0)
 
 
 #define CHECK_ARG_INTERVAL_EE_DBL(argval, minval, maxval, argstr) \
@@ -155,7 +205,7 @@ do { \
         \
             ERROR("[Bad argument value: '%s %f'] Allowed range is [%f,%f]", (argstr), (argval), (minval), (maxval)); \
     } \
-} while (0);
+} while(0)
 
 
 
@@ -165,7 +215,7 @@ do { \
         \
             ERROR("Argument %s with value %d is out of range. Allowed values are 0 (for on/enable) and 1 (for off/disable)", (argstr), (argval)); \
     } \
-} while (0);
+} while(0)
 
 
 
@@ -205,7 +255,7 @@ do { \
         fprintf(stderr, __VA_ARGS__); \
         fprintf(stderr, "\n*******\n"); \
         exit(1); \
-    } while (0);
+    } while(0)
 
   /*
    * Macro:[NEVER]
@@ -217,7 +267,7 @@ do { \
         fprintf(stderr, "Control should never reach this point; please report this to the developers."); \
         fprintf(stderr, "\n*******\n"); \
         exit(1); \
-    } while (0);
+    } while(0)
 
 
    /*
@@ -235,7 +285,7 @@ do { \
                     __FILE__, __FUNCTION__, __LINE__, #expr);               \
             exit(1);                                                        \
         }                                                                   \
-    } while (0);
+    } while(0)
 
 
     /*
@@ -248,7 +298,7 @@ do {                                                                     \
 			__LINE__);                                                   \
 	fprintf(stderr, __VA_ARGS__);                                        \
 	fprintf(stderr, "\n");                                               \
-} while (0);
+} while(0)
 
     /*
     * Macro:[VWARN]
@@ -262,14 +312,14 @@ do {                                                           \
 		fprintf(stderr, __VA_ARGS__);                          \
 		fprintf(stderr, "\n");                                 \
 	}                                                          \
-} while (0);
+} while(0)
 
 #define VRUN(...) \
 do { \
     if (0 != VERBOSITY_LEVEL) { \
         __VA_ARGS__; \
     } \
-} while (0);
+} while(0)
 
 
 
@@ -282,7 +332,13 @@ do { \
 do{ \
     fprintf(stderr, "\n[LOG](%s)\t", __FUNCTION__); \
     fprintf(stderr, __VA_ARGS__); \
-} while (0);
+} while(0)
+
+#define LOGADD(...) \
+do{ \
+    fprintf(stderr, "\n[LOG]\t"); \
+    fprintf(stderr, __VA_ARGS__); \
+} while(0)
 
 
           /*
@@ -295,19 +351,20 @@ do{ \
 do{ \
     fprintf(stderr, "\n________________________________________\n"); \
     fprintf(stderr, "[LOG]\t-> Program is now at <%s/%s>\n", __FILE__, __FUNCTION__); \
-}while (0);
+}while(0)
 
 #define END_LOGSECTION \
 do{ \
     fprintf(stderr, "\n________________________________________\n"); \
-}while (0);
+}while(0)
 
 #define BEGIN_LOGSECTION_MSG(msg) \
 do{ \
     fprintf(stderr, "\n________________________________________\n"); \
     fprintf(stderr, "[LOG]\t-> Program is now at <%s/%s>\n", __FILE__, __FUNCTION__); \
     fprintf(stderr, "[LOG]\t-> %s\n", msg); \
-}while (0);
+}while(0)
+
 
 
            /*
@@ -322,7 +379,7 @@ do{ \
         fprintf(stderr, "\n%s!!\n", #msg);                                                               \
         exit(1);                                                                                         \
     } \
-} while (0);
+} while(0)
 
 
            /*
@@ -362,7 +419,7 @@ do{ \
         } \
         (p) = (type) tmp; \
         tmp = NULL; \
-    } while (0);
+    } while(0)
 
 
 #define MALLOC(type, p, size)  \
@@ -579,16 +636,6 @@ enum OUTFC {
     GZ,    // gzip [1]
     BBGZ,  // bgzip (binary) [2]
 };
-
-// input file types for main data input
-#define IN_VCF (1 << 0)  // 1
-#define IN_DM (1 << 1)   // 2
-#define IN_DXY (1 << 2)  // 4
-
-#define A_BASE_IDX 0
-#define C_BASE_IDX 1
-#define G_BASE_IDX 2
-#define T_BASE_IDX 3
 
 /* ========================================================================== */
 

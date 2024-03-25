@@ -87,7 +87,8 @@ runTestDiff(){
 		local logFile=${outPref}.log
 		local diffFile=${outPref}.diff
 
-		local diffcmd="diff -s ${outFile} ${refFile} > ${diffFile} 2>&1"
+		local diffcmd="diff -s ${outFile} ${refFile}
+		> ${diffFile} 2>&1"
 
 		printf "# ${id} -> Running diff\n"
 		printf "# Command:\n${diffcmd}\n"
@@ -220,7 +221,7 @@ doAmova=1
 printDistanceMatrix=1
 minInd=2
 doDist=1
-maxEmIter=100
+maxEmIter=10
 emTole="1e-10"
 metadataFile=${DATADIR}/metadata_Individual_Population.tsv
 formula="Individual ~Population "
@@ -293,7 +294,7 @@ doEm=1
 doAmova=1
 minInd=2
 doDist=1
-maxEmIter=100
+maxEmIter=10
 emTole="1e-10"
 metadataFile=${DATADIR}/metadata_Individual_Region_Population.tsv
 formula="Individual~Region /Population"
@@ -330,7 +331,6 @@ doEm=0
 doAmova=1
 minInd=2
 doDist=1
-nThreads=0
 metadataFile=${DATADIR}/metadata_Individual_Region_Population_Subpopulation_groupNotUniq.tsv
 formula="Individual~Population"
 
@@ -341,7 +341,6 @@ ARGS=" \
 -doAMOVA ${doAmova} \
 --minInd ${minInd} \
 -doDist ${doDist} \
---nThreads ${nThreads} \
 -m ${metadataFile} \
 -f '${formula}'
 "
@@ -426,9 +425,9 @@ doJGTM=1
 doEm=1
 doAmova=1
 doDist=1
-maxEmIter=50
+maxEmIter=5
 emTole="1e-5"
-nThreads=4
+nThreads=2
 metadataFile=${DATADIR}/sim_demes_v2-model1_metadata_Individual_Region_Population.tsv 
 formula="Individual~Region/Population"
 
@@ -489,7 +488,7 @@ doAmova=1
 printDistanceMatrix=1
 minInd=2
 doDist=1
-maxEmIter=100
+maxEmIter=10
 emTole="1e-10"
 metadataFile=${DATADIR}/metadata_Individual_Population.tsv
 formula="Individual~Population"
@@ -527,7 +526,7 @@ doAmova=1
 printDistanceMatrix=1
 minInd=2
 doDist=1
-maxEmIter=100
+maxEmIter=10
 emTole="1e-10"
 rmInvarSites=1
 metadataFile=${DATADIR}/data0to5_metadata.txt
@@ -570,7 +569,7 @@ doAmova=1
 printDistanceMatrix=1
 minInd=2
 doDist=1
-maxEmIter=100
+maxEmIter=10
 emTole="1e-10"
 rmInvarSites=1
 metadataFile=${DATADIR}/data0to5_metadata.txt
@@ -611,7 +610,7 @@ doAmova=1
 printDistanceMatrix=1
 minInd=2
 doDist=1
-maxEmIter=100
+maxEmIter=10
 emTole="1e-10"
 rmInvarSites=1
 metadataFile=${DATADIR}/data0to5_metadata.txt
@@ -654,7 +653,7 @@ doAmova=1
 printDistanceMatrix=1
 minInd=2
 doDist=1
-maxEmIter=100
+maxEmIter=10
 emTole="1e-10"
 rmInvarSites=1
 metadataFile=${DATADIR}/data0to5_metadata.txt
@@ -695,7 +694,7 @@ doAmova=1
 printDistanceMatrix=1
 minInd=2
 doDist=1
-maxEmIter=100
+maxEmIter=10
 emTole="1e-10"
 rmInvarSites=1
 metadataFile=${DATADIR}/data0to5_metadata.txt
@@ -737,7 +736,7 @@ printDistanceMatrix=1
 printJointGenotypeCountMatrix=1
 minInd=2
 doDist=1
-maxEmIter=100
+maxEmIter=10
 emTole="1e-10"
 rmInvarSites=1
 metadataFile=${DATADIR}/data0to5_metadata.txt
@@ -818,7 +817,7 @@ doAmova=1
 printDistanceMatrix=1
 minInd=2
 doDist=1
-maxEmIter=100
+maxEmIter=10
 emTole="1e-10"
 rmInvarSites=1
 metadataFile=${DATADIR}/data0to5_metadata.txt

@@ -15,6 +15,7 @@ typedef struct dmat_t dmat_t;
 typedef struct jgtmat_t jgtmat_t;
 typedef struct paramStruct paramStruct;
 typedef struct alleles_t alleles_t;
+typedef struct metadataStruct metadataStruct;
 
 /// ----------------------------------------------------------------------- ///
 
@@ -105,6 +106,9 @@ struct paramStruct {
 
     strArray* names;
 
+
+    metadataStruct* metadata;
+
     // number of sites non skipped for all individuals
     // nSites may not be !=totSites if minInd is set
     // or if a site is missing for all inds
@@ -113,10 +117,6 @@ struct paramStruct {
 
     int nSites_arrays_size;
     int nContigs;
-    int nInd;
-
-    // input file type
-    int in_ft;
 
     // a1: major/ref/ancestral allele
     // a2: minor/alt/derived allele
@@ -131,7 +131,6 @@ struct paramStruct {
     // for search, start from alleles_posidx instead of alleles_posidx+1 to also handle the first ever contig
     int64_t alleles_posidx;  // current position in the alleles_t->pos
     int64_t alleles_contigidx;  // current contig in the alleles_t->cnames
-    bool contig_changed;  // flag to indicate if the contig has changed in vcf file
 
     // for each site, 
     // a1a2[0] is the index of the allele1/major/ancestral allele in vcfd->rec->d.allele

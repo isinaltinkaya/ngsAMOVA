@@ -9,7 +9,6 @@
 #include "dataStructs.h"
 #include "dev.h"
 #include "dxy.h"
-#include "em.h"
 #include "io.h"
 #include "mathUtils.h"
 #include "neighborJoining.h"
@@ -17,12 +16,34 @@
 #include "shared.h"
 #include "vcfReader.h"
 #include "ibd.h"
-#include "jgtmat_dist.h"
+#include "jgtmat.h"
+#include "dmat.h"
+#include "em.h"
 
 
 void input_VCF(paramStruct* pars) {
 
-    vcfData* vcfd = vcfData_init(pars);
+    // ---- READ VCF ------------------------------------------------------------- //
+
+    vcfData* vcfd = vcfData_init(pars, pars->metadata);
+
+
+    bblocks_t* bblocks = NULL;
+    if (PROGRAM_WILL_PERFORM_BLOCK_BOOTSTRAPPING) {
+        bblocks = bblocks_init();
+        bblocks_get(bblocks, vcfd, pars);
+
+        if (args->printBlocksTab) {
+            bblocks_print_blocks_tab(bblocks);
+        }
+
+        bblocks_sample_with_replacement(bblocks);
+        if(PROGRAM_VERBOSITY_LEVEL > 0){
+            bblocks_print_bootstrap_samples(bblocks);
+        }
+    }
+
+
 
     if (0 != args->doIbd) {
         pars->ibd = new ibdStruct(vcfd, pars);
@@ -30,71 +51,42 @@ void input_VCF(paramStruct* pars) {
         return;
     }
 
-    metadataStruct* metadata = NULL;
-    if (PROGRAM_NEEDS_METADATA) {
-        if (NULL == args->in_mtd_fn) {
-            ERROR("Requested analyses requiring metadata but no metadata file was provided.");
-        } else {
-            if (NULL != args->formula) {
-                metadata = metadataStruct_read(pars);
 
-            } else {
-                NEVER;  // this should already be checked in PROGRAM_NEEDS_FORMULA
-            }
-        }
-    }
-
-    blobStruct* blobs = NULL;
-    if (0 < args->nBootstraps) {
-        blobs = blobStruct_get(vcfd, pars);
-    }
-
-    // ---- GET JGTM ------------------------------------------------------------ //
+    // ---- GET JOINT GENOTYPE MATRIX ------------------------------------------- //
 
     if (args->doJGTM) {
 
-        const size_t nIndCmb = (pars->nInd * (pars->nInd - 1)) / 2;
-        pars->jgtm = jgtmat_init(nIndCmb);
-        if (PROGRAM_WILL_USE_BCF_FMT_GL) {
-            jgtmat_get_srcgl(pars->jgtm, pars, vcfd, blobs);
-        } else if (PROGRAM_WILL_USE_BCF_FMT_GT) {
-            jgtmat_get_srcgt(pars->jgtm, pars, vcfd, blobs);
-        } else {
-            NEVER;
+        const size_t nIndCmb = (pars->names->len * (pars->names->len - 1)) / 2;
+
+        const size_t nRuns = (args->nBootstraps > 0) ? (args->nBootstraps + 1) : 1;
+
+        pars->jgtm = jgtmat_init(nIndCmb * nRuns);
+
+        readSites(pars->jgtm, bblocks, vcfd, pars);
+        if (1 == args->doEM) {
+            jgtmat_get_run_em_optim(pars->jgtm, pars, vcfd, bblocks);
         }
+
+        if (PROGRAM_WILL_PERFORM_BLOCK_BOOTSTRAPPING) {
+            jgtmat_get_run_em_optim_bootstrap_reps(pars->jgtm, pars, vcfd, bblocks);
+        }
+
     }
 
     // ---- GET DISTANCE MATRIX ------------------------------------------------- //
 
     if (args->doDist) {
-        uint8_t dm_type = DMAT_TYPE_LTED;
-        uint32_t dm_method = DMAT_METHOD_DIJ;
-        uint32_t dm_transform;
-        //TODO 
-        dm_transform = DMAT_TRANSFORM_SQUARE;
-
-
-        if (args->nBootstraps > 0) {
-            // pars->multidm = multidmat_init(pars->nInd, dm_type, dm_method, dm_transform);
-            // multidmat_get_distances_from_jgtmat(pars->jgtm, pars->multidm);
-            // if (args->printDistanceMatrix) {
-            //     multidmat_print(pars->multidm);
-            //TODO also allow for printing dmat for all boots reps 
-            // }
+        if (pars->metadata != NULL) {
+            pars->dm = dmat_init(pars->names->len, DMAT_TYPE_LTED, args->dm_method, args->dm_transform, pars->metadata->indNames, DMAT_NAMES_SRC_IN_METADATA_NAMES_PTR);
         } else {
-
-            if (metadata != NULL) {
-                pars->dm = dmat_init(pars->nInd, dm_type, dm_method, dm_transform, metadata->names, DMAT_NAMES_SRC_METADATA_NAMES_PTR);
-            } else {
-                pars->dm = dmat_init(pars->nInd, dm_type, dm_method, dm_transform, pars->names, DMAT_NAMES_SRC_IN_VCF_PARS_PTR);
-            }
-
-            dmat_get_distances_from_jgtmat(pars->jgtm, pars->dm);
-            if (args->printDistanceMatrix) {
-                dmat_write(pars->dm);
-            }
-
+            pars->dm = dmat_init(pars->names->len, DMAT_TYPE_LTED, args->dm_method, args->dm_transform, pars->names, DMAT_NAMES_SRC_IN_VCF_PARS_PTR);
         }
+
+        dmat_calculate_distances(pars->jgtm, pars->dm);
+        if (args->printDistanceMatrix) {
+            dmat_write(pars->dm);
+        }
+
 
     }
 
@@ -104,18 +96,18 @@ void input_VCF(paramStruct* pars) {
 
     // ---- AMOVA
     if (args->doAMOVA != 0) {
-        amovaStruct* amova = amovaStruct_get(pars, metadata, blobs);
+        amovaStruct* amova = amovaStruct_get(pars, pars->metadata);
         amovaStruct_destroy(amova);
     }
 
     // ---- dXY
-    dxy_t* dxySt = NULL;
+    dxy_t* dxy = NULL;
     if (args->doDxy > 0) {
         if (args->in_dxy_fn != NULL) {
-            // dxySt = dxy_read(pars, dmat, metadata);
+            // dxy = dxy_read(pars, dmat, pars->metadata);
             //TODO
         } else {
-            dxySt = dxy_get(pars, pars->dm, metadata);
+            dxy = dxy_get(pars, pars->dm, pars->metadata);
         }
         // dont free yet, may be needed for dophylo
     }
@@ -133,10 +125,10 @@ void input_VCF(paramStruct* pars) {
             nj_print(nj);
         } else if (args->doPhylo == 2) {
             //TODO
-            if (dxySt->nLevels > 1) {
+            if (dxy->nLevels > 1) {
                 ERROR("Neighbor joining is not supported for dxy with more than one level.");
             }
-            nj = nj_init(dxySt->dm[0], 0);
+            nj = nj_init(dxy->dm[0], 0);
             nj_run(nj);
             // nj_print(nj);
         }
@@ -144,81 +136,46 @@ void input_VCF(paramStruct* pars) {
     }
 
     vcfData_destroy(vcfd);
-    if (metadata != NULL) {
-        metadataStruct_destroy(metadata);
+    if (dxy != NULL) {
+        dxy_destroy(dxy);
     }
-    if (dxySt != NULL) {
-        dxy_destroy(dxySt);
+    if (bblocks != NULL) {
+        bblocks_destroy(bblocks);
     }
-    if (blobs != NULL) {
-        delete(blobs);
-    }
-
+    return;
 }
 
 
 void input_DM(paramStruct* pars) {
 
 
-    metadataStruct* metadata = NULL;
-    if (PROGRAM_NEEDS_METADATA) {
-        if (NULL == args->in_mtd_fn) {
-            ERROR("Requested analyses requiring metadata but no metadata file was provided.");
-        } else {
-            if (NULL != args->formula) {
-                metadata = metadataStruct_read(pars);
-            } else {
-                NEVER;  // this should already be checked in PROGRAM_NEEDS_FORMULA
-            }
-        }
+    uint8_t required_transform;
+    required_transform = DMAT_TRANSFORM_NONE;
+    pars->dm = dmat_read(args->in_dm_fn, required_transform, pars->metadata);
+
+    //TODO match pars->metadata->indNames dmat_t->names vcfd->hdr->samples
+
+    if (args->printDistanceMatrix) {
+        dmat_write(pars->dm);
     }
-
-    if (args->doDist) {
-        uint8_t required_transform;
-        // if (args->doAMOVA) {
-            // TODO
-        required_transform = DMAT_TRANSFORM_SQUARE;
-        // } else {
-            // required_transform = DMAT_TRANSFORM_NONE;
-        // }
-
-
-        if (args->nBootstraps > 0) {
-            // pars->multidm=multidmat_read(args->in_dm_fn);
-
-            // pars->multidm = multidmat_init(pars->nInd, dm_type, dm_method, dm_transform);
-        } else {
-            pars->dm = dmat_read(args->in_dm_fn, required_transform, metadata);
-            //TODO match metadata->names dmat_t->names vcfd->hdr->samples
-
-            if (args->printDistanceMatrix) {
-                dmat_write(pars->dm);
-            }
-
-            // pars->dm = dmat_init(pars->nInd, dm_type, dm_method, dm_transform);
-            // dmat_get_distances_from_jgtmat(pars->jgtm, pars->dm);
-        }
-
-    }
-
 
     if (args->doAMOVA != 0) {
         if (0 < args->nBootstraps) {
             ERROR("Bootstrapping is not supported for distance matrix input.");
         }
-        amovaStruct* amova = amovaStruct_get(pars, metadata, NULL);
+        amovaStruct* amova = amovaStruct_get(pars, pars->metadata);
         amovaStruct_destroy(amova);
     }
 
-    dxy_t* dxySt = NULL;
+    dxy_t* dxy = NULL;
     if (args->doDxy > 0) {
         if (args->in_dxy_fn == NULL) {
-            dxySt = dxy_get(pars, pars->dm, metadata);
+            dxy = dxy_get(pars, pars->dm, pars->metadata);
         } else {
             //TODO
-            // dxySt = dxy_read(pars, distanceMatrix, metadata);
+            // dxy = dxy_read(pars, distanceMatrix, pars->metadata);
         }
-        dxy_destroy(dxySt);
+        dxy_destroy(dxy);
     }
 
     // ---- NEIGHBOR JOINING
@@ -234,15 +191,12 @@ void input_DM(paramStruct* pars) {
             nj_print(nj);
         } else if (args->doPhylo == 2) {
             //TODO
-            // if (dxySt->nLevels > 1) {
+            // if (dxy->nLevels > 1) {
                 // ERROR("Neighbor joining is not supported for dxy with more than one level.");
             // }
-            // nj = nj_init(pars->nInd, dxySt->dm[0]);
+            // nj = nj_init(pars->names->len, dxy->dm[0]);
             // nj_run(nj);
             // nj_print(nj);
-        }
-        if (metadata != NULL) {
-            metadataStruct_destroy(metadata);
         }
         return;
 
@@ -262,6 +216,7 @@ int run_unit_tests(void) {
 
 int main(int argc, char** argv) {
 
+
     argStruct* args = argStruct_get(--argc, ++argv);
 
     if (args->doUnitTests) {
@@ -270,25 +225,30 @@ int main(int argc, char** argv) {
 
     paramStruct* pars = paramStruct_init(args);
 
-    if (pars->in_ft & IN_VCF) {
-        input_VCF(pars);
+
+    if (PROGRAM_HAS_INPUT_METADATA) {
+        if (PROGRAM_NEEDS_METADATA) {
+            if (NULL != args->formula) {
+                pars->metadata = metadataStruct_read(pars);
+            } else {
+                NEVER;  // this should already be checked in PROGRAM_NEEDS_FORMULA
+            }
+        }
     }
 
-    if (pars->in_ft & IN_DM) {
+
+    if (PROGRAM_HAS_INPUT_VCF) {
+        input_VCF(pars);
+    } else if (PROGRAM_HAS_INPUT_DM) {
         input_DM(pars);
     }
-
-    if (pars->in_ft == 0) {
-        ERROR("Input file type not recognized.");
-    }
-
 
     fprintf(stderr, "\n[INFO]\tDone.\n\n");
 
     // == CLEANUP ==
-    argStruct_destroy(args);
     paramStruct_destroy(pars);
     IO::outFilesStruct_destroy(outFiles);
+    argStruct_destroy(args);
 
     return 0;
 }

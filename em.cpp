@@ -1,286 +1,299 @@
 #include "em.h"
 
-typedef struct ptdata_t ptdata_t;
-struct ptdata_t {
-	size_t i1pos;
-	size_t i2pos;
-	size_t pairidx;
-	double* em;
+static double tole;
+static size_t max_nsites;
+static int max_iter;
+static size_t* block_start_siteidx;
+static size_t nBlocks;
+static bool doBlocks;
+static int maxnThreads;
+
+typedef struct ptdata_em_t ptdata_em_t;
+struct ptdata_em_t {
+	size_t i1;
+	size_t i2;
 	double* pm;
-	vcfData* vcfd;
+	gldata_t* gldata;
 };
 
-int em_optimize_jgtmat9(ptdata_t* tdata) {
+/// @return reason for termination (1:tole, 2:max_iter)
+static int em_optim_jgtmat9(const size_t i1, const size_t i2, double* pm, gldata_t* gldata) {
 
-	vcfData* vcfd = tdata->vcfd;
-	const size_t i1pos = tdata->i1pos;
-	const size_t i2pos = tdata->i2pos;
-	const size_t  pairidx = tdata->pairidx;
+	uint8_t reason = -1;
 
-	double* em = tdata->em;
-	double* pm = tdata->pm;
+	double** i1sites = NULL;
+	double** i2sites = NULL;
 
-	double* sitelngl = NULL;
+	i1sites = gldata->d[i1];
+	i2sites = gldata->d[i2];
 
-	const double tole = args->tole;
+	bool* mis1 = gldata->mis[i1];
+	bool* mis2 = gldata->mis[i2];
 
-
-	const int max_iter = args->maxEmIter;
-
-	double sum = 0.0;
-	double d = 0.0;
-	double tmp = 0.0;
-
-	int n_iter = 0;
-
-	// #shared sites for this pair
 	int shared_nSites = 0;
 
 	double TMP[9] = { 0.0 };
 	double ESFS[9] = { 0.0 };
 
-	double i1gl0 = NEG_INF;
-	double i1gl1 = NEG_INF;
-	double i1gl2 = NEG_INF;
-	double i2gl0 = NEG_INF;
-	double i2gl1 = NEG_INF;
-	double i2gl2 = NEG_INF;
+	double sum, d, tmp;
+	size_t s, k, ki, k1, k2;
 
-	// em iteration 0
-	// starts before while to get shared_nSites without loop cost
-	for (size_t s = 0; s < (size_t)vcfd->nSites; ++s) {
+	int n_iter = 0;
 
-		sitelngl = vcfd->lngl->d[s];
-		// 0 <- (a1,a1)
-		// 1 <- (a1,a2) or (a2,a1)
-		// 2 <- (a2,a2)
-		// 
-		// 				ind2
-		// 				0		1		2
-		// 				-----------------
-		// ind1	0	  |	0		3		6
-		// 		1	  |	1		4		7
-		// 		2	  |	2		5		8
-		//
-		//
 
-		if (NEG_INF == (i1gl0 = sitelngl[i1pos])) {
+	double* i1p;
+	double* i2p;
+
+
+	// --> first loop
+	for (s = 0;s < max_nsites;++s) {
+
+		if (mis1[s] || mis2[s]) {
 			continue;
-		} else if (NEG_INF == (i1gl1 = sitelngl[i1pos + 1])) {
-			continue;
-		} else if (NEG_INF == (i1gl2 = sitelngl[i1pos + 2])) {
-			continue;
-		} else if (NEG_INF == (i2gl0 = sitelngl[i2pos])) {
-			continue;
-		} else if (NEG_INF == (i2gl1 = sitelngl[i2pos + 1])) {
-			continue;
-		} else if (NEG_INF == (i2gl2 = sitelngl[i2pos + 2])) {
-			continue;
+		}
+
+		i1p = i1sites[s];
+		i2p = i2sites[s];
+
+		ki = 0;
+		sum = 0.0;
+		for (k1 = 0; k1 < 3;++k1) {
+			for (k2 = 0; k2 < 3;++k2) {
+				TMP[ki] = pm[ki] * exp(i1p[k1] + i2p[k2]);
+				sum += TMP[ki];
+				++ki;
+			}
+		}
+
+		for (k = 0;k < 9;++k) {
+			ESFS[k] += TMP[k] / sum;
 		}
 
 		shared_nSites++;
 
-		// fprintf(stdout, "\n");
-		// for (int i = 0;i < 9;++i) {
-		// 	fprintf(stdout, "%f", TMP[i]);
-		// 	if (i != 8)
-		// 		fprintf(stdout, ",");
-		// }
-
-		// expectation
-		TMP[0] = em[0] * exp(i1gl0 + i2gl0);
-		TMP[1] = em[1] * exp(i1gl1 + i2gl0);
-		TMP[2] = em[2] * exp(i1gl2 + i2gl0);
-		TMP[3] = em[3] * exp(i1gl0 + i2gl1);
-		TMP[4] = em[4] * exp(i1gl1 + i2gl1);
-		TMP[5] = em[5] * exp(i1gl2 + i2gl1);
-		TMP[6] = em[6] * exp(i1gl0 + i2gl2);
-		TMP[7] = em[7] * exp(i1gl1 + i2gl2);
-		TMP[8] = em[8] * exp(i1gl2 + i2gl2);
-		sum = TMP[0] + TMP[1] + TMP[2] + TMP[3] + TMP[4] + TMP[5] + TMP[6] + TMP[7] + TMP[8];
-		ESFS[0] += TMP[0] / sum;
-		ESFS[1] += TMP[1] / sum;
-		ESFS[2] += TMP[2] / sum;
-		ESFS[3] += TMP[3] / sum;
-		ESFS[4] += TMP[4] / sum;
-		ESFS[5] += TMP[5] / sum;
-		ESFS[6] += TMP[6] / sum;
-		ESFS[7] += TMP[7] / sum;
-		ESFS[8] += TMP[8] / sum;
-
 	} // end sites loop
-
-	// maximization
-	d = 0.0;
-	tmp = ESFS[0] / shared_nSites;
-	d += fabs(tmp - em[0]);
-	em[0] = tmp;
-	ESFS[0] = 0.0;
-	tmp = ESFS[1] / shared_nSites;
-	d += fabs(tmp - em[1]);
-	em[1] = tmp;
-	ESFS[1] = 0.0;
-	tmp = ESFS[2] / shared_nSites;
-	d += fabs(tmp - em[2]);
-	em[2] = tmp;
-	ESFS[2] = 0.0;
-	tmp = ESFS[3] / shared_nSites;
-	d += fabs(tmp - em[3]);
-	em[3] = tmp;
-	ESFS[3] = 0.0;
-	tmp = ESFS[4] / shared_nSites;
-	d += fabs(tmp - em[4]);
-	em[4] = tmp;
-	ESFS[4] = 0.0;
-	tmp = ESFS[5] / shared_nSites;
-	d += fabs(tmp - em[5]);
-	em[5] = tmp;
-	ESFS[5] = 0.0;
-	tmp = ESFS[6] / shared_nSites;
-	d += fabs(tmp - em[6]);
-	em[6] = tmp;
-	ESFS[6] = 0.0;
-	tmp = ESFS[7] / shared_nSites;
-	d += fabs(tmp - em[7]);
-	em[7] = tmp;
-	ESFS[7] = 0.0;
-	tmp = ESFS[8] / shared_nSites;
-	d += fabs(tmp - em[8]);
-	em[8] = tmp;
-	ESFS[8] = 0.0;
-
-	++n_iter;
-
-
-
-	while (d > tole) {
-		d = 0.0;
-
-		if (n_iter == max_iter) {
-			break;
-		}
-
-		for (size_t s = 0; s < (size_t)vcfd->nSites; ++s) {
-
-			sitelngl = vcfd->lngl->d[s];
-
-			if (NEG_INF == (i1gl0 = sitelngl[i1pos])) {
-				continue;
-			} else if (NEG_INF == (i1gl1 = sitelngl[i1pos + 1])) {
-				continue;
-			} else if (NEG_INF == (i1gl2 = sitelngl[i1pos + 2])) {
-				continue;
-			} else if (NEG_INF == (i2gl0 = sitelngl[i2pos])) {
-				continue;
-			} else if (NEG_INF == (i2gl1 = sitelngl[i2pos + 1])) {
-				continue;
-			} else if (NEG_INF == (i2gl2 = sitelngl[i2pos + 2])) {
-				continue;
-			}
-
-
-			// expectation
-			TMP[0] = em[0] * exp(i1gl0 + i2gl0);
-			TMP[1] = em[1] * exp(i1gl1 + i2gl0);
-			TMP[2] = em[2] * exp(i1gl2 + i2gl0);
-			TMP[3] = em[3] * exp(i1gl0 + i2gl1);
-			TMP[4] = em[4] * exp(i1gl1 + i2gl1);
-			TMP[5] = em[5] * exp(i1gl2 + i2gl1);
-			TMP[6] = em[6] * exp(i1gl0 + i2gl2);
-			TMP[7] = em[7] * exp(i1gl1 + i2gl2);
-			TMP[8] = em[8] * exp(i1gl2 + i2gl2);
-			sum = TMP[0] + TMP[1] + TMP[2] + TMP[3] + TMP[4] + TMP[5] + TMP[6] + TMP[7] + TMP[8];
-			ESFS[0] += TMP[0] / sum;
-			ESFS[1] += TMP[1] / sum;
-			ESFS[2] += TMP[2] / sum;
-			ESFS[3] += TMP[3] / sum;
-			ESFS[4] += TMP[4] / sum;
-			ESFS[5] += TMP[5] / sum;
-			ESFS[6] += TMP[6] / sum;
-			ESFS[7] += TMP[7] / sum;
-			ESFS[8] += TMP[8] / sum;
-
-		} // end sites loop
-
-
-		// maximization
-		d = 0.0;
-		tmp = ESFS[0] / shared_nSites;
-		d += fabs(tmp - em[0]);
-		em[0] = tmp;
-		ESFS[0] = 0.0;
-		tmp = ESFS[1] / shared_nSites;
-		d += fabs(tmp - em[1]);
-		em[1] = tmp;
-		ESFS[1] = 0.0;
-		tmp = ESFS[2] / shared_nSites;
-		d += fabs(tmp - em[2]);
-		em[2] = tmp;
-		ESFS[2] = 0.0;
-		tmp = ESFS[3] / shared_nSites;
-		d += fabs(tmp - em[3]);
-		em[3] = tmp;
-		ESFS[3] = 0.0;
-		tmp = ESFS[4] / shared_nSites;
-		d += fabs(tmp - em[4]);
-		em[4] = tmp;
-		ESFS[4] = 0.0;
-		tmp = ESFS[5] / shared_nSites;
-		d += fabs(tmp - em[5]);
-		em[5] = tmp;
-		ESFS[5] = 0.0;
-		tmp = ESFS[6] / shared_nSites;
-		d += fabs(tmp - em[6]);
-		em[6] = tmp;
-		ESFS[6] = 0.0;
-		tmp = ESFS[7] / shared_nSites;
-		d += fabs(tmp - em[7]);
-		em[7] = tmp;
-		ESFS[7] = 0.0;
-		tmp = ESFS[8] / shared_nSites;
-		d += fabs(tmp - em[8]);
-		em[8] = tmp;
-		ESFS[8] = 0.0;
-
-		++n_iter;
-
-	}
+	// <- first loop
 
 
 	if (shared_nSites == 0) {
-		ERROR("Pair %ld has no sites shared. This is currently not allowed.", pairidx);
-		//TODO drop pair instead?
+		ERROR("Individuals %ld and %ld have no sites shared. This is currently not allowed.", i1, i2);
 		//TODO check for this in GT too
 	}
 
 
+	while (1) {
 
-	pm[0] = em[0];
-	em[0] = em[0] * shared_nSites;
-	pm[1] = em[1];
-	em[1] = em[1] * shared_nSites;
-	pm[2] = em[2];
-	em[2] = em[2] * shared_nSites;
-	pm[3] = em[3];
-	em[3] = em[3] * shared_nSites;
-	pm[4] = em[4];
-	em[4] = em[4] * shared_nSites;
-	pm[5] = em[5];
-	em[5] = em[5] * shared_nSites;
-	pm[6] = em[6];
-	em[6] = em[6] * shared_nSites;
-	pm[7] = em[7];
-	em[7] = em[7] * shared_nSites;
-	pm[8] = em[8];
-	em[8] = em[8] * shared_nSites;
+		// -> maximization
+		d = 0.0;
+		for (k = 0;k < 9;++k) {
+			tmp = ESFS[k] / shared_nSites;
+			d += fabs(tmp - pm[k]);
+			pm[k] = tmp;
+			ESFS[k] = 0.0;
+		}
+		++n_iter;
 
-	return(0);
+		if (d <= tole) {
+			reason = EM_TERM_REASON_TOLE;
+			break;
+		}
+		if (n_iter == max_iter) {
+			reason = EM_TERM_REASON_ITER;
+			break;
+		}
+
+		// -> expectation
+		for (s = 0;s < max_nsites;++s) {
+
+
+			if (mis1[s] || mis2[s]) {
+				continue;
+			}
+
+			i1p = i1sites[s];
+			i2p = i2sites[s];
+
+			ki = 0;
+			sum = 0.0;
+			for (k1 = 0; k1 < 3;++k1) {
+				for (k2 = 0; k2 < 3;++k2) {
+					TMP[ki] = pm[ki] * exp(i1p[k1] + i2p[k2]);
+					sum += TMP[ki];
+					++ki;
+				}
+			}
+
+			for (k = 0;k < 9;++k) {
+				ESFS[k] += TMP[k] / sum;
+			}
+
+		} // end sites loop
+	}
+
+	return(reason);
 
 }
 
-void* t_em_optimize_jgtmat9(void* data) {
-	ptdata_t* tdata = (ptdata_t*)data;
-	if (0 != em_optimize_jgtmat9(tdata)) {
+
+
+typedef struct ptdata_em_bootstrap_rep_t ptdata_em_bootstrap_rep_t;
+struct ptdata_em_bootstrap_rep_t {
+	size_t i1;
+	size_t i2;
+	double* pm;
+	gldata_t* gldata;
+	bblocks_t* bblocks;
+
+	size_t* rblocks;
+
+	uint8_t reason; // reason for termination. 1:tole, 2:max_iter
+};
+
+
+
+static int em_optim_jgtmat9_bootstrap_rep(const size_t i1, const size_t i2, double* pm, gldata_t* gldata, const size_t* const rblocks) {
+
+	uint8_t reason = -1;
+
+	double** i1sites = NULL;
+	double** i2sites = NULL;
+	double* i1p = NULL;
+	double* i2p = NULL;
+
+	i1sites = gldata->d[i1];
+	i2sites = gldata->d[i2];
+
+	const bool* const mis1 = gldata->mis[i1];
+	const bool* const mis2 = gldata->mis[i2];
+
+
+	double TMP[9] = { 0.0 };
+	double ESFS[9] = { 0.0 };
+
+	double sum, d, tmp;
+	size_t b, s, wb, k, ki, k1, k2, n_iter;
+
+	size_t block_start, block_end;
+
+	int shared_nSites = 0;
+	n_iter = 0;
+
+
+	// -> first loop
+	for (b = 0;b < nBlocks;++b) {
+		wb = rblocks[b];
+		block_start = block_start_siteidx[wb];
+		block_end = (wb == nBlocks - 1) ? max_nsites : block_start_siteidx[wb + 1];
+		// DEVPRINT("%ld-th sampled block (%ld) = [%ld, %ld)", b, wb, block_start, block_end);
+
+		for (s = block_start;s < block_end;++s) {
+
+			if (mis1[s] || mis2[s]) {
+				continue;
+			}
+			i1p = i1sites[s];
+			i2p = i2sites[s];
+
+
+
+			ki = 0;
+			sum = 0.0;
+			for (k1 = 0; k1 < 3;++k1) {
+				for (k2 = 0; k2 < 3;++k2) {
+					TMP[ki] = pm[ki] * exp(i1p[k1] + i2p[k2]);
+					sum += TMP[ki];
+					++ki;
+				}
+			}
+
+			for (k = 0;k < 9;++k) {
+				ESFS[k] += TMP[k] / sum;
+			}
+
+			shared_nSites++;
+
+
+		} // end sites loop
+		// <- first loop
+	}
+
+
+	if (shared_nSites == 0) {
+		ERROR("Individuals %ld and %ld have no sites shared. This is currently not allowed.", i1, i2);
+	}
+
+
+	while (1) {
+
+		// -> maximization
+		d = 0.0;
+		for (k = 0;k < 9;++k) {
+			tmp = ESFS[k] / shared_nSites;
+			d += fabs(tmp - pm[k]);
+			pm[k] = tmp;
+			ESFS[k] = 0.0;
+		}
+		++n_iter;
+
+		if (d <= tole) {
+			reason = EM_TERM_REASON_TOLE;
+			break;
+		}
+		if (n_iter == max_iter) {
+			reason = EM_TERM_REASON_ITER;
+			break;
+		}
+
+
+		for (b = 0;b < nBlocks;++b) {
+			wb = rblocks[b];
+			block_start = block_start_siteidx[wb];
+			block_end = (wb == nBlocks - 1) ? max_nsites : block_start_siteidx[wb + 1];
+
+			for (s = block_start;s < block_end;++s) {
+
+				if (mis1[s] || mis2[s]) {
+					continue;
+				}
+				i1p = i1sites[s];
+				i2p = i2sites[s];
+
+				ki = 0;
+				sum = 0.0;
+				for (k1 = 0; k1 < 3;++k1) {
+					for (k2 = 0; k2 < 3;++k2) {
+						TMP[ki] = pm[ki] * exp(i1p[k1] + i2p[k2]);
+						sum += TMP[ki];
+						++ki;
+					}
+				}
+
+				for (k = 0;k < 9;++k) {
+					ESFS[k] += TMP[k] / sum;
+				}
+
+			} // end in-block sites loop
+		} // end blocks loop
+
+	}
+
+	return(reason);
+
+}
+
+
+
+void* t_em_optim_jgtmat9(void* data) {
+	ptdata_em_t* tdata = (ptdata_em_t*)data;
+	if (-1 == em_optim_jgtmat9(tdata->i1, tdata->i2, tdata->pm, tdata->gldata)) {
+		NEVER;
+	}
+	return(NULL);
+}
+
+void* t_em_optim_jgtmat9_bootstrap_rep(void* data) {
+	ptdata_em_bootstrap_rep_t* tdata = (ptdata_em_bootstrap_rep_t*)data;
+	if (-1 == em_optim_jgtmat9_bootstrap_rep(tdata->i1, tdata->i2, tdata->pm, tdata->gldata, tdata->rblocks)) {
 		NEVER;
 	}
 	return(NULL);
@@ -288,40 +301,43 @@ void* t_em_optimize_jgtmat9(void* data) {
 
 
 
-void spawnThreads_em_optimize_jgtmat(jgtmat_t* jgtm, paramStruct* pars, vcfData* vcfd) {
+void jgtmat_get_run_em_optim(jgtmat_t* jgtm, paramStruct* pars, vcfData* vcfd, bblocks_t* bblocks) {
+
+	tole = args->tole;
+	max_iter = args->maxEmIter;
+	max_nsites = vcfd->gldata->size;
+	doBlocks = (bblocks != NULL);
+	maxnThreads = (args->nThreads > 0) ? args->nThreads : 1;
+	const int nInd = pars->names->len;
+	size_t nPairs = (size_t)((nInd * (nInd - 1)) / 2);
+
+	// -> main run
 
 
-	const int nInd = pars->nInd;
-	const size_t nRuns = (size_t)(nInd * (nInd - 1) / 2);
-
-	pthread_t threads[nRuns];
-	ptdata_t tdata[nRuns];
-
-	const int ngt = vcfd->nGT;
+	pthread_t threads[nPairs];
+	ptdata_em_t tdata[nPairs];
 
 	size_t pairidx = 0;
-	for (size_t i1 = 0; i1 < (size_t)pars->nInd;++i1) {
+
+	for (size_t i1 = 0; i1 < nInd;++i1) {
+
 		for (size_t i2 = 0;i2 < i1;++i2) {
-			tdata[pairidx].vcfd = vcfd;
-			tdata[pairidx].pairidx = pairidx;
-			tdata[pairidx].i1pos = ngt * i1;
-			tdata[pairidx].i2pos = ngt * i2;
-			tdata[pairidx].em = jgtm->em[pairidx];
+
+			tdata[pairidx].i1 = i1;
+			tdata[pairidx].i2 = i2;
 			tdata[pairidx].pm = jgtm->pm[pairidx];
+			tdata[pairidx].gldata = vcfd->gldata;
+
 			++pairidx;
 		}
 	}
 
 
-	const int maxnThreads = (args->nThreads == 0) ? 1 : args->nThreads;
-
 	int nJobsAlive = 0;
 	size_t run_to_wait = 0;
 	size_t runidx = 0;
 
-	ASSERT(maxnThreads > 0);
-
-	while (runidx < nRuns) {
+	while (runidx < nPairs) {
 
 		while (1) {
 			if (nJobsAlive < maxnThreads) {
@@ -337,7 +353,8 @@ void spawnThreads_em_optimize_jgtmat(jgtmat_t* jgtm, paramStruct* pars, vcfData*
 			}
 		}
 
-		if (0 != pthread_create(&threads[runidx], NULL, t_em_optimize_jgtmat9, &tdata[runidx])) {
+
+		if (0 != pthread_create(&threads[runidx], NULL, t_em_optim_jgtmat9, &tdata[runidx])) {
 			ERROR("Problem with the spawning thread.");
 		}
 		nJobsAlive++;
@@ -354,10 +371,111 @@ void spawnThreads_em_optimize_jgtmat(jgtmat_t* jgtm, paramStruct* pars, vcfData*
 	}
 
 
+	pairidx = 0;
+
 	return;
 }
 
 
+void jgtmat_get_run_em_optim_bootstrap_reps(jgtmat_t* jgtm, paramStruct* pars, vcfData* vcfd, bblocks_t* bblocks) {
+
+
+	tole = args->tole;
+	max_iter = args->maxEmIter;
+	max_nsites = vcfd->gldata->size;
+	doBlocks = (bblocks != NULL);
+	nBlocks = (doBlocks) ? bblocks->n_blocks : 1;
+
+	block_start_siteidx = (doBlocks) ? bblocks->block_start_siteidx : NULL;
+
+	maxnThreads = (args->nThreads > 0) ? args->nThreads : 1;
+	const int nInd = pars->names->len;
+	size_t nPairs = (size_t)((nInd * (nInd - 1)) / 2);
+
+	size_t pairidx;
+
+	// -> brep runs
+
+
+	const size_t nReps = args->nBootstraps;
+	ASSERT(args->nBootstraps > 0);
+
+	const size_t nRuns = nPairs * nReps;
+
+	pthread_t brepthreads[nRuns];
+	ptdata_em_bootstrap_rep_t breptdata[nRuns];
+
+	size_t repidx;
+	size_t allidx; // idx among all (incl. the original run)
+	for (size_t rep = 0;rep < nReps;++rep) {
+
+		repidx = rep * nPairs;
+		allidx = (rep + 1) * nPairs;
+
+		pairidx = 0;
+
+		for (size_t i1 = 0; i1 < nInd;++i1) {
+
+			for (size_t i2 = 0;i2 < i1;++i2) {
+
+
+				breptdata[repidx + pairidx].i1 = i1;
+				breptdata[repidx + pairidx].i2 = i2;
+				breptdata[repidx + pairidx].pm = jgtm->pm[allidx + pairidx];
+				breptdata[repidx + pairidx].gldata = vcfd->gldata;
+
+				breptdata[repidx + pairidx].bblocks = bblocks;
+				breptdata[repidx + pairidx].rblocks = bblocks->rblocks[rep];
+				breptdata[repidx + pairidx].reason = 0;
+
+
+				++pairidx;
+			}
+		}
+	}
+
+
+	int nJobsAlive = 0;
+	size_t run_to_wait = 0;
+	size_t runidx = 0;
+
+
+	while (runidx < nRuns) {
+
+		while (1) {
+			if (nJobsAlive < maxnThreads) {
+				break;
+			}
+			while (nJobsAlive >= maxnThreads) {
+				// wait for the run that was sent first
+				if (0 != pthread_join(brepthreads[run_to_wait], NULL)) {
+					ERROR("Problem with joining the thread.");
+				}
+				++run_to_wait;
+				nJobsAlive--;
+			}
+		}
+
+
+		if (0 != pthread_create(&brepthreads[runidx], NULL, t_em_optim_jgtmat9_bootstrap_rep, &breptdata[runidx])) {
+			ERROR("Problem with the spawning thread.");
+		}
+		nJobsAlive++;
+
+		++runidx;
+	}
+
+	while (nJobsAlive > 0) {
+		if (0 != pthread_join(brepthreads[run_to_wait], NULL)) {
+			ERROR("Problem with joining the thread.");
+		}
+		++run_to_wait;
+		nJobsAlive--;
+	}
+
+
+	return;
+}
 
 
 

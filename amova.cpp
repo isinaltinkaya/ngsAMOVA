@@ -1,8 +1,10 @@
 #include "amova.h"
+#include "dmat.h"
+
 
 
 /// @brief calculate part of AMOVA statistics where the calculations are independent of the distance matrix but depend on the metadata
-/// @param amv amovaStruct
+/// @param amova amovaStruct
 /// @param mtd metadataStruct
 /// @return void
 /// @details
@@ -11,16 +13,16 @@
 /// i.e. one call is enough for all amova replicates
 /// 
 ///     
-inline void amova_run_shared(amovaStruct* amv) {
+void amova_run_shared(amovaStruct* amova) {
 
-    metadataStruct* mtd = amv->metadata;
+    metadataStruct* mtd = amova->metadata;
     const int nInd = mtd->nInd;
 
     const size_t nLevels = (size_t)mtd->nLevels; // L
     size_t lvlidx; // 0-based lvl
 
     /// ------------------------------------------------------------------- ///
-    /// -> DEGREES OF FREEDOM (amv->df)
+    /// -> DEGREES OF FREEDOM (amova->df)
     /// @note 
     ///
     /// df_i = k_i - k_{i-1}  , 0 < i < L
@@ -46,21 +48,21 @@ inline void amova_run_shared(amovaStruct* amv) {
 
     lvlidx = 0;
     // $ df_1 = k_1 - k_0 $
-    amv->df[lvlidx] = mtd->level2groupIndices[lvlidx]->len - 1;
+    amova->df[lvlidx] = mtd->level2groupIndices[lvlidx]->len - 1;
     ++lvlidx;
 
     while (lvlidx < nLevels - 1) {
         // $ df_{lvlidx+1} = k_{lvlidx+1} - k_{lvlidx} $
-        amv->df[lvlidx] = mtd->level2groupIndices[lvlidx]->len - mtd->level2groupIndices[lvlidx - 1]->len;
+        amova->df[lvlidx] = mtd->level2groupIndices[lvlidx]->len - mtd->level2groupIndices[lvlidx - 1]->len;
         ++lvlidx;
     }
 
     // $ df_L = N - k_L $
-    amv->df[lvlidx] = nInd - mtd->level2groupIndices[nLevels - 2]->len;
+    amova->df[lvlidx] = nInd - mtd->level2groupIndices[nLevels - 2]->len;
     ++lvlidx;
 
     // $ df_{total} = N - 1 $
-    amv->df_total = nInd - 1;
+    amova->df_total = nInd - 1;
 
     double sum;
 
@@ -119,7 +121,7 @@ inline void amova_run_shared(amovaStruct* amv) {
                 }
             } while (0);
 
-            amv->vmat[idx] = val;
+            amova->vmat[idx] = val;
             ++idx;
 
         }
@@ -149,8 +151,8 @@ inline void amova_run_shared(amovaStruct* amv) {
                 double left;
                 double right;
 
-                // left = amv->vmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)];
-                left = amv->vmat[idx];
+                // left = amova->vmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)];
+                left = amova->vmat[idx];
 
                 if (iti == 0) {
 
@@ -171,16 +173,16 @@ inline void amova_run_shared(amovaStruct* amv) {
 
                 } else {
                     // 1 < i <= j (0 < iti <= itj)
-                    right = amv->vmat[MATRIX_GET_INDEX_UTID_IJ(iti - 1, itj, nLevels)];
+                    right = amova->vmat[MATRIX_GET_INDEX_UTID_IJ(iti - 1, itj, nLevels)];
 
                 }
 
-                val = (1.0 / (double)amv->df[iti]) * (left - right);
+                val = (1.0 / (double)amova->df[iti]) * (left - right);
 
             } while (0);
 
-            // amv->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)] = val;
-            amv->cmat[idx] = val;
+            // amova->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)] = val;
+            amova->cmat[idx] = val;
 
             ++idx;
         }
@@ -190,7 +192,7 @@ inline void amova_run_shared(amovaStruct* amv) {
     for (iti = 0;iti < nLevels;++iti) {
         // itj==iti
         const size_t idx = MATRIX_GET_INDEX_UTID_IJ(iti, iti, nLevels);
-        amv->lmat[idx] = 1.0 / amv->cmat[idx];
+        amova->lmat[idx] = 1.0 / amova->cmat[idx];
     }
 
 
@@ -206,9 +208,9 @@ inline void amova_run_shared(amovaStruct* amv) {
         for (size_t itj = iti + 1;itj < nLevels;++itj) {
             sum = 0.0;
             for (size_t p = iti + 1;p <= itj;++p) {
-                sum += amv->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, p, nLevels)] * amv->lmat[MATRIX_GET_INDEX_UTID_IJ(p, itj, nLevels)];
+                sum += amova->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, p, nLevels)] * amova->lmat[MATRIX_GET_INDEX_UTID_IJ(p, itj, nLevels)];
             }
-            amv->lmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)] = -1.0 * (sum / amv->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, iti, nLevels)]);
+            amova->lmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)] = -1.0 * (sum / amova->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, iti, nLevels)]);
 
         }
     }
@@ -223,27 +225,38 @@ struct simple_pthread_data_t {
 
 
 void* amova_run_private(void* data) {
+    DEVASSERT(data != NULL);
 
     const size_t runidx = (size_t)((simple_pthread_data_t*)data)->job_id;
 
-    amovaStruct* amv = (amovaStruct*)((simple_pthread_data_t*)data)->shared_data;
+    amovaStruct* amova = (amovaStruct*)((simple_pthread_data_t*)data)->shared_data;
     dmat_t* dm = (dmat_t*)((simple_pthread_data_t*)data)->private_data;
     double* matrix = dm->matrix[runidx];
 
-    metadataStruct* mtd = amv->metadata;
-    double* ss_total = amv->ss_total + runidx;
-    double* ssd_total = amv->ssd_total + runidx;
-    double* msd_total = amv->msd_total + runidx;
+    //TODO investigate the squared transform
+    if (DMAT_TRANSFORM_SQUARE == dm->transform) {
+        // ok
+    } else if (DMAT_TRANSFORM_NONE == dm->transform) {
+        for (size_t i = 0;i < dm->size;++i) {
+            matrix[i] = SQUARE(matrix[i]);
+        }
+    }
+
+
+    metadataStruct* mtd = amova->metadata;
+    double* ss_total = amova->ss_total + runidx;
+    double* ssd_total = amova->ssd_total + runidx;
+    double* msd_total = amova->msd_total + runidx;
 
     size_t iti;
     size_t itj;
 
-    double* ss = amv->ss[runidx];
-    double* ssd = amv->ssd[runidx];
-    double* msd = amv->msd[runidx];
-    double* sigmasq = amv->sigmasq[runidx];
-    double* phi_xt = amv->phi_xt[runidx];
-    double* phi_xy = (amv->phi_xy == NULL ? NULL : amv->phi_xy[runidx]);
+    double* ss = amova->ss[runidx];
+    double* ssd = amova->ssd[runidx];
+    double* msd = amova->msd[runidx];
+    double* sigmasq = amova->sigmasq[runidx];
+    double* phi_xt = amova->phi_xt[runidx];
+    double* phi_xy = (amova->phi_xy == NULL ? NULL : amova->phi_xy[runidx]);
 
     const int nInd = mtd->nInd;
     const size_t nLevels = (size_t)mtd->nLevels;
@@ -275,6 +288,7 @@ void* amova_run_private(void* data) {
             nPairsInGroup = mtd->group2pairIndices[groupIndex]->len;
 
             for (p = 0; p < nPairsInGroup; ++p) {
+                DEVASSERT(pairsInGroup[p] < dm->size);
                 sum += matrix[pairsInGroup[p]];
             }
 
@@ -327,11 +341,11 @@ void* amova_run_private(void* data) {
 
     lvlidx = 0;
     while (lvlidx < nLevels) {
-        msd[lvlidx] = ssd[lvlidx] / amv->df[lvlidx];
+        msd[lvlidx] = ssd[lvlidx] / amova->df[lvlidx];
         ++lvlidx;
     }
 
-    *msd_total = *ssd_total / amv->df_total;
+    *msd_total = *ssd_total / amova->df_total;
 
     /// -----------------------------------------------------------------------
     /// -> SIGMA SQUARED (VARIANCE COMPONENTS)
@@ -341,14 +355,14 @@ void* amova_run_private(void* data) {
     for (iti = 0;iti < nLevels;++iti) {
         sigmasq[iti] = 0.0;
         for (itj = iti; itj < nLevels; ++itj) {
-            // sigmasq[iti] += msd[itj] * amv->lmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)];
-            sigmasq[iti] += msd[itj] * amv->lmat[idx];
+            // sigmasq[iti] += msd[itj] * amova->lmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)];
+            sigmasq[iti] += msd[itj] * amova->lmat[idx];
             ++idx;
         }
     }
-    amv->sigmasq_total[0] = 0.0;
+    amova->sigmasq_total[0] = 0.0;
     for (size_t i = 0; i < nLevels; ++i) {
-        amv->sigmasq_total[0] += sigmasq[i];
+        amova->sigmasq_total[0] += sigmasq[i];
     }
 
     /// -----------------------------------------------------------------------
@@ -371,7 +385,7 @@ void* amova_run_private(void* data) {
         for (itj = 0; itj <= iti;++itj) {
             sum += sigmasq[itj];
         }
-        phi_xt[iti] = sum / amv->sigmasq_total[0];
+        phi_xt[iti] = sum / amova->sigmasq_total[0];
     }
 
     return(NULL);
@@ -379,7 +393,7 @@ void* amova_run_private(void* data) {
 }
 
 
-void amovaStruct_print_as_csv(amovaStruct* amv, metadataStruct* mtd) {
+void amovaStruct_print_as_csv(amovaStruct* amova, metadataStruct* mtd, const char* bootstrap_results) {
 
     //  header
     //  type,label,value
@@ -392,9 +406,9 @@ void amovaStruct_print_as_csv(amovaStruct* amv, metadataStruct* mtd) {
     outFiles->out_amova_fs->kbuf = kbuf_init();
     kstring_t* kbuf = outFiles->out_amova_fs->kbuf;
 
-    ksprintf(kbuf, "df,Total,%d\n", amv->df_total);
-    ksprintf(kbuf, "SSD,Total,%f\n", amv->ssd_total[0]);
-    ksprintf(kbuf, "MSD,Total,%f\n", amv->msd_total[0]);
+    ksprintf(kbuf, "df,Total,%d\n", amova->df_total);
+    ksprintf(kbuf, "SSD,Total,%f\n", amova->ssd_total[0]);
+    ksprintf(kbuf, "MSD,Total,%f\n", amova->msd_total[0]);
 
 
     // among       idx |   within    idx
@@ -408,233 +422,271 @@ void amovaStruct_print_as_csv(amovaStruct* amv, metadataStruct* mtd) {
     size_t amonglvlidx;
 
     amonglvlidx = 0;
-    ksprintf(kbuf, "df,Among_%s_within_Total,%d\n", mtd->levelNames->d[amonglvlidx], amv->df[amonglvlidx]);
-    ksprintf(kbuf, "SSD,Among_%s_within_Total,%f\n", mtd->levelNames->d[amonglvlidx], amv->ssd[0][amonglvlidx]);
-    ksprintf(kbuf, "MSD,Among_%s_within_Total,%f\n", mtd->levelNames->d[amonglvlidx], amv->msd[0][amonglvlidx]);
+    ksprintf(kbuf, "df,Among_%s_within_Total,%d\n", mtd->levelNames->d[amonglvlidx], amova->df[amonglvlidx]);
+    ksprintf(kbuf, "SSD,Among_%s_within_Total,%f\n", mtd->levelNames->d[amonglvlidx], amova->ssd[0][amonglvlidx]);
+    ksprintf(kbuf, "MSD,Among_%s_within_Total,%f\n", mtd->levelNames->d[amonglvlidx], amova->msd[0][amonglvlidx]);
 
     ++amonglvlidx;
 
     while (amonglvlidx < nLevels) {
 
-        ksprintf(kbuf, "df,Among_%s_within_%s,%d\n", mtd->levelNames->d[amonglvlidx], mtd->levelNames->d[amonglvlidx - 1], amv->df[amonglvlidx]);
-        ksprintf(kbuf, "SSD,Among_%s_within_%s,%f\n", mtd->levelNames->d[amonglvlidx], mtd->levelNames->d[amonglvlidx - 1], amv->ssd[0][amonglvlidx]);
-        ksprintf(kbuf, "MSD,Among_%s_within_%s,%f\n", mtd->levelNames->d[amonglvlidx], mtd->levelNames->d[amonglvlidx - 1], amv->msd[0][amonglvlidx]);
+        ksprintf(kbuf, "df,Among_%s_within_%s,%d\n", mtd->levelNames->d[amonglvlidx], mtd->levelNames->d[amonglvlidx - 1], amova->df[amonglvlidx]);
+        ksprintf(kbuf, "SSD,Among_%s_within_%s,%f\n", mtd->levelNames->d[amonglvlidx], mtd->levelNames->d[amonglvlidx - 1], amova->ssd[0][amonglvlidx]);
+        ksprintf(kbuf, "MSD,Among_%s_within_%s,%f\n", mtd->levelNames->d[amonglvlidx], mtd->levelNames->d[amonglvlidx - 1], amova->msd[0][amonglvlidx]);
 
         ++amonglvlidx;
     }
 
     // -> phi_xy
     // only run if nLevels > 2
-    if (amv->phi_xy != NULL) {
+    if (amova->phi_xy != NULL) {
         for (size_t iti = 1; iti < nLevels - 1;++iti) {
-            ksprintf(kbuf, "Phi,%s_in_%s,%f\n", mtd->levelNames->d[iti], mtd->levelNames->d[iti - 1], amv->phi_xy[0][iti - 1]);
+            ksprintf(kbuf, "Phi,%s_in_%s,%f\n", mtd->levelNames->d[iti], mtd->levelNames->d[iti - 1], amova->phi_xy[0][iti - 1]);
         }
     }
 
     // phi_xt
     for (size_t iti = 0;iti < (size_t)(mtd->nLevels - 1);++iti) {
-        ksprintf(kbuf, "Phi,%s_in_Total,%f\n", mtd->levelNames->d[iti], amv->phi_xt[0][iti]);
+        ksprintf(kbuf, "Phi,%s_in_Total,%f\n", mtd->levelNames->d[iti], amova->phi_xt[0][iti]);
     }
 
 
     for (size_t iti = 0;iti < nLevels;++iti) {
         for (size_t itj = iti;itj < nLevels;++itj) {
-            ksprintf(kbuf, "Variance_coefficient,c_%ld_%ld,%f\n", iti, itj, amv->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)]);
+            ksprintf(kbuf, "Variance_coefficient,c_%ld_%ld,%f\n", iti, itj, amova->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)]);
         }
     }
 
     for (size_t i = 0;i < nLevels;++i) {
-        ksprintf(kbuf, "Variance_component,%s,%f\n", mtd->levelNames->d[i], amv->sigmasq[0][i]);
-        ksprintf(kbuf, "Percentage_variance,%s,%f\n", mtd->levelNames->d[i], (amv->sigmasq[0][i] / amv->sigmasq_total[0]) * 100.0);
+        ksprintf(kbuf, "Variance_component,%s,%f\n", mtd->levelNames->d[i], amova->sigmasq[0][i]);
+        ksprintf(kbuf, "Percentage_variance,%s,%f\n", mtd->levelNames->d[i], (amova->sigmasq[0][i] / amova->sigmasq_total[0]) * 100.0);
     }
 
+    if (NULL != bootstrap_results) {
+        ksprintf(kbuf, "%s", bootstrap_results);
+    }
 
     outFiles->out_amova_fs->kbuf_write();
 
 }
 
 
-void amovaStruct_print_as_table(FILE* fp, amovaStruct* amv, metadataStruct* mtd) {
-    //TODO UPDATEME
+void amovaStruct_print_as_table(amovaStruct* amova, metadataStruct* mtd) {
 
-//     const size_t nLevels = (size_t)mtd->nLevels;
-
-//     fprintf(fp, "\n");
-//     fprintf(fp, "\n\n");
-//     fprintf(fp, "==========================================  AMOVA  ==========================================");
-
-//     fprintf(fp, "\n\n");
-//     fprintf(fp, "Formula: %s ", args->formula);
-//     fprintf(fp, "\n");
-//     fprintf(fp, "Source of variation\t\t\t\t\td.f.\tSSD\t\tMSD");
-//     fprintf(fp, "\n");
-//     fprintf(fp, "---------------------------------------------------------------------------------------------");
-//     fprintf(fp, "\n\n");
-//     fprintf(fp, "\n");
-
-
-//     size_t x = 1;
-//     fprintf(fp, "Among %-15s\t\t\t\t\t%d\t%f\t%f", mtd->levelNames->get(x), amv->df[x], amv->ssd[x], amv->msd[x]);
-
-//     while (x < mtd->nLevels) {
-//         fprintf(fp, "\n");
-//         fprintf(fp, "Among %s within %-25s\t%d\t%f\t%f", mtd->levelNames->get(x + 1), mtd->levelNames->get(x), amv->df[x], amv->ssd[x], amv->msd[x]);
-//         fprintf(fp, "\n");
-//         ++x;
-//     }
-
-//     fprintf(fp, "\n");
-//     fprintf(fp, "Among %s within %-25s\t%d\t%f\t%f", mtd->levelNames->get(0), mtd->levelNames->get(x), amv->df[x], amv->ssd[x], amv->msd[x]);
-//     fprintf(fp, "\n");
+    kstring_t kbuf = KS_INITIALIZE;
+    ksprintf(&kbuf, "=== AMOVA ======================================================================\n");
+    ksprintf(&kbuf, "Formula: %s\n\n", args->formula);
+    ksprintf(&kbuf, "Source of variation%-30sd.f.%-6sSSD%-10sMSD\n", " ", " ", " ");
+    ksprintf(&kbuf, "--------------------------------------------------------------------------------\n");
+    size_t amonglvlidx = 0;
+    kstring_t tmp = KS_INITIALIZE;
+    ksprintf(&tmp, "Among %s within %s", mtd->levelNames->d[amonglvlidx], "Total");
+    ksprintf(&kbuf, "%-49s%-10d%-13f%-13f\n", tmp.s, amova->df[amonglvlidx], amova->ssd[0][amonglvlidx], amova->msd[0][amonglvlidx]);
+    ++amonglvlidx;
+    while (amonglvlidx < mtd->nLevels) {
+        ks_clear(&tmp);
+        ksprintf(&tmp, "Among %s within %s", mtd->levelNames->d[amonglvlidx], mtd->levelNames->d[amonglvlidx - 1]);
+        ksprintf(&kbuf, "%-49s%-10d%-13f%-13f\n", tmp.s, amova->df[amonglvlidx], amova->ssd[0][amonglvlidx], amova->msd[0][amonglvlidx]);
+        ++amonglvlidx;
+    }
+    ksprintf(&kbuf, "\n\n");
 
 
-//     ++x;
-//     fprintf(fp, "\n");
-//     fprintf(fp, "Total\t\t\t\t\t\t\t%d\t%f\t%f", amv->df[x], amv->ssd[x], amv->msd[x]);
+    ksprintf(&kbuf, "\nVariance coefficients:\n");
+    for (size_t iti = 0;iti < mtd->nLevels;++iti) {
+        for (size_t itj = iti;itj < mtd->nLevels;++itj) {
+            ksprintf(&kbuf, "c_%ld_%ld\t%f\n", iti, itj, amova->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, mtd->nLevels)]);
+        }
+    }
 
-//     fprintf(fp, "\n\n\n");
-//     fprintf(fp, "Variance components:\n\n\tVariance Component\tSigma^2\t\t%% of total");
+    ksprintf(&kbuf, "\n\n");
 
-//     for (size_t i = 0;i < nLevels;++i) {
-//         fprintf(fp, "\n\t%-20s", mtd->levelNames->d[i + 1]);
-//         fprintf(fp, "\t%f", amv->sigmasq[0][i]);
-//         // fprintf(fp, "\t%f", pct_sigmasq[i]);
-//     }
+    // print variance components
+    ksprintf(&kbuf, "Variance components:\n");
+    for (size_t i = 0;i < mtd->nLevels;++i) {
+        ksprintf(&kbuf, "%s\t%f\t%f%%\n", mtd->levelNames->d[i], amova->sigmasq[0][i], (amova->sigmasq[0][i] / amova->sigmasq_total[0]) * 100.0);
+    }
 
-//     // Lowest level (i.e. Individual)
-//     fprintf(fp, "\n\t%-20s", mtd->levelNames->d[0]);
-//     fprintf(fp, "\t%f", amv->sigmasq[0][nLevels - 1]);
-//     // fprintf(fp, "\t%f", pct_sigmasq[_ncoef - 1]);
+    ksprintf(&kbuf, "================================================================================\n");
 
-//     fprintf(fp, "\n\n\n");
-//     fprintf(fp, "\nVariance coefficients:\n\n\t");
-//     if (mtd->nLevels == 2) {
-//         fprintf(fp, "%f", amv->ncoef[0]);
-//     } else {
-//         for (size_t i = 0;i < nLevels;++i) {
-//             fprintf(fp, "%f\t", amv->ncoef[i]);
-//         }
-//     }
+    ksprintf(&kbuf, "\n\n");
+    fprintf(stdout, "%s\n", kbuf.s);
 
-//     fprintf(fp, "\n\n\n");
-//     fprintf(fp, "Phi-statistic:\n\n");
-//     for (size_t i = 0; i < ((2 * nLevels) - 3); ++i) {
-//         fprintf(fp, "\t%f", amv->phi[i]);
-//     }
-//     fprintf(fp, "\n\n");
-//     fprintf(fp, "=============================================================================================");
-//     fprintf(fp, "\n\n");
+    ks_free(&kbuf);
+    ks_free(&tmp);
+
+    return;
+}
+
+void amovaStruct_destroy(amovaStruct* amova) {
+
+    amova->metadata = NULL;
+
+    for (size_t i = 0;i < amova->nRuns;++i) {
+        FREE(amova->ss[i]);
+        FREE(amova->ssd[i]);
+        FREE(amova->msd[i]);
+        FREE(amova->sigmasq[i]);
+        FREE(amova->phi_xt[i]);
+        if (amova->phi_xy != NULL) {
+            FREE(amova->phi_xy[i]);
+        }
+    }
+
+    FREE(amova->df);
+    FREE(amova->ss);
+    FREE(amova->ss_total);
+    FREE(amova->ssd);
+    FREE(amova->ssd_total);
+    FREE(amova->msd);
+    FREE(amova->msd_total);
+    FREE(amova->vmat);
+    FREE(amova->cmat);
+    FREE(amova->lmat);
+    FREE(amova->sigmasq);
+    FREE(amova->sigmasq_total);
+    FREE(amova->phi_xt);
+    if (amova->phi_xy != NULL) {
+        FREE(amova->phi_xy);
+    }
+
+    FREE(amova);
+
+}
+
+amovaStruct* amovaStruct_init(metadataStruct* mtd, const int nAmovaRuns) {
+
+    amovaStruct* ret = (amovaStruct*)malloc(sizeof(amovaStruct));
+    ret->metadata = mtd;
+
+    const size_t nLevels = (size_t)mtd->nLevels;
+
+    const size_t nRuns = (size_t)nAmovaRuns;
+    ret->nRuns = nRuns;
+
+
+    const size_t nCmat = (nLevels * (nLevels + 1)) / 2;
+    ret->vmat = NULL;
+    ret->vmat = (double*)malloc((nCmat) * sizeof(double));
+    ASSERT(ret->vmat != NULL);
+    ret->cmat = NULL;
+    ret->cmat = (double*)malloc((nCmat) * sizeof(double));
+    ASSERT(ret->cmat != NULL);
+    ret->lmat = NULL;
+    ret->lmat = (double*)malloc((nCmat) * sizeof(double));
+    ASSERT(ret->cmat != NULL);
+    for (size_t i = 0; i < nCmat; ++i) {
+        ret->cmat[i] = 0.0;
+        ret->lmat[i] = 0.0;
+        ret->vmat[i] = 0.0;
+    }
+
+
+    ret->df = NULL;
+    ret->df = (int*)malloc((nLevels) * sizeof(int));
+    ASSERT(ret->df != NULL);
+
+    ret->df_total = 0;
+
+    ret->ss = NULL;
+    ret->ss = (double**)malloc((nRuns) * sizeof(double*));
+    ASSERT(ret->ss != NULL);
+
+    ret->ss_total = NULL;
+    ret->ss_total = (double*)malloc((nRuns) * sizeof(double));
+    ASSERT(ret->ss_total != NULL);
+
+    ret->ssd = NULL;
+    ret->ssd = (double**)malloc((nRuns) * sizeof(double*));
+    ASSERT(ret->ssd != NULL);
+
+    ret->ssd_total = NULL;
+    ret->ssd_total = (double*)malloc((nRuns) * sizeof(double));
+    ASSERT(ret->ssd_total != NULL);
+
+    ret->msd = NULL;
+    ret->msd = (double**)malloc((nRuns) * sizeof(double*));
+    ASSERT(ret->msd != NULL);
+
+    ret->msd_total = NULL;
+    ret->msd_total = (double*)malloc((nRuns) * sizeof(double));
+    ASSERT(ret->msd_total != NULL);
+
+    ret->sigmasq = NULL;
+    ret->sigmasq = (double**)malloc((nRuns) * sizeof(double*));
+    ASSERT(ret->sigmasq != NULL);
+
+    ret->sigmasq_total = NULL;
+    ret->sigmasq_total = (double*)malloc((nRuns) * sizeof(double));
+    ASSERT(ret->sigmasq_total != NULL);
+
+    ret->phi_xt = NULL;
+    ret->phi_xt = (double**)malloc((nRuns) * sizeof(double*));
+    ASSERT(ret->phi_xt != NULL);
+
+
+    ret->phi_xy = NULL;
+    if (nLevels > 2) {
+        ret->phi_xy = (double**)malloc((nRuns) * sizeof(double*));
+        ASSERT(ret->phi_xy != NULL);
+    }
+
+    for (size_t i = 0;i < nRuns;++i) {
+        ret->ss[i] = (double*)malloc((nLevels) * sizeof(double));
+        ASSERT(ret->ss[i] != NULL);
+
+        ret->ss_total[i] = 0.0;
+
+        ret->ssd[i] = (double*)malloc((nLevels) * sizeof(double));
+        ASSERT(ret->ssd[i] != NULL);
+
+        ret->ssd_total[i] = 0.0;
+
+        ret->msd[i] = (double*)malloc((nLevels) * sizeof(double));
+        ASSERT(ret->msd[i] != NULL);
+
+        ret->msd_total[i] = 0.0;
+
+        ret->sigmasq[i] = (double*)malloc((nLevels) * sizeof(double));
+        ASSERT(ret->sigmasq[i] != NULL);
+
+        ret->sigmasq_total[i] = 0.0;
+
+        ret->phi_xt[i] = (double*)malloc((nLevels - 1) * sizeof(double));
+        ASSERT(ret->phi_xt[i] != NULL);
+
+        if (ret->phi_xy != NULL) {
+            ret->phi_xy[i] = NULL;
+            ret->phi_xy[i] = (double*)malloc((nLevels - 2) * sizeof(double));
+            ASSERT(ret->phi_xy[i] != NULL);
+            for (size_t j = 0;j < nLevels - 2;++j) {
+                ret->phi_xy[i][j] = 0.0;
+            }
+        }
+
+
+        for (size_t j = 0;j < nLevels;++j) {
+            ret->ss[i][j] = 0.0;
+            ret->ssd[i][j] = 0.0;
+            ret->msd[i][j] = 0.0;
+            ret->sigmasq[i][j] = 0.0;
+            if (j < nLevels - 1) {
+                ret->phi_xt[i][j] = 0.0;
+            }
+        }
+
+    }
+
+    return(ret);
 }
 
 
-// amovaStruct* amovaStruct_get(distanceMatrixStruct* dm, metadataStruct* mtd, blobStruct* blobs) {
+amovaStruct* amovaStruct_get(paramStruct* pars, metadataStruct* mtd) {
 
-//     // nRuns = n bootstrap runs + 1 (the original run)
-//     const size_t nRuns = (size_t)args->nBootstraps + 1;
-
-//     amovaStruct* amova = amovaStruct_init(mtd, nRuns);
-
-//     const size_t maxnThreads = (args->nThreads == 0) ? 1 : args->nThreads;
-
-//     amova_run_shared(amova);
-
-//     pthread_t threads[nRuns];
-//     simple_pthread_data_t data[nRuns];
-
-//     int nJobsAlive = 0;
-
-//     size_t run_to_wait = 0;
-//     size_t runidx = 0;
-
-//     while (runidx < nRuns) {
-
-//         while (1) {
-//             if (nJobsAlive < maxnThreads) {
-//                 break;
-//             }
-//             while (nJobsAlive >= maxnThreads) {
-//                 // wait for the run that was sent first
-//                 if (0 != pthread_join(threads[run_to_wait], NULL)) {
-//                     ERROR("Problem with joining the thread.");
-//                 }
-//                 ++run_to_wait;
-//                 nJobsAlive--;
-//             }
-//         }
-
-//         data[runidx].job_id = runidx;
-//         data[runidx].shared_data = (void*)amova;
-//         data[runidx].private_data = (void*)dm;
-
-//         if (0 != pthread_create(&threads[runidx], NULL, amova_run_private, (void*)&data[runidx])) {
-//             ERROR("Problem with the spawning thread.");
-//         }
-//         nJobsAlive++;
-
-//         ++runidx;
-//     }
-
-//     while (nJobsAlive > 0) {
-//         if (0 != pthread_join(threads[run_to_wait], NULL)) {
-//             ERROR("Problem with joining the thread.");
-//         }
-//         ++run_to_wait;
-//         nJobsAlive--;
-//     }
-
-//     //     //TODO HERE BURADAKALDIN!
-//         // const int nReplicates = blob->bootstraps->nReplicates;
-//             // THREADS[i] = new amovaBootstrapThreads(blob->bootstraps->replicates[i]->amova, blob->bootstraps->replicates[i]->distanceMatrix, mtd);
-
-//         // //TODO change these with new vals
-//         // blob->bootstraps->nPhiValues = (mtd->nLevels * 2) - 3;
-//         // blob->bootstraps->phiValues = (double**)malloc(blob->bootstraps->nPhiValues * sizeof(double*));
-
-//         // for (int i = 0; i < blob->bootstraps->nPhiValues; i++) {
-//         //     blob->bootstraps->phiValues[i] = (double*)malloc(nReplicates * sizeof(double));
-
-//         //     for (int r = 0; r < nReplicates; r++) {
-//         //         // blob->bootstraps->phiValues[i][r] = THREADS[r]->amova->phi[i];
-//         //     }
-//         // }
-
-//     amovaStruct_print_as_csv(amova, mtd);
-
-//     // if (0 < args->nBootstraps) {
-//     //     spawnThreads_amovaBootstrap(metadata, blobs);
-//     //     blobs->bootstraps->print_confidenceInterval(stderr);
-//     // }
-
-// // if (0 < args->nBootstraps) {
-// //     ASSERT(blobs != NULL);
-
-
-// //     spawnThreads_amovaBootstrap(mtd, blobs);
-// //     blobs->bootstraps->print_confidenceInterval(stderr);
-// // }
-
-
-// // if (0 == doAmova(amova, dm, metadata)) {
-// //     fprintf(stderr, "\n[INFO]\t-> Finished running AMOVA");
-// //     if (0 < args->nBootstraps) {
-// //         fprintf(stderr, " for the original dataset.\n");
-// //     } else {
-// //         fprintf(stderr, ".\n");
-// //     }
-
-// // if (args->printAmovaTable == 1) {
-//     // amova->print_as_table(stdout);
-//     //TODO make this to print file instead
-// // }
-
-//     return (amova);
-// }
-
-
-amovaStruct* amovaStruct_get(paramStruct* pars, metadataStruct* mtd, blobStruct* blobs) {
 
     // nRuns = n bootstrap runs + 1 (the original run)
-    const size_t nRuns = (size_t)args->nBootstraps + 1;
+    const int nRuns = (args->nBootstraps > 0) ? (args->nBootstraps + 1) : 1;
+
 
     amovaStruct* amova = amovaStruct_init(mtd, nRuns);
 
@@ -686,50 +738,93 @@ amovaStruct* amovaStruct_get(paramStruct* pars, metadataStruct* mtd, blobStruct*
         nJobsAlive--;
     }
 
-    //     //TODO HERE BURADAKALDIN!
-        // const int nReplicates = blob->bootstraps->nReplicates;
-            // THREADS[i] = new amovaBootstrapThreads(blob->bootstraps->replicates[i]->amova, blob->bootstraps->replicates[i]->distanceMatrix, mtd);
+    kstring_t kbuf_csv = KS_INITIALIZE;
+    kstring_t kbuf_table = KS_INITIALIZE;
 
-        // //TODO change these with new vals
-        // blob->bootstraps->nPhiValues = (mtd->nLevels * 2) - 3;
-        // blob->bootstraps->phiValues = (double**)malloc(blob->bootstraps->nPhiValues * sizeof(double*));
+    if (nRuns > 1) {
 
-        // for (int i = 0; i < blob->bootstraps->nPhiValues; i++) {
-        //     blob->bootstraps->phiValues[i] = (double*)malloc(nReplicates * sizeof(double));
+        double mean, sd, margin_of_error, ci_lower, ci_upper;
 
-        //     for (int r = 0; r < nReplicates; r++) {
-        //         // blob->bootstraps->phiValues[i][r] = THREADS[r]->amova->phi[i];
-        //     }
-        // }
+        double ci = args->bootstrap_ci;
+        int nReps = nRuns - 1;
 
-    amovaStruct_print_as_csv(amova, mtd);
+        ksprintf(&kbuf_csv, "Block_Bootstrapping,nReplicates,%d\n", nReps);
+        ksprintf(&kbuf_csv, "Block_Bootstrapping,Confidence_Interval,%f\n", ci);
+        ksprintf(&kbuf_table, "Block Bootstrapping:\n");
+        ksprintf(&kbuf_table, "Number of replicates: %d\n", nReps);
+        ksprintf(&kbuf_table, "Confidence interval: %f\n", ci);
 
-    // if (0 < args->nBootstraps) {
-    //     spawnThreads_amovaBootstrap(metadata, blobs);
-    //     blobs->bootstraps->print_confidenceInterval(stderr);
-    // }
+        for (size_t i = 0;i < (mtd->nLevels - 1);++i) {
 
-// if (0 < args->nBootstraps) {
-//     ASSERT(blobs != NULL);
+            mean = 0.0;
+            for (size_t r=0;r < nReps;++r) {
+                mean += amova->phi_xt[r][i];
+            }
+            mean = mean / (double)nReps;
 
+            sd = 0.0;
+            for (size_t r=0;r < nReps;++r) {
+                sd += pow(amova->phi_xt[r][i] - mean, 2);
+            }
+            sd = sqrt(sd / (nReps-1)); // sample stdev 
 
-//     spawnThreads_amovaBootstrap(mtd, blobs);
-//     blobs->bootstraps->print_confidenceInterval(stderr);
-// }
+            margin_of_error= 1.96 * (sd / sqrt((double)nReps));
+            ci_lower = mean - margin_of_error;
+            ci_upper = mean + margin_of_error;
 
+            ksprintf(&kbuf_csv, "Block_Bootstrapping_Phi_Mean,%s_in_Total,%f\n", mtd->levelNames->d[i], mean);
+            ksprintf(&kbuf_csv, "Block_Bootstrapping_Phi_SD,%s_in_Total,%f\n", mtd->levelNames->d[i], sd);
+            ksprintf(&kbuf_csv, "Block_Bootstrapping_Phi_LowerCI,%s_in_Total,%f\n", mtd->levelNames->d[i], ci_lower);
+            ksprintf(&kbuf_csv, "Block_Bootstrapping_Phi_UpperCI,%s_in_Total,%f\n", mtd->levelNames->d[i], ci_upper);
 
-// if (0 == doAmova(amova, dm, metadata)) {
-//     fprintf(stderr, "\n[INFO]\t-> Finished running AMOVA");
-//     if (0 < args->nBootstraps) {
-//         fprintf(stderr, " for the original dataset.\n");
-//     } else {
-//         fprintf(stderr, ".\n");
-//     }
+            ksprintf(&kbuf_table, "Phi(%s in Total): %f\n", mtd->levelNames->d[i], mean);
+            ksprintf(&kbuf_table, "Phi(%s in Total) SD: %f\n", mtd->levelNames->d[i], sd);
+            ksprintf(&kbuf_table, "Phi(%s in Total) Lower CI: %f\n", mtd->levelNames->d[i], ci_lower);
+            ksprintf(&kbuf_table, "Phi(%s in Total) Upper CI: %f\n", mtd->levelNames->d[i], ci_upper);
 
-// if (args->printAmovaTable == 1) {
-    // amova->print_as_table(stdout);
-    //TODO make this to print file instead
-// }
+        }
+
+        if (amova->phi_xy != NULL) {
+            for (size_t i = 0;i < (mtd->nLevels - 2);++i) {
+
+                mean = 0.0;
+                for (size_t r=0;r < nReps;++r) {
+                    mean += amova->phi_xy[r][i];
+                }
+                mean = mean / (double)nReps;
+
+                sd = 0.0;
+                for (size_t r=0;r < nReps;++r) {
+                    sd += pow(amova->phi_xy[r][i] - mean, 2);
+                }
+                sd = sqrt(sd / (nReps-1)); // sample stdev
+
+                margin_of_error= 1.96 * (sd / sqrt((double)nReps));
+                ci_lower = mean - margin_of_error;
+                ci_upper = mean + margin_of_error;
+
+                ksprintf(&kbuf_csv, "Block_Bootstrapping_Phi_Mean,%s_in_%s,%f\n", mtd->levelNames->d[i + 1], mtd->levelNames->d[i], mean);
+                ksprintf(&kbuf_csv, "Block_Bootstrapping_Phi_SD,%s_in_%s,%f\n", mtd->levelNames->d[i + 1], mtd->levelNames->d[i], sd);
+                ksprintf(&kbuf_csv, "Block_Bootstrapping_Phi_LowerCI,%s_in_%s,%f\n", mtd->levelNames->d[i + 1], mtd->levelNames->d[i], ci_lower);
+                ksprintf(&kbuf_csv, "Block_Bootstrapping_Phi_UpperCI,%s_in_%s,%f\n", mtd->levelNames->d[i + 1], mtd->levelNames->d[i], ci_upper);
+
+                ksprintf(&kbuf_table, "Phi(%s in %s): %f\n", mtd->levelNames->d[i + 1], mtd->levelNames->d[i], mean);
+                ksprintf(&kbuf_table, "Phi(%s in %s) SD: %f\n", mtd->levelNames->d[i + 1], mtd->levelNames->d[i], sd);
+                ksprintf(&kbuf_table, "Phi(%s in %s) Lower CI: %f\n", mtd->levelNames->d[i + 1], mtd->levelNames->d[i], ci_lower);
+                ksprintf(&kbuf_table, "Phi(%s in %s) Upper CI: %f\n", mtd->levelNames->d[i + 1], mtd->levelNames->d[i], ci_upper);
+
+            }
+        }
+    }
+
+    amovaStruct_print_as_csv(amova, mtd, kbuf_csv.s);
+    if (kbuf_csv.l > 0) {
+        ks_free(&kbuf_csv);
+    }
+
+    if (args->printAmovaTable == 1) {
+        amovaStruct_print_as_table(amova, mtd);
+    }
 
     return (amova);
 }

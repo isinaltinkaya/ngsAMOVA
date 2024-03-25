@@ -2,14 +2,43 @@
 
 #include "ibd.h"
 #include "dataStructs.h"
+#include "dmat.h"
 
 
-// TODO handle :
-// TODO if site in vcf does not exist in alleles file, skip site ?
-    // TODO if site in alleles file does not exist in vcf ? ?
+//   calculate max memory needed for worst case scenario
+//   worst case:
+//   - no sites skipped
+//   - number of sites == the total size of the all contigs in the vcf file
+//TODO
+void estimate_memory_needed(paramStruct* pars, vcfData* vcfd) {
+
+    // if (args->doJGTM) {
+    //     // jgtmat_t
+    // }
+    // const size_t nInd = pars->names->len;
 
 
-static alleles_t* alleles_init(void) {
+    // size_t nIndCmb = (size_t)((nInd * (nInd - 1)) / 2);
+    // size_t nSites = pars->nSites;
+    // size_t nSites_arrays_size = pars->nSites_arrays_size;
+
+    // size_t nGT;
+    // if (args->doEM == ARG_DOEM_3GL) {
+    //     nGT = 3;
+    // } else if (args->doEM == ARG_DOEM_10GL) {
+    //     nGT = 10;
+    // }
+
+    // size_t mem_needed = 0;
+    // mem_needed += nIndCmb * 9 * sizeof(double);
+    // mem_needed += nIndCmb * 9 * sizeof(double);
+    // mem_needed += nIndCmb * 9 * sizeof(int);
+    // mem_needed += nSites * sizeof(double);
+    // mem_needed += nSites * nInd * nGT * sizeof(double);
+}
+
+
+ alleles_t* alleles_init(void) {
     alleles_t* alleles = (alleles_t*)malloc(sizeof(alleles_t));
     ASSERT(alleles != NULL);
     alleles->d = NULL;
@@ -19,7 +48,7 @@ static alleles_t* alleles_init(void) {
     return(alleles);
 }
 
-static void alleles_alloc(alleles_t* alleles, const size_t nSites) {
+ void alleles_alloc(alleles_t* alleles, const size_t nSites) {
     // each uint64_t contains 16 packs of 4bit per-site alleles info (ordered pairs of 2bit ACGTs)
     // so we need nSites/16 + 1 uint64_t
     alleles->pos = size_tArray_alloc(nSites);
@@ -41,7 +70,7 @@ static void alleles_alloc(alleles_t* alleles, const size_t nSites) {
 // with 4 columns: chr, pos, a1/major/ancestral, a2/minor/derived
 // into alleles
 // N.B. alleles file positions are 0-indexed //TODO make sure the user knows
-static alleles_t* alleles_read(const char* fn) {
+ alleles_t* alleles_read(const char* fn) {
 
     alleles_t* alleles = alleles_init();
 
@@ -356,7 +385,7 @@ int alleles_get(alleles_t* alleles, const char* querychr, const size_t querypos,
 }
 
 
-static void alleles_destroy(alleles_t* alleles) {
+ void alleles_destroy(alleles_t* alleles) {
     FREE(alleles->d);
     size_tArray_destroy(alleles->pos);
     size_tArray_destroy(alleles->cposidx);
@@ -439,17 +468,15 @@ paramStruct* paramStruct_init(argStruct* args) {
     pars->dm = NULL;
     pars->jgtm = NULL;
     pars->names = NULL; // set in vcfReader
+    pars->metadata = NULL;
     pars->nSites = 0;
     pars->totSites = 0;
     pars->nSites_arrays_size = NSITES_BUF_INIT;
     pars->nContigs = 0;
-    pars->nInd = 0;
-    pars->in_ft = 0;
     pars->majorminor = NULL;
     pars->ancder = NULL;
     pars->alleles_posidx = -1;
     pars->alleles_contigidx = -1;
-    pars->contig_changed = false;
     pars->a1a2[0] = -1;
     pars->a1a2[1] = -1;
     pars->formulaTokens = NULL;
@@ -462,35 +489,6 @@ paramStruct* paramStruct_init(argStruct* args) {
 
     pars->DATETIME = (char*)malloc(1024 * sizeof(char));
     sprintf(pars->DATETIME, "%s", get_time());
-
-    if (NULL != args->in_vcf_fn) {
-        fprintf(stderr, "\n[INFO]\tFound input VCF file: %s\n", args->in_vcf_fn);
-        pars->in_ft = pars->in_ft | IN_VCF;
-    }
-
-    if (NULL != args->in_dm_fn) {
-        fprintf(stderr, "\n[INFO]\tFound input distance matrix file: %s\n", args->in_dm_fn);
-        pars->in_ft = pars->in_ft | IN_DM;
-    }
-
-    if (NULL != args->in_dxy_fn) {
-        //TODO ??
-        fprintf(stderr, "\n[INFO]\tFound input dxy file: %s\n", args->in_dxy_fn);
-        pars->in_ft = pars->in_ft | IN_DXY;
-    }
-
-    // TODO check args versus input file type for compatibility 
-    if (pars->in_ft & IN_DM) {
-        if (args->blockSize != 0) {
-            ERROR("-blockSize is not supported for distance matrix input.");
-        }
-        if (args->doEM) {
-            ERROR("-doEM is not available for distance matrix input.");
-        }
-        if (args->doJGTM) {
-            ERROR("-doJGTM is not available for distance matrix input.");
-        }
-    }
 
 
     if (PROGRAM_NEEDS_FORMULA) {
@@ -539,46 +537,33 @@ void paramStruct_destroy(paramStruct* pars) {
     }
 
     if (pars->ibd != NULL) {
-        const size_t nIndCmb = (size_t)((pars->nInd * (pars->nInd - 1)) / 2);
-        for (size_t i = 0;i < nIndCmb;++i) {
-            FREE(pars->ibd->pairScores[i]);
-        }
-        FREE(pars->ibd->pairScores);
-        delete pars->ibd;
+        //TODO
+        // ASSERT(pars->names != NULL);
+        // const size_t nInd = pars->names->len;
+        // const size_t nIndCmb = (size_t)((nInd * (nInd - 1)) / 2);
+        // for (size_t i = 0;i < nIndCmb;++i) {
+        //     FREE(pars->ibd->pairScores[i]);
+        // }
+        // FREE(pars->ibd->pairScores);
+        // delete pars->ibd;
     }
 
 
     FREE(pars->DATETIME);
 
     if (NULL != pars->names) {
-        strArray_destroy(pars->names);
+        if (PROGRAM_HAS_INPUT_VCF && (!(PROGRAM_HAS_INPUT_METADATA))) {
+            // only allocated if input is vcf && no metadata provided
+            // for all other cases it is ptr to another strArray
+            strArray_destroy(pars->names);
+        }
     }
-
+    if (pars->metadata != NULL) {
+        metadataStruct_destroy(pars->metadata);
+    }
 
     delete pars;
 }
 
 // VALIDATION - CHECKS BELOW
 // --------------------------
-
-/// @brief check_consistency_args_pars - check consistency between arguments and parameters
-/// @param args pointer to argStruct
-/// @param pars pointer to paramStruct
-void check_consistency_args_pars(paramStruct* pars) {
-
-    if (args->minInd == pars->nInd) {
-        fprintf(stderr, "\n\t-> -minInd %d is equal to the number of individuals found in file: %d. Setting -minInd to 0 (all).\n", args->minInd, pars->nInd);
-        args->minInd = 0;
-    }
-
-    if (pars->nInd == 1) {
-        fprintf(stderr, "\n\n[ERROR]\tOnly one sample; will exit\n\n");
-        exit(1);
-    }
-
-    if (pars->nInd < args->minInd) {
-        fprintf(stderr, "\n\n[ERROR]\tMinimum number of individuals -minInd is set to %d, but input file contains %d individuals; will exit!\n\n", args->minInd, pars->nInd);
-        exit(1);
-    }
-}
-

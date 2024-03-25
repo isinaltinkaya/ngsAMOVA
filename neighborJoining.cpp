@@ -1,4 +1,5 @@
 #include "neighborJoining.h"
+#include "dmat.h"
 
 
 nj_t* nj_init(dmat_t* dmat, const size_t which_dmat) {
@@ -114,7 +115,7 @@ void nj_destroy(nj_t* nj) {
 }
 
 
-static void nj_add_edge(nj_t* nj, int parentNode, int childNode, double edgeLength) {
+ void nj_add_edge(nj_t* nj, int parentNode, int childNode, double edgeLength) {
     DEVASSERT(parentNode > childNode);
     // DEVPRINT("adding edge. parentNode: %d childNode: %d edgeLength: %f nj->L: %d nj->nEdges: %d", parentNode, childNode, edgeLength, nj->L, nj->nEdges);
 
@@ -157,7 +158,7 @@ static void nj_add_edge(nj_t* nj, int parentNode, int childNode, double edgeLeng
 // edgeNodes[edge_index][0] = parent node
             // edgeNodes[edge_index][1] = child node
 
-static void nj_print_leaf_newick(nj_t* nj, int node, kstring_t* kbuf) {
+ void nj_print_leaf_newick(nj_t* nj, int node, kstring_t* kbuf) {
 
     // node - index of the node in the list of all nodes
     // L - number of leaf nodes
@@ -165,13 +166,13 @@ static void nj_print_leaf_newick(nj_t* nj, int node, kstring_t* kbuf) {
     //      <0 if node is a leaf node (i.e. not in the list of parent nodes)
                 //      >=0 if node is an internal node (i.e. in the list of parent nodes)
 
-    static const int L = nj->L;
+     const int L = nj->L;
     const int nodeIdxInParents = node - L;
 
-    static int* nEdgesPerParentNode = nj->nEdgesPerParentNode;
-    static int** parentToEdgeIdx = nj->parentToEdgeIdx;
-    static double* edgeLengths = nj->edgeLengths;
-    static int** edgeNodes = nj->edgeNodes;
+     int* nEdgesPerParentNode = nj->nEdgesPerParentNode;
+     int** parentToEdgeIdx = nj->parentToEdgeIdx;
+     double* edgeLengths = nj->edgeLengths;
+     int** edgeNodes = nj->edgeNodes;
 
     if (nodeIdxInParents < 0) {
         // node := leaf node

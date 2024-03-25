@@ -203,7 +203,7 @@ DEP := $(OBJ:.o=.d)
 FLAGS := $(CPPFLAGS) $(CXXFLAGS)
 
 
-VERSION = v0.3.1
+VERSION = v0.4
 
 ifneq ($(wildcard .git),)
 VERSION := $(VERSION)-$(shell git describe --always)
@@ -260,7 +260,7 @@ $(PROGRAM): $(OBJ)
 
 .PHONY: clean
 clean:
-	$(RM) $(OBJ) $(DEP) $(PREP) $(ASM) $(VERSIONH) $(BUILDH) $(PROGRAM)
+	$(RM) $(OBJ) $(DEP) $(PREP) $(ASM) $(VERSIONH) $(BUILDH) $(PROGRAM) vgcore.*
 
 ####################################################################################################
 ## [test]

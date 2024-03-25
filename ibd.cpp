@@ -8,7 +8,7 @@ const int dosePairIndex[3][3] = { {0,1,5}, {1,2,3}, {5,3,4} };
 
 void readSites_doIbd(vcfData* vcfd, paramStruct* pars) {
 
-	const int nInd = pars->nInd;
+	const int nInd = pars->names->len;
 	int skip_site = 0;
 
 	int contig_i = -1;
@@ -157,7 +157,7 @@ void readSites_doIbd(vcfData* vcfd, paramStruct* pars) {
 			if (n_values <= 0) {
 				ERROR("Could not read GL tag from the VCF file.");
 			}
-			n_gls = n_values / pars->nInd;
+			n_gls = n_values / pars->names->len;
 
 
 			// if (n_gls < ngt_to_use) {
@@ -490,7 +490,7 @@ int get_ibd_segments(const char* contigName, paramStruct* pars, int* site2pos) {
 	double thisSum = 0.0;
 	double thisScore = 0.0;
 	int pair_idx = -1;
-	const int nInd = pars->nInd;
+	const int nInd = pars->names->len;
 
 	for (int i1 = 0; i1 < nInd; ++i1) {
 		for (int i2 = i1 + 1; i2 < nInd; ++i2) {
@@ -598,7 +598,7 @@ int trimmedStart(paramStruct* pars, const int i1, const int i2, const int start,
 		NEVER;
 		pair_idx = -1;
 	} else {
-		pair_idx = nCk_idx(pars->nInd, i1, i2);
+		pair_idx = nCk_idx(pars->names->len, i1, i2);
 	}
 
 	while (index <= end && sum < args->ibdseq_ibdtrim) {
@@ -626,7 +626,7 @@ int trimmedEnd(paramStruct* pars, const int i1, const int i2, const int start, c
 		NEVER;
 		pair_idx = -1;
 	} else {
-		pair_idx = nCk_idx(pars->nInd, i1, i2);
+		pair_idx = nCk_idx(pars->names->len, i1, i2);
 	}
 
 	while (index >= start && sum < args->ibdseq_ibdtrim) {
@@ -972,7 +972,7 @@ double ibdStruct::hbdScore(int dose, double fB) {
 ibdStruct::ibdStruct(vcfData* vcfd, paramStruct* pars) {
 
 
-	this->nInd = pars->nInd;
+	this->nInd = pars->names->len;
 	if (args->doIbd == 2) {
 		this->maxErrorArray = errorArray(args->ibdseq_errormax);
 	}
@@ -991,8 +991,8 @@ ibdStruct::ibdStruct(vcfData* vcfd, paramStruct* pars) {
 		this->pairScores[i] = (double*)malloc(BUF_NSITES * sizeof(double));
 	}
 
-	// this->selfScores = (double**) malloc(pars->nInd * sizeof(double*));
-	// for (size_t i=0;i<pars->nInd;++i){
+	// this->selfScores = (double**) malloc(pars->names->len * sizeof(double*));
+	// for (size_t i=0;i<pars->names->len;++i){
 		// this->selfScores[i]=(double*)malloc(BUF_NSITES*sizeof(double));
 	// }
 

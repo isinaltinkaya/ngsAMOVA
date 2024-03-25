@@ -6,6 +6,9 @@
 #include "mathUtils.h"
 
 
+//TODO use dmats only, rm dxy data d labels etc
+// ur not using the dmats right now 
+//TODO add test 
 
 /// @brief dxy_t - structure for dxy analysis results
 ///
@@ -61,20 +64,7 @@ typedef struct dxy_t {
 dxy_t* dxy_read(paramStruct* pars, dmat_t* dmat, metadataStruct* mtd);
 dxy_t* dxy_get(paramStruct* pars, dmat_t* dmat, metadataStruct* mtd);
 
-inline void dxy_destroy(dxy_t* dxy) {
-    FREE(dxy->d);
-    FREE(dxy->g1names_p);
-    FREE(dxy->g2names_p);
-    FREE(dxy->levelnames_p);
-    for (size_t i = 0;i < dxy->nLevels;++i) {
-        if (dxy->dm[i] != NULL) {
-            dmat_destroy(dxy->dm[i]);
-        }
-    }
-    FREE(dxy->dm);
-    FREE(dxy);
-    return;
-}
+void dxy_destroy(dxy_t* dxy);
 
 void dxy_print(dxy_t* dxy);
 

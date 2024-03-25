@@ -605,11 +605,6 @@ void IO::outFilesStruct_init(IO::outFilesStruct* ofs) {
             ofs->out_v_bootstrapRep_fs = new IO::outputStruct(args->out_fnp, ".verbose_bootstrap_replicates.csv", OUTFC::NONE);
         }
     }
-
-    // TODO DEPREC
-    if (args->printDev == 1) {
-        ofs->out_dev_fs = new IO::outputStruct(args->out_fnp, ".dev.csv", 1);
-    }
 }
 
 void IO::outFilesStruct_destroy(IO::outFilesStruct* ofs) {

@@ -2,6 +2,7 @@
 #define __ARG_STRUCT__
 
 #include "shared.h"
+#include "dmat.h"
 
 typedef struct argStruct argStruct;
 
@@ -16,7 +17,6 @@ extern argStruct* args;
  * @field *in_dm_fn		input distance matrix filename
  * @field *in_mtd_fn	    input metadata filename
  * @field *in_blb_fn     input block bed filename
- * @field *in_dxy_fn     input dxy filename
  *
  * @field *out_fnp		pointer to output file prefix [angsdput]
  *
@@ -69,10 +69,6 @@ extern argStruct* args;
  * 						ind3,Pop2,Reg2
  * 						ind4,Pop2,Reg2
  *
- *
- * @field keyCols		defines the index(es) (1-based) of the
- * 						column(s) in Metadata file 'in_mtd_fn'
- * 						to be used to define hierarchical stratification levels
  *
  * @field doAMOVA		[0]
  * 						1 use 10 genotype likelihoods (GL)
@@ -154,6 +150,8 @@ struct argStruct {
 
     int doJGTM = 0;
     int doDist = 0;
+    int dm_method = -1;
+    int dm_transform = -1;
 
     int doEM = 0;
 
@@ -202,15 +200,15 @@ struct argStruct {
     int nThreads = 1;
     int rmInvarSites = 0;
     int seed = -1;
-    int nBootstraps = 0;
+    int nBootstraps = -1;
+    double bootstrap_ci=-1.0;
 
     void check_arg_dependencies();
 
-    // TODO check below
-    char* doDxyStr = NULL;  // TODO maybe not needed
     int windowSize = 0;
-    int* keyCols = NULL;
-    int printDev = 0;
+
+    // input file type
+    uint8_t in_ft = 0;
 
 };
 

@@ -9,7 +9,11 @@
 #include "io.h"
 #include "paramStruct.h"
 
-
+// UNMOD: unmodified, do not perform any transform or normalization
+#define ARG_GLDATA_TYPE_UNMOD 0
+#define ARG_GLDATA_TYPE_GL 1
+#define ARG_GLDATA_TYPE_LNGL 2
+#define ARG_GLDATA_TYPE_LOG10GL 3
 
 
 // BASES are: { A, C, G, T, BASE_UNOBSERVED }
@@ -22,10 +26,9 @@
 
 typedef struct vcfData vcfData;
 typedef struct gtData gtData;
-// typedef struct glData glData;
 
 struct blobStruct;
-struct lnglStruct;
+typedef struct bblocks_t bblocks_t;
 /* -------------------------------------------------------------------------- */
 
 
@@ -72,6 +75,48 @@ int require_index(paramStruct* pars);
 /// @return 0 if no unpacking is required, otherwise return a BCF_UN_* value
 int require_unpack();
 
+
+typedef struct gldata_t gldata_t;
+struct gldata_t {
+
+    /// @details known a priori (args->doEM)
+    uint8_t n_gls;
+
+    /// @details known a priori (pars->nInd; from vcfd->hdr->n[BCF_DT_SAMPLE])
+    size_t n_ind;
+
+    /// @details at runtime, worst case scenario: total number of sites in the vcf file header for all contigs+step_size
+    /// at the end of read_sites, equal to pars->nSites
+    size_t size;
+
+    /// @var step_size - step size for reallocating/expanding the number of gl arrays
+    /// step_size*n_gls is the added size when reallocating
+    size_t step_size;
+
+    /// @var type - type of genotype likelihoods
+    /// @details values: ARG_GLDATA_TYPE_*
+    uint8_t type;
+
+    /// @var d[n_ind][n_sites][n_gls]
+    /// @details
+    /// d[i] - (double**) array of all gls for individual i 
+    /// d[i][j] - (double*) array of gls for individual i at site j
+    ///           allocated iff !mis[i][j]; size=n_gls
+    ///           otherwise NULL
+    /// d[i][j][k] - (double) gl for individual i at site j for genotype k
+    double*** d;
+
+    /// @var mis[n_ind][n_sites] - indicator for whether if an individual has missing data at a site
+    /// @details
+    /// mis[i] - array of bool indicators for missing data for individual i
+    /// mis[i][j] - bool indicator for missing data for individual i at site j
+    /// @note 
+    /// mis[i][j] == true if individual i does not have data at site j, 
+    /// OR, if it did have data but due to some filter we decided to ignore it
+    bool** mis;
+
+};
+
 struct vcfData {
 
     vcfFile* in_fp = NULL;
@@ -98,24 +143,15 @@ struct vcfData {
     int DO_BCF_UNPACK;
 
     int nContigs = 0;
-    int nSites;
     int* skipContigs = NULL;
 
-    lnglStruct* lngl = NULL;
+    gldata_t* gldata = NULL;
 
     int nGT = 0;
 
 
-
-    /*
-     * [nIndCmb][9+1]
-     * last element contains total number of sites shared
-     * //TODO is this still the case? is this being used?
-     */
-
-
-     // index of the unobserved allele in vcfd->rec->d.allele (if any)
-     // set to -1 if no unobserved allele is found in d.alleles
+    // index of the unobserved allele in vcfd->rec->d.allele (if any)
+    // set to -1 if no unobserved allele is found in d.alleles
     int allele_unobserved = -1;
 
     int nJointClasses = 0;
@@ -141,8 +177,9 @@ struct vcfData {
 
 };
 
-vcfData* vcfData_init(paramStruct* pars);
+vcfData* vcfData_init(paramStruct* pars, metadataStruct* metadata);
 void vcfData_destroy(vcfData* v);
+
 
 /*
  * @template struct get_data
@@ -161,7 +198,6 @@ void vcfData_destroy(vcfData* v);
  */
 template <typename T>
 struct get_data {
-    //TODO 
     T* data = NULL;
 
     int size_e = 0;
@@ -184,7 +220,7 @@ struct get_data {
     }
 };
 
-void readSites(jgtmat_t* jgtm, vcfData* vcfd, paramStruct* pars, blobStruct* blob);
+void readSites(jgtmat_t* jgtm, bblocks_t* bblocks, vcfData* vcfd, paramStruct* pars);
 
 
 

@@ -1,7 +1,7 @@
 #ifndef __DEV__
 #define __DEV__
 
-#define DEV 0
+#define DEV 1
 
 #if 1 == DEV
 

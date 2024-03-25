@@ -61,9 +61,6 @@ argStruct* argStruct_get(int argc, char** argv) {
         //
         //   -doMajorMinor <int> : get major and minor alleles for each site
 
-//TODO
-        // e.g. `-doAMOVA`  in lut1 -> "args->doAMOVA" in lut2 ->integer in lut3
-        // so if `doAMOVA` is used, use multilayer luts to determine the type of required val etc
         if (strcasecmp("-doUnitTests", arv) == 0) {
             args->doUnitTests = atoi(val);
             return(args);
@@ -82,6 +79,10 @@ argStruct* argStruct_get(int argc, char** argv) {
 
         } else if (strcasecmp("-doDist", arv) == 0) {
             args->doDist = atoi(val);
+        }else if(strcasecmp("--dm-method", arv) == 0){
+            args->dm_method = atoi(val);
+        }else if(strcasecmp("--dm-transform", arv) == 0){
+            args->dm_transform = atoi(val);
         } else if (strcasecmp("-doIbd", arv) == 0) {
             args->doIbd = atoi(val);
         } else if (strcasecmp("-doMajorMinor", arv) == 0) {
@@ -157,7 +158,6 @@ argStruct* argStruct_get(int argc, char** argv) {
         //
 
         // TODO maybe use hypen style here --print-joint-geno-count-dist to be consistent with other commands
-        // TODO maybe make <int> optional and choose a default one, most people won't care about this
 
         else if ((strcasecmp("--printJointGenotypeCountMatrix", arv) == 0) || (strcasecmp("--printJGCD", arv) == 0) || (strcasecmp("-pJGCD", arv) == 0)) {
             args->printJointGenotypeCountMatrix = atoi(val);
@@ -357,10 +357,6 @@ argStruct* argStruct_get(int argc, char** argv) {
         //
         //    This file can be obtained using ANGSD maf files.
 
-
-        else if (strcasecmp("-dev", arv) == 0)
-            args->printDev = atoi(val);
-
         else if (strcasecmp("--minInd", arv) == 0)
             args->minInd = atoi(val);
         else if (strcasecmp("--min-af", arv) == 0) {
@@ -404,6 +400,10 @@ argStruct* argStruct_get(int argc, char** argv) {
             args->nBootstraps = (int)atof(val);
         }
 
+        else if ((strcasecmp("--bootstrap-ci", arv) == 0)) {
+            args->bootstrap_ci = atof(val);
+        }
+
         else if (strcasecmp("--maxEmIter", arv) == 0) {
             args->maxEmIter = atoi(val);
 
@@ -440,9 +440,108 @@ argStruct* argStruct_get(int argc, char** argv) {
     if (0 == args->nThreads) {
         args->nThreads = 1;
     }
+    if (NULL != args->in_vcf_fn) {
+        fprintf(stderr, "\n[INFO]\tFound input VCF file: %s\n", args->in_vcf_fn);
+        args->in_ft = args->in_ft | ARG_INTPLUS_INPUT_VCF;
+    }
 
-    CHECK_ARG_INTERVAL_INT(args->nBootstraps, 0, 100000, "-nb/--nBootstraps");
+    if (NULL != args->in_dm_fn) {
+        fprintf(stderr, "\n[INFO]\tFound input distance matrix file: %s\n", args->in_dm_fn);
+        args->in_ft = args->in_ft | ARG_INTPLUS_INPUT_DM;
+    }
 
+    if (NULL != args->in_dxy_fn) {
+        //TODO ??
+        fprintf(stderr, "\n[INFO]\tFound input dxy file: %s\n", args->in_dxy_fn);
+        args->in_ft = args->in_ft | ARG_INTPLUS_INPUT_DXY;
+    }
+
+    if (NULL != args->in_mtd_fn) {
+        fprintf(stderr, "\n[INFO]\tFound input metadata file: %s\n", args->in_mtd_fn);
+        args->in_ft = args->in_ft | ARG_INTPLUS_INPUT_METADATA;
+    }
+
+    if (NULL != args->in_majorminor_fn) {
+        fprintf(stderr, "\n[INFO]\tFound input major/minor alleles file: %s\n", args->in_majorminor_fn);
+        args->in_ft = args->in_ft | ARG_INTPLUS_INPUT_MAJORMINOR;
+    }
+
+    if (NULL != args->in_ancder_fn) {
+        fprintf(stderr, "\n[INFO]\tFound input ancestral/derived alleles file: %s\n", args->in_ancder_fn);
+        args->in_ft = args->in_ft | ARG_INTPLUS_INPUT_ANCDER;
+    }
+
+    if (NULL != args->in_blocks_bed_fn) {
+        fprintf(stderr, "\n[INFO]\tFound input blocks BED file: %s\n", args->in_blocks_bed_fn);
+        args->in_ft = args->in_ft | ARG_INTPLUS_INPUT_BLOCKS;
+    }
+
+    if (NULL != args->in_blocks_tab_fn) {
+        fprintf(stderr, "\n[INFO]\tFound input blocks TSV file: %s\n", args->in_blocks_tab_fn);
+        args->in_ft = args->in_ft | ARG_INTPLUS_INPUT_BLOCKS;
+    }
+
+    if (NULL != args->in_regions_bed_fn) {
+        fprintf(stderr, "\n[INFO]\tFound input regions BED file: %s\n", args->in_regions_bed_fn);
+        args->in_ft = args->in_ft | ARG_INTPLUS_INPUT_REGIONS;
+    }
+
+    if (NULL != args->in_regions_tab_fn) {
+        //TODO test
+        fprintf(stderr, "\n[INFO]\tFound input regions TSV file: %s\n", args->in_regions_tab_fn);
+        args->in_ft = args->in_ft | ARG_INTPLUS_INPUT_REGIONS;
+    }
+
+    if ((PROGRAM_HAS_INPUT_DM || PROGRAM_HAS_INPUT_MULTIDM) && PROGRAM_HAS_INPUT_VCF) {
+        ERROR("Both VCF and distance matrix input are provided. Only one type of input is allowed at the same time.");
+    }
+
+    if (PROGRAM_HAS_INPUT_DM) {
+        if (args->blockSize != 0) {
+            ERROR("-blockSize is not supported for distance matrix input.");
+        }
+        if (args->doEM) {
+            ERROR("-doEM is not available for distance matrix input.");
+        }
+        if (args->doJGTM) {
+            ERROR("-doJGTM is not available for distance matrix input.");
+        }
+    }
+
+    if (PROGRAM_HAS_INPUT_METADATA && (!PROGRAM_NEEDS_METADATA)) {
+        WARN("Metadata file is provided but no analysis requires it; will ignore metadata file.");
+    }
+
+    if ((!(PROGRAM_HAS_INPUT_METADATA)) && PROGRAM_NEEDS_METADATA) {
+        ERROR("Metadata file is not provided but required for the analysis.");
+    }
+
+    if (PROGRAM_WILL_PERFORM_BLOCK_BOOTSTRAPPING) {
+
+        if (args->nBootstraps != -1) {
+            CHECK_ARG_INTERVAL_INT(args->nBootstraps, 1, 100000, "-nb/--nBootstraps");
+        }
+
+        if(-1.0==args->bootstrap_ci){
+            args->bootstrap_ci = 0.95;
+            LOG("Bootstrap confidence interval is not set, setting to default value %f.", args->bootstrap_ci);
+
+        }else{
+            CHECK_ARG_INTERVAL_II_DBL(args->bootstrap_ci, 0.0, 1.0, "--bootstrap-ci");
+        }
+
+        if (args->blockSize == 0 && args->in_blocks_tab_fn == NULL && args->in_blocks_bed_fn == NULL) {
+            ERROR("Block bootstrapping is enabled but no block specification is provided. Please provide block size or block file.");
+        }
+        if (args->nBootstraps == -1) {
+            ERROR("Block bootstrapping is enabled but the number of bootstraps is not set. Please set the number of bootstraps using -nb/--nBootstraps.");
+        }
+    }
+
+    if (PROGRAM_HAS_INPUT_METADATA && (!PROGRAM_NEEDS_METADATA)) {
+        ERROR("Metadata file is provided but none of the specified analyses use it. Please remove the metadata file or set the correct analysis.");
+
+    }
 
     args->check_arg_dependencies();
 
@@ -463,18 +562,12 @@ void argStruct::check_arg_dependencies() {
         ERROR("minInd is set to %d. Minimum value allowed for minInd is 2.", minInd);
     }
 
-    if (in_vcf_fn == NULL && in_dm_fn == NULL) {
-        fprintf(stderr, "\n[ERROR] Must supply either --in-vcf <VCF_file> or --in-dm <Distance_matrix_file>.\n");
-        exit(1);
-    } else if (in_vcf_fn != NULL && in_dm_fn != NULL) {
-        fprintf(stderr, "\n[ERROR] Cannot use --in-vcf %s and --in-dm %s at the same time.\n", in_vcf_fn, in_dm_fn);
-        exit(1);
-    }
-
     if (printDistanceMatrix != 0) {
         fprintf(stderr, "\n[INFO]\t-> -printMatrix %d; will print distance matrix\n", printDistanceMatrix);
     }
 
+
+if(PROGRAM_WILL_USE_RNG){
     if (seed == -1) {
         seed = time(NULL);
         srand48(seed);
@@ -484,6 +577,7 @@ void argStruct::check_arg_dependencies() {
         srand48(seed);
         LOG("Seed is set to: %d.\n", seed);
     }
+}
 
     if (in_dm_fn != NULL) {
         if (doEM != 0) {
@@ -503,16 +597,33 @@ void argStruct::check_arg_dependencies() {
     //              default: 0
     //
     //              0: do not estimate distance matrix
-    //TODO
-    //              1: Dij
-    //              2:
-    //              3:
+    //              1: calculate the pairwise distance matrix using the method defined via --distance-method
+    //              2: read the distance matrix from the file defined via --in-dm
 
 
     if (0 == doDist) {
         //
     } else if (1 == doDist) {
         LOG("-doDist %d; will estimate pairwise distance matrix using Dij.", doDist);
+        // if dm_method dm_transform not defined, set to default and inform user
+        if(-1==dm_method){
+            dm_method = DMAT_METHOD_DIJ;
+            LOG("Distance matrix method is not set, setting to default value %d (Dij).", dm_method);
+        }else{
+            CHECK_ARG_INTERVAL_INT(dm_method, 0, 9, "--dm-method");
+        }
+        if(-1==dm_transform){
+            dm_transform = DMAT_TRANSFORM_NONE;
+            LOG("Distance matrix transform is not set, setting to default value %d (none).", dm_transform);
+        }else{
+            CHECK_ARG_INTERVAL_INT(dm_transform, 0, 1, "--dm-transform");
+        }
+
+    } else if (2 == doDist) {
+        if (NULL == in_dm_fn) {
+            ERROR("-doDist %d requires a distance matrix file (--in-dm <file>).", doDist);
+        }
+        LOG("-doDist %d; will read the distance matrix from the file %s.", doDist, in_dm_fn);
     } else {
         ERROR("-doDist %d is not a valid option.", doDist);
     }
@@ -531,25 +642,30 @@ void argStruct::check_arg_dependencies() {
     // - metadata
     // - distance matrix
 
-    if (0 == doAMOVA) {
-        //
-        if (NULL != in_mtd_fn) {
-            WARN("-m/--metadata is provided but no analysis requires it; will ignore -m/--metadata.");
-        }
-        if (NULL != formula) {
-            WARN("-f/--formula is provided but no analysis requires it; will ignore -f/--formula.");
-        }
+    if (doAMOVA) {
+        if (ARG_DOAMOVA_SINGLERUN == doAMOVA) {
+            IO::requireArgStr(formula, "--formula/-f", "-doAMOVA 1");
+            IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doAMOVA 1");
 
-    } else if (1 == doAMOVA) {
-        IO::requireArgStr(formula, "--formula/-f", "-doAMOVA 1");
-        IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doAMOVA 1");
+            if (0 == doDist && NULL == in_dm_fn) {
+                ERROR("-doAMOVA %d requires either (1) a method to calculate the pairwise distance matrix (-doDist <int>) or (2) a distance matrix file (--in-dm <file>).", doAMOVA);
+            }
 
-        if (0 == doDist && NULL == in_dm_fn) {
-            ERROR("-doAMOVA %d requires either (1) a method to calculate the pairwise distance matrix (-doDist <int>) or (2) a distance matrix file (--in-dm <file>).", doAMOVA);
+        } else if (ARG_DOAMOVA_BOOTSTRAP == doAMOVA) {
+            IO::requireArgStr(formula, "--formula/-f", "-doAMOVA 1");
+            IO::requireArgFile(in_mtd_fn, "--metadata/-m", "-doAMOVA 1");
+
+            if (0 == doDist && NULL == in_dm_fn) {
+                ERROR("-doAMOVA %d requires either (1) a method to calculate the pairwise distance matrix (-doDist <int>) or (2) a distance matrix file (--in-dm <file>).", doAMOVA);
+            }
+            if (!PROGRAM_WILL_USE_BCF_FMT_GL) {
+                ERROR("-doAMOVA %d requires genotype likelihoods in the input VCF file (--bcf-src %d).", doAMOVA, ARG_INTPLUS_BCFSRC_FMT_GL);
+            }
+        } else if (ARG_DOAMOVA_PERMTEST) {
+            NEVER;//TODO 
+        } else {
+            ERROR("-doAMOVA %d is not a valid option.", doAMOVA);
         }
-
-    } else {
-        ERROR("-doAMOVA %d is not a valid option.", doAMOVA);
     }
 
     if (0 == doEM) {
@@ -580,12 +696,12 @@ void argStruct::check_arg_dependencies() {
     }
 
     //----------------------------------------------------------------------------------//
-    // -doDxy
+// -doDxy
     //              default: 0
     //              0: do not estimate dxy
     //              1: estimate dxy from the distance matrix for all groups in all hierarchical levels defined in the metadata file (requires: method to obtain distance matrix, metadata file)
 
-    // : (doDist 1,2 or in_ft == IN_DM), (--metadata-file <METADATA_FILE> or doDxyStr)
+    // : (doDist 1,2 or in_ft == IN_DM), (--metadata-file <METADATA_FILE>)
 
     if (0 == doDxy) {
         //
@@ -612,19 +728,8 @@ void argStruct::check_arg_dependencies() {
         //     ERROR("-doPhylo %d requires a distance matrix (either -doDist <int> or --in-dm <file>).", doPhylo);
         // }
     } else if (2 == doPhylo) {
-        if (0 == doDxy && NULL == in_dxy_fn) {
-            ERROR("-doPhylo %d requires a dxy matrix (either -doDxy <int> or --in-dxy <file>).", doPhylo);
-        }
     } else {
         ERROR("-doPhylo %d is not a valid option.", doPhylo);
-    }
-
-
-
-    if (args->rmInvarSites) {
-    } else {
-        //TODO req for some?
-        // ERROR("No analyses including invar sites are implemented yet"); //TODO
     }
 
     if (args->bcfSrc & ARG_INTPLUS_BCFSRC_FMT_GL) {
@@ -633,7 +738,6 @@ void argStruct::check_arg_dependencies() {
     if (args->bcfSrc & ARG_INTPLUS_BCFSRC_FMT_GT) {
         LOG("%s INT+ argument value contains %d. Program will use the GT tag from input VCF file.", "--bcf-src", ARG_INTPLUS_BCFSRC_FMT_GT);
     }
-
 
     // -------------------------------
     // doMajorMinor
@@ -658,24 +762,13 @@ void argStruct::check_arg_dependencies() {
     // - em ngl=10
     // - input is not vcf
     if ((args->in_vcf_fn != NULL) && (args->doEM != (ARG_DOEM_10GL))) {
-        if (args->doMajorMinor == ARG_DOMAJORMINOR_NONE) {
+        if (args->doMajorMinor == ARG_DOMAJORMINOR_UNSET) {
             ERROR("Program requires major/minor alleles for the specified analyses. Please provide a method to obtain major/minor alleles using -doMajorMinor <int>.");
         }
     }
 
 
     // -------------------------------
-
-
-
-        //  else if (doPhylo == 1 && doDist == 0 && in_dm_fn == NULL) {
-        //     fprintf(stderr, "\n[ERROR]\t-> -doPhylo %i requires -doDist 1 or --in-dm <file>.", doPhylo);
-        //     exit(1);
-        // }
-        // if (doPhylo == 2 && doDxy == 0 && in_dxy_fn == NULL) {
-        //     fprintf(stderr, "\n[ERROR]\t-> -doPhylo %i requires -doDxy 1 or --in-dxy <file>.", doPhylo);
-        //     exit(1);
-        // }
 
         // TODO using regions with block definitions
         // TODO handle empty blocks
@@ -708,11 +801,14 @@ void argStruct::check_arg_dependencies() {
         }
     }
 
-    // TODO block bootstrapping cannot be used with gt data (bcfSrc==ARG_INTPLUS_BCFSRC_FMT_GT)
-
-
     if (PROGRAM_WILL_USE_BCF_FMT_GL && PROGRAM_WILL_USE_BCF_FMT_GT) {
         ERROR("Program cannot use both GL and GT data at the same time.");
+    }
+
+    if(PROGRAM_WILL_USE_BCF_FMT_GT){
+        if(PROGRAM_WILL_PERFORM_BLOCK_BOOTSTRAPPING){
+            ERROR("Program cannot use GT data for block bootstrapping.");
+        }
     }
 
 
@@ -769,12 +865,6 @@ void argStruct_destroy(argStruct* args) {
         FREE(args->formula);
     }
 
-    if (args->keyCols != NULL) {
-        FREE(args->keyCols);
-    }
-    if (args->doDxyStr != NULL) {
-        FREE(args->doDxyStr);
-    }
 
     delete args;
 }

@@ -1,7 +1,23 @@
 #include "dxy.h"
 #include "dataStructs.h"
+#include "dmat.h"
 
-static dxy_t* dxy_init(metadataStruct* mtd) {
+void dxy_destroy(dxy_t* dxy) {
+    FREE(dxy->d);
+    FREE(dxy->g1names_p);
+    FREE(dxy->g2names_p);
+    FREE(dxy->levelnames_p);
+    for (size_t i = 0;i < dxy->nLevels;++i) {
+        if (dxy->dm[i] != NULL) {
+            dmat_destroy(dxy->dm[i]);
+        }
+    }
+    FREE(dxy->dm);
+    FREE(dxy);
+    return;
+}
+
+ dxy_t* dxy_init(metadataStruct* mtd) {
     dxy_t* dxy = NULL;
     dxy = (dxy_t*)malloc(sizeof(dxy_t));
     ASSERT(dxy != NULL);
