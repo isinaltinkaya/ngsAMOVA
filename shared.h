@@ -1,6 +1,12 @@
-#ifndef __SHARED__
-#define __SHARED__
+/**
+ * @file    shared.h
+ * @brief   shared header file
+ * @details contains shared stuff for the entire program
+ */
+#ifndef __SHARED_H__
+#define __SHARED_H__
 
+/* INCLUDES ----------------------------------------------------------------- */
 #include <ctype.h>
 #include <float.h>
 #include <htslib/vcf.h>
@@ -14,38 +20,31 @@
 #include <time.h>
 #include <limits>
 
-#include "argStruct.h"
 #include "dev.h"
 #include "lookup.h"
+/* END-OF-INCLUDES ---------------------------------------------------------- */
+
+
+
+/* FORWARD-DECLARATIONS ----------------------------------------------------- */
+typedef struct argStruct argStruct;
+typedef struct paramStruct paramStruct;
+/* END-OF-FORWARD-DECLARATIONS ---------------------------------------------- */
+
+/* MACROS ------------------------------------------------------------------- */
+
+// -> ARG_* - argument flags
+
+#define ARG_INTPLUS_BCFSRC_FMT_GL (1<<0)
+#define ARG_INTPLUS_BCFSRC_FMT_GT (1<<1)
 
 #define ARG_DOEM_3GL 1
 #define ARG_DOEM_10GL 2
-
-
-
-#define PROGRAM_NEEDS_INDNAMES \
-    ( ((0 != (args->doPhylo))))
-
-#define PROGRAM_NEEDS_METADATA \
-    ( ( args->doAMOVA || args->doDxy ))
-
-#define PROGRAM_NEEDS_FORMULA \
-    ( ( args->doAMOVA || args->doDxy ))
 
 #define ARG_DOAMOVA_UNSET 0
 #define ARG_DOAMOVA_SINGLERUN 1
 #define ARG_DOAMOVA_BOOTSTRAP 2
 #define ARG_DOAMOVA_PERMTEST 3
-
-
-#define PROGRAM_WILL_PERFORM_BLOCK_BOOTSTRAPPING \
-    ( (args->doAMOVA==ARG_DOAMOVA_BOOTSTRAP))
-//TODO add block bootstrap test for nj and dxy
-
-
-
-/// ----------------------------------------------------------------------- ///
-// ARGUMENT VALUES
 
 #define ARG_DOJGTM_UNSET 0
 #define ARG_DOJGTM_3GT 1
@@ -61,6 +60,42 @@
 #define ARG_INTPLUS_INPUT_ANCDER     (1<<6)
 #define ARG_INTPLUS_INPUT_BLOCKS     (1<<7)
 #define ARG_INTPLUS_INPUT_REGIONS    (1<<8)
+
+#define ARG_DOMAJORMINOR_UNSET (0)
+#define ARG_DOMAJORMINOR_BCF_REFALT1 (1)
+#define ARG_DOMAJORMINOR_INFILE (2)
+
+// -> PROGRAM_NEEDS_* - flags for checking if a specific things is needed for the program to run
+// useful to check if the user has provided all necessary inputs before running the program
+
+#define PROGRAM_NEEDS_INDNAMES \
+    ( ((0 != (args->doPhylo))))
+
+#define PROGRAM_NEEDS_METADATA \
+    ( ( args->doAMOVA || args->doDxy ))
+
+#define PROGRAM_NEEDS_FORMULA \
+    ( ( args->doAMOVA || args->doDxy ))
+
+// -> PROGRAM_WILL - flags for checking if the program will perform a specific action
+
+#define PROGRAM_WILL_USE_ALLELES_REF_ALT1 \
+    ( ((args->doMajorMinor) == ARG_DOMAJORMINOR_BCF_REFALT1) )
+
+#define PROGRAM_WILL_PERFORM_BLOCK_BOOTSTRAPPING \
+    ( (args->doAMOVA==ARG_DOAMOVA_BOOTSTRAP))
+//TODO add block bootstrap test for nj and dxy
+
+#define PROGRAM_WILL_USE_BCF_FMT_GL \
+    ( (args->bcfSrc & ARG_INTPLUS_BCFSRC_FMT_GL) )
+
+#define PROGRAM_WILL_USE_BCF_FMT_GT \
+    ( (args->bcfSrc & ARG_INTPLUS_BCFSRC_FMT_GT) )
+
+#define PROGRAM_WILL_USE_RNG \
+    ( (args->doAMOVA==ARG_DOAMOVA_BOOTSTRAP) || (args->doAMOVA==ARG_DOAMOVA_PERMTEST) )
+
+// -> PROGRAM_HAS - flags for checking if the program has a specific input
 
 #define PROGRAM_HAS_INPUT_VCF \
     ( (args->in_ft & ARG_INTPLUS_INPUT_VCF) )
@@ -91,69 +126,7 @@
 
 
 
-
-#define ARG_DOMAJORMINOR_UNSET (0)
-#define ARG_DOMAJORMINOR_BCF_REFALT1 (1)
-#define ARG_DOMAJORMINOR_INFILE (2)
-
-#define PROGRAM_WILL_USE_ALLELES_REF_ALT1 \
-    ( ((args->doMajorMinor) == ARG_DOMAJORMINOR_BCF_REFALT1) )
-
-
-/// ----------------------------------------------------------------------- ///
-// BCF DATA SOURCE TAGS
-
-#define ARG_INTPLUS_BCFSRC_FMT_GL (1<<0)
-#define ARG_INTPLUS_BCFSRC_FMT_GT (1<<1)
-
-
-#define PROGRAM_WILL_USE_BCF_FMT_GL \
-    ( (args->bcfSrc & ARG_INTPLUS_BCFSRC_FMT_GL) )
-
-#define PROGRAM_WILL_USE_BCF_FMT_GT \
-    ( (args->bcfSrc & ARG_INTPLUS_BCFSRC_FMT_GT) )
-
-#define PROGRAM_WILL_USE_RNG \
-    ( (args->doAMOVA==ARG_DOAMOVA_BOOTSTRAP) || (args->doAMOVA==ARG_DOAMOVA_PERMTEST) )
-
-/* ========================================================================== */
-/* MACRO DEFINITIONS ======================================================== */
-/* ========================================================================== */
-
-/* -> FUNCTION-LIKE MACROS ---------------------------------------------------*/
-
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
-
-
-
-/// @brief MATRIX_GET_INDEX_* - get the index of the given i,j pair in the given * type matrix
-///
-/// LTED: assume i>j
-///       for(i=1;i<n;++i) for(j=0;j<i;++j)
-#define MATRIX_GET_INDEX_LTED_IJ(i,j) (((i)*((i)-1)/2+(j)))
-#define MATRIX_GET_INDEX_LTED_IJ_UNORDERED(i,j) (((i)>(j)) ? MATRIX_GET_INDEX_LTED_IJ(i,j) : MATRIX_GET_INDEX_LTED_IJ(j,i))
-
-/// LTID: assume i<=j
-///       for(i=0;i<n;++i) for(j=0;j<=i;++j)
-#define MATRIX_GET_INDEX_LTID_IJ(i,j) (((i)*((i)+1)/2+(j)))
-
-/// UTED: assume i<j
-///       for(i=0;i<n-1;++i) for(j=i+1;j<n;++j)
-#define MATRIX_GET_INDEX_UTED_IJ(i,j,n) ((((i)*(n))-((i)*((i)+3))/2+(j)-1))
-
-/// UTID: assume i>=j
-///       for(i=0;i<n;++i) for(j=i;j<n;++j)
-#define MATRIX_GET_INDEX_UTID_IJ(i,j,n) ((((i)*(n))-((i)*((i)+1))/2+(j)))
-
-/// @brief MATRIX_GET_IJ_FROM_LTED_INDEX - get the i,j pair from the given linear index in a UTED matrix
-#define MATRIX_GET_IJ_FROM_UTED_INDEX(idx,n,i,j) \
-do{ \
-    (i) = (n) - 2 - floor(sqrt(-8 * (lidx) + 4 * (n) * ((n) - 1) - 7) / 2.0 - 0.5); \
-    (j) = (idx) + (i) + 1 - (n) * ((n) - 1) / 2 + ((n) - (i)) * (((n) - (i)) - 1) / 2; \
-}while(0); 
-
-
+// -> CHECK_ARG_* - argument checking macros
 
 #define CHECK_ARG_INTERVAL_INT(argval, minval, maxval, argstr) \
 do { \
@@ -221,20 +194,37 @@ do { \
 
 
 
-/*
- * Macro:[DBL_MAX_DIG_TOPRINT]
- * 	maximum number of digits needed to print a double
- *
- * 	longest number == smalles negative number
- * 		-pow(2, DBL_MIN_EXP - DBL_MANT_DIG)
- * 	-pow(2,-N) needs 3+N digits
- * 		to represent (sign, decimal point, N digits)
- * 		'-0.<N digits>'
- *
- * @requires <float.h>
- */
-#define DBL_MAX_DIG_TOPRINT 3 + DBL_MANT_DIG - DBL_MIN_EXP
- // TODO deprecated
+// -> other function-like macros
+
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
+
+/// @brief MATRIX_GET_INDEX_* - get the index of the given i,j pair in the given * type matrix
+///
+/// LTED: assume i>j
+///       for(i=1;i<n;++i) for(j=0;j<i;++j)
+#define MATRIX_GET_INDEX_LTED_IJ(i,j) (((i)*((i)-1)/2+(j)))
+#define MATRIX_GET_INDEX_LTED_IJ_UNORDERED(i,j) (((i)>(j)) ? MATRIX_GET_INDEX_LTED_IJ(i,j) : MATRIX_GET_INDEX_LTED_IJ(j,i))
+
+/// LTID: assume i<=j
+///       for(i=0;i<n;++i) for(j=0;j<=i;++j)
+#define MATRIX_GET_INDEX_LTID_IJ(i,j) (((i)*((i)+1)/2+(j)))
+
+/// UTED: assume i<j
+///       for(i=0;i<n-1;++i) for(j=i+1;j<n;++j)
+#define MATRIX_GET_INDEX_UTED_IJ(i,j,n) ((((i)*(n))-((i)*((i)+3))/2+(j)-1))
+
+/// UTID: assume i>=j
+///       for(i=0;i<n;++i) for(j=i;j<n;++j)
+#define MATRIX_GET_INDEX_UTID_IJ(i,j,n) ((((i)*(n))-((i)*((i)+1))/2+(j)))
+
+/// @brief MATRIX_GET_IJ_FROM_LTED_INDEX - get the i,j pair from the given linear index in a UTED matrix
+#define MATRIX_GET_IJ_FROM_UTED_INDEX(idx,n,i,j) \
+do{ \
+    (i) = (n) - 2 - floor(sqrt(-8 * (lidx) + 4 * (n) * ((n) - 1) - 7) / 2.0 - 0.5); \
+    (j) = (idx) + (i) + 1 - (n) * ((n) - 1) / 2 + ((n) - (i)) * (((n) - (i)) - 1) / 2; \
+}while(0) 
 
 /*
  * Macro:[AT]
@@ -432,7 +422,7 @@ do{ \
 			fprintf(stderr, "\n*******\n");                                                          \
 			exit(1);                                                                                 \
 		} \
-	}while(0);
+	}while(0)
 
             /*
              * Macro:[FREE]
@@ -450,7 +440,7 @@ do{ \
 		} else {                                    \
 			ERROR("Trying to free a NULL pointer"); \
 		} \
-	}while(0);
+	}while(0)
 
 
 
@@ -474,7 +464,7 @@ do{ \
         fprintf(stderr, "\n\n*******\n[ERROR](%s:%d) %s\n*******\n", __FILE__, __LINE__, #fp); \
         exit(1); \
     } \
-}while(0);
+}while(0)
 
              /*
              * Macro:[BGZCLOSE]
@@ -502,83 +492,6 @@ exit(1);                                                                        
 expr = Z_NULL;                                                                               \
 }
 
-             /* -> BIT MANIPULATION MACROS ------------------------------------------------*/
-
-             /* Macro:[BITSET]
-             * set a specific bit in x
-             *
-             * @param x		the variable to set the bit in
-             * @param bit	the bit to set
-             * @return		x is modified in place
-             */
-             // #define BITSET(x, bit) ((x) |= (1ULL << (bit)))
-#define BITSET(x, bit)                                      \
-if ((bit) < 0 || (bit) >= 64) {                         \
-fprintf(stderr, "Invalid bit number: %d\n", (bit)); \
-exit(1);                                            \
-}                                                       \
-(x) |= (1ULL << (bit));
-
-/* Macro:[BITTOGGLE]
-* toggle a specific bit in x
-*
-* @param x		the variable to toggle the bit in
-* @param bit	the bit to toggle
-* @return		x is modified in place
-*/
-#define BITTOGGLE(x, bit) ((x) ^= (1ULL << (bit)))
-
-/* Macro:[BITCLEAR]
-* clear a specific bit in x
-*
-* @param x		the variable to clear the bit in
-* @param bit	the bit to clear
-* @return		x is modified in place
-*/
-#define BITCLEAR(x, bit) ((x) &= ~(1ULL << (bit)))
-
-/* Macro:[BITCHECK]
-* check if a specific bit is set in x
-*
-* @param x		the variable to check the bit in
-* @param bit	the bit to check
-* @return		1 if the bit is set, 0 otherwise
-*/
-#define BITCHECK(x, bit) !!((x) & (1ULL << (bit)))
-
-/* Macro:[CHAR_BITCHECK_ANY]
-* check if any bit is set in a char
-*
-* @param x		the char to check
-* @return		1 if any bit is set, 0 otherwise
-*/
-#define CHAR_BITCHECK_ANY(x) !!((x)&0xFF)
-
-/* Macro:[WHICH_BIT_SET]
-*
-* @param x		the variable to check
-* @return		the index of the first bit set in x
-* 				-1 if no bit is set
-*/
-#define WHICH_BIT_SET(x) (x == 0 ? -1 : (int)log2(x))
-
-/* Macro:[WHICH_BIT_SET1]
-*
-* @param x		the variable to check
-* @return		the 1-based index of the first bit set in x
-* 				-1 if no bit is set
-*/
-#define WHICH_BIT_SET1(x) (x == 0 ? -1 : (int)log2(x) + 1)
-
-/* Macro:[BITCHECK_ATLEAST]
-* check if at any bit that is at least as significant as the specified bit is set
-*
-* @param x		the variable to check
-* @param bit	the bit to check
-* @return		1 if any bit that is at least as significant as the specified bit is set
-* 				0 otherwise
-*/
-#define BITCHECK_ATLEAST(x, bit) !!((x >> (bit)) & 0xFF)
 
 /* LIMIT DEFINING MACROS -----------------------------------------------------*/
 
@@ -605,20 +518,8 @@ exit(1);                                            \
 */
 #define DBL_MAXDIG10 ((int)(2 + (DBL_MANT_DIG * 30103UL) / 100000UL))
 
-#define METADATA_DELIMS "\t ,\n"
-
-// dragon
-// #define BUF_NSITES 4096
-#define BUF_NSITES 500000
-#define BUF_NCONTIGS 256
-#define BUF_NTOTSITES 4096
-
-#define FREAD_BUF_SIZE 4096
-
 // TODO check all references
 #define FGETS_BUF_SIZE 1024
-
-#define NSITES_BUF_INIT 4096
 
 /* CONSTANTS -----------------------------------------------------------------*/
 
@@ -626,6 +527,16 @@ exit(1);                                            \
 
 // 1/9
 #define FRAC_1_9 0.1111111111111111
+
+/* END-OF-MACROS ------------------------------------------------------------ */
+
+/* TYPEDEF-STRUCTS ---------------------------------------------------------- */
+/* END-OF-TYPEDEF-STRUCTS --------------------------------------------------- */
+
+/* FUNCTION-DECLARATIONS ----------------------------------------------------- */
+/* END-OF-FUNCTION-DECLARATIONS ---------------------------------------------- */
+
+
 
 /* ========================================================================== */
 /* ENUMERATIONS ============================================================= */
@@ -639,21 +550,35 @@ enum OUTFC {
 
 /* ========================================================================== */
 
-/// @brief strIsNumeric - check if string is numeric
-/// @param val          - string to be checked
-/// @return             - 1 if string is numeric, 0 otherwise
-int strIsNumeric(const char* val);
 
-// print generic usage information
-void print_help(FILE* fp);
+/* ========================================================================== */
+/// general outline for header files:
 
-/// print formula usage information; to be used in formula specific errors
-void print_help_formula(FILE* fp);
+/**
+ * @file    X.h
+ * @brief   header file for X.cpp
+ * @details contains Y
+ */
+// #ifndef __X_H__
+// #define __X_H__
 
-const double NEG_INF = -std::numeric_limits<double>::infinity();
+/* INCLUDES ----------------------------------------------------------------- */
+/* END-OF-INCLUDES ---------------------------------------------------------- */
 
-int extractDigits(int num, int digits);
+/* FORWARD-DECLARATIONS ----------------------------------------------------- */
+/* END-OF-FORWARD-DECLARATIONS ---------------------------------------------- */
 
-char* get_time();
+/* MACROS ------------------------------------------------------------------- */
+/* END-OF-MACROS ------------------------------------------------------------ */
 
-#endif
+/* TYPEDEF-STRUCTS ---------------------------------------------------------- */
+/* END-OF-TYPEDEF-STRUCTS --------------------------------------------------- */
+
+/* FUNCTION-DECLARATIONS ----------------------------------------------------- */
+/* END-OF-FUNCTION-DECLARATIONS ---------------------------------------------- */
+
+// #endif  // __X_H__
+
+/* ========================================================================== */
+
+#endif // __SHARED_H__

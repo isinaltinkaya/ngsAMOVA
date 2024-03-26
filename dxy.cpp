@@ -1,6 +1,7 @@
 #include "dxy.h"
+
 #include "dataStructs.h"
-#include "dmat.h"
+#include "metadata.h"
 
 void dxy_destroy(dxy_t* dxy) {
     FREE(dxy->d);
@@ -8,16 +9,16 @@ void dxy_destroy(dxy_t* dxy) {
     FREE(dxy->g2names_p);
     FREE(dxy->levelnames_p);
     for (size_t i = 0;i < dxy->nLevels;++i) {
-        if (dxy->dm[i] != NULL) {
-            dmat_destroy(dxy->dm[i]);
+        if (dxy->dmat[i] != NULL) {
+            dmat_destroy(dxy->dmat[i]);
         }
     }
-    FREE(dxy->dm);
+    FREE(dxy->dmat);
     FREE(dxy);
     return;
 }
 
- dxy_t* dxy_init(metadataStruct* mtd) {
+ dxy_t* dxy_init(metadata_t* mtd) {
     dxy_t* dxy = NULL;
     dxy = (dxy_t*)malloc(sizeof(dxy_t));
     ASSERT(dxy != NULL);
@@ -25,26 +26,26 @@ void dxy_destroy(dxy_t* dxy) {
     // -> init
     dxy->n = 0;
     dxy->d = NULL;
-    dxy->dm = NULL;
+    dxy->dmat = NULL;
 
     // -> set
     dxy->nLevels = mtd->nLevels - 1; // excluding the "individual" level
 
-    dxy->dm = (dmat_t**)malloc(dxy->nLevels * sizeof(dmat_t*));
-    ASSERT(dxy->dm != NULL);
+    dxy->dmat = (dmat_t**)malloc(dxy->nLevels * sizeof(dmat_t*));
+    ASSERT(dxy->dmat != NULL);
 
     size_t ndxy = 0; // number of pairwise group comparisons to be made
     for (size_t lvl = 0; lvl < dxy->nLevels; ++lvl) {
         size_t n_groups_at_level = mtd->level2groupIndices[lvl]->len;
         if (n_groups_at_level == 1) {
-            dxy->dm[lvl] = NULL;
+            dxy->dmat[lvl] = NULL;
             continue;
         }
         ndxy += (n_groups_at_level * (n_groups_at_level - 1)) / 2;
-        dxy->dm[lvl] = dmat_init(n_groups_at_level, DMAT_TYPE_LTED, DMAT_METHOD_DXY, DMAT_TRANSFORM_NONE, NULL, DMAT_NAMES_SRC_PRIVATE);
-        dxy->dm[lvl]->names = strArray_alloc(n_groups_at_level);
+        dxy->dmat[lvl] = dmat_init(n_groups_at_level, DMAT_TYPE_LTED, DMAT_METHOD_DXY, DMAT_TRANSFORM_NONE, NULL, DMAT_NAMES_SRC_PRIVATE);
+        dxy->dmat[lvl]->names = strArray_alloc(n_groups_at_level);
         for (size_t g = 0; g < n_groups_at_level; ++g) {
-            dxy->dm[lvl]->names->add(mtd->groupNames->d[mtd->level2groupIndices[lvl]->d[g]]);
+            dxy->dmat[lvl]->names->add(mtd->groupNames->d[mtd->level2groupIndices[lvl]->d[g]]);
         }
     }
 
@@ -72,7 +73,7 @@ void dxy_destroy(dxy_t* dxy) {
 
 // dxy file format: comma-separated list of pairwise dxy values
 // group1Name,group2Name,levelID,dxyValue
-dxy_t* dxy_read(paramStruct* pars, dmat_t* dmat, metadataStruct* mtd) {
+dxy_t* dxy_read(paramStruct* pars, dmat_t* dmat, metadata_t* mtd) {
     dxy_t* dxy = new dxy_t();
 
     // number of lines in dxy file == number of pairwise dxy values
@@ -150,7 +151,7 @@ void dxy_print(dxy_t* dxy) {
     IO::outputStruct* out_dxy_i = NULL;
     for (size_t i = 0;i < dxy->nLevels;++i) {
 
-        dmi = dxy->dm[i];
+        dmi = dxy->dmat[i];
         if (dmi == NULL) {
             continue;
         }
@@ -172,18 +173,22 @@ void dxy_print(dxy_t* dxy) {
     return;
 }
 
-dxy_t* dxy_get(paramStruct* pars, dmat_t* dmat, metadataStruct* mtd) {
+dxy_t* dxy_get(paramStruct* pars, dmat_t* dmat, metadata_t* mtd) {
 
     dxy_t* dxy = dxy_init(mtd);
 
     double* dm = NULL;
+    bool* drop=NULL;
     if (dmat->n == 1) {
-        dm = dmat->matrix[dmat->n - 1];
+        dm = dmat->matrix[0];
+        drop=dmat->drop[0];
     } else {
         NEVER;//TODO
     }
 
 
+    double dist;
+    size_t i1id, i2id, idx;
     size_t dxy_i = 0;
     double val = 0.0;
 
@@ -210,10 +215,14 @@ dxy_t* dxy_get(paramStruct* pars, dmat_t* dmat, metadataStruct* mtd) {
                 val = 0.0;
                 for (size_t i1 = 1; i1 < Ng1; ++i1) {
                     for (size_t i2 = 0; i2 < Ng2; ++i2) {
-                        size_t i1id = mtd->group2indIndices[g1id]->d[i1];
-                        size_t i2id = mtd->group2indIndices[g2id]->d[i2];
+                        i1id = mtd->group2indIndices[g1id]->d[i1];
+                        i2id = mtd->group2indIndices[g2id]->d[i2];
+                        idx=MATRIX_GET_INDEX_LTED_IJ_UNORDERED(i1id, i2id);
+                        if(drop[idx]){
+                            continue;
+                        }
 
-                        double dist = dm[MATRIX_GET_INDEX_LTED_IJ_UNORDERED(i1id, i2id)];
+                        dist = dm[MATRIX_GET_INDEX_LTED_IJ_UNORDERED(i1id, i2id)];
                         val += dist;
                     }
                 }

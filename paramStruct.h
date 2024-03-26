@@ -11,11 +11,8 @@ extern const int acgt_charToInt[256];
 typedef struct strArray strArray;
 typedef struct size_tArray size_tArray;
 typedef struct ibdStruct ibdStruct;
-typedef struct dmat_t dmat_t;
-typedef struct jgtmat_t jgtmat_t;
 typedef struct paramStruct paramStruct;
 typedef struct alleles_t alleles_t;
-typedef struct metadataStruct metadataStruct;
 
 /// ----------------------------------------------------------------------- ///
 
@@ -101,13 +98,8 @@ struct alleles_t {
 struct paramStruct {
 
 
-    dmat_t* dm;
-    jgtmat_t* jgtm;
-
     strArray* names;
 
-
-    metadataStruct* metadata;
 
     // number of sites non skipped for all individuals
     // nSites may not be !=totSites if minInd is set
@@ -115,7 +107,6 @@ struct paramStruct {
     size_t nSites;    // number of sites not-skipped for all individuals
     size_t totSites;  // total number of sites processed
 
-    int nSites_arrays_size;
     int nContigs;
 
     // a1: major/ref/ancestral allele

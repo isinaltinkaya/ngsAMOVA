@@ -1,15 +1,32 @@
-#ifndef __EM__
-#define __EM__
+/**
+ * @file    em.h
+ * @brief   header file for em.cpp
+ * @details contains functions for performing expectation-maximization (EM) optimization
+ */
+#ifndef __EM_H__
+#define __EM_H__
 
-#include <pthread.h>
+/* INCLUDES ----------------------------------------------------------------- */
+/* END-OF-INCLUDES ---------------------------------------------------------- */
 
-#include "argStruct.h"
-#include "mathUtils.h"
+/* FORWARD-DECLARATIONS ----------------------------------------------------- */
+typedef struct jgtmat_t jgtmat_t;
+typedef struct paramStruct paramStruct;
+typedef struct gldata_t gldata_t;
+typedef struct bblocks_t bblocks_t;
+/* END-OF-FORWARD-DECLARATIONS ---------------------------------------------- */
 
-#define EM_TERM_REASON_TOLE 1
-#define EM_TERM_REASON_ITER 2
+/* MACROS ------------------------------------------------------------------- */
+#define EM_TERMINATION_REASON_THRES_TOLE 0
+#define EM_TERMINATION_REASON_THRES_MAXITER 1
+#define EM_TERMINATION_REASON_THRES_SHARED_NSITES 2
+/* END-OF-MACROS ------------------------------------------------------------ */
 
-void jgtmat_get_run_em_optim(jgtmat_t* jgtm, paramStruct* pars, vcfData* vcfd, bblocks_t* bblocks);
-void jgtmat_get_run_em_optim_bootstrap_reps(jgtmat_t* jgtm, paramStruct* pars, vcfData* vcfd, bblocks_t* bblocks);
+/* TYPEDEF-STRUCTS ---------------------------------------------------------- */
+/* END-OF-TYPEDEF-STRUCTS --------------------------------------------------- */
 
-#endif  // __EM__
+/* FUNCTION-DECLARATIONS ----------------------------------------------------- */
+void jgtmat_get_run_em_optim(jgtmat_t* jgtmat, paramStruct* pars, gldata_t* gldata, bblocks_t* bblocks);
+/* END-OF-FUNCTION-DECLARATIONS ---------------------------------------------- */
+
+#endif  // __EM_H__

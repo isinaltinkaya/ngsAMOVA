@@ -32,22 +32,6 @@ typedef struct bblocks_t bblocks_t;
 /* -------------------------------------------------------------------------- */
 
 
-/// @brief nDerToM33Idx - convert the number of derived alleles to the index of the corresponding combination in the 3x3 matrix
-/// @details
-//
-// 0 1 2
-// 00 01 02
-// MMMM MMMm MMmm
-//
-// 3 4 5
-// 10 11 12
-// MmMM MmMm Mmmm
-//
-// 6 7 8
-// 20 21 22
-// mmMM mmMm mmmm
-extern const int nDerToM33Idx[3][3];
-
 /// @brief acgt_charToInt - convert a char base to int acgt index (internal representation)
 /// @details
 /// bases are internally represented as integers
@@ -177,7 +161,7 @@ struct vcfData {
 
 };
 
-vcfData* vcfData_init(paramStruct* pars, metadataStruct* metadata);
+vcfData* vcfData_init(paramStruct* pars, metadata_t* metadata);
 void vcfData_destroy(vcfData* v);
 
 

@@ -64,10 +64,17 @@ nj_t* nj_init(dmat_t* dmat, const size_t which_dmat) {
     for (size_t i = 0; i < nj->nTreeNodePairs; ++i) {
         nj->NJD[i] = 0.0;
     }
+    size_t idx;
+    double* matrix= dmat->matrix[which_dmat];
+    bool* drop= dmat->drop[which_dmat];
     for (size_t i = 0; i < nj->names->len; ++i) {
         for (size_t j = i + 1; j < nj->names->len; ++j) {
-            size_t idx = MATRIX_GET_INDEX_LTED_IJ(j, i);
-            nj->NJD[idx] = dmat->matrix[which_dmat][idx];
+            idx = MATRIX_GET_INDEX_LTED_IJ(j, i);
+            if(drop[idx]){
+                continue;
+            }
+
+            nj->NJD[idx] = matrix[idx];
         }
     }
 

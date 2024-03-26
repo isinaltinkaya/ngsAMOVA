@@ -97,3 +97,11 @@ graph TD;
 
 
 ```
+
+lifetime
+
+vcfd: until we have jgtmat
+jgtmat: until we have dmat
+dmat: until the end of all analyses
+
+

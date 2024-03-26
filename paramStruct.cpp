@@ -5,6 +5,17 @@
 #include "dmat.h"
 
 
+/// @brief get current time
+/// @return time as char*
+static char *get_time() {
+    time_t current_time;
+    struct tm *local_time;
+    current_time = time(NULL);
+    local_time = localtime(&current_time);
+    return (asctime(local_time));
+}
+
+
 //   calculate max memory needed for worst case scenario
 //   worst case:
 //   - no sites skipped
@@ -20,7 +31,6 @@ void estimate_memory_needed(paramStruct* pars, vcfData* vcfd) {
 
     // size_t nIndCmb = (size_t)((nInd * (nInd - 1)) / 2);
     // size_t nSites = pars->nSites;
-    // size_t nSites_arrays_size = pars->nSites_arrays_size;
 
     // size_t nGT;
     // if (args->doEM == ARG_DOEM_3GL) {
@@ -465,13 +475,9 @@ paramStruct* paramStruct_init(argStruct* args) {
     paramStruct* pars = new paramStruct;
 
     // -> init
-    pars->dm = NULL;
-    pars->jgtm = NULL;
     pars->names = NULL; // set in vcfReader
-    pars->metadata = NULL;
     pars->nSites = 0;
     pars->totSites = 0;
-    pars->nSites_arrays_size = NSITES_BUF_INIT;
     pars->nContigs = 0;
     pars->majorminor = NULL;
     pars->ancder = NULL;
@@ -517,14 +523,6 @@ paramStruct* paramStruct_init(argStruct* args) {
 
 void paramStruct_destroy(paramStruct* pars) {
 
-    if (pars->dm != NULL) {
-        dmat_destroy(pars->dm);
-    }
-
-    if (pars->jgtm != NULL) {
-        jgtmat_destroy(pars->jgtm);
-    }
-
     if (pars->majorminor != NULL) {
         alleles_destroy(pars->majorminor);
     }
@@ -558,12 +556,6 @@ void paramStruct_destroy(paramStruct* pars) {
             strArray_destroy(pars->names);
         }
     }
-    if (pars->metadata != NULL) {
-        metadataStruct_destroy(pars->metadata);
-    }
-
     delete pars;
 }
 
-// VALIDATION - CHECKS BELOW
-// --------------------------

@@ -15,13 +15,3 @@ extern const int POW10_LUT[];
 // NC2_LUT[n] = n choose 2
 extern const int NC2_LUT[];
 
-
-//lut_indsToIdx		lookup table for mapping two individuals to their pair index
-// extern int **lut_indsToIdx;
-// extern int **indsToIdx_LUT[];
-// extern int **INDS2IDX_LUT;
-//lut_idxToInds		lookup table for mapping pair index to two individuals
-// extern int **lut_idxToInds;
-// extern int **idxToInds_LUT[];
-// extern int **IDX2INDS_LUT;
-

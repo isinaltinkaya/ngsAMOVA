@@ -1,21 +1,22 @@
 #include "amova.h"
 #include "dmat.h"
+#include "metadata.h"
 
 
 
 /// @brief calculate part of AMOVA statistics where the calculations are independent of the distance matrix but depend on the metadata
-/// @param amova amovaStruct
-/// @param mtd metadataStruct
+/// @param amova amova
+/// @param mtd metadata_t
 /// @return void
 /// @details
 /// perform shared AMOVA calculations depends on the metadata but does not depend on the distance matrix
-/// therefore this function can be called once for each metadataStruct
+/// therefore this function can be called once for each metadata_t
 /// i.e. one call is enough for all amova replicates
 /// 
 ///     
-void amova_run_shared(amovaStruct* amova) {
+void amova_run_shared(amova_t* amova) {
 
-    metadataStruct* mtd = amova->metadata;
+    metadata_t* mtd = amova->metadata;
     const int nInd = mtd->nInd;
 
     const size_t nLevels = (size_t)mtd->nLevels; // L
@@ -229,21 +230,25 @@ void* amova_run_private(void* data) {
 
     const size_t runidx = (size_t)((simple_pthread_data_t*)data)->job_id;
 
-    amovaStruct* amova = (amovaStruct*)((simple_pthread_data_t*)data)->shared_data;
+    amova_t* amova = (amova_t*)((simple_pthread_data_t*)data)->shared_data;
     dmat_t* dm = (dmat_t*)((simple_pthread_data_t*)data)->private_data;
     double* matrix = dm->matrix[runidx];
+    bool* drop = dm->drop[runidx];
 
     //TODO investigate the squared transform
     if (DMAT_TRANSFORM_SQUARE == dm->transform) {
         // ok
     } else if (DMAT_TRANSFORM_NONE == dm->transform) {
         for (size_t i = 0;i < dm->size;++i) {
+            if (drop[i]) {
+                continue;
+            }
             matrix[i] = SQUARE(matrix[i]);
         }
     }
 
 
-    metadataStruct* mtd = amova->metadata;
+    metadata_t* mtd = amova->metadata;
     double* ss_total = amova->ss_total + runidx;
     double* ssd_total = amova->ssd_total + runidx;
     double* msd_total = amova->msd_total + runidx;
@@ -289,6 +294,9 @@ void* amova_run_private(void* data) {
 
             for (p = 0; p < nPairsInGroup; ++p) {
                 DEVASSERT(pairsInGroup[p] < dm->size);
+                if (drop[pairsInGroup[p]]) {
+                    continue;
+                }
                 sum += matrix[pairsInGroup[p]];
             }
 
@@ -300,6 +308,9 @@ void* amova_run_private(void* data) {
 
     // -> ss total
     for (size_t j = 0; j < dm->size; ++j) {
+        if (drop[j]) {
+            continue;
+        }
         *ss_total += matrix[j];
     }
     *ss_total = *ss_total / nInd;
@@ -393,7 +404,7 @@ void* amova_run_private(void* data) {
 }
 
 
-void amovaStruct_print_as_csv(amovaStruct* amova, metadataStruct* mtd, const char* bootstrap_results) {
+void amova_print_as_csv(amova_t* amova, metadata_t* mtd, const char* bootstrap_results) {
 
     //  header
     //  type,label,value
@@ -471,7 +482,7 @@ void amovaStruct_print_as_csv(amovaStruct* amova, metadataStruct* mtd, const cha
 }
 
 
-void amovaStruct_print_as_table(amovaStruct* amova, metadataStruct* mtd) {
+void amova_print_as_table(amova_t* amova, metadata_t* mtd) {
 
     kstring_t kbuf = KS_INITIALIZE;
     ksprintf(&kbuf, "=== AMOVA ======================================================================\n");
@@ -518,7 +529,7 @@ void amovaStruct_print_as_table(amovaStruct* amova, metadataStruct* mtd) {
     return;
 }
 
-void amovaStruct_destroy(amovaStruct* amova) {
+void amova_destroy(amova_t* amova) {
 
     amova->metadata = NULL;
 
@@ -554,9 +565,9 @@ void amovaStruct_destroy(amovaStruct* amova) {
 
 }
 
-amovaStruct* amovaStruct_init(metadataStruct* mtd, const int nAmovaRuns) {
+amova_t* amova_init(metadata_t* mtd, const int nAmovaRuns) {
 
-    amovaStruct* ret = (amovaStruct*)malloc(sizeof(amovaStruct));
+    amova_t* ret = (amova_t*)malloc(sizeof(amova_t));
     ret->metadata = mtd;
 
     const size_t nLevels = (size_t)mtd->nLevels;
@@ -681,14 +692,14 @@ amovaStruct* amovaStruct_init(metadataStruct* mtd, const int nAmovaRuns) {
 }
 
 
-amovaStruct* amovaStruct_get(paramStruct* pars, metadataStruct* mtd) {
+amova_t* amova_get(dmat_t* dmat, metadata_t* mtd) {
 
 
     // nRuns = n bootstrap runs + 1 (the original run)
     const int nRuns = (args->nBootstraps > 0) ? (args->nBootstraps + 1) : 1;
 
 
-    amovaStruct* amova = amovaStruct_init(mtd, nRuns);
+    amova_t* amova = amova_init(mtd, nRuns);
 
     const int maxnThreads = (args->nThreads == 0) ? 1 : args->nThreads;
 
@@ -720,7 +731,7 @@ amovaStruct* amovaStruct_get(paramStruct* pars, metadataStruct* mtd) {
 
         data[runidx].job_id = runidx;
         data[runidx].shared_data = (void*)amova;
-        data[runidx].private_data = (void*)pars->dm;
+        data[runidx].private_data = (void*)dmat;
 
         if (0 != pthread_create(&threads[runidx], NULL, amova_run_private, (void*)&data[runidx])) {
             ERROR("Problem with the spawning thread.");
@@ -757,18 +768,18 @@ amovaStruct* amovaStruct_get(paramStruct* pars, metadataStruct* mtd) {
         for (size_t i = 0;i < (mtd->nLevels - 1);++i) {
 
             mean = 0.0;
-            for (size_t r=0;r < nReps;++r) {
+            for (size_t r = 0;r < nReps;++r) {
                 mean += amova->phi_xt[r][i];
             }
             mean = mean / (double)nReps;
 
             sd = 0.0;
-            for (size_t r=0;r < nReps;++r) {
+            for (size_t r = 0;r < nReps;++r) {
                 sd += pow(amova->phi_xt[r][i] - mean, 2);
             }
-            sd = sqrt(sd / (nReps-1)); // sample stdev 
+            sd = sqrt(sd / (nReps - 1)); // sample stdev 
 
-            margin_of_error= 1.96 * (sd / sqrt((double)nReps));
+            margin_of_error = 1.96 * (sd / sqrt((double)nReps));
             ci_lower = mean - margin_of_error;
             ci_upper = mean + margin_of_error;
 
@@ -788,18 +799,18 @@ amovaStruct* amovaStruct_get(paramStruct* pars, metadataStruct* mtd) {
             for (size_t i = 0;i < (mtd->nLevels - 2);++i) {
 
                 mean = 0.0;
-                for (size_t r=0;r < nReps;++r) {
+                for (size_t r = 0;r < nReps;++r) {
                     mean += amova->phi_xy[r][i];
                 }
                 mean = mean / (double)nReps;
 
                 sd = 0.0;
-                for (size_t r=0;r < nReps;++r) {
+                for (size_t r = 0;r < nReps;++r) {
                     sd += pow(amova->phi_xy[r][i] - mean, 2);
                 }
-                sd = sqrt(sd / (nReps-1)); // sample stdev
+                sd = sqrt(sd / (nReps - 1)); // sample stdev
 
-                margin_of_error= 1.96 * (sd / sqrt((double)nReps));
+                margin_of_error = 1.96 * (sd / sqrt((double)nReps));
                 ci_lower = mean - margin_of_error;
                 ci_upper = mean + margin_of_error;
 
@@ -817,13 +828,13 @@ amovaStruct* amovaStruct_get(paramStruct* pars, metadataStruct* mtd) {
         }
     }
 
-    amovaStruct_print_as_csv(amova, mtd, kbuf_csv.s);
+    amova_print_as_csv(amova, mtd, kbuf_csv.s);
     if (kbuf_csv.l > 0) {
         ks_free(&kbuf_csv);
     }
 
     if (args->printAmovaTable == 1) {
-        amovaStruct_print_as_table(amova, mtd);
+        amova_print_as_table(amova, mtd);
     }
 
     return (amova);

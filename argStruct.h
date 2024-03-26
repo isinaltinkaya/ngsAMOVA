@@ -197,6 +197,11 @@ struct argStruct {
     double ibdseq_ibdtrim = 0.0;
 
 
+    // -> pair filters
+    int drop_pairs=-1;
+    int pair_min_n_sites=-1;
+    int min_n_pairs=-1;
+
     int nThreads = 1;
     int rmInvarSites = 0;
     int seed = -1;
@@ -218,4 +223,10 @@ struct argStruct {
 argStruct* argStruct_get(int argc, char** argv);
 void argStruct_destroy(argStruct* arg);
 
+
+// print generic usage information
+void print_help(FILE* fp);
+
+/// print formula usage information; to be used in formula specific errors
+void print_help_formula(FILE* fp);
 #endif  // __ARG_STRUCT__

@@ -4,6 +4,21 @@
 
 // TODO add test case
 
+bblocks_t* bblocks_init(void) {
+    bblocks_t* bblocks = (bblocks_t*)malloc(sizeof(bblocks_t));
+    ASSERT(bblocks != NULL);
+    bblocks->n_blocks = 0;
+    bblocks->n_contigs = 0;
+    bblocks->n_ind = 0;
+    bblocks->nsites_per_block = NULL;
+    bblocks->block_start_pos = NULL;
+    bblocks->block_end_pos = NULL;
+    bblocks->block_contig = NULL;
+    bblocks->block_start_siteidx = NULL;
+    bblocks->contig_names = NULL;
+    return(bblocks);
+}
+
 void bblocks_destroy(bblocks_t* bblocks) {
     for (size_t i = 0;i < args->nBootstraps;++i) {
         FREE(bblocks->rblocks[i]);

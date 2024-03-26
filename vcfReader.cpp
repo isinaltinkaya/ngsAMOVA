@@ -1,6 +1,8 @@
 #include "vcfReader.h"
+#include "jgtmat.h"
 
 #include "bootstrap.h"
+#include "metadata.h"
 
 void bblocks_match_contig(bblocks_t* bblocks, const char* this_contigName, const size_t vcf_contig_i) {
     size_t bb_contig_i;
@@ -674,7 +676,7 @@ static int site_read_3GL(vcfData* vcfd, paramStruct* pars, const size_t block_i,
 
 
 // return 1: skip site for all individuals
-int site_read_GT(jgtmat_t* jgtm, vcfData* vcfd, paramStruct* pars, const bool contig_changed) {
+int site_read_GT(jgtmat_t* jgtmat, vcfData* vcfd, paramStruct* pars, const bool contig_changed) {
 
     int ret;
     if (0 != (ret = read_site_with_alleles_ref_alt(vcfd, pars, contig_changed))) {
@@ -750,7 +752,6 @@ int site_read_GT(jgtmat_t* jgtm, vcfData* vcfd, paramStruct* pars, const bool co
         }
     }
 
-    bool skipInd;
 
     if (!skipSite && args->rmInvarSites != 0) {
         // -> rm invar sites based on GT
@@ -760,14 +761,12 @@ int site_read_GT(jgtmat_t* jgtm, vcfData* vcfd, paramStruct* pars, const bool co
             if (!hasData[i]) {
                 continue;
             }
-            skipInd = false;
             i1_gts = gts + i * PROGRAM_PLOIDY;
             if (bcf_gt_allele(i1_gts[0]) == pars->a1a2[1]) {
                 tot_nder++;
             } else if (bcf_gt_allele(i1_gts[0]) == pars->a1a2[0]) {
                 //
             } else {
-                skipInd = true;
                 continue;
             }
             if (bcf_gt_allele(i1_gts[1]) == pars->a1a2[1]) {
@@ -775,7 +774,6 @@ int site_read_GT(jgtmat_t* jgtm, vcfData* vcfd, paramStruct* pars, const bool co
             } else if (bcf_gt_allele(i1_gts[1]) == pars->a1a2[0]) {
                 //
             } else {
-                skipInd = true;
                 continue;
             }
         }
@@ -797,6 +795,7 @@ int site_read_GT(jgtmat_t* jgtm, vcfData* vcfd, paramStruct* pars, const bool co
         int gt1 = -1;
         int gt2 = -1;
         int pidx = 0;
+        int skipInd;
         for (int i1 = 1; i1 < nInd; ++i1) {
 
             if (!hasData[i1]) {
@@ -804,7 +803,7 @@ int site_read_GT(jgtmat_t* jgtm, vcfData* vcfd, paramStruct* pars, const bool co
                 continue;
             }
 
-            skipInd = false;
+            skipInd = 0;
             i1_nder = 0;
             i1_gts = gts + i1 * PROGRAM_PLOIDY;
             gt1 = bcf_gt_allele(i1_gts[0]);
@@ -816,7 +815,7 @@ int site_read_GT(jgtmat_t* jgtm, vcfData* vcfd, paramStruct* pars, const bool co
             } else if (gt1 == pars->a1a2[1]) {
                 i1_nder++;
             } else {
-                skipInd = true;
+                skipInd = 1;
             }
 
             if (gt2 == pars->a1a2[0]) {
@@ -824,11 +823,11 @@ int site_read_GT(jgtmat_t* jgtm, vcfData* vcfd, paramStruct* pars, const bool co
             } else if (gt2 == pars->a1a2[1]) {
                 i1_nder++;
             } else {
-                skipInd = true;
+                skipInd = 2;
             }
 
             if (skipInd) {
-                IO::vprint(2, "Skipping individual %d (%s) at site %s:%ld. Reason: Allele in genotype (%c) is not one of alleles to use (%c %c).", i1, vcfd->hdr->samples[i1], vcfd->get_contig_name(), vcfd->rec->pos + 1, vcfd->rec->d.allele[gt1][0], vcfd->rec->d.allele[0][0], vcfd->rec->d.allele[1][0]);
+                IO::vprint(2, "Skipping individual %d (%s) at site %s:%ld. Reason: Allele %d in genotype (%c) is not one of alleles to use (%c %c).", i1, vcfd->hdr->samples[i1], vcfd->get_contig_name(), vcfd->rec->pos + 1, skipInd, vcfd->rec->d.allele[skipInd][0], vcfd->rec->d.allele[0][0], vcfd->rec->d.allele[1][0]);
                 hasData[i1] = false;
                 ++pidx;
                 continue;
@@ -841,7 +840,7 @@ int site_read_GT(jgtmat_t* jgtm, vcfData* vcfd, paramStruct* pars, const bool co
                     continue;
                 }
 
-                skipInd = false;
+                skipInd = 0;
                 i2_nder = 0;
                 i2_gts = gts + i2 * PROGRAM_PLOIDY;
                 gt1 = bcf_gt_allele(i2_gts[0]);
@@ -852,7 +851,7 @@ int site_read_GT(jgtmat_t* jgtm, vcfData* vcfd, paramStruct* pars, const bool co
                 } else if (gt1 == pars->a1a2[1]) {
                     i2_nder++;
                 } else {
-                    skipInd = true;
+                    skipInd = 1;
                 }
 
                 if (gt2 == pars->a1a2[0]) {
@@ -860,17 +859,17 @@ int site_read_GT(jgtmat_t* jgtm, vcfData* vcfd, paramStruct* pars, const bool co
                 } else if (gt2 == pars->a1a2[1]) {
                     i2_nder++;
                 } else {
-                    skipInd = true;
+                    skipInd = 2;
                 }
 
                 if (skipInd) {
-                    IO::vprint(2, "Skipping individual %d (%s) at site %s:%ld. Reason: Allele in genotype (%c) is not one of alleles to use (%c %c).", i2, vcfd->hdr->samples[i2], vcfd->get_contig_name(), vcfd->rec->pos + 1, vcfd->rec->d.allele[gt1][0], vcfd->rec->d.allele[0][0], vcfd->rec->d.allele[1][0]);
+                    IO::vprint(2, "Skipping individual %d (%s) at site %s:%ld. Reason: Allele %d in genotype (%c) is not one of alleles to use (%c %c).", i1, vcfd->hdr->samples[i1], vcfd->get_contig_name(), vcfd->rec->pos + 1, skipInd, vcfd->rec->d.allele[skipInd][0], vcfd->rec->d.allele[0][0], vcfd->rec->d.allele[1][0]);
                     hasData[i2] = false;
                     ++pidx;
                     continue;
                 }
 
-                jgtm->m[pidx][(i1_nder * 3) + i2_nder]++;
+                jgtmat->m[pidx][(i1_nder * 3) + i2_nder]++;
                 ++pidx;
             }
 
@@ -882,7 +881,7 @@ int site_read_GT(jgtmat_t* jgtm, vcfData* vcfd, paramStruct* pars, const bool co
     return(skipSite);
 }
 
-vcfData* vcfData_init(paramStruct* pars, metadataStruct* metadata) {
+vcfData* vcfData_init(paramStruct* pars, metadata_t* metadata) {
 
     BEGIN_LOGSECTION;
 
@@ -964,7 +963,7 @@ vcfData* vcfData_init(paramStruct* pars, metadataStruct* metadata) {
         LOGADD("Found %d individuals in the VCF file", pars->names->len);
     } else {
         // -> set pars with vcfdata
-        const size_t mtd_nind = pars->metadata->indNames->len;
+        const size_t mtd_nind = metadata->indNames->len;
 
         size_t midx;
 
@@ -973,7 +972,7 @@ vcfData* vcfData_init(paramStruct* pars, metadataStruct* metadata) {
 
         size_t newvidx = 0;
         for (size_t vidx = 0;vidx < in_vcf_nind;++vidx) {
-            if (pars->metadata->indNames->find(vcfd->hdr->samples[vidx], &midx)) {
+            if (metadata->indNames->find(vcfd->hdr->samples[vidx], &midx)) {
                 samples_metad2vcf[midx] = vidx;
                 if (newvidx != midx) {
                     badorder = true;
@@ -992,7 +991,7 @@ vcfData* vcfData_init(paramStruct* pars, metadataStruct* metadata) {
             ERROR("The order of individuals in the VCF file does not match the order of individuals in the metadata file. Please sort the individuals in the metadata file to match the order of individuals in the VCF file.");
         }
 
-        pars->names = pars->metadata->indNames;
+        pars->names = metadata->indNames;
 
         kstring_t tmp = KS_INITIALIZE;
         for (size_t i = 0;i < mtd_nind;++i) {
@@ -1006,7 +1005,7 @@ vcfData* vcfData_init(paramStruct* pars, metadataStruct* metadata) {
         }
         FREE(tmp.s);
         int nsamples = bcf_hdr_nsamples(vcfd->hdr); // sanity check
-        ASSERT(nsamples == pars->metadata->indNames->len);
+        ASSERT(nsamples == metadata->indNames->len);
 
         if (nsamples != in_vcf_nind) {
             LOGADD("Will use %d individuals (out of %d) found in the VCF file.", nsamples, in_vcf_nind);
@@ -1123,7 +1122,7 @@ int vcfData::records_next() {
 
 
 
-void readSites(jgtmat_t* jgtm, bblocks_t* bblocks, vcfData* vcfd, paramStruct* pars) {
+void readSites(jgtmat_t* jgtmat, bblocks_t* bblocks, vcfData* vcfd, paramStruct* pars) {
 
     BEGIN_LOGSECTION;
 
@@ -1285,7 +1284,7 @@ void readSites(jgtmat_t* jgtm, bblocks_t* bblocks, vcfData* vcfd, paramStruct* p
             skip_site = site_read_3GL(vcfd, pars, block_i, contig_changed);
         } else if (PROGRAM_WILL_USE_BCF_FMT_GT) {
             if (args->doJGTM) {
-                skip_site = site_read_GT(jgtm, vcfd, pars, contig_changed);
+                skip_site = site_read_GT(jgtmat, vcfd, pars, contig_changed);
             } else {
                 NEVER;
             }
@@ -1326,17 +1325,28 @@ void readSites(jgtmat_t* jgtm, bblocks_t* bblocks, vcfData* vcfd, paramStruct* p
 
 
     if (args->bcfSrc & ARG_INTPLUS_BCFSRC_FMT_GT) {
-        // jgtm->size
         size_t pair_shared_nSites;
-        for (size_t pairidx = 0;pairidx < jgtm->n;++pairidx) {
-            pair_shared_nSites = 0;
-            for (size_t i = 0;i < jgtm->size;++i) {
-                pair_shared_nSites += jgtm->m[pairidx][i];
-            }
-            if (0 == pair_shared_nSites) {
-                ERROR("Pair %ld has no shared sites", pairidx);
+        DEVASSERT(jgtmat->n==((nInd*(nInd-1))/2));
+
+size_t pair=0;
+        for (size_t i1 = 0;i1 < nInd;++i1) {
+            for (size_t i2 = 0;i2 < i1;++i2) {
+                pair_shared_nSites = 0;
+                for (size_t i=0;i < jgtmat->size;++i) {
+                    pair_shared_nSites += jgtmat->m[pair][i];
+                }
+                if (pair_shared_nSites < args->pair_min_n_sites) {
+                    if (args->drop_pairs) {
+                        IO::vprint(1, "Dropping pair %ld (%s, %s) due to insufficient number of shared sites (%ld)", pair, pars->names->d[i1], pars->names->d[i2], pair_shared_nSites);
+                        jgtmat->drop[pair] = true;
+                    } else {
+                        ERROR("Individuals %s and %s have %ld shared sites, which is less than the minimum number of shared sites required (%ld).", pars->names->d[i1], pars->names->d[i2], pair_shared_nSites, args->pair_min_n_sites);
+                    }
+                }
+                ++pair;
             }
         }
+
     }
 
     LOG("Finished reading sites.");

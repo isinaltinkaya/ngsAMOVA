@@ -1,7 +1,9 @@
 #include "ibd.h"
 
 #include  "vcfReader.h"
+#define BUF_NSITES 500000
 
+const double NEG_INF = -std::numeric_limits<double>::infinity();
 ///// if (args->minInd ) does not work with doibd
 
 const int dosePairIndex[3][3] = { {0,1,5}, {1,2,3}, {5,3,4} };

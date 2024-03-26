@@ -1,27 +1,31 @@
-#ifndef __BOOTSTRAP__
-#define __BOOTSTRAP__
+/**
+ * @file    bootstrap.h
+ * @brief   header file for bootstrap.cpp
+ * @details contains block bootstrapping related data structures and functions
+ */
+#ifndef __BOOTSTRAP_H__
+#define __BOOTSTRAP_H__
 
+/* INCLUDES ----------------------------------------------------------------- */
 #include "dataStructs.h"
 #include "shared.h"
+/* END-OF-INCLUDES ---------------------------------------------------------- */
 
-/* FORWARD DECLARATIONS ----------------------------------------------------- */
+
+/* FORWARD-DECLARATIONS ----------------------------------------------------- */
 typedef struct bblocks_t bblocks_t;
 typedef struct strArray strArray;
 void strArray_destroy(strArray* sa);
 typedef struct vcfData vcfData;
 typedef struct paramStruct paramStruct;
+/* END-OF-FORWARD-DECLARATIONS ---------------------------------------------- */
 
-/* -------------------------------------------------------------------------- */
+/* MACROS ------------------------------------------------------------------- */
+/* END-OF-MACROS ------------------------------------------------------------ */
 
-/// @brief bblocks_sample_with_replacement - perform the block bootstrapping sampling with replacement
-/// @details
-/// sample the blocks with replacement for all individuals as to preserve the correlation structure
-void bblocks_sample_with_replacement(bblocks_t* bblocks);
+/* TYPEDEF-STRUCTS ---------------------------------------------------------- */
 
-void bblocks_print_blocks_tab(bblocks_t* bblocks);
-void bblocks_print_bootstrap_samples(bblocks_t* bblocks);
-
-/// @brief bblocks_t - structure for storing bootstrap blocks
+/// @brief bblocks_t - structure for storing block bootstrapping blocks
 /// @note positions: 0-based, [start, end)
 struct bblocks_t {
 
@@ -70,25 +74,25 @@ struct bblocks_t {
     size_t* block_start_siteidx;
 
 };
+/* END-OF-TYPEDEF-STRUCTS --------------------------------------------------- */
 
-inline bblocks_t* bblocks_init(void) {
-    bblocks_t* bblocks = (bblocks_t*)malloc(sizeof(bblocks_t));
-    ASSERT(bblocks != NULL);
-    bblocks->n_blocks = 0;
-    bblocks->n_contigs = 0;
-    bblocks->n_ind = 0;
-    bblocks->nsites_per_block = NULL;
-    bblocks->block_start_pos = NULL;
-    bblocks->block_end_pos = NULL;
-    bblocks->block_contig = NULL;
-    bblocks->block_start_siteidx = NULL;
-    bblocks->contig_names = NULL;
-    return(bblocks);
-}
+/* FUNCTION-DECLARATIONS ----------------------------------------------------- */
+
+/// @brief bblocks_sample_with_replacement - perform the block bootstrapping sampling with replacement
+/// @details
+/// sample the blocks with replacement for all individuals as to preserve the correlation structure
+void bblocks_sample_with_replacement(bblocks_t* bblocks);
+
+void bblocks_print_blocks_tab(bblocks_t* bblocks);
+void bblocks_print_bootstrap_samples(bblocks_t* bblocks);
+
+bblocks_t* bblocks_init(void);
 
 void bblocks_destroy(bblocks_t* bblocks);
 
 void bblocks_get(bblocks_t* bblocks, vcfData* vcfd, paramStruct* pars);
 
+/* END-OF-FUNCTION-DECLARATIONS ---------------------------------------------- */
 
-#endif  // __BOOTSTRAP__
+
+#endif  // __BOOTSTRAP_H__

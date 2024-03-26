@@ -109,7 +109,7 @@ namespace IO {
     ///                 -> if kbuf will only be used once,
     ///                 memory is allocated and deallocated inplace
     ///                 (inside the specific writing function)
-    ///                 e.g. see amovaStruct::print_as_csv()
+    ///                 e.g. see amova_t::print_as_csv()
     ///                 -> if kbuf will be used multiple times
     ///                 i.e. appending to kbuf from different functions
     ///                 memory is allocated and deallocated in the constructor

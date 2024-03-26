@@ -1,28 +1,32 @@
-#ifndef __AMOVA__
-#define __AMOVA__
+/**
+ * @file    amova.h
+ * @brief   header file for amova.cpp
+ * @details contains functions for performing Analysis of Molecular Variance (AMOVA)
+ */
+#ifndef __AMOVA_H__
+#define __AMOVA_H__
 
 #include <pthread.h>
 
 #include "mathUtils.h"
 
 
-struct distanceMatrixStruct;
-typedef struct metadataStruct metadataStruct;
+typedef struct metadata_t metadata_t;
 struct amovaBootstrapThreads;
 
-typedef struct amovaStruct amovaStruct;
+typedef struct amova_t amova_t;
 typedef struct amovaBootstrapThreads amovaBootstrapThreads;
 
 
 
 /**
- * @brief amovaStruct - struct for storing AMOVA results
+ * @brief amova - struct for storing AMOVA results
  * @note  if isShared==FALSE; then the arrays are allocated for each bootstrap replicate
  *        and the first array always stores the original data
  */
-struct amovaStruct {
+struct amova_t {
 
-    metadataStruct* metadata;
+    metadata_t* metadata;
 
     size_t nRuns;
 
@@ -106,15 +110,15 @@ struct amovaStruct {
 
 };
 
-void amovaStruct_print_as_csv(amovaStruct* amv);
+void amova_print_as_csv(amova_t* amv);
 
 
-amovaStruct* amovaStruct_init(metadataStruct* mtd, const int nAmovaRuns);
+amova_t* amova_init(metadata_t* mtd, const int nAmovaRuns);
 
-void amovaStruct_destroy(amovaStruct* amv);
+void amova_destroy(amova_t* amv);
 
-amovaStruct* amovaStruct_get(paramStruct* pars, metadataStruct* mtd);
+amova_t* amova_get(dmat_t* dmat, metadata_t* mtd);
 
 
 
-#endif  // __AMOVA__
+#endif  // __AMOVA_H__

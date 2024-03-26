@@ -79,9 +79,9 @@ argStruct* argStruct_get(int argc, char** argv) {
 
         } else if (strcasecmp("-doDist", arv) == 0) {
             args->doDist = atoi(val);
-        }else if(strcasecmp("--dm-method", arv) == 0){
+        } else if (strcasecmp("--dm-method", arv) == 0) {
             args->dm_method = atoi(val);
-        }else if(strcasecmp("--dm-transform", arv) == 0){
+        } else if (strcasecmp("--dm-transform", arv) == 0) {
             args->dm_transform = atoi(val);
         } else if (strcasecmp("-doIbd", arv) == 0) {
             args->doIbd = atoi(val);
@@ -413,9 +413,22 @@ argStruct* argStruct_get(int argc, char** argv) {
         } else if (strcasecmp("--rm-invar-sites", arv) == 0) {
             args->rmInvarSites = atoi(val);
 
+        } else if (strcasecmp("--drop-pairs", arv) == 0) {
+            // if an individual pair has no shared sites, should the program drop the pair or give err and exit?
+            args->drop_pairs = atoi(val);
+
+        } else if (strcasecmp("--min-pairsites", arv) == 0) {
+            // TODO
+            // drop the pair if the number of shared sites is less than this value
+            args->pair_min_n_sites = (int)atof(val);
+
+        } else if (strcasecmp("--min-npairs", arv) == 0) {
+            args->min_n_pairs = atoi(val);
+
         } else if (strcasecmp("-h", arv) == 0 || strcasecmp("--help", arv) == 0) {
             print_help(stdout);
             exit(0);
+
         } else {
             ERROR("Unknown argument: \'%s\'\n", arv);
         }
@@ -435,6 +448,31 @@ argStruct* argStruct_get(int argc, char** argv) {
     }
     IO::outFilesStruct_init(outFiles);
 
+
+    if (-1 != args->drop_pairs) {
+        CHECK_ARG_INTERVAL_01(args->drop_pairs, "--drop-pairs");
+    } else {
+        args->drop_pairs = 0;
+        LOG("--drop-pairs is not set, setting to default value %d (do not drop pairs). Program will give error and exit if an individual pair has no shared sites.", args->drop_pairs);
+    }
+
+    if (-1 != args->pair_min_n_sites) {
+        CHECK_ARG_INTERVAL_INT(args->pair_min_n_sites, 1, INT_MAX, "--min-pairsites");
+    } else {
+        args->pair_min_n_sites = 1;
+        LOG("--min-pairsites is not set, setting to default value %d (perform the action defined via --drop-pairs if an individual pair has 0 shared sites).", args->pair_min_n_sites);
+    }
+
+    if (-1 != args->min_n_pairs) {
+        // requires: --drop-pairs 1
+        CHECK_ARG_INTERVAL_INT(args->min_n_pairs, 1, INT_MAX, "--min-npairs");
+        if (0 == args->drop_pairs) {
+            ERROR("Cannot set --min-npairs without setting --drop-pairs to 1. Please set --drop-pairs to 1.");
+        }
+    } else {
+        args->min_n_pairs = 1;
+        LOG("--min-npairs is not set, setting to default value %d. Program will give error if the number of individual pairs left after dropping pairs is less than this value.", args->min_n_pairs);
+    }
 
     CHECK_ARG_INTERVAL_INT(args->nThreads, 0, 100, "-P/--nThreads");
     if (0 == args->nThreads) {
@@ -522,11 +560,11 @@ argStruct* argStruct_get(int argc, char** argv) {
             CHECK_ARG_INTERVAL_INT(args->nBootstraps, 1, 100000, "-nb/--nBootstraps");
         }
 
-        if(-1.0==args->bootstrap_ci){
+        if (-1.0 == args->bootstrap_ci) {
             args->bootstrap_ci = 0.95;
             LOG("Bootstrap confidence interval is not set, setting to default value %f.", args->bootstrap_ci);
 
-        }else{
+        } else {
             CHECK_ARG_INTERVAL_II_DBL(args->bootstrap_ci, 0.0, 1.0, "--bootstrap-ci");
         }
 
@@ -567,17 +605,17 @@ void argStruct::check_arg_dependencies() {
     }
 
 
-if(PROGRAM_WILL_USE_RNG){
-    if (seed == -1) {
-        seed = time(NULL);
-        srand48(seed);
-        LOG("Seed is not defined, will use current time as random seed for the random number generator. Seed is now set to: %d.\n", seed);
-        WARN("Used the current time as random seed for random number generator. For parallel runs this may cause seed collisions. Hence, it is recommended to set the seed manually using `--seed <INTEGER>`.");
-    } else {
-        srand48(seed);
-        LOG("Seed is set to: %d.\n", seed);
+    if (PROGRAM_WILL_USE_RNG) {
+        if (seed == -1) {
+            seed = time(NULL);
+            srand48(seed);
+            LOG("Seed is not defined, will use current time as random seed for the random number generator. Seed is now set to: %d.\n", seed);
+            WARN("Used the current time as random seed for random number generator. For parallel runs this may cause seed collisions. Hence, it is recommended to set the seed manually using `--seed <INTEGER>`.");
+        } else {
+            srand48(seed);
+            LOG("Seed is set to: %d.\n", seed);
+        }
     }
-}
 
     if (in_dm_fn != NULL) {
         if (doEM != 0) {
@@ -606,16 +644,16 @@ if(PROGRAM_WILL_USE_RNG){
     } else if (1 == doDist) {
         LOG("-doDist %d; will estimate pairwise distance matrix using Dij.", doDist);
         // if dm_method dm_transform not defined, set to default and inform user
-        if(-1==dm_method){
+        if (-1 == dm_method) {
             dm_method = DMAT_METHOD_DIJ;
             LOG("Distance matrix method is not set, setting to default value %d (Dij).", dm_method);
-        }else{
+        } else {
             CHECK_ARG_INTERVAL_INT(dm_method, 0, 9, "--dm-method");
         }
-        if(-1==dm_transform){
+        if (-1 == dm_transform) {
             dm_transform = DMAT_TRANSFORM_NONE;
             LOG("Distance matrix transform is not set, setting to default value %d (none).", dm_transform);
-        }else{
+        } else {
             CHECK_ARG_INTERVAL_INT(dm_transform, 0, 1, "--dm-transform");
         }
 
@@ -805,8 +843,8 @@ if(PROGRAM_WILL_USE_RNG){
         ERROR("Program cannot use both GL and GT data at the same time.");
     }
 
-    if(PROGRAM_WILL_USE_BCF_FMT_GT){
-        if(PROGRAM_WILL_PERFORM_BLOCK_BOOTSTRAPPING){
+    if (PROGRAM_WILL_USE_BCF_FMT_GT) {
+        if (PROGRAM_WILL_PERFORM_BLOCK_BOOTSTRAPPING) {
             ERROR("Program cannot use GT data for block bootstrapping.");
         }
     }
@@ -868,3 +906,63 @@ void argStruct_destroy(argStruct* args) {
 
     delete args;
 }
+
+
+/// @brief usage - print usage
+/// @param fp pointer to the file to print to
+void print_help(FILE* fp) {
+    fprintf(fp,
+        "\n"
+        "Program: ngsAMOVA\n");
+
+    fprintf(fp,
+        "\n"
+        "Usage:\tngsAMOVA <command> [options]\n"
+        "\n"
+        "Tool for performing the Analysis of Molecular Variance [AMOVA]\n"
+        "\n"
+        "\n");
+
+    // fprintf(fp, "\n");
+    // fprintf(fp, "Usage: ngsAMOVA [options] -i <vcf file> -out <output file>\n");
+    // fprintf(fp, "\n");
+    // fprintf(fp, "Options:\n");
+    // fprintf(fp, "  -in <vcf file>		: input vcf file\n");
+    // fprintf(fp, "  -out <output file>		: output file\n");
+    // fprintf(fp, "  -doAMOVA <0/1>		: do AMOVA (default: 1)\n");
+    // fprintf(fp, "  -doTest <0/1>		: do EM test (default:
+    // fprintf(fp, "  -printMatrix <0/1>		: print distance matrix (default: 0)\n");
+    // fprintf(fp, "  -printSFS <0/1>		: print SFS (default: 0)\n");
+
+    //
+    //
+}
+
+/// AMOVA Formula Specification:
+/// ----------------------------
+/// 1. The formula is a string of the form "y ~ x1 / x2 / x3 / ... / xn"
+/// describing the model to be fitted.
+///
+/// 2. y variable: Required, only 1 variable
+/// Defines the distance matrix to be used, i.e. the Individuals
+///
+///
+/// 3. x variable(s): Required, minimum 1 variable
+/// Defines the grouping variables in descending order of
+/// hierarchy, i.e. x1 is the highest level, x2 is the second highest level, etc.
+/// The x variables can be specified as a single variable (e.g. "y ~ x") or
+/// as an ordered list of variables (e.g. "y ~ x1 / x2 / x3"). Therefore the
+/// minimum number of x variables required is 1.
+///
+/// 4. The formula must therefore contain 1 tilde and 0 or more / characters.
+///
+
+void print_help_formula(FILE* fp) {
+    fprintf(fp, "Formula specification:\n");
+    fprintf(fp, "  -f <formula>		: formula for AMOVA\n");
+    fprintf(fp, "Formulas must have the following format:\n");
+    fprintf(fp, "  <token> ~ <token> / <token> ... \n");
+    fprintf(fp, "Example:\n");
+    fprintf(fp, "  -f 'Individual ~ Region / Population'\n");
+}
+

@@ -1,22 +1,23 @@
+/**
+ * @file    dmat.h
+ * @brief   header file for dmat.cpp
+ * @details contains distance matrix data structure (dmat_t) and associated functions 
+ */
 #ifndef __DMAT_H__
 #define __DMAT_H__
 
 /* INCLUDES ----------------------------------------------------------------- */
 #include "shared.h"
-/* -------------------------------------------------------------------------- */
+/* END-OF-INCLUDES ---------------------------------------------------------- */
 
-/* FORWARD DECLARATIONS ----------------------------------------------------- */
-typedef struct metadataStruct metadataStruct;
+/* FORWARD-DECLARATIONS ----------------------------------------------------- */
+typedef struct metadata_t metadata_t;
 typedef struct strArray strArray;
 typedef struct jgtmat_t jgtmat_t;
+typedef struct dmat_t dmat_t;
+/* END-OF-FORWARD-DECLARATIONS ---------------------------------------------- */
 
-/* -------------------------------------------------------------------------- */
-
-
-
-/// ----------------------------------------------------------------------- ///
-/// DISTANCE MATRIX
-
+/* MACROS ------------------------------------------------------------------- */
 /// @brief DMAT_TYPE_* - type of the distance matrix
 ///
 ///  ___  ___  ___  (exclude=0,include=1)
@@ -43,14 +44,12 @@ typedef struct jgtmat_t jgtmat_t;
 /// (1<<2)|(1<<1)|(1<<0)
 #define DMAT_TYPE_FULL 7
 
-
 /// @brief DMAT_TRANSFORM_* - transformation applied to the distances in the matrix
 ///
 /// NONE: not transformed
 #define DMAT_TRANSFORM_NONE 0
 /// SQUARE: val^2
 #define DMAT_TRANSFORM_SQUARE 1
-
 
 /// @brief DMAT_METHOD_* - method used in distance calculation (i.e. distance metric)
 #define DMAT_METHOD_DIJ 0
@@ -73,14 +72,14 @@ typedef struct jgtmat_t jgtmat_t;
 /// IN_VCF_FILE: names is pointer to the strArray* names in pars which was read from the VCF file, implies no metadata is provided
 /// <no cleaning>
 #define DMAT_NAMES_SRC_IN_VCF_PARS_PTR 2
-/// IN_METADATA_FILE: names is pointer to the strArray* names in metadataStruct, implies input is distance matrix and metadata file is provided
+/// IN_METADATA_FILE: names is pointer to the strArray* names in metadata, implies input is distance matrix and metadata file is provided
 /// <no cleaning>
 #define DMAT_NAMES_SRC_IN_METADATA_NAMES_PTR 3
 /// PRIVATE: names is allocated and used internally in the program
 #define DMAT_NAMES_SRC_PRIVATE 4
+/* END-OF-MACROS ------------------------------------------------------------ */
 
-typedef struct dmat_t dmat_t;
-
+/* TYPEDEF-STRUCTS ---------------------------------------------------------- */
 /// @struct dmat_t - distance matrix struct 
 /// @brief  struct for n distance matrices 
 struct dmat_t {
@@ -117,7 +116,7 @@ struct dmat_t {
     /// @details
     /// - if names_src == DMAT_NAMES_SRC_IN_DM_FILE, names is allocated and read from the distance matrix input file
     /// - if names_src == DMAT_NAMES_SRC_IN_VCF_PARS_PTR, names is pointer to the strArray* names in pars which was read from the VCF file, used when metadata is null
-    /// - if names_src == DMAT_NAMES_SRC_IN_METADATA_NAMES_PTR, names is pointer to the strArray* names in metadataStruct
+    /// - if names_src == DMAT_NAMES_SRC_IN_METADATA_NAMES_PTR, names is pointer to the strArray* names in metadata
     /// - if names_src == DMAT_NAMES_SRC_NONE, names is NULL
     strArray* names;
     uint8_t names_src;
@@ -126,17 +125,21 @@ struct dmat_t {
     // matrix[n][size]
     double** matrix;
 
+    /// @var drop[n][size] - 2d array of bool indicators for excluding specific distances from downstream analyses
+    /// @note allocated iff args->drop_pairs==1
+    bool** drop;
+
 };
+/* END-OF-TYPEDEF-STRUCTS --------------------------------------------------- */
 
-
+/* FUNCTION-DECLARATIONS ---------------------------------------------------- */
 dmat_t* dmat_init(const size_t nInd, const uint8_t type, const uint32_t method, const uint32_t transform, strArray* names, const uint8_t names_src);
 void dmat_destroy(dmat_t* d);
-
-dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metadataStruct* metadata);
+dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metadata_t* metadata);
 
 void dmat_write(dmat_t* dmat);
 void dmat_print(dmat_t* dmat, kstring_t* kstr);
-
 void dmat_calculate_distances(jgtmat_t* jgtmat, dmat_t* dmat);
+/* END-OF-FUNCTION-DECLARATIONS --------------------------------------------- */
 
 #endif  // __DMAT_H__
