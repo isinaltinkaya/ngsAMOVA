@@ -3,6 +3,201 @@
 #include "dataStructs.h"
 #include "jgtmat.h"
 #include "metadata.h"
+#include "io.h"
+
+/// @details if(has_drop); remove the individual with most dropped pairs from the matrix
+/// aim: remove as little individuals as possible while ensuring that there is no missing data in the matrix
+dmat_t* dmat_prune_drops(dmat_t* dmat) {
+
+    if (dmat->n > 1) {
+        ERROR("Pruning of distance matrices with more than one matrix is not possible, yet.");
+    }
+
+    // -> init
+    dmat_t* prunedmat = NULL;
+    prunedmat = (dmat_t*)malloc(sizeof(dmat_t));
+    ASSERT(prunedmat != NULL);
+    prunedmat->n = 0;
+    prunedmat->size = 0;
+    prunedmat->type = 0;
+    prunedmat->transform = 0;
+    prunedmat->method = 0;
+    prunedmat->names = NULL;
+    prunedmat->names_src = 0;
+    prunedmat->drop = NULL;
+    prunedmat->has_drop = false;
+
+    size_t idx, nItems, maxDrop, maxDropIdx, nIndsRemoved, totnPairsToPrune, * nDrops;
+    int* rmIdx;
+
+    nItems = dmat->names->len;
+    nDrops = (size_t*)malloc(nItems * sizeof(size_t));
+    ASSERT(nDrops != NULL);
+    rmIdx = (int*)malloc(nItems * sizeof(int));
+    ASSERT(rmIdx != NULL);
+    for (size_t i = 0;i < nItems;++i) {
+        nDrops[i] = 0;
+        rmIdx[i] = -1;
+    }
+
+    prunedmat->n = dmat->n;
+    // prunedmat->size =  // TBD
+    prunedmat->type = dmat->type;
+    prunedmat->transform = dmat->transform;
+    prunedmat->method = dmat->method;
+    // prunedmat->names = // TBD
+    prunedmat->names_src = DMAT_NAMES_SRC_PRIVATE;
+    prunedmat->matrix = (double**)malloc(prunedmat->n * sizeof(dmat_t*));
+    ASSERT(prunedmat->matrix != NULL);
+    // rest of matrix = // TBD
+    // prunedmat->drop =  // NO NEED, NULL
+    // prunedmat->has_drop = false; // NO NEED, FALSE
+
+
+    prunedmat->names = strArray_init();
+
+    totnPairsToPrune = 0;
+    idx = 0;
+    for (size_t i = 1;i < nItems;++i) {
+        for (size_t j = 0;j < i;++j) {
+            if (dmat->drop[0][idx]) {
+                nDrops[i]++;
+                nDrops[j]++;
+                totnPairsToPrune++;
+            }
+            ++idx;
+        }
+    }
+
+    nIndsRemoved = 0;
+    while (1) {
+        maxDrop = 0;
+        maxDropIdx = 0;
+        for (size_t i = 0;i < nItems;++i) {
+            if (nDrops[i] > maxDrop) {
+                maxDrop = nDrops[i];
+                maxDropIdx = i;
+            }
+        }
+
+
+        if (maxDrop == 0) {
+            ASSERT(totnPairsToPrune == 0);
+            break;
+        }
+
+        ASSERT(totnPairsToPrune > 0);
+
+        // remove individual with max drop count
+        rmIdx[nIndsRemoved] = maxDropIdx;
+        nDrops[maxDropIdx] = 0;
+
+        LOG("Removing individual %s with %ld dropped pairs", dmat->names->d[rmIdx[nIndsRemoved]], maxDrop);
+
+        idx = 0;
+        for (size_t i = 1;i < nItems;++i) {
+            for (size_t j = 0;j < i;++j) {
+                if (i == maxDropIdx) {
+                    if (nDrops[j] > 0) {
+                        nDrops[j]--;
+                        --totnPairsToPrune;
+                    }
+                } else if (j == maxDropIdx) {
+                    if (nDrops[i] > 0) {
+                        nDrops[i]--;
+                        --totnPairsToPrune;
+                    }
+                }
+                ++idx;
+            }
+        }
+        ++nIndsRemoved;
+    }
+
+
+#if DEV==1
+    ASSERT(totnPairsToPrune == 0);
+    for (size_t i = 0;i < nItems;++i) {
+        if (nDrops[i] > 0) {
+            NEVER;
+        }
+        bool isRemoved;
+        for (size_t k = 0;k < nIndsRemoved;++k) {
+            if (i == rmIdx[k]) {
+                isRemoved = true;
+                break;
+            }
+        }
+        if (isRemoved) {
+            continue;
+        }
+        if (dmat->drop[0][i]) {
+            NEVER;
+        }
+    }
+#endif
+
+
+    // copy the remaining data to the new pruned matrix
+
+    int nRemainingItems = nItems - nIndsRemoved;
+    ASSERT(nRemainingItems > 0);
+    LOG("Removed %ld individuals from the distance matrix. Pruned matrix will have %d individuals", nIndsRemoved, nRemainingItems);
+
+    // for(size_t i = 0;i < nIndsRemoved;++i) {
+        // LOG("Removed individual %s", dmat->names->d[rmIdx[i]]);
+    // }
+
+    prunedmat->size = (nRemainingItems * (nRemainingItems - 1)) / 2;
+    prunedmat->matrix[0] = (double*)malloc(prunedmat->size * sizeof(double));
+    ASSERT(prunedmat->matrix[0] != NULL);
+    for (size_t i = 0;i < prunedmat->size;++i) {
+        prunedmat->matrix[0][i] = 0.0;
+    }
+
+    bool isRemoved;
+
+    size_t newidx = 0;
+    for (size_t i = 0;i < nItems;++i) {
+        isRemoved = false;
+        for (size_t k = 0;k < nIndsRemoved;++k) {
+            if (i == rmIdx[k]) {
+                isRemoved = true;
+                break;
+            }
+        }
+        if (isRemoved) {
+            continue;
+        }
+
+        prunedmat->names->add(dmat->names->d[i]);
+
+        for (size_t j = 0;j < i;++j) {
+            isRemoved = false;
+            for (size_t k = 0;k < nIndsRemoved;++k) {
+                if (j == rmIdx[k]) {
+                    isRemoved = true;
+                    break;
+                }
+            }
+            if (isRemoved) {
+                continue;
+            }
+
+            prunedmat->matrix[0][newidx] = dmat->matrix[0][MATRIX_GET_INDEX_LTED_IJ(i, j)];
+            ++newidx;
+        }
+    }
+
+    DEVASSERT(newidx == prunedmat->size);
+
+
+    FREE(nDrops);
+    FREE(rmIdx);
+
+    return(prunedmat);
+}
+
 
 /// @brief dmat_init - initialize a distance matrix data structure
 /// @param nInd      - number of individuals
@@ -27,6 +222,7 @@ dmat_t* dmat_init(const size_t nInd, const uint8_t type, const uint32_t method, 
     dmat->names = NULL;
     dmat->names_src = 0;
     dmat->drop = NULL;
+    dmat->has_drop = false;
 
 
     // -> set 
@@ -96,10 +292,13 @@ void dmat_destroy(dmat_t* dmat) {
     }
     FREE(dmat->matrix);
 
-    for (size_t i = 0; i < dmat->n;++i) {
-        FREE(dmat->drop[i]);
+    if (dmat->drop != NULL) {
+        // isNULL if dmat is pruned dmat
+        for (size_t i = 0; i < dmat->n;++i) {
+            FREE(dmat->drop[i]);
+        }
+        FREE(dmat->drop);
     }
-    FREE(dmat->drop);
 
     if (dmat->names_src == DMAT_NAMES_SRC_IN_DM_FILE) {
         strArray_destroy(dmat->names);
@@ -151,6 +350,7 @@ dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metad
     dmat->names = NULL;
     dmat->names_src = 0;
     dmat->drop = NULL;
+    dmat->has_drop = false;
 
     // -> set
 
@@ -388,7 +588,10 @@ dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metad
         dmat->drop[i] = (bool*)malloc(dmat->size * sizeof(bool));
         ASSERT(dmat->drop[i] != NULL);
         for (size_t j = 0; j < dmat->size; ++j) {
-            dmat->drop[i][j] = isnan(dmat->matrix[i][j]);
+            if(isnan(dmat->matrix[i][j])){
+                dmat->drop[i][j] = true;
+                dmat->has_drop = true;
+            }
         }
     }
 
@@ -441,8 +644,6 @@ dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metad
     }
 
 
-
-
     // -> finished reading the distance matrix file
 
     END_LOGSECTION;
@@ -450,54 +651,44 @@ dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metad
 }
 
 
-/// @brief dmat_write - write a distance matrix to the associated output file
-/// @param dmat - pointer to the distance matrix to be written
-void dmat_write(dmat_t* dmat) {
-    LOG("Writing distance matrix to %s\n", outFiles->out_dm_fs->fn);
-    outFiles->out_dm_fs->kbuf = kbuf_init();
-    dmat_print(dmat, outFiles->out_dm_fs->kbuf);
-    outFiles->out_dm_fs->kbuf_write();
-}
-
-
 /// @brief dmat_print - print a distance matrix to a kstring
 /// @param dmat - pointer to the distance matrix to be printed
-/// @param kstr - pointer to the kstring to which the distance matrix will be printed
-void dmat_print(dmat_t* dmat, kstring_t* kstr) {
+/// @param kbuf - pointer to the kstring to which the distance matrix will be printed
+void dmat_print(dmat_t* dmat, outfile_t* outfile){
 
     // line 0: number of matrices
-    ksprintf(kstr, "%ld\n", dmat->n);
+    ksprintf(&outfile->kbuf, "%ld\n", dmat->n);
 
     // line 1: type
     if (DMAT_TYPE_LTED == dmat->type) {
-        ksprintf(kstr, "%s\n", "LTED");
+        ksprintf(&outfile->kbuf, "%s\n", "LTED");
     } else if (DMAT_TYPE_LTID == dmat->type) {
-        ksprintf(kstr, "%s\n", "LTID");
+        ksprintf(&outfile->kbuf, "%s\n", "LTID");
     } else if (DMAT_TYPE_UTED == dmat->type) {
-        ksprintf(kstr, "%s\n", "UTED");
+        ksprintf(&outfile->kbuf, "%s\n", "UTED");
     } else if (DMAT_TYPE_UTID == dmat->type) {
-        ksprintf(kstr, "%s\n", "UTID");
+        ksprintf(&outfile->kbuf, "%s\n", "UTID");
     } else if (DMAT_TYPE_FULL == dmat->type) {
-        ksprintf(kstr, "%s\n", "FULL");
+        ksprintf(&outfile->kbuf, "%s\n", "FULL");
     } else {
         NEVER;
     }
 
     // line 2: transformation
-    ksprintf(kstr, "%d\n", dmat->transform);
+    ksprintf(&outfile->kbuf, "%d\n", dmat->transform);
 
     // line 3: method
-    ksprintf(kstr, "%d\n", dmat->method);
+    ksprintf(&outfile->kbuf, "%d\n", dmat->method);
 
     // line 4: number of dmat->names
-    ksprintf(kstr, "%ld\n", dmat->names->len);
+    ksprintf(&outfile->kbuf, "%ld\n", dmat->names->len);
 
     // line 5: number of distances 
-    ksprintf(kstr, "%ld\n", dmat->size);
+    ksprintf(&outfile->kbuf, "%ld\n", dmat->size);
 
     // lines 6-X: dmat->names
     for (size_t i = 0;i < dmat->names->len;++i) {
-        ksprintf(kstr, "%s\n", dmat->names->d[i]);
+        ksprintf(&outfile->kbuf, "%s\n", dmat->names->d[i]);
     }
 
     double* matrix = NULL;
@@ -507,12 +698,13 @@ void dmat_print(dmat_t* dmat, kstring_t* kstr) {
 
         // lines (X+1)-Y: distances 
         for (size_t p = 0; p < dmat->size; ++p) {
-            ksprintf(kstr, "%.17g\n", matrix[p]);
+            ksprintf(&outfile->kbuf, "%.17g\n", matrix[p]);
         }
     }
 
     return;
 }
+
 
 /// @brief dmat_calculate_distances - calculate the distances using jgtmat and store them in dmat
 /// @param jgtmat - pointer to the joint genotype matrix data structure to be used for calculating the distances
@@ -525,12 +717,7 @@ void dmat_calculate_distances(jgtmat_t* jgtmat, dmat_t* dmat) {
     uint32_t method = dmat->method;
     const size_t nPairs = dmat->size;
 
-    bool* drop = NULL;
-    if (jgtmat->drop != NULL) {
-        drop = jgtmat->drop;
-        // TODO also set drops in dmat
-
-    }
+    bool* drop = jgtmat->drop;
 
     int nPairs_after_drop;
     size_t idx;
@@ -552,6 +739,7 @@ void dmat_calculate_distances(jgtmat_t* jgtmat, dmat_t* dmat) {
 
                 if (drop != NULL && drop[idx + p]) {
                     dmat->drop[i][p] = true;
+                    dmat->has_drop = true;
                     dm[p] = NAN;
                     nPairs_after_drop--;
                     continue;
@@ -623,6 +811,7 @@ void dmat_calculate_distances(jgtmat_t* jgtmat, dmat_t* dmat) {
 
                 if (drop != NULL && drop[idx + p]) {
                     dmat->drop[i][p] = true;
+                    dmat->has_drop = true;
                     dm[p] = NAN;
                     nPairs_after_drop--;
                     continue;

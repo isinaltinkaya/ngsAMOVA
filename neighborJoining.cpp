@@ -1,6 +1,7 @@
 #include "neighborJoining.h"
 #include "dmat.h"
 
+// TODO add block bootstrapping for njtree
 
 nj_t* nj_init(dmat_t* dmat, const size_t which_dmat) {
 
@@ -65,12 +66,12 @@ nj_t* nj_init(dmat_t* dmat, const size_t which_dmat) {
         nj->NJD[i] = 0.0;
     }
     size_t idx;
-    double* matrix= dmat->matrix[which_dmat];
-    bool* drop= dmat->drop[which_dmat];
+    double* matrix = dmat->matrix[which_dmat];
+    bool* drop = dmat->drop[which_dmat];
     for (size_t i = 0; i < nj->names->len; ++i) {
         for (size_t j = i + 1; j < nj->names->len; ++j) {
             idx = MATRIX_GET_INDEX_LTED_IJ(j, i);
-            if(drop[idx]){
+            if (drop[idx]) {
                 continue;
             }
 
@@ -122,9 +123,9 @@ void nj_destroy(nj_t* nj) {
 }
 
 
- void nj_add_edge(nj_t* nj, int parentNode, int childNode, double edgeLength) {
+void nj_add_edge(nj_t* nj, int parentNode, int childNode, double edgeLength) {
     DEVASSERT(parentNode > childNode);
-    // DEVPRINT("adding edge. parentNode: %d childNode: %d edgeLength: %f nj->L: %d nj->nEdges: %d", parentNode, childNode, edgeLength, nj->L, nj->nEdges);
+    // DEVPRINT("adding edge. parentNode: %d childNode: %d edgeLength: %.17g nj->L: %d nj->nEdges: %d", parentNode, childNode, edgeLength, nj->L, nj->nEdges);
 
     nj->edgeLengths[nj->nEdges] = edgeLength;
     nj->edgeNodes[nj->nEdges][0] = parentNode;
@@ -165,7 +166,7 @@ void nj_destroy(nj_t* nj) {
 // edgeNodes[edge_index][0] = parent node
             // edgeNodes[edge_index][1] = child node
 
- void nj_print_leaf_newick(nj_t* nj, int node, kstring_t* kbuf) {
+void nj_print_leaf_newick(nj_t* nj, int node, kstring_t* kbuf) {
 
     // node - index of the node in the list of all nodes
     // L - number of leaf nodes
@@ -173,13 +174,13 @@ void nj_destroy(nj_t* nj) {
     //      <0 if node is a leaf node (i.e. not in the list of parent nodes)
                 //      >=0 if node is an internal node (i.e. in the list of parent nodes)
 
-     const int L = nj->L;
+    const int L = nj->L;
     const int nodeIdxInParents = node - L;
 
-     int* nEdgesPerParentNode = nj->nEdgesPerParentNode;
-     int** parentToEdgeIdx = nj->parentToEdgeIdx;
-     double* edgeLengths = nj->edgeLengths;
-     int** edgeNodes = nj->edgeNodes;
+    int* nEdgesPerParentNode = nj->nEdgesPerParentNode;
+    int** parentToEdgeIdx = nj->parentToEdgeIdx;
+    double* edgeLengths = nj->edgeLengths;
+    int** edgeNodes = nj->edgeNodes;
 
     if (nodeIdxInParents < 0) {
         // node := leaf node
@@ -200,7 +201,7 @@ void nj_destroy(nj_t* nj) {
             nj_print_leaf_newick(nj, edgeNodes[parentToEdgeIdx[nodeIdxInParents][edge_i]][1], kbuf);
             // %
 
-            ksprintf(kbuf, ":%f", edgeLengths[edge_i]);
+            ksprintf(kbuf, ":%.17g", edgeLengths[edge_i]);
 
             // there are multiple edges && this is the last edge
             if ((nEdgesPerParentNode[nodeIdxInParents] > 1) && (edge_i == nEdgesPerParentNode[nodeIdxInParents] - 1)) {
@@ -212,17 +213,14 @@ void nj_destroy(nj_t* nj) {
     }
 }
 
-void nj_print(nj_t* nj) {
-    fprintf(stderr, "\n[INFO]\t-> Writing the Neighbor-Joining tree to the output file %s (format: Newick)", outFiles->out_nj_fs->fn);
-    outFiles->out_nj_fs->kbuf = kbuf_init();
-    kstring_t* kbuf = outFiles->out_nj_fs->kbuf;
+void nj_print(nj_t* nj, outfile_t* outfile) {
+    fprintf(stderr, "\n[INFO]\t-> Writing the Neighbor-Joining tree to the output file %s (format: Newick)", outfile->fn);
     // if unrooted tree, choose an arbitrary node as the root for printing
     int node = nj->nTreeNodes - 1;
-    nj_print_leaf_newick(nj, node, kbuf);
+    nj_print_leaf_newick(nj, node, &outfile->kbuf);
 
     // close the tree
-    ksprintf(kbuf, ";\n");
-    outFiles->out_nj_fs->kbuf_write();
+    ksprintf(&outfile->kbuf, ";\n");
     return;
 }
 
@@ -389,12 +387,12 @@ void nj_run(nj_t* nj) {
             // so that the total distance between an adjacent pair of terminal nodes remains unaffected 
             // (see Kuhner and Felsenstein 1994)
             if (dist1 < 0) {
-                WARN("Observed negative branch length at (%d,%d) distance 1 (%f). Transferring the abs(distance 1) to the adjacent branch distance 2 (before: %f).", min_i1, min_i2, dist1, dist2);
+                WARN("Observed negative branch length at (%d,%d) distance 1 (%.17g). Transferring the abs(distance 1) to the adjacent branch distance 2 (before: %.17g).", min_i1, min_i2, dist1, dist2);
                 dist2 = dist2 - dist1;
                 dist1 = 0.0;
                 ASSERT(dist2 >= 0.0);
             } else if (dist2 < 0) {
-                WARN("Observed negative branch length at (%d,%d) distance 2 (%f). Transferring the abs(distance 2) to the adjacent branch distance 1 (before: %f).", min_i1, min_i2, dist2, dist1);
+                WARN("Observed negative branch length at (%d,%d) distance 2 (%.17g). Transferring the abs(distance 2) to the adjacent branch distance 1 (before: %.17g).", min_i1, min_i2, dist2, dist1);
                 dist1 = dist1 - dist2;
                 dist2 = 0.0;
                 ASSERT(dist1 >= 0.0);

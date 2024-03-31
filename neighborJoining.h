@@ -64,7 +64,7 @@ struct nj_t {
 
 nj_t* nj_init(dmat_t* dmat, const size_t which_dmat);
 void nj_run(nj_t* nj);
-void nj_print(nj_t* nj);
+void nj_print(nj_t* nj, outfile_t* outfile);
 void nj_destroy(nj_t* nj);
 
 

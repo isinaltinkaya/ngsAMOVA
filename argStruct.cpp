@@ -13,7 +13,6 @@ argStruct* argStruct_get(int argc, char** argv) {
 
     if (argc == 0) {
         print_help(stdout);
-        IO::outFilesStruct_destroy(outFiles);
         exit(0);
     }
 
@@ -35,31 +34,44 @@ argStruct* argStruct_get(int argc, char** argv) {
         //
         // Use action commands to specify the action (i.e. analysis) to be performed.
         // Action commands are of the form `-doXXXX <int>`
-        //   where XXXX defines the general type of analysis to be performed
-        //   and <int> specifies the exact analysis to be performed.
         // For example, `-doAMOVA <int>` specifies to perform AMOVA analysis.
-        //   and <int> specifies the exact AMOVA analysis to be performed.
-        //   e.g. `-doAMOVA 1` specifies to perform AMOVA analysis with the genotype likelihoods.
         //
         // The following action commands are available:
-        //   -doJGTM <int>  : get joint genotypes matrix for each individual pair
-        //                    ret: jgtmat
-        //   -doDist <int>  : estimate pairwise distance matrix
-        //                    req: jgtmat
-        //                    ret: dmat
-        //   -doAMOVA <int> : perform AMOVA analysis
-        //                    req: dmat, metadata, formula
-        //   -doEM <int>    : perform EM optimization
-        //                    req: DATASOURCE_GL
-        //                    ret: jgtmat
-        // TODO add doEM 2 for 10gls optim
-        //   -doDxy <int>   : estimate Dxy
-        //                    req: dmat
-        //   -doPhylo <int> : do neighbor-joining
-        //                    
         //   -doIbd <int> 	: detect IBD segments
         //
-        //   -doMajorMinor <int> : get major and minor alleles for each site
+
+
+// --in-vcf <STR> : input VCF file
+//                 returns: vcfdata, gldata
+
+// --in-dm <STR>  : input distance matrix file
+//                 returns: dmat
+
+// -doJGTM <INT>  : get pairwise joint genotype matrix
+//                 returns: jgtmat
+
+// -doDist <INT>  : estimate pairwise distance matrix
+//                 requires: jgtmat
+//                 returns: dmat
+
+// -doAMOVA <INT> : perform AMOVA analysis
+//                 requires: dmat, metadata, formula
+
+// -doEM <INT>    : perform EM optimization
+//                 requires: gldata
+//                 returns: jgtmat
+
+// -doDxy <INT>   : estimate Dxy
+//                 requires: dmat
+
+// -doPhylo <INT> : do neighbor-joining tree
+//                 requires: dmat
+
+// -doMajorMinor <INT> : get major and minor alleles for each site 
+//                 requires: vcfdata, alleles input file (optional)
+//                 returns: alleles
+
+
 
         if (strcasecmp("-doUnitTests", arv) == 0) {
             args->doUnitTests = atoi(val);
@@ -89,6 +101,13 @@ argStruct* argStruct_get(int argc, char** argv) {
             args->doMajorMinor = atoi(val);
         } else if (strcasecmp("--bcf-src", arv) == 0) {
             args->bcfSrc = atoi(val);
+        } else if (strcasecmp("--prune-dmat", arv) == 0) {
+            // any downstream analysis will use the pruned version of the dmat
+            // --print-dm 1 will print the original dmat only
+            // --print-dm 2 will print the pruned dmat only
+            // --print-dm 3 will print both
+            // see ARG_INTPLUS_PRINT_DM_*
+            args->prune_dmat = atoi(val);
         }
 
         // ################################
@@ -144,10 +163,13 @@ argStruct* argStruct_get(int argc, char** argv) {
         //   and the file type to be printed.
         //
         // The following printing commands are available:
-        //   --printJointGenotypeCountMatrix/-pJGCD <int> : print joint genotype count distribution
-        //   --printAmovaTable/-pAT <int> : print AMOVA table
-        //   --printDistanceMatrix/-pDM <int> : print distance matrix
-        //   --printBlocksTab <0|1> : print tab-delimited blocks file defining the start and end
+        //   --print-jgtm <int> : print joint genotype matrix
+        //             requires : --in-vcf, -doJGTM
+        //   --print-dm <int> : print distance matrix
+        //             requires : -doDist
+
+        //   --print_amova/-pAT <int> : print AMOVA table
+        //   --print_blocks <0|1> : print tab-delimited blocks file defining the start and end
         //      positions of each block (default: 0 = do not print, 1 = print)
         //
         // The following compression levels are available:
@@ -159,14 +181,16 @@ argStruct* argStruct_get(int argc, char** argv) {
 
         // TODO maybe use hypen style here --print-joint-geno-count-dist to be consistent with other commands
 
-        else if ((strcasecmp("--printJointGenotypeCountMatrix", arv) == 0) || (strcasecmp("--printJGCD", arv) == 0) || (strcasecmp("-pJGCD", arv) == 0)) {
-            args->printJointGenotypeCountMatrix = atoi(val);
-        } else if ((strcasecmp("--printAmovaTable", arv) == 0) || (strcasecmp("--printAT", arv) == 0) || (strcasecmp("-pAT", arv) == 0)) {
-            args->printAmovaTable = atoi(val);
-        } else if (strcasecmp("--printDistanceMatrix", arv) == 0 || strcasecmp("-pDM", arv) == 0) {
-            args->printDistanceMatrix = atoi(val);
-        } else if (strcasecmp("--printBlocksTab", arv) == 0) {
-            args->printBlocksTab = atoi(val);
+        else if (strcasecmp("--print-jgtm", arv) == 0) {
+            args->print_jgtm = atoi(val);
+        } else if (strcasecmp("--print-dm", arv) == 0) {
+            args->print_dm = atoi(val);
+        } else if ((strcasecmp("--print-amova", arv) == 0)) {
+            args->print_amova = atoi(val);
+        } else if (strcasecmp("--print-blocks", arv) == 0) {
+            args->print_blocks = atoi(val);
+        } else if (strcasecmp("--print-bootstrap-verbose", arv) == 0) {
+            args->print_bootstrap_verbose = atoi(val);
         }
 
         // #######################################################################
@@ -321,11 +345,6 @@ argStruct* argStruct_get(int argc, char** argv) {
             //   where long form of the argument starts with double dash `--` and separated by hyphen `-`
             //   and short form of the argument starts with single dash `-` and is typically the first letter(s) of the long form
             //
-
-        } else if (strcasecmp("--dxy-groups", arv) == 0) {
-            args->dxyGroups = strdup(val);
-        } else if (strcasecmp("--dxy-levels", arv) == 0) {
-            args->dxyLevels = strdup(val);
         } else if (strcasecmp("--seed", arv) == 0) {
             args->seed = atoi(val);
         } else if (strcasecmp("--metadata", arv) == 0 || strcasecmp("-m", arv) == 0) {
@@ -392,11 +411,11 @@ argStruct* argStruct_get(int argc, char** argv) {
         else if (strcasecmp("--em-tole", arv) == 0)
             args->tole = atof(val);
 
-        else if ((strcasecmp("-ws", arv) == 0) || (strcasecmp("--windowSize", arv) == 0)) {
+        else if ((strcasecmp("--windowSize", arv) == 0)) {
             args->windowSize = (int)atof(val);
         }
 
-        else if ((strcasecmp("-nb", arv) == 0) || (strcasecmp("--nBootstraps", arv) == 0)) {
+        else if ((strcasecmp("--nBootstraps", arv) == 0)) {
             args->nBootstraps = (int)atof(val);
         }
 
@@ -404,10 +423,11 @@ argStruct* argStruct_get(int argc, char** argv) {
             args->bootstrap_ci = atof(val);
         }
 
-        else if (strcasecmp("--maxEmIter", arv) == 0) {
+        else if ((strcasecmp("--maxEmIter", arv) == 0) || (strcasecmp("--max-em-iter", arv) == 0)) {
             args->maxEmIter = atoi(val);
 
-        } else if (strcasecmp("--nThreads", arv) == 0 || strcasecmp("-P", arv) == 0) {
+        } else if ((strcasecmp("-P", arv) == 0) || (strcasecmp("-@", arv) == 0) || (strcasecmp("--nThreads", arv) == 0) || (strcasecmp("--threads", arv) == 0) || (strcasecmp("-nThreads", arv) == 0)) {
+            args->nThreads = atoi(val);
             args->nThreads = atoi(val);
 
         } else if (strcasecmp("--rm-invar-sites", arv) == 0) {
@@ -446,11 +466,11 @@ argStruct* argStruct_get(int argc, char** argv) {
     } else {
         fprintf(stderr, "\n\t-> -out <output_prefix> is set to %s. Output files will have this prefix.\n", args->out_fnp);
     }
-    IO::outFilesStruct_init(outFiles);
 
 
     if (-1 != args->drop_pairs) {
         CHECK_ARG_INTERVAL_01(args->drop_pairs, "--drop-pairs");
+        WARN("--drop pairs is set to %d. For downstream analyses, use this option with caution as it may lead to decreased power.", args->drop_pairs);
     } else {
         args->drop_pairs = 0;
         LOG("--drop-pairs is not set, setting to default value %d (do not drop pairs). Program will give error and exit if an individual pair has no shared sites.", args->drop_pairs);
@@ -462,6 +482,13 @@ argStruct* argStruct_get(int argc, char** argv) {
         args->pair_min_n_sites = 1;
         LOG("--min-pairsites is not set, setting to default value %d (perform the action defined via --drop-pairs if an individual pair has 0 shared sites).", args->pair_min_n_sites);
     }
+
+    if (args->print_dm & ARG_INTPLUS_PRINT_DM_PRUNED) {
+        if (args->prune_dmat != 1) {
+            ERROR("Cannot print pruned distance matrix when pruning is not enabled.");
+        }
+    }
+
 
     if (-1 != args->min_n_pairs) {
         // requires: --drop-pairs 1
@@ -547,12 +574,22 @@ argStruct* argStruct_get(int argc, char** argv) {
     }
 
     if (PROGRAM_HAS_INPUT_METADATA && (!PROGRAM_NEEDS_METADATA)) {
-        WARN("Metadata file is provided but no analysis requires it; will ignore metadata file.");
+        WARN("Metadata file is provided but no analysis requires it; will ignore the metadata file %s.", args->in_mtd_fn);
+        if(NULL!=args->formula) {
+            WARN("Formula is set but no analysis requires it; will ignore the formula '%s'.", args->formula);
+        }
     }
 
     if ((!(PROGRAM_HAS_INPUT_METADATA)) && PROGRAM_NEEDS_METADATA) {
         ERROR("Metadata file is not provided but required for the analysis.");
     }
+
+    if (PROGRAM_HAS_INPUT_METADATA && PROGRAM_NEEDS_METADATA) {
+        if (args->formula == NULL) {
+            ERROR("Metadata file is provided but no formula is set. Please set the formula using -f/--formula.");
+        }
+    }
+
 
     if (PROGRAM_WILL_PERFORM_BLOCK_BOOTSTRAPPING) {
 
@@ -581,6 +618,14 @@ argStruct* argStruct_get(int argc, char** argv) {
 
     }
 
+
+    if (args->doAMOVA) {
+        if (ARG_INTPLUS_UNSET == args->print_amova) {
+            args->print_amova = ARG_INTPLUS_PRINT_AMOVA_CSV;
+            LOG("--print-amova is not set, setting to default value %d (print AMOVA table in CSV format).", args->print_amova);
+        }
+    }
+
     args->check_arg_dependencies();
 
     return args;
@@ -600,8 +645,8 @@ void argStruct::check_arg_dependencies() {
         ERROR("minInd is set to %d. Minimum value allowed for minInd is 2.", minInd);
     }
 
-    if (printDistanceMatrix != 0) {
-        fprintf(stderr, "\n[INFO]\t-> -printMatrix %d; will print distance matrix\n", printDistanceMatrix);
+    if (print_dm != 0) {
+        fprintf(stderr, "\n[INFO]\t-> -printMatrix %d; will print distance matrix\n", print_dm);
     }
 
 
@@ -665,7 +710,6 @@ void argStruct::check_arg_dependencies() {
     } else {
         ERROR("-doDist %d is not a valid option.", doDist);
     }
-
 
 
     //----------------------------------------------------------------------------------//

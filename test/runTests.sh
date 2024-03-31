@@ -218,7 +218,7 @@ doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
 doJGTM=1
 doEm=1
 doAmova=1
-printDistanceMatrix=1
+print_dm=1
 minInd=2
 doDist=1
 maxEmIter=10
@@ -233,7 +233,7 @@ ARGS=" \
 -doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
---printDistanceMatrix ${printDistanceMatrix} \
+--print-dm ${print_dm} \
 --minInd ${minInd} \
 -doDist ${doDist} \
 --maxEmIter ${maxEmIter} \
@@ -245,14 +245,14 @@ ARGS=" \
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
 runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.amova.csv
-runTestDiff ${ID} ${TESTWD}/${ID}.distance_matrix.csv ${SCRIPTDIR}/reference/${ID}/${ID}.distance_matrix.csv
+runTestDiff ${ID} ${TESTWD}/${ID}.distance_matrix.txt ${SCRIPTDIR}/reference/${ID}/${ID}.distance_matrix.txt
 
 
 
 ################################################################################
 # TEST 2
 ID="test2"
-INFILENAME=${TESTWD}/test1.distance_matrix.csv
+INFILENAME=${TESTWD}/test1.distance_matrix.txt
 INOPT="--in-dm"
 
 bcfSrc=0 # no bcf source since input is distance matrix
@@ -320,7 +320,7 @@ runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.a
 ################################################################################
 # TEST 4
 ID="test4"
-INFILENAME=${TESTWD}/test1.distance_matrix.csv
+INFILENAME=${TESTWD}/test1.distance_matrix.txt
 
 
 INOPT="--in-dm"
@@ -485,7 +485,7 @@ doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
 doJGTM=1
 doEm=1
 doAmova=1
-printDistanceMatrix=1
+print_dm=1
 minInd=2
 doDist=1
 maxEmIter=10
@@ -499,7 +499,7 @@ ARGS=" \
 -doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
---printDistanceMatrix ${printDistanceMatrix} \
+--print-dm ${print_dm} \
 --minInd ${minInd} \
 -doDist ${doDist} \
 --maxEmIter ${maxEmIter} \
@@ -523,7 +523,7 @@ doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
 doJGTM=1
 doEm=1
 doAmova=1
-printDistanceMatrix=1
+print_dm=1
 minInd=2
 doDist=1
 maxEmIter=10
@@ -538,7 +538,7 @@ ARGS=" \
 -doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
---printDistanceMatrix ${printDistanceMatrix} \
+--print-dm ${print_dm} \
 --minInd ${minInd} \
 -doDist ${doDist} \
 --maxEmIter ${maxEmIter} \
@@ -550,7 +550,7 @@ ARGS=" \
 
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
 runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.amova.csv
-runTestDiff ${ID} ${TESTWD}/${ID}.distance_matrix.csv ${SCRIPTDIR}/reference/${ID}/${ID}.distance_matrix.csv
+runTestDiff ${ID} ${TESTWD}/${ID}.distance_matrix.txt ${SCRIPTDIR}/reference/${ID}/${ID}.distance_matrix.txt
 
 
 # ###############################################################################
@@ -566,7 +566,7 @@ doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
 doJGTM=1
 doEm=1
 doAmova=1
-printDistanceMatrix=1
+print_dm=1
 minInd=2
 doDist=1
 maxEmIter=10
@@ -581,7 +581,7 @@ ARGS=" \
 -doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
---printDistanceMatrix ${printDistanceMatrix} \
+--print-dm ${print_dm} \
 --minInd ${minInd} \
 -doDist ${doDist} \
 --maxEmIter ${maxEmIter} \
@@ -607,7 +607,7 @@ doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
 doJGTM=1
 doEm=1
 doAmova=1
-printDistanceMatrix=1
+print_dm=1
 minInd=2
 doDist=1
 maxEmIter=10
@@ -622,7 +622,7 @@ ARGS=" \
 -doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
---printDistanceMatrix ${printDistanceMatrix} \
+--print-dm ${print_dm} \
 --minInd ${minInd} \
 -doDist ${doDist} \
 --maxEmIter ${maxEmIter} \
@@ -650,7 +650,7 @@ doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
 doJGTM=1
 doEm=1
 doAmova=1
-printDistanceMatrix=1
+print_dm=1
 minInd=2
 doDist=1
 maxEmIter=10
@@ -665,7 +665,7 @@ ARGS=" \
 -doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
---printDistanceMatrix ${printDistanceMatrix} \
+--print-dm ${print_dm} \
 --minInd ${minInd} \
 -doDist ${doDist} \
 --maxEmIter ${maxEmIter} \
@@ -691,7 +691,7 @@ doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
 doJGTM=1
 doEm=1
 doAmova=1
-printDistanceMatrix=1
+print_dm=1
 minInd=2
 doDist=1
 maxEmIter=10
@@ -706,7 +706,7 @@ ARGS=" \
 -doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
---printDistanceMatrix ${printDistanceMatrix} \
+--print-dm ${print_dm} \
 --minInd ${minInd} \
 -doDist ${doDist} \
 --maxEmIter ${maxEmIter} \
@@ -732,8 +732,8 @@ doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
 doJGTM=1
 doEm=1
 doAmova=1
-printDistanceMatrix=1
-printJointGenotypeCountMatrix=1
+print_dm=1
+print_jgtm=1
 minInd=2
 doDist=1
 maxEmIter=10
@@ -748,8 +748,8 @@ ARGS=" \
 -doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
---printDistanceMatrix ${printDistanceMatrix} \
---printJointGenotypeCountMatrix ${printJointGenotypeCountMatrix} \
+--print-dm ${print_dm} \
+--print-jgtm ${print_jgtm} \
 --minInd ${minInd} \
 -doDist ${doDist} \
 --maxEmIter ${maxEmIter} \
@@ -773,8 +773,8 @@ INOPT="--in-vcf"
 bcfSrc=2 # source: gt tag
 doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
 doAmova=1
-printDistanceMatrix=1
-printJointGenotypeCountMatrix=1
+print_dm=1
+print_jgtm=1
 minInd=2
 doDist=1
 rmInvarSites=1
@@ -786,8 +786,8 @@ ARGS=" \
 -doMajorMinor ${doMajorMinor} \
 -doJGTM ${doJGTM} \
 -doAMOVA ${doAmova} \
---printDistanceMatrix ${printDistanceMatrix} \
---printJointGenotypeCountMatrix ${printJointGenotypeCountMatrix} \
+--print-dm ${print_dm} \
+--print-jgtm ${print_jgtm} \
 --rm-invar-sites ${rmInvarSites} \
 --minInd ${minInd} \
 -doDist ${doDist} \
@@ -814,7 +814,7 @@ inMajorMinor=${DATADIR}/data6_majorminor.tsv
 doJGTM=1
 doEm=1
 doAmova=1
-printDistanceMatrix=1
+print_dm=1
 minInd=2
 doDist=1
 maxEmIter=10
@@ -830,7 +830,7 @@ ARGS=" \
 -doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
---printDistanceMatrix ${printDistanceMatrix} \
+--print-dm ${print_dm} \
 --minInd ${minInd} \
 -doDist ${doDist} \
 --maxEmIter ${maxEmIter} \

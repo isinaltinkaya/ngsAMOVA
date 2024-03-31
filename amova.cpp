@@ -6,7 +6,7 @@
 
 /// @brief calculate part of AMOVA statistics where the calculations are independent of the distance matrix but depend on the metadata
 /// @param amova amova
-/// @param mtd metadata_t
+/// @param metadata metadata_t
 /// @return void
 /// @details
 /// perform shared AMOVA calculations depends on the metadata but does not depend on the distance matrix
@@ -16,10 +16,10 @@
 ///     
 void amova_run_shared(amova_t* amova) {
 
-    metadata_t* mtd = amova->metadata;
-    const int nInd = mtd->nInd;
+    metadata_t* metadata = amova->metadata;
+    const int nInd = metadata->nInd;
 
-    const size_t nLevels = (size_t)mtd->nLevels; // L
+    const size_t nLevels = (size_t)metadata->nLevels; // L
     size_t lvlidx; // 0-based lvl
 
     /// ------------------------------------------------------------------- ///
@@ -49,17 +49,17 @@ void amova_run_shared(amova_t* amova) {
 
     lvlidx = 0;
     // $ df_1 = k_1 - k_0 $
-    amova->df[lvlidx] = mtd->level2groupIndices[lvlidx]->len - 1;
+    amova->df[lvlidx] = metadata->level2groupIndices[lvlidx]->len - 1;
     ++lvlidx;
 
     while (lvlidx < nLevels - 1) {
         // $ df_{lvlidx+1} = k_{lvlidx+1} - k_{lvlidx} $
-        amova->df[lvlidx] = mtd->level2groupIndices[lvlidx]->len - mtd->level2groupIndices[lvlidx - 1]->len;
+        amova->df[lvlidx] = metadata->level2groupIndices[lvlidx]->len - metadata->level2groupIndices[lvlidx - 1]->len;
         ++lvlidx;
     }
 
     // $ df_L = N - k_L $
-    amova->df[lvlidx] = nInd - mtd->level2groupIndices[nLevels - 2]->len;
+    amova->df[lvlidx] = nInd - metadata->level2groupIndices[nLevels - 2]->len;
     ++lvlidx;
 
     // $ df_{total} = N - 1 $
@@ -96,7 +96,7 @@ void amova_run_shared(amova_t* amova) {
                     break;
                 }
 
-                size_t G_iti = mtd->level2groupIndices[iti]->len;
+                size_t G_iti = metadata->level2groupIndices[iti]->len;
                 if (itj == nLevels - 1) {
                     val = (double)G_iti;
                     break;
@@ -105,16 +105,16 @@ void amova_run_shared(amova_t* amova) {
                 for (size_t g_iti = 0;g_iti < G_iti;++g_iti) {
                     double innersum = 0.0;
 
-                    size_t group_g_iti = mtd->level2groupIndices[iti]->d[g_iti];
-                    size_t N_g_iti = mtd->group2indIndices[group_g_iti]->len;
-                    size_t nSubgroups_of_group_g_iti = mtd->group2subgroupIndices[group_g_iti]->len;
+                    size_t group_g_iti = metadata->level2groupIndices[iti]->d[g_iti];
+                    size_t N_g_iti = metadata->group2indIndices[group_g_iti]->len;
+                    size_t nSubgroups_of_group_g_iti = metadata->group2subgroupIndices[group_g_iti]->len;
                     for (size_t g_itj = 0;g_itj < nSubgroups_of_group_g_iti;++g_itj) {
-                        size_t group_g_itj = mtd->group2subgroupIndices[group_g_iti]->d[g_itj];
-                        if (itj != mtd->group2levelIndices->d[group_g_itj]) {
+                        size_t group_g_itj = metadata->group2subgroupIndices[group_g_iti]->d[g_itj];
+                        if (itj != metadata->group2levelIndices->d[group_g_itj]) {
                             continue;
                         }
                         // only use subgroups of g_iti that are from itj-th level
-                        int N_g_itj = (int)mtd->group2indIndices[group_g_itj]->len;
+                        int N_g_itj = (int)metadata->group2indIndices[group_g_itj]->len;
                         innersum += SQUARE(N_g_itj);
                     }
                     innersum = innersum / (double)N_g_iti;
@@ -163,10 +163,10 @@ void amova_run_shared(amova_t* amova) {
                         right = 1.0;
                     } else {
 
-                        size_t G_itj = mtd->level2groupIndices[itj]->len;
+                        size_t G_itj = metadata->level2groupIndices[itj]->len;
                         for (size_t g_itj = 0;g_itj < G_itj;++g_itj) {
-                            size_t group_g_itj = mtd->level2groupIndices[itj]->d[g_itj];
-                            int N_g_itj = mtd->group2indIndices[group_g_itj]->len;
+                            size_t group_g_itj = metadata->level2groupIndices[itj]->d[g_itj];
+                            int N_g_itj = metadata->group2indIndices[group_g_itj]->len;
                             right += SQUARE(N_g_itj);
                         }
                         right = right / (double)nInd;
@@ -233,22 +233,18 @@ void* amova_run_private(void* data) {
     amova_t* amova = (amova_t*)((simple_pthread_data_t*)data)->shared_data;
     dmat_t* dm = (dmat_t*)((simple_pthread_data_t*)data)->private_data;
     double* matrix = dm->matrix[runidx];
-    bool* drop = dm->drop[runidx];
 
     //TODO investigate the squared transform
     if (DMAT_TRANSFORM_SQUARE == dm->transform) {
         // ok
     } else if (DMAT_TRANSFORM_NONE == dm->transform) {
         for (size_t i = 0;i < dm->size;++i) {
-            if (drop[i]) {
-                continue;
-            }
             matrix[i] = SQUARE(matrix[i]);
         }
     }
 
 
-    metadata_t* mtd = amova->metadata;
+    metadata_t* metadata = amova->metadata;
     double* ss_total = amova->ss_total + runidx;
     double* ssd_total = amova->ssd_total + runidx;
     double* msd_total = amova->msd_total + runidx;
@@ -263,8 +259,8 @@ void* amova_run_private(void* data) {
     double* phi_xt = amova->phi_xt[runidx];
     double* phi_xy = (amova->phi_xy == NULL ? NULL : amova->phi_xy[runidx]);
 
-    const int nInd = mtd->nInd;
-    const size_t nLevels = (size_t)mtd->nLevels;
+    const int nInd = metadata->nInd;
+    const size_t nLevels = (size_t)metadata->nLevels;
 
     double sum;
     size_t groupIndex;
@@ -284,19 +280,16 @@ void* amova_run_private(void* data) {
     lvlidx = 0;
     // except within ind level (lvl=L; lvlidx=L-1)
     while (lvlidx < nLevels - 1) {
-        for (size_t g = 0; g < mtd->level2groupIndices[lvlidx]->len; ++g) {
+        for (size_t g = 0; g < metadata->level2groupIndices[lvlidx]->len; ++g) {
             sum = 0.0;
 
-            groupIndex = mtd->level2groupIndices[lvlidx]->d[g];
-            nIndsInGroup = mtd->group2indIndices[groupIndex]->len;
-            pairsInGroup = mtd->group2pairIndices[groupIndex]->d;
-            nPairsInGroup = mtd->group2pairIndices[groupIndex]->len;
+            groupIndex = metadata->level2groupIndices[lvlidx]->d[g];
+            nIndsInGroup = metadata->group2indIndices[groupIndex]->len;
+            pairsInGroup = metadata->group2pairIndices[groupIndex]->d;
+            nPairsInGroup = metadata->group2pairIndices[groupIndex]->len;
 
             for (p = 0; p < nPairsInGroup; ++p) {
                 DEVASSERT(pairsInGroup[p] < dm->size);
-                if (drop[pairsInGroup[p]]) {
-                    continue;
-                }
                 sum += matrix[pairsInGroup[p]];
             }
 
@@ -308,9 +301,6 @@ void* amova_run_private(void* data) {
 
     // -> ss total
     for (size_t j = 0; j < dm->size; ++j) {
-        if (drop[j]) {
-            continue;
-        }
         *ss_total += matrix[j];
     }
     *ss_total = *ss_total / nInd;
@@ -404,7 +394,7 @@ void* amova_run_private(void* data) {
 }
 
 
-void amova_print_as_csv(amova_t* amova, metadata_t* mtd, const char* bootstrap_results) {
+void amova_print_as_csv(amova_t* amova, metadata_t* metadata, const char* bootstrap_results, outfile_t* outfile) {
 
     //  header
     //  type,label,value
@@ -412,10 +402,9 @@ void amova_print_as_csv(amova_t* amova, metadata_t* mtd, const char* bootstrap_r
     //  fprintf(fp, "type,label,value\n");
 
 
-    const size_t nLevels = (size_t)mtd->nLevels;
+    const size_t nLevels = (size_t)metadata->nLevels;
 
-    outFiles->out_amova_fs->kbuf = kbuf_init();
-    kstring_t* kbuf = outFiles->out_amova_fs->kbuf;
+    kstring_t* kbuf = &outfile->kbuf;
 
     ksprintf(kbuf, "df,Total,%d\n", amova->df_total);
     ksprintf(kbuf, "SSD,Total,%f\n", amova->ssd_total[0]);
@@ -433,17 +422,17 @@ void amova_print_as_csv(amova_t* amova, metadata_t* mtd, const char* bootstrap_r
     size_t amonglvlidx;
 
     amonglvlidx = 0;
-    ksprintf(kbuf, "df,Among_%s_within_Total,%d\n", mtd->levelNames->d[amonglvlidx], amova->df[amonglvlidx]);
-    ksprintf(kbuf, "SSD,Among_%s_within_Total,%f\n", mtd->levelNames->d[amonglvlidx], amova->ssd[0][amonglvlidx]);
-    ksprintf(kbuf, "MSD,Among_%s_within_Total,%f\n", mtd->levelNames->d[amonglvlidx], amova->msd[0][amonglvlidx]);
+    ksprintf(kbuf, "df,Among_%s_within_Total,%d\n", metadata->levelNames->d[amonglvlidx], amova->df[amonglvlidx]);
+    ksprintf(kbuf, "SSD,Among_%s_within_Total,%f\n", metadata->levelNames->d[amonglvlidx], amova->ssd[0][amonglvlidx]);
+    ksprintf(kbuf, "MSD,Among_%s_within_Total,%f\n", metadata->levelNames->d[amonglvlidx], amova->msd[0][amonglvlidx]);
 
     ++amonglvlidx;
 
     while (amonglvlidx < nLevels) {
 
-        ksprintf(kbuf, "df,Among_%s_within_%s,%d\n", mtd->levelNames->d[amonglvlidx], mtd->levelNames->d[amonglvlidx - 1], amova->df[amonglvlidx]);
-        ksprintf(kbuf, "SSD,Among_%s_within_%s,%f\n", mtd->levelNames->d[amonglvlidx], mtd->levelNames->d[amonglvlidx - 1], amova->ssd[0][amonglvlidx]);
-        ksprintf(kbuf, "MSD,Among_%s_within_%s,%f\n", mtd->levelNames->d[amonglvlidx], mtd->levelNames->d[amonglvlidx - 1], amova->msd[0][amonglvlidx]);
+        ksprintf(kbuf, "df,Among_%s_within_%s,%d\n", metadata->levelNames->d[amonglvlidx], metadata->levelNames->d[amonglvlidx - 1], amova->df[amonglvlidx]);
+        ksprintf(kbuf, "SSD,Among_%s_within_%s,%f\n", metadata->levelNames->d[amonglvlidx], metadata->levelNames->d[amonglvlidx - 1], amova->ssd[0][amonglvlidx]);
+        ksprintf(kbuf, "MSD,Among_%s_within_%s,%f\n", metadata->levelNames->d[amonglvlidx], metadata->levelNames->d[amonglvlidx - 1], amova->msd[0][amonglvlidx]);
 
         ++amonglvlidx;
     }
@@ -452,13 +441,13 @@ void amova_print_as_csv(amova_t* amova, metadata_t* mtd, const char* bootstrap_r
     // only run if nLevels > 2
     if (amova->phi_xy != NULL) {
         for (size_t iti = 1; iti < nLevels - 1;++iti) {
-            ksprintf(kbuf, "Phi,%s_in_%s,%f\n", mtd->levelNames->d[iti], mtd->levelNames->d[iti - 1], amova->phi_xy[0][iti - 1]);
+            ksprintf(kbuf, "Phi,%s_in_%s,%f\n", metadata->levelNames->d[iti], metadata->levelNames->d[iti - 1], amova->phi_xy[0][iti - 1]);
         }
     }
 
     // phi_xt
-    for (size_t iti = 0;iti < (size_t)(mtd->nLevels - 1);++iti) {
-        ksprintf(kbuf, "Phi,%s_in_Total,%f\n", mtd->levelNames->d[iti], amova->phi_xt[0][iti]);
+    for (size_t iti = 0;iti < (size_t)(metadata->nLevels - 1);++iti) {
+        ksprintf(kbuf, "Phi,%s_in_Total,%f\n", metadata->levelNames->d[iti], amova->phi_xt[0][iti]);
     }
 
 
@@ -469,61 +458,62 @@ void amova_print_as_csv(amova_t* amova, metadata_t* mtd, const char* bootstrap_r
     }
 
     for (size_t i = 0;i < nLevels;++i) {
-        ksprintf(kbuf, "Variance_component,%s,%f\n", mtd->levelNames->d[i], amova->sigmasq[0][i]);
-        ksprintf(kbuf, "Percentage_variance,%s,%f\n", mtd->levelNames->d[i], (amova->sigmasq[0][i] / amova->sigmasq_total[0]) * 100.0);
+        ksprintf(kbuf, "Variance_component,%s,%f\n", metadata->levelNames->d[i], amova->sigmasq[0][i]);
+        ksprintf(kbuf, "Percentage_variance,%s,%f\n", metadata->levelNames->d[i], (amova->sigmasq[0][i] / amova->sigmasq_total[0]) * 100.0);
     }
 
     if (NULL != bootstrap_results) {
         ksprintf(kbuf, "%s", bootstrap_results);
     }
 
-    outFiles->out_amova_fs->kbuf_write();
 
+    return;
 }
 
 
-void amova_print_as_table(amova_t* amova, metadata_t* mtd) {
+void amova_print_as_table(amova_t* amova, metadata_t* metadata, const char* bootstrap_results, outfile_t* outfile) {
 
-    kstring_t kbuf = KS_INITIALIZE;
-    ksprintf(&kbuf, "=== AMOVA ======================================================================\n");
-    ksprintf(&kbuf, "Formula: %s\n\n", args->formula);
-    ksprintf(&kbuf, "Source of variation%-30sd.f.%-6sSSD%-10sMSD\n", " ", " ", " ");
-    ksprintf(&kbuf, "--------------------------------------------------------------------------------\n");
+    kstring_t* kbuf=&outfile->kbuf;
+    ksprintf(kbuf, "=== AMOVA ======================================================================\n");
+    ksprintf(kbuf, "Formula: %s\n\n", args->formula);
+    ksprintf(kbuf, "Source of variation%-30sd.f.%-6sSSD%-10sMSD\n", " ", " ", " ");
+    ksprintf(kbuf, "--------------------------------------------------------------------------------\n");
     size_t amonglvlidx = 0;
     kstring_t tmp = KS_INITIALIZE;
-    ksprintf(&tmp, "Among %s within %s", mtd->levelNames->d[amonglvlidx], "Total");
-    ksprintf(&kbuf, "%-49s%-10d%-13f%-13f\n", tmp.s, amova->df[amonglvlidx], amova->ssd[0][amonglvlidx], amova->msd[0][amonglvlidx]);
+    ksprintf(&tmp, "Among %s within %s", metadata->levelNames->d[amonglvlidx], "Total");
+    ksprintf(kbuf, "%-49s%-10d%-13f%-13f\n", tmp.s, amova->df[amonglvlidx], amova->ssd[0][amonglvlidx], amova->msd[0][amonglvlidx]);
     ++amonglvlidx;
-    while (amonglvlidx < mtd->nLevels) {
+    while (amonglvlidx < metadata->nLevels) {
         ks_clear(&tmp);
-        ksprintf(&tmp, "Among %s within %s", mtd->levelNames->d[amonglvlidx], mtd->levelNames->d[amonglvlidx - 1]);
-        ksprintf(&kbuf, "%-49s%-10d%-13f%-13f\n", tmp.s, amova->df[amonglvlidx], amova->ssd[0][amonglvlidx], amova->msd[0][amonglvlidx]);
+        ksprintf(&tmp, "Among %s within %s", metadata->levelNames->d[amonglvlidx], metadata->levelNames->d[amonglvlidx - 1]);
+        ksprintf(kbuf, "%-49s%-10d%-13f%-13f\n", tmp.s, amova->df[amonglvlidx], amova->ssd[0][amonglvlidx], amova->msd[0][amonglvlidx]);
         ++amonglvlidx;
     }
-    ksprintf(&kbuf, "\n\n");
+    ksprintf(kbuf, "\n\n");
 
 
-    ksprintf(&kbuf, "\nVariance coefficients:\n");
-    for (size_t iti = 0;iti < mtd->nLevels;++iti) {
-        for (size_t itj = iti;itj < mtd->nLevels;++itj) {
-            ksprintf(&kbuf, "c_%ld_%ld\t%f\n", iti, itj, amova->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, mtd->nLevels)]);
+    ksprintf(kbuf, "\nVariance coefficients:\n");
+    for (size_t iti = 0;iti < metadata->nLevels;++iti) {
+        for (size_t itj = iti;itj < metadata->nLevels;++itj) {
+            ksprintf(kbuf, "c_%ld_%ld\t%f\n", iti, itj, amova->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, metadata->nLevels)]);
         }
     }
 
-    ksprintf(&kbuf, "\n\n");
+    ksprintf(kbuf, "\n\n");
 
     // print variance components
-    ksprintf(&kbuf, "Variance components:\n");
-    for (size_t i = 0;i < mtd->nLevels;++i) {
-        ksprintf(&kbuf, "%s\t%f\t%f%%\n", mtd->levelNames->d[i], amova->sigmasq[0][i], (amova->sigmasq[0][i] / amova->sigmasq_total[0]) * 100.0);
+    ksprintf(kbuf, "Variance components:\n");
+    for (size_t i = 0;i < metadata->nLevels;++i) {
+        ksprintf(kbuf, "%s\t%f\t%f%%\n", metadata->levelNames->d[i], amova->sigmasq[0][i], (amova->sigmasq[0][i] / amova->sigmasq_total[0]) * 100.0);
     }
 
-    ksprintf(&kbuf, "================================================================================\n");
+    if (NULL != bootstrap_results) {
+        ksprintf(kbuf, "\n%s\n", bootstrap_results);
+    }
 
-    ksprintf(&kbuf, "\n\n");
-    fprintf(stdout, "%s\n", kbuf.s);
+    ksprintf(kbuf, "================================================================================\n");
 
-    ks_free(&kbuf);
+    ksprintf(kbuf, "\n\n");
     ks_free(&tmp);
 
     return;
@@ -565,12 +555,12 @@ void amova_destroy(amova_t* amova) {
 
 }
 
-amova_t* amova_init(metadata_t* mtd, const int nAmovaRuns) {
+amova_t* amova_init(metadata_t* metadata, const int nAmovaRuns) {
 
     amova_t* ret = (amova_t*)malloc(sizeof(amova_t));
-    ret->metadata = mtd;
+    ret->metadata = metadata;
 
-    const size_t nLevels = (size_t)mtd->nLevels;
+    const size_t nLevels = (size_t)metadata->nLevels;
 
     const size_t nRuns = (size_t)nAmovaRuns;
     ret->nRuns = nRuns;
@@ -691,19 +681,114 @@ amova_t* amova_init(metadata_t* mtd, const int nAmovaRuns) {
     return(ret);
 }
 
+static void amova_get_bootstrap_results(amova_t* amova, metadata_t* metadata, const int nRuns, kstring_t* kbuf_csv, kstring_t* kbuf_table) {
 
-amova_t* amova_get(dmat_t* dmat, metadata_t* mtd) {
+    double mean, sd, margin_of_error, ci_lower, ci_upper;
+
+    double ci = args->bootstrap_ci;
+    const int nReps = nRuns - 1;
+
+
+
+    if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_CSV) {
+        ksprintf(kbuf_csv, "Block_Bootstrapping,nReplicates,%d\n", nReps);
+        ksprintf(kbuf_csv, "Block_Bootstrapping,Confidence_Interval,%f\n", ci);
+    }
+    if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_TABLE) {
+        ksprintf(kbuf_table, "Block Bootstrapping:\n");
+        ksprintf(kbuf_table, "Number of replicates: %d\n", nReps);
+        ksprintf(kbuf_table, "Confidence interval: %f\n", ci);
+    }
+
+    for (size_t i = 0;i < (metadata->nLevels - 1);++i) {
+
+        mean = 0.0;
+        for (size_t r = 0;r < nReps;++r) {
+            mean += amova->phi_xt[r][i];
+        }
+        mean = mean / (double)nReps;
+
+        sd = 0.0;
+        for (size_t r = 0;r < nReps;++r) {
+            sd += pow(amova->phi_xt[r][i] - mean, 2);
+        }
+        sd = sqrt(sd / (nReps - 1)); // sample stdev 
+
+        margin_of_error = 1.96 * (sd / sqrt((double)nReps));
+        ci_lower = mean - margin_of_error;
+        ci_upper = mean + margin_of_error;
+
+        if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_CSV) {
+            ksprintf(kbuf_csv, "Block_Bootstrapping_Phi_Mean,%s_in_Total,%f\n", metadata->levelNames->d[i], mean);
+            ksprintf(kbuf_csv, "Block_Bootstrapping_Phi_SD,%s_in_Total,%f\n", metadata->levelNames->d[i], sd);
+            ksprintf(kbuf_csv, "Block_Bootstrapping_Phi_LowerCI,%s_in_Total,%f\n", metadata->levelNames->d[i], ci_lower);
+            ksprintf(kbuf_csv, "Block_Bootstrapping_Phi_UpperCI,%s_in_Total,%f\n", metadata->levelNames->d[i], ci_upper);
+        }
+
+        if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_TABLE) {
+            ksprintf(kbuf_table, "Phi(%s in Total): %f\n", metadata->levelNames->d[i], mean);
+            ksprintf(kbuf_table, "Phi(%s in Total) SD: %f\n", metadata->levelNames->d[i], sd);
+            ksprintf(kbuf_table, "Phi(%s in Total) Lower CI: %f\n", metadata->levelNames->d[i], ci_lower);
+            ksprintf(kbuf_table, "Phi(%s in Total) Upper CI: %f\n", metadata->levelNames->d[i], ci_upper);
+        }
+
+    }
+
+    if (amova->phi_xy != NULL) {
+        for (size_t i = 0;i < (metadata->nLevels - 2);++i) {
+
+            mean = 0.0;
+            for (size_t r = 0;r < nReps;++r) {
+                mean += amova->phi_xy[r][i];
+            }
+            mean = mean / (double)nReps;
+
+            sd = 0.0;
+            for (size_t r = 0;r < nReps;++r) {
+                sd += pow(amova->phi_xy[r][i] - mean, 2);
+            }
+            sd = sqrt(sd / (nReps - 1)); // sample stdev
+
+            margin_of_error = 1.96 * (sd / sqrt((double)nReps));
+            ci_lower = mean - margin_of_error;
+            ci_upper = mean + margin_of_error;
+
+            if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_CSV) {
+                ksprintf(kbuf_csv, "Block_Bootstrapping_Phi_Mean,%s_in_%s,%f\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], mean);
+                ksprintf(kbuf_csv, "Block_Bootstrapping_Phi_SD,%s_in_%s,%f\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], sd);
+                ksprintf(kbuf_csv, "Block_Bootstrapping_Phi_LowerCI,%s_in_%s,%f\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], ci_lower);
+                ksprintf(kbuf_csv, "Block_Bootstrapping_Phi_UpperCI,%s_in_%s,%f\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], ci_upper);
+            }
+
+
+            if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_TABLE) {
+                ksprintf(kbuf_table, "Phi(%s in %s): %f\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], mean);
+                ksprintf(kbuf_table, "Phi(%s in %s) SD: %f\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], sd);
+                ksprintf(kbuf_table, "Phi(%s in %s) Lower CI: %f\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], ci_lower);
+                ksprintf(kbuf_table, "Phi(%s in %s) Upper CI: %f\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], ci_upper);
+            }
+
+        }
+    }
+    return;
+}
+
+amova_t* amova_get(dmat_t* dmat, metadata_t* metadata) {
 
 
     // nRuns = n bootstrap runs + 1 (the original run)
-    const int nRuns = (args->nBootstraps > 0) ? (args->nBootstraps + 1) : 1;
+    const int nRuns = (dmat->n);
 
 
-    amova_t* amova = amova_init(mtd, nRuns);
+    amova_t* amova = amova_init(metadata, nRuns);
 
     const int maxnThreads = (args->nThreads == 0) ? 1 : args->nThreads;
 
     amova_run_shared(amova);
+
+    if (dmat->has_drop) {
+        ERROR("Distance matrix with dropped pairs is not supported in AMOVA. Please prune the distance matrix via --prune-dmat option.");
+    }
 
     pthread_t threads[nRuns];
     simple_pthread_data_t data[nRuns];
@@ -751,91 +836,27 @@ amova_t* amova_get(dmat_t* dmat, metadata_t* mtd) {
 
     kstring_t kbuf_csv = KS_INITIALIZE;
     kstring_t kbuf_table = KS_INITIALIZE;
-
     if (nRuns > 1) {
-
-        double mean, sd, margin_of_error, ci_lower, ci_upper;
-
-        double ci = args->bootstrap_ci;
-        int nReps = nRuns - 1;
-
-        ksprintf(&kbuf_csv, "Block_Bootstrapping,nReplicates,%d\n", nReps);
-        ksprintf(&kbuf_csv, "Block_Bootstrapping,Confidence_Interval,%f\n", ci);
-        ksprintf(&kbuf_table, "Block Bootstrapping:\n");
-        ksprintf(&kbuf_table, "Number of replicates: %d\n", nReps);
-        ksprintf(&kbuf_table, "Confidence interval: %f\n", ci);
-
-        for (size_t i = 0;i < (mtd->nLevels - 1);++i) {
-
-            mean = 0.0;
-            for (size_t r = 0;r < nReps;++r) {
-                mean += amova->phi_xt[r][i];
-            }
-            mean = mean / (double)nReps;
-
-            sd = 0.0;
-            for (size_t r = 0;r < nReps;++r) {
-                sd += pow(amova->phi_xt[r][i] - mean, 2);
-            }
-            sd = sqrt(sd / (nReps - 1)); // sample stdev 
-
-            margin_of_error = 1.96 * (sd / sqrt((double)nReps));
-            ci_lower = mean - margin_of_error;
-            ci_upper = mean + margin_of_error;
-
-            ksprintf(&kbuf_csv, "Block_Bootstrapping_Phi_Mean,%s_in_Total,%f\n", mtd->levelNames->d[i], mean);
-            ksprintf(&kbuf_csv, "Block_Bootstrapping_Phi_SD,%s_in_Total,%f\n", mtd->levelNames->d[i], sd);
-            ksprintf(&kbuf_csv, "Block_Bootstrapping_Phi_LowerCI,%s_in_Total,%f\n", mtd->levelNames->d[i], ci_lower);
-            ksprintf(&kbuf_csv, "Block_Bootstrapping_Phi_UpperCI,%s_in_Total,%f\n", mtd->levelNames->d[i], ci_upper);
-
-            ksprintf(&kbuf_table, "Phi(%s in Total): %f\n", mtd->levelNames->d[i], mean);
-            ksprintf(&kbuf_table, "Phi(%s in Total) SD: %f\n", mtd->levelNames->d[i], sd);
-            ksprintf(&kbuf_table, "Phi(%s in Total) Lower CI: %f\n", mtd->levelNames->d[i], ci_lower);
-            ksprintf(&kbuf_table, "Phi(%s in Total) Upper CI: %f\n", mtd->levelNames->d[i], ci_upper);
-
-        }
-
-        if (amova->phi_xy != NULL) {
-            for (size_t i = 0;i < (mtd->nLevels - 2);++i) {
-
-                mean = 0.0;
-                for (size_t r = 0;r < nReps;++r) {
-                    mean += amova->phi_xy[r][i];
-                }
-                mean = mean / (double)nReps;
-
-                sd = 0.0;
-                for (size_t r = 0;r < nReps;++r) {
-                    sd += pow(amova->phi_xy[r][i] - mean, 2);
-                }
-                sd = sqrt(sd / (nReps - 1)); // sample stdev
-
-                margin_of_error = 1.96 * (sd / sqrt((double)nReps));
-                ci_lower = mean - margin_of_error;
-                ci_upper = mean + margin_of_error;
-
-                ksprintf(&kbuf_csv, "Block_Bootstrapping_Phi_Mean,%s_in_%s,%f\n", mtd->levelNames->d[i + 1], mtd->levelNames->d[i], mean);
-                ksprintf(&kbuf_csv, "Block_Bootstrapping_Phi_SD,%s_in_%s,%f\n", mtd->levelNames->d[i + 1], mtd->levelNames->d[i], sd);
-                ksprintf(&kbuf_csv, "Block_Bootstrapping_Phi_LowerCI,%s_in_%s,%f\n", mtd->levelNames->d[i + 1], mtd->levelNames->d[i], ci_lower);
-                ksprintf(&kbuf_csv, "Block_Bootstrapping_Phi_UpperCI,%s_in_%s,%f\n", mtd->levelNames->d[i + 1], mtd->levelNames->d[i], ci_upper);
-
-                ksprintf(&kbuf_table, "Phi(%s in %s): %f\n", mtd->levelNames->d[i + 1], mtd->levelNames->d[i], mean);
-                ksprintf(&kbuf_table, "Phi(%s in %s) SD: %f\n", mtd->levelNames->d[i + 1], mtd->levelNames->d[i], sd);
-                ksprintf(&kbuf_table, "Phi(%s in %s) Lower CI: %f\n", mtd->levelNames->d[i + 1], mtd->levelNames->d[i], ci_lower);
-                ksprintf(&kbuf_table, "Phi(%s in %s) Upper CI: %f\n", mtd->levelNames->d[i + 1], mtd->levelNames->d[i], ci_upper);
-
-            }
-        }
+        amova_get_bootstrap_results(amova, metadata, nRuns, &kbuf_csv, &kbuf_table);
     }
 
-    amova_print_as_csv(amova, mtd, kbuf_csv.s);
-    if (kbuf_csv.l > 0) {
-        ks_free(&kbuf_csv);
+
+    if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_CSV) {
+        outfile_t* outfile=outfile_init( "amova","csv", PROGRAM_OUTFILE_CTYPE_NONE);
+        amova_print_as_csv(amova, metadata, kbuf_csv.s, outfile);
+        outfile_write(outfile);
+        outfile_destroy(outfile);
     }
 
-    if (args->printAmovaTable == 1) {
-        amova_print_as_table(amova, mtd);
+    if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_TABLE) {
+        outfile_t* outfile=outfile_init( "amova_table","txt", PROGRAM_OUTFILE_CTYPE_NONE);
+        amova_print_as_table(amova, metadata, kbuf_table.s, outfile);
+        outfile_write(outfile);
+        outfile_destroy(outfile);
     }
+
+    ks_free(&kbuf_csv);
+    ks_free(&kbuf_table);
 
     return (amova);
 }

@@ -35,6 +35,17 @@ typedef struct paramStruct paramStruct;
 
 // -> ARG_* - argument flags
 
+
+// INT+ argument unset value
+#define ARG_INTPLUS_UNSET (0)
+
+#define ARG_INTPLUS_PRINT_AMOVA_CSV   (1<<0)
+#define ARG_INTPLUS_PRINT_AMOVA_TABLE (1<<1)
+
+#define ARG_INTPLUS_PRINT_DM_ORIG  (1<<0)
+#define ARG_INTPLUS_PRINT_DM_PRUNED  (1<<1)
+
+
 #define ARG_INTPLUS_BCFSRC_FMT_GL (1<<0)
 #define ARG_INTPLUS_BCFSRC_FMT_GT (1<<1)
 
@@ -205,7 +216,7 @@ do { \
 /// LTED: assume i>j
 ///       for(i=1;i<n;++i) for(j=0;j<i;++j)
 #define MATRIX_GET_INDEX_LTED_IJ(i,j) (((i)*((i)-1)/2+(j)))
-#define MATRIX_GET_INDEX_LTED_IJ_UNORDERED(i,j) (((i)>(j)) ? MATRIX_GET_INDEX_LTED_IJ(i,j) : MATRIX_GET_INDEX_LTED_IJ(j,i))
+#define MATRIX_GET_INDEX_LTED_IJ_UNORDERED(i,j) (((i)>(j)) ? MATRIX_GET_INDEX_LTED_IJ((i),(j)) : MATRIX_GET_INDEX_LTED_IJ((j),(i)))
 
 /// LTID: assume i<=j
 ///       for(i=0;i<n;++i) for(j=0;j<=i;++j)
@@ -504,6 +515,12 @@ expr = Z_NULL;                                                                  
 
 // maximum level of verbosity allowed
 #define MAX_PROGRAM_VERBOSITY_LEVEL 3
+
+
+#define PROGRAM_OUTFILE_CTYPE_NONE (0)
+#define PROGRAM_OUTFILE_CTYPE_GZ (1)
+#define PROGRAM_OUTFILE_CTYPE_BGZ (2)
+
 
 /*
 * Macro:[DBL_MAXDIG10]

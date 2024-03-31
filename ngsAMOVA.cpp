@@ -31,20 +31,25 @@ void input_VCF(paramStruct* pars, metadata_t* metadata) {
 
     bblocks_t* bblocks = NULL;
     if (PROGRAM_WILL_PERFORM_BLOCK_BOOTSTRAPPING) {
+
         bblocks = bblocks_init();
         bblocks_get(bblocks, vcfd, pars);
 
-        if (args->printBlocksTab) {
-            bblocks_print_blocks_tab(bblocks);
+        if (args->print_blocks) {
+            outfile_t* outfile = outfile_init("blocks", "tsv", PROGRAM_OUTFILE_CTYPE_GZ);
+            bblocks_print_blocks_tab(bblocks, outfile);
+            outfile_write(outfile);
+            outfile_destroy(outfile);
         }
 
         bblocks_sample_with_replacement(bblocks);
-        if(PROGRAM_VERBOSITY_LEVEL > 0){
-            bblocks_print_bootstrap_samples(bblocks);
+        if (args->print_bootstrap_verbose) {
+            outfile_t* outfile = outfile_init("bootstrap_samples", "txt", PROGRAM_OUTFILE_CTYPE_NONE);
+            bblocks_print_bootstrap_samples(bblocks, outfile);
+            outfile_write(outfile);
+            outfile_destroy(outfile);
         }
     }
-
-
 
     if (0 != args->doIbd) {
         pars->ibd = new ibdStruct(vcfd, pars);
@@ -60,7 +65,6 @@ void input_VCF(paramStruct* pars, metadata_t* metadata) {
     if (args->doJGTM) {
 
         const size_t nIndCmb = (pars->names->len * (pars->names->len - 1)) / 2;
-
         const size_t nRuns = (args->nBootstraps > 0) ? (args->nBootstraps + 1) : 1;
 
         jgtmat = jgtmat_init(nIndCmb * nRuns);
@@ -87,13 +91,35 @@ void input_VCF(paramStruct* pars, metadata_t* metadata) {
         }
 
         dmat_calculate_distances(jgtmat, dmat);
-        if (args->printDistanceMatrix) {
-            dmat_write(dmat);
+
+        dmat_t* pruned_dmat = NULL;
+        if (args->prune_dmat) {
+            pruned_dmat = dmat_prune_drops(dmat);
         }
 
+        if (args->print_dm & ARG_INTPLUS_PRINT_DM_PRUNED) {
+            LOG("Writing pruned distance matrix to %s", args->out_fnp);
+            outfile_t* out_prunedmat = outfile_init("distance_matrix.pruned", "txt", PROGRAM_OUTFILE_CTYPE_NONE);
+            dmat_print(pruned_dmat, out_prunedmat);
+            outfile_write(out_prunedmat);
+            outfile_destroy(out_prunedmat);
+        }
+
+        if (args->print_dm & ARG_INTPLUS_PRINT_DM_ORIG) {
+            LOG("Writing distance matrix to %s", args->out_fnp);
+            outfile_t* out_dmat = outfile_init("distance_matrix", "txt", PROGRAM_OUTFILE_CTYPE_NONE);
+            dmat_print(dmat, out_dmat);
+            outfile_write(out_dmat);
+            outfile_destroy(out_dmat);
+        }
+
+        if (args->prune_dmat) {
+            dmat_destroy(dmat);
+            dmat = pruned_dmat; // use pruned dmat for downstream analyses
+        }
 
     }
-    
+
 
     // -> end of jgtmat lifetime
     if (jgtmat != NULL) {
@@ -131,7 +157,10 @@ void input_VCF(paramStruct* pars, metadata_t* metadata) {
                 NEVER;//TODO
             }
             nj_run(nj);
-            nj_print(nj);
+            outfile_t* outfile = outfile_init("newick", NULL, PROGRAM_OUTFILE_CTYPE_NONE);
+            nj_print(nj, outfile);
+            outfile_write(outfile);
+            outfile_destroy(outfile);
         } else if (args->doPhylo == 2) {
             //TODO
             if (dxy->nLevels > 1) {
@@ -139,14 +168,17 @@ void input_VCF(paramStruct* pars, metadata_t* metadata) {
             }
             nj = nj_init(dxy->dmat[0], 0);
             nj_run(nj);
+            //TODO 
+            NEVER;
             // nj_print(nj);
         }
         nj_destroy(nj);
     }
 
-    if(dmat!=NULL){
+    if (dmat != NULL) {
         dmat_destroy(dmat);
     }
+
     if (dxy != NULL) {
         dxy_destroy(dxy);
     }
@@ -168,14 +200,7 @@ void input_DM(paramStruct* pars, metadata_t* metadata) {
 
     //TODO match metadata->indNames dmat_t->names vcfd->hdr->samples
 
-    if (args->printDistanceMatrix) {
-        dmat_write(dmat);
-    }
-
     if (args->doAMOVA != 0) {
-        if (0 < args->nBootstraps) {
-            ERROR("Bootstrapping is not supported for distance matrix input.");
-        }
         amova_t* amova = amova_get(dmat, metadata);
         amova_destroy(amova);
     }
@@ -201,7 +226,10 @@ void input_DM(paramStruct* pars, metadata_t* metadata) {
                 NEVER;//TODO
             }
             nj_run(nj);
-            nj_print(nj);
+            outfile_t* outfile = outfile_init("newick", NULL, PROGRAM_OUTFILE_CTYPE_NONE);
+            nj_print(nj, outfile);
+            outfile_write(outfile);
+            outfile_destroy(outfile);
         } else if (args->doPhylo == 2) {
             //TODO
             // if (dxy->nLevels > 1) {
@@ -225,12 +253,10 @@ int run_unit_tests(void) {
     fprintf(stderr, "\n[TEST]\t\033[0;32mUnit tests passed.\033[0m\n");
     fprintf(stderr, "\n\n\n---------------------\n");
     delete args;
-    IO::outFilesStruct_destroy(outFiles);
     return(0);
 }
 
 int main(int argc, char** argv) {
-
 
     argStruct* args = argStruct_get(--argc, ++argv);
 
@@ -240,33 +266,25 @@ int main(int argc, char** argv) {
 
     paramStruct* pars = paramStruct_init(args);
 
-    metadata_t* metadata=NULL;
+    metadata_t* metadata = NULL;
 
-    if (PROGRAM_HAS_INPUT_METADATA) {
-        if (PROGRAM_NEEDS_METADATA) {
-            if (NULL != args->formula) {
-                metadata = metadata_read(pars);
-            } else {
-                NEVER;  // this should already be checked in PROGRAM_NEEDS_FORMULA
-            }
-        }
+    if (PROGRAM_NEEDS_METADATA) {
+        metadata = metadata_read(pars);
     }
 
-
     if (PROGRAM_HAS_INPUT_VCF) {
-        input_VCF(pars,metadata);
+        input_VCF(pars, metadata);
     } else if (PROGRAM_HAS_INPUT_DM) {
-        input_DM(pars,metadata);
+        input_DM(pars, metadata);
     }
 
     fprintf(stderr, "\n[INFO]\tDone.\n\n");
 
     // == CLEANUP ==
-    if(metadata!=NULL){
+    if (metadata != NULL) {
         metadata_destroy(metadata);
     }
     paramStruct_destroy(pars);
-    IO::outFilesStruct_destroy(outFiles);
     argStruct_destroy(args);
 
     return 0;

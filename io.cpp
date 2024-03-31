@@ -7,7 +7,126 @@
 
 const char* IO::FILE_EXTENSIONS[] = { "", ".gz", ".bgz" };
 
-IO::outFilesStruct* outFiles = new IO::outFilesStruct();
+
+
+
+
+
+
+
+
+// // append the file number to the suffix
+// int n_digits = ((int)log10(n)) + 1;
+// DEVASSERT(n_digits > 0);
+// fnlen += (1 + n_digits); // +1 for '_'
+
+// for (size_t i = 0; i < n; ++i) {
+//     outfile->kbuf[i] = { 0, 0, NULL };
+//     outfile->fn[i] = NULL;
+//     outfile->fn[i] = (char*)malloc(fnlen + 1);
+//     ASSERT(outfile->fn[i] != NULL);
+//     snprintf(outfile->fn[i], fnlen + 1, "%s.%s_%ld%c%s%c%s", prefix, suffix, i, (extension == NULL) ? '\0' : '.', (extension == NULL) ? "" : extension, (cextension == NULL) ? '\0' : '.', (cextension == NULL) ? "" : cextension);
+// }
+outfile_t* outfile_init(const char* suffix, const char* extension, const uint8_t ctype) {
+    // -> init
+    outfile_t* outfile = (outfile_t*)malloc(sizeof(outfile_t));
+    ASSERT(outfile != NULL);
+
+    outfile->fn = NULL;
+    outfile->kbuf = KS_INITIALIZE;
+    outfile->fp = NULL;
+    outfile->gzfp = NULL;
+    outfile->bgzfp = NULL;
+    outfile->ctype = ctype;
+
+
+    const char* prefix=args->out_fnp;
+
+
+    // fnlen is determined as:
+    // prefix.suffix_NDIGITS.extension.cextension
+    // len(prefix)+len('.')+len(suffix)+len('_')+NDIGITS+1+len(extension)+1
+
+    size_t fnlen = 0;
+    // prefix   .suffix
+    fnlen = strlen(prefix) + 1 + strlen(suffix);
+    if (extension != NULL) {
+        // prefix   .suffix    .extension
+        fnlen += 1 + strlen(extension);
+    }
+
+    char* cextension = NULL; // compression extension
+    if (PROGRAM_OUTFILE_CTYPE_NONE == ctype) {
+
+    } else if (PROGRAM_OUTFILE_CTYPE_GZ == ctype) {
+        cextension = (char*)malloc(3 * sizeof(char));
+        ASSERT(cextension != NULL);
+        cextension[0] = 'g';
+        cextension[1] = 'z';
+        cextension[2] = '\0';
+
+        // add space for: .gz
+        fnlen += 3;
+
+    } else if (PROGRAM_OUTFILE_CTYPE_BGZ == ctype) {
+        cextension = (char*)malloc(4 * sizeof(char));
+        ASSERT(cextension != NULL);
+        cextension[0] = 'b';
+        cextension[1] = 'g';
+        cextension[2] = 'z';
+        cextension[3] = '\0';
+        // add space for: .bgz
+        fnlen += 4;
+
+    }
+
+    outfile->fn = NULL;
+    outfile->fn = (char*)malloc(fnlen + 1);
+    ASSERT(outfile->fn != NULL);
+    snprintf(outfile->fn, fnlen + 1, "%s.%s%c%s%c%s", prefix, suffix, (extension == NULL) ? '\0' : '.', (extension == NULL) ? "" : extension, (cextension == NULL) ? '\0' : '.', (cextension == NULL) ? "" : cextension);
+
+    return outfile;
+}
+
+void outfile_write(outfile_t* outfile) {
+    LOG("Writing output file: %s", outfile->fn);
+    if (outfile->ctype == PROGRAM_OUTFILE_CTYPE_NONE) {
+        outfile->fp = IO::getFile(outfile->fn, "w");
+        fprintf(outfile->fp, "%s", outfile->kbuf.s);
+        FCLOSE(outfile->fp);
+    } else if (outfile->ctype == PROGRAM_OUTFILE_CTYPE_GZ) {
+        outfile->gzfp = IO::getGzFile(outfile->fn, "w");
+        gzprintf(outfile->gzfp, "%s", outfile->kbuf.s);
+        GZCLOSE(outfile->gzfp);
+    } else if (outfile->ctype == PROGRAM_OUTFILE_CTYPE_BGZ) {
+        outfile->bgzfp = bgzf_open(outfile->fn, "w");
+        ASSERT(outfile->bgzfp != NULL);
+        ASSERT(bgzf_write(outfile->bgzfp, outfile->kbuf.s, outfile->kbuf.l) == (ssize_t)outfile->kbuf.l);
+        BGZCLOSE(outfile->bgzfp);
+    }
+}
+
+
+void outfile_destroy(outfile_t* outfile) {
+
+    FREE(outfile->kbuf.s);
+    outfile->kbuf=KS_INITIALIZE;
+
+    FREE(outfile->fn);
+    if (NULL != outfile->fp) {
+        FREE(outfile->fp);
+    }
+    if (NULL != outfile->gzfp) {
+        FREE(outfile->gzfp);
+    }
+    if (NULL != outfile->bgzfp) {
+        FREE(outfile->bgzfp);
+    }
+
+    FREE(outfile);
+}
+
+
 
 kstring_t* kbuf_init() {
     kstring_t* kbuf = new kstring_t;
@@ -139,9 +258,6 @@ bool IO::isGzFile(const char* fn) {
 
 gzFile IO::getGzFile(const char* fn, const char* mode) {
     gzFile fp = Z_NULL;
-    if (strcmp(mode, "r") == 0) {
-        LOG("Reading gzFile: %s", fn);
-    }
     if (Z_NULL == (fp = gzopen(fn, mode))) {
         ERROR("Failed to open gzFile: %s", fn);
     }
@@ -167,23 +283,6 @@ char* IO::setFileName(const char* a, const char* b) {
 /// @param fc			file compression type to be added to file name
 /// @return filename
 char* IO::setFileName(const char* fn, const char* suffix, const char* fc_ext) {
-    // char *fc_ext = FILE_EXTENSIONS[fc];
-    // switch(fc)
-    // {
-    // 	case OUTFC::NONE:
-    // 		fc_ext = "";
-    // 		break;
-    // 	case OUTFC::GZ:
-    // 		fc_ext = ".gz";
-    // 		break;
-    // 	case OUTFC::BBGZ:
-    // 		fc_ext = ".bgz";
-    // 		break;
-    // 	default:
-    // 		fprintf(stderr, "[%s:%s()]\t->Error: unknown file compression type: %d\n", __FILE__, __FUNCTION__, fc);
-    // 		exit(1);
-    // }
-
     char* c = (char*)malloc(strlen(fn) + strlen(suffix) + strlen(fc_ext) + 1);
     strcpy(c, fn);
     strcat(c, suffix);
@@ -423,7 +522,6 @@ IO::outputStruct::outputStruct(const char* fn_, const char* suffix, int fc_) {
         ERROR("Unknown file compression type is specified (%d)", fc);
         break;
     }
-    // fprintf(stderr, "\n[INFO] Opening output file: %s with compression type: %d (%s)\n", fn, fc, OUTFC_LUT[(OUTFC)fc]);
     LOG("Opening output file: %s with compression type: %d (%s)\n", fn, fc, OUTFC_LUT[(OUTFC)fc]);
 }
 
@@ -466,24 +564,6 @@ void IO::outputStruct::flush() {
         break;
     case OUTFC::BBGZ:
         ASSERT(bgzf_flush(bgzfp) == 0);
-        break;
-    default:
-        fprintf(stderr, "\n[ERROR] Unknown file compression type (%d)\n", fc);
-        exit(1);
-        break;
-    }
-}
-
-void* IO::outputStruct::get_fp() {
-    switch (fc) {
-    case OUTFC::NONE:
-        return fp;
-        break;
-    case OUTFC::GZ:
-        return gzfp;
-        break;
-    case OUTFC::BBGZ:
-        return bgzfp;
         break;
     default:
         fprintf(stderr, "\n[ERROR] Unknown file compression type (%d)\n", fc);
@@ -543,85 +623,6 @@ void IO::outputStruct::kbuf_write() {
     this->kbuf = NULL;
 }
 
-void IO::outputStruct::write(kstring_t* kbuf_i) {
-    ASSERT(NULL != kbuf_i);
-    switch (fc) {
-    case OUTFC::NONE:
-        ASSERT(kbuf_i->s != NULL);
-        ASSERT(fprintf(fp, "%s", kbuf_i->s) > 0);
-        break;
-    case OUTFC::GZ:
-        fprintf(stderr, "%s", kbuf_i->s);
-        ASSERT(gzprintf(gzfp, "%s", kbuf_i->s) > 0);
-        break;
-    case OUTFC::BBGZ:
-        if (bgzf_write(bgzfp, kbuf_i->s, kbuf_i->l) != (ssize_t)kbuf_i->l) {
-            fprintf(stderr, "\n[ERROR:%d] Could not write %ld bytes\n", bgzfp->errcode, kbuf_i->l);
-            exit(1);
-        }
-        break;
-    default:
-        fprintf(stderr, "\n[ERROR] Unknown output file type (%d)\n", fc);
-        exit(1);
-        break;
-    }
-    kbuf_destroy(kbuf_i);
-}
-
-void IO::outFilesStruct_init(IO::outFilesStruct* ofs) {
-    ofs->out_args_fs = new IO::outputStruct(args->out_fnp, ".args", OUTFC::NONE);
-
-    if (args->printDistanceMatrix != 0) {
-        ofs->out_dm_fs = new IO::outputStruct(args->out_fnp, ".distance_matrix.csv", args->printDistanceMatrix - 1);
-    }
-
-    if (args->doEM == 1) {
-        if (args->printJointGenotypeCountMatrix != 0) {
-            ofs->out_jgcd_fs = new IO::outputStruct(args->out_fnp, ".joint_genotype_count_matrix.csv", args->printJointGenotypeCountMatrix - 1);
-        }
-    }
-
-    if (args->doAMOVA == 2) {
-        if (args->printJointGenotypeCountMatrix != 0) {
-            ofs->out_jgcd_fs = new IO::outputStruct(args->out_fnp, ".joint_genotype_count_matrix.csv", args->printJointGenotypeCountMatrix - 1);
-        }
-    }
-
-    if (args->doAMOVA > 0) {
-        ofs->out_amova_fs = new IO::outputStruct(args->out_fnp, ".amova.csv", OUTFC::NONE);
-    }
-    if (args->printBlocksTab == 1) {
-        ofs->out_blockstab_fs = new IO::outputStruct(args->out_fnp, ".blocks.tab", OUTFC::NONE);
-    }
-    if (args->doPhylo > 0) {
-        ofs->out_nj_fs = new IO::outputStruct(args->out_fnp, ".newick", OUTFC::NONE);
-    }
-    if (args->doDxy) {
-        ofs->out_dxy_fs = new IO::outputStruct(args->out_fnp, ".dxy.csv", OUTFC::NONE);
-    }
-
-    if (1 == DEV) {
-        if (args->nBootstraps > 0) {
-            ofs->out_v_bootstrapRep_fs = new IO::outputStruct(args->out_fnp, ".verbose_bootstrap_replicates.csv", OUTFC::NONE);
-        }
-    }
-}
-
-void IO::outFilesStruct_destroy(IO::outFilesStruct* ofs) {
-    // flushAll();
-
-    delete (ofs->out_args_fs);
-    delete(ofs->out_dm_fs);
-    delete(ofs->out_amova_fs);
-    delete(ofs->out_dev_fs);
-    delete(ofs->out_jgcd_fs);
-    delete(ofs->out_dxy_fs);
-    delete(ofs->out_nj_fs);
-    delete(ofs->out_blockstab_fs);
-    delete(ofs->out_v_bootstrapRep_fs);
-
-    delete ofs;
-}
 
 void IO::vprint(const char* format, ...) {
     if (PROGRAM_VERBOSITY_LEVEL) {

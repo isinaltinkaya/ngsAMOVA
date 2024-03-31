@@ -1,4 +1,5 @@
 #include "bootstrap.h"
+#include "io.h"
 
 #include <algorithm>
 
@@ -50,44 +51,35 @@ void bblocks_sample_with_replacement(bblocks_t* bblocks) {
 
 }
 
-void bblocks_print_bootstrap_samples(bblocks_t* bblocks) {
+void bblocks_print_bootstrap_samples(bblocks_t* bblocks, outfile_t* outfile) {
 
-    kstring_t* kbuf= kbuf_init();
+    LOG("Writing bootstrap samples to file: %s\n", outfile->fn);
 
-    ksprintf(kbuf, "Replicate,BlockNo,BlockID\n");
-
+    ksprintf(&outfile->kbuf, "Replicate,BlockNo,BlockID\n");
     for (size_t rep = 0;rep < args->nBootstraps;++rep) {
         for (size_t block = 0;block < bblocks->n_blocks;++block) {
-            ksprintf(kbuf, "%ld,%ld,%ld\n", rep, block, bblocks->rblocks[rep][block]);
+            ksprintf(&outfile->kbuf, "%ld,%ld,%ld\n", rep, block, bblocks->rblocks[rep][block]);
         }
     }
-
-    fprintf(stdout,"%s", kbuf->s);
-
-    kbuf_destroy(kbuf);
-
-
     return;
 }
 
 
 
-// blocks tab file = 1-based, [start, end]
+// blocks tsv file = 1-based, [start, end]
 // internal representation = 0-based, [start, end)
 // conversion from internal to blocks tab: start+1,end
-void bblocks_print_blocks_tab(bblocks_t* bblocks) {
-    LOGADD("(%s) Writing blocks tab file: %s", "-printBlocksTab", outFiles->out_blockstab_fs->fn);
+void bblocks_print_blocks_tab(bblocks_t* bblocks, outfile_t* outfile) {
 
-    outFiles->out_blockstab_fs->kbuf = kbuf_init();
+    LOGADD("(%s) Writing the bootstrapping blocks to tsv file: %s", "--print-blocks", outfile->fn);
 
     size_t ci;
     for (size_t bi = 0;bi < bblocks->n_blocks;++bi) {
 
         ci = bblocks->block_contig[bi];
 
-        ksprintf(outFiles->out_blockstab_fs->kbuf, "%s\t%ld\t%ld\n", bblocks->contig_names->d[ci], bblocks->block_start_pos[bi] + 1, bblocks->block_end_pos[bi]);
+        ksprintf(&outfile->kbuf, "%s\t%ld\t%ld\n", bblocks->contig_names->d[ci], bblocks->block_start_pos[bi] + 1, bblocks->block_end_pos[bi]);
     }
-    outFiles->out_blockstab_fs->kbuf_write();
     return;
 }
 
@@ -258,7 +250,6 @@ void bblocks_read_tab(bblocks_t* bblocks, const char* fn, vcfData* vcfd, paramSt
     }
 
     bblocks->contig_names = strArray_init();
-
 
     size_t nBlocks = 0;
     while (EOF != fscanf(fp, "%s\t%ld\t%ld", chr, &start, &end)) {
@@ -502,3 +493,4 @@ void bblocks_get(bblocks_t* bblocks, vcfData* vcfd, paramStruct* pars) {
 
     return;
 }
+

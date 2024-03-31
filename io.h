@@ -11,7 +11,26 @@
 struct pairStruct;
 
 
-//TODO rm namespace, it is unnecessary
+typedef struct outfile_t outfile_t;
+struct outfile_t {
+
+    uint8_t ctype;    // output file compression type (e.g. none, gz, bgz. see PROGRAM_OUTFILE_CTYPE_*
+
+    char* fn;        // full output filename (prefix + suffix + extension + cextension)
+    kstring_t kbuf;  // kstring buffer for output file content
+
+    FILE* fp;         // used if ctype==PROGRAM_OUTFILE_CTYPE_NONE
+    gzFile gzfp;      // used if ctype==PROGRAM_OUTFILE_CTYPE_GZ
+    BGZF* bgzfp;      // used if ctype==PROGRAM_OUTFILE_CTYPE_BGZ
+                      
+};
+
+outfile_t* outfile_init(const char* suffix, const char* extension, const uint8_t ctype);
+void outfile_destroy(outfile_t* outfile);
+
+void outfile_write(outfile_t* outfile);
+
+
 
 //********************************************************************************
 //*****************************  IO  *********************************************
@@ -129,7 +148,6 @@ namespace IO {
 
         kstring_t* kbuf = NULL;
 
-        //TODO use output size buffering in writing
         outputStruct(const char* fn_, const char* suffix, int fc_);
         ~outputStruct();
 
@@ -144,25 +162,25 @@ namespace IO {
 
     } outputStruct;
 
-    typedef struct outFilesStruct {
-        outputStruct* out_args_fs = NULL;
-        outputStruct* out_dm_fs = NULL;
-        outputStruct* out_amova_fs = NULL;
-        outputStruct* out_dev_fs = NULL;
-        outputStruct* out_jgcd_fs = NULL;
-        outputStruct* out_dxy_fs = NULL;
-        outputStruct* out_nj_fs = NULL;
-        outputStruct* out_blockstab_fs = NULL;
-        outputStruct* out_v_bootstrapRep_fs = NULL;
+    // typedef struct outFilesStruct {
+    //     outputStruct* out_args_fs = NULL;
+    //     outputStruct* out_dm_fs = NULL;
+    //     outputStruct* out_amova_fs = NULL;
+    //     outputStruct* out_dev_fs = NULL;
+    //     outputStruct* out_jgcd_fs = NULL;
+    //     outputStruct* out_dxy_fs = NULL;
+    //     outputStruct* out_nj_fs = NULL;
+    //     outputStruct* out_blockstab_fs = NULL;
+    //     outputStruct* out_v_bootstrapRep_fs = NULL;
 
-    } outFilesStruct;
+    // } outFilesStruct;
 
-    void outFilesStruct_init(outFilesStruct* ofs);
-    void outFilesStruct_destroy(outFilesStruct* ofs);
+    // void outFilesStruct_init(outFilesStruct* ofs);
+    // void outFilesStruct_destroy(outFilesStruct* ofs);
 
 
 }  // namespace IO
-extern IO::outFilesStruct* outFiles;
+// extern IO::outFilesStruct* outFiles;
 
 kstring_t* kbuf_init();
 void kbuf_destroy(kstring_t* kbuf);

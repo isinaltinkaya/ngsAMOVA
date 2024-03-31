@@ -1326,13 +1326,13 @@ void readSites(jgtmat_t* jgtmat, bblocks_t* bblocks, vcfData* vcfd, paramStruct*
 
     if (args->bcfSrc & ARG_INTPLUS_BCFSRC_FMT_GT) {
         size_t pair_shared_nSites;
-        DEVASSERT(jgtmat->n==((nInd*(nInd-1))/2));
+        DEVASSERT(jgtmat->n == ((nInd * (nInd - 1)) / 2));
 
-size_t pair=0;
+        size_t pair = 0;
         for (size_t i1 = 0;i1 < nInd;++i1) {
             for (size_t i2 = 0;i2 < i1;++i2) {
                 pair_shared_nSites = 0;
-                for (size_t i=0;i < jgtmat->size;++i) {
+                for (size_t i = 0;i < jgtmat->size;++i) {
                     pair_shared_nSites += jgtmat->m[pair][i];
                 }
                 if (pair_shared_nSites < args->pair_min_n_sites) {

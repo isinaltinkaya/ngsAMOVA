@@ -15,6 +15,7 @@ typedef struct metadata_t metadata_t;
 typedef struct strArray strArray;
 typedef struct jgtmat_t jgtmat_t;
 typedef struct dmat_t dmat_t;
+typedef struct outfile_t outfile_t;
 /* END-OF-FORWARD-DECLARATIONS ---------------------------------------------- */
 
 /* MACROS ------------------------------------------------------------------- */
@@ -129,6 +130,11 @@ struct dmat_t {
     /// @note allocated iff args->drop_pairs==1
     bool** drop;
 
+    /// @var has_drop - flag indicating if any distances have been dropped
+    /// @details set during distance calculation
+    /// @note useful for removing data from downstream analyses
+    bool has_drop;
+
 };
 /* END-OF-TYPEDEF-STRUCTS --------------------------------------------------- */
 
@@ -137,9 +143,12 @@ dmat_t* dmat_init(const size_t nInd, const uint8_t type, const uint32_t method, 
 void dmat_destroy(dmat_t* d);
 dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metadata_t* metadata);
 
-void dmat_write(dmat_t* dmat);
-void dmat_print(dmat_t* dmat, kstring_t* kstr);
+void dmat_print(dmat_t* dmat, outfile_t* outfile);
 void dmat_calculate_distances(jgtmat_t* jgtmat, dmat_t* dmat);
+
+
+dmat_t* dmat_prune_drops(dmat_t* dmat);
+
 /* END-OF-FUNCTION-DECLARATIONS --------------------------------------------- */
 
 #endif  // __DMAT_H__

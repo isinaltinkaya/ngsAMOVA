@@ -3,6 +3,9 @@
 #include "dataStructs.h"
 #include "metadata.h"
 
+
+// TODO add block bootstrapping for dxy
+
 void dxy_destroy(dxy_t* dxy) {
     FREE(dxy->d);
     FREE(dxy->g1names_p);
@@ -18,7 +21,7 @@ void dxy_destroy(dxy_t* dxy) {
     return;
 }
 
- dxy_t* dxy_init(metadata_t* mtd) {
+dxy_t* dxy_init(metadata_t* mtd) {
     dxy_t* dxy = NULL;
     dxy = (dxy_t*)malloc(sizeof(dxy_t));
     ASSERT(dxy != NULL);
@@ -136,39 +139,13 @@ dxy_t* dxy_read(paramStruct* pars, dmat_t* dmat, metadata_t* mtd) {
 }
 
 
-void dxy_print(dxy_t* dxy) {
-    fprintf(stderr, "\n[INFO]\t-> Writing the dxy results to %s.\n", outFiles->out_dxy_fs->fn);
-    outFiles->out_dxy_fs->kbuf = kbuf_init();
-    ksprintf(outFiles->out_dxy_fs->kbuf, "hierarchy_level,group1_id,group2_id,dxy\n");
+static void dxy_print(dxy_t* dxy, outfile_t* outfile) {
+    fprintf(stderr, "\n[INFO]\t-> Writing the dxy results to %s.\n", outfile->fn);
+    kstring_t* kbuf = &outfile->kbuf;
+    ksprintf(kbuf, "hierarchy_level,group1_id,group2_id,dxy\n");
     for (size_t i = 0; i < dxy->n; i++) {
-        ksprintf(outFiles->out_dxy_fs->kbuf, "%s,%s,%s,%f\n", dxy->levelnames_p[i], dxy->g1names_p[i], dxy->g2names_p[i], dxy->d[i]);
+        ksprintf(kbuf, "%s,%s,%s,%f\n", dxy->levelnames_p[i], dxy->g1names_p[i], dxy->g2names_p[i], dxy->d[i]);
     }
-    outFiles->out_dxy_fs->kbuf_write();
-
-
-    double* matrix = NULL;
-    dmat_t* dmi = NULL;
-    IO::outputStruct* out_dxy_i = NULL;
-    for (size_t i = 0;i < dxy->nLevels;++i) {
-
-        dmi = dxy->dmat[i];
-        if (dmi == NULL) {
-            continue;
-        }
-
-        // suffix = "levelName_dxy.csv"
-        char* suffix = (char*)malloc(strlen(dxy->levelnames_p[i]) + 10);
-        ASSERT(suffix != NULL);
-        sprintf(suffix, "_%s_dxy.csv", dxy->levelnames_p[i]);
-        out_dxy_i = new IO::outputStruct(args->out_fnp, suffix, OUTFC::NONE);
-        LOG("Writing DXY distance matrix to %s\n", out_dxy_i->fn);
-        out_dxy_i->kbuf = kbuf_init();
-        dmat_print(dmi, out_dxy_i->kbuf);
-        out_dxy_i->kbuf_write();
-        delete(out_dxy_i);
-        FREE(suffix);
-    }
-
 
     return;
 }
@@ -178,10 +155,11 @@ dxy_t* dxy_get(paramStruct* pars, dmat_t* dmat, metadata_t* mtd) {
     dxy_t* dxy = dxy_init(mtd);
 
     double* dm = NULL;
-    bool* drop=NULL;
+    if (dmat->has_drop) {
+        ERROR("Distance matrix with dropped pairs is not supported in AMOVA. Please prune the distance matrix via --prune-dmat option.");
+    }
     if (dmat->n == 1) {
         dm = dmat->matrix[0];
-        drop=dmat->drop[0];
     } else {
         NEVER;//TODO
     }
@@ -217,11 +195,7 @@ dxy_t* dxy_get(paramStruct* pars, dmat_t* dmat, metadata_t* mtd) {
                     for (size_t i2 = 0; i2 < Ng2; ++i2) {
                         i1id = mtd->group2indIndices[g1id]->d[i1];
                         i2id = mtd->group2indIndices[g2id]->d[i2];
-                        idx=MATRIX_GET_INDEX_LTED_IJ_UNORDERED(i1id, i2id);
-                        if(drop[idx]){
-                            continue;
-                        }
-
+                        idx = MATRIX_GET_INDEX_LTED_IJ_UNORDERED(i1id, i2id);
                         dist = dm[MATRIX_GET_INDEX_LTED_IJ_UNORDERED(i1id, i2id)];
                         val += dist;
                     }
@@ -239,7 +213,10 @@ dxy_t* dxy_get(paramStruct* pars, dmat_t* dmat, metadata_t* mtd) {
 
     DEVASSERT(dxy_i == dxy->n); // sanity check
 
-    dxy_print(dxy);
+    outfile_t* outfile = outfile_init("dxy", "csv", PROGRAM_OUTFILE_CTYPE_NONE);
+    dxy_print(dxy, outfile);
+    outfile_write(outfile);
+    outfile_destroy(outfile);
 
     return(dxy);
 }

@@ -153,6 +153,8 @@ struct argStruct {
     int dm_method = -1;
     int dm_transform = -1;
 
+    int prune_dmat=0;
+
     int doEM = 0;
 
     int doAMOVA = 0;
@@ -167,13 +169,18 @@ struct argStruct {
 
     int handle_neg_branch_length = 0;
 
-    int printAmovaTable = 0;
-    int printDistanceMatrix = 0;
-    int printJointGenotypeCountMatrix = 0;
-    int printBlocksTab = 0;
+    int print_amova = ARG_INTPLUS_UNSET;
+    int print_blocks = 0;
+    int print_bootstrap_verbose = 0;
 
-    char* dxyGroups = NULL;
-    char* dxyLevels = NULL;
+    int print_jgtm = 0;
+    int print_dm = ARG_INTPLUS_UNSET;
+
+
+    // ------------------------------------------------
+    // block bootstrapping
+    int nBootstraps = -1;
+    double bootstrap_ci=-1.0;
 
     // EM
     int minInd = -1;
@@ -197,16 +204,17 @@ struct argStruct {
     double ibdseq_ibdtrim = 0.0;
 
 
+    // ------------------------------------------------
     // -> pair filters
     int drop_pairs=-1;
     int pair_min_n_sites=-1;
     int min_n_pairs=-1;
+    // ------------------------------------------------
 
-    int nThreads = 1;
-    int rmInvarSites = 0;
     int seed = -1;
-    int nBootstraps = -1;
-    double bootstrap_ci=-1.0;
+    int nThreads = 1;
+
+    int rmInvarSites = 0;
 
     void check_arg_dependencies();
 

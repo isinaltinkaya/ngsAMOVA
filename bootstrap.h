@@ -18,6 +18,7 @@ typedef struct strArray strArray;
 void strArray_destroy(strArray* sa);
 typedef struct vcfData vcfData;
 typedef struct paramStruct paramStruct;
+typedef struct outfile_t outfile_t;
 /* END-OF-FORWARD-DECLARATIONS ---------------------------------------------- */
 
 /* MACROS ------------------------------------------------------------------- */
@@ -83,8 +84,8 @@ struct bblocks_t {
 /// sample the blocks with replacement for all individuals as to preserve the correlation structure
 void bblocks_sample_with_replacement(bblocks_t* bblocks);
 
-void bblocks_print_blocks_tab(bblocks_t* bblocks);
-void bblocks_print_bootstrap_samples(bblocks_t* bblocks);
+void bblocks_print_bootstrap_samples(bblocks_t* bblocks, outfile_t* outfile);
+void bblocks_print_blocks_tab(bblocks_t* bblocks, outfile_t* outfile);
 
 bblocks_t* bblocks_init(void);
 

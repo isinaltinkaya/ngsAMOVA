@@ -86,7 +86,6 @@ dxy_t* dxy_get(paramStruct* pars, dmat_t* dmat, metadata_t* mtd);
 
 void dxy_destroy(dxy_t* dxy);
 
-void dxy_print(dxy_t* dxy);
 
 
 
