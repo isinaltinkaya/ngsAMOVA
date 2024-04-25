@@ -6,18 +6,26 @@
 #ifndef __AMOVA_H__
 #define __AMOVA_H__
 
-#include <pthread.h>
 
-#include "mathUtils.h"
+ /* INCLUDES ----------------------------------------------------------------- */
+#include "shared.h"
+/* END-OF-INCLUDES ---------------------------------------------------------- */
 
-
+/* FORWARD-DECLARATIONS ----------------------------------------------------- */
 typedef struct metadata_t metadata_t;
-struct amovaBootstrapThreads;
+typedef struct argStruct argStruct;
+typedef struct dmat_t dmat_t;
+typedef struct outfile_t outfile_t;
 
 typedef struct amova_t amova_t;
-typedef struct amovaBootstrapThreads amovaBootstrapThreads;
+typedef struct strArray strArray;
 
+/* END-OF-FORWARD-DECLARATIONS ---------------------------------------------- */
 
+/* MACROS ------------------------------------------------------------------- */
+/* END-OF-MACROS ------------------------------------------------------------ */
+
+/* TYPEDEF-STRUCTS ---------------------------------------------------------- */
 
 /**
  * @brief amova - struct for storing AMOVA results
@@ -26,48 +34,21 @@ typedef struct amovaBootstrapThreads amovaBootstrapThreads;
  */
 struct amova_t {
 
-    metadata_t* metadata;
+    /// ------------------------------------------///
+    /// -> shared between bootstrap replicates <- ///
 
-    size_t nRuns;
+    /// @var metadata - pointer to metadata to be used in AMOVA
+    metadata_t* metadata;
 
     /// @var  df  - array of degrees of freedom
     /// @note size = nLevels
     ///       df[i] = df for i-th level within the (i-1)-th level
     ///       [bootstrap] isShared = TRUE
-    int* df; // 
+    int* df;
 
     /// @var  df_total - total degrees of freedom
     ///       [bootstrap] isShared = TRUE
     int df_total;
-
-    /// @var  ss - array of sum of squares within (SS^(w))
-    /// @note size = nLevels
-    ///       ss[i] = SS within the i-th level
-    ///       ss[nLevels-1] = SS within individuals (currently unused! set to 0.0)
-    ///       [bootstrap] isShared = FALSE
-    double** ss;
-
-    /// @var  ss_total - total sum of squares
-    ///       [bootstrap] isShared = FALSE
-    double* ss_total;
-
-    /// @var  ssd - array of sum of squared deviations (SSD)
-    /// @note size = nLevels
-    ///       [bootstrap] isShared = FALSE
-    double** ssd;
-
-    /// @var  ssd_total - total sum of squared deviations (SSD)
-    ///       [bootstrap] isShared = FALSE
-    double* ssd_total;
-
-    /// @var  msd - array of mean squared deviations
-    /// @note size = nLevels
-    ///       [bootstrap] isShared = FALSE
-    double** msd;
-
-    /// @var  msd_total - total mean squared deviation
-    ///       [bootstrap] isShared = FALSE
-    double* msd_total;
 
     /// @var  vmat - used in the calculation of cmat
     /// @note size = (nLevels * (nLevels+1)) / 2
@@ -87,38 +68,102 @@ struct amova_t {
     ///       [bootstrap] isShared = TRUE
     double* lmat;
 
+    /// ------------------------------------------///
+    /// -> unique to each bootstrap replicate <- ///
+
+    size_t nRuns;
+
+    /// @var  ss - array of sum of squares within (SS^(w))
+    /// @note size = [nRuns][nLevels]
+    ///       ss[i] = SS within the i-th level
+    ///       ss[nLevels-1] = SS within individuals (currently unused! set to 0.0)
+    ///       [bootstrap] isShared = FALSE
+    double** ss;
+
+    /// @var  ss_total - total sum of squares
+    /// @note size = nRuns
+    ///       [bootstrap] isShared = FALSE
+    double* ss_total;
+
+    /// @var  ssd - array of sum of squared deviations (SSD)
+    /// @note size = [nRuns][nLevels]
+    ///       [bootstrap] isShared = FALSE
+    double** ssd;
+
+    /// @var  ssd_total - total sum of squared deviations (SSD)
+    /// @note size = nRuns
+    ///       [bootstrap] isShared = FALSE
+    double* ssd_total;
+
+    /// @var  msd - array of mean squared deviations
+    /// @note size = [nRuns][nLevels]
+    ///       [bootstrap] isShared = FALSE
+    double** msd;
+
+    /// @var  msd_total - total mean squared deviation
+    /// @note size = nRuns
+    ///       [bootstrap] isShared = FALSE
+    double* msd_total;
+
     /// @var  sigmasq - array of variance components
-    /// @note size = nLevels
-    ///       sigmasq[i] = variance component for i-th level
+    /// @note size = [nRuns][nLevels]
+    ///       sigmasq[r][i] = variance component for i-th level (for r-th run)
     ///       [bootstrap] isShared = FALSE
     double** sigmasq;
 
     /// @var  sigmasq_total - sum of all variance components
+    /// @note size = nRuns
     ///       [bootstrap] isShared = FALSE
     double* sigmasq_total;
 
     /// @var  phi_xt - array of phi_xt statistics
-    /// @note size = nLevels-1
+    /// @note size = [nRuns][nLevels-1]
     ///       [bootstrap] isShared = FALSE
     double** phi_xt;
 
     /// @var  phi_xy - array of phi_xy statistics
-    /// @note size = nLevels-2
-    ///       phi_xy[i] = Phi_{i(i-1)}
+    /// @note size = [nRuns][nLevels-2]
+    ///       phi_xy[r][i] = Phi_{i(i-1)}^{*(r)} (r-th run)
     ///       [bootstrap] isShared = FALSE
     double** phi_xy;
 
+    /// @note *_adj: allocated iff adjustment is needed (found a negative variance component)
+
+    /// @var  sigmasq_adj - array of adjusted variance components 
+    /// @note size = [nRuns][nLevels]
+    ///       sigmasq_adj[r][i] = adjusted variance component for i-th level (for r-th run)
+    ///       [bootstrap] isShared = FALSE
+    double** sigmasq_adj;
+
+    /// @var  sigmasq_total_adj - sum of all adjusted variance components
+    /// @note size = [nRuns]
+    double* sigmasq_total_adj;
+
+    /// @var  phi_xt_adj - array of adjusted phi_xt statistics
+    /// @note size = [nRuns][nLevels-1]
+    ///       [bootstrap] isShared = FALSE
+    double** phi_xt_adj;
+
+    /// @var  phi_xy_adj - array of adjusted phi_xy statistics
+    /// @note size = [nRuns][nLevels-2]
+    ///       [bootstrap] isShared = FALSE
+    double** phi_xy_adj;
+
+
 };
 
-void amova_print_as_csv(amova_t* amv);
+/* END-OF-TYPEDEF-STRUCTS --------------------------------------------------- */
 
-
-amova_t* amova_init(metadata_t* mtd, const int nAmovaRuns);
-
-void amova_destroy(amova_t* amv);
+/* FUNCTION-DECLARATIONS ----------------------------------------------------- */
 
 amova_t* amova_get(dmat_t* dmat, metadata_t* mtd);
+void amova_destroy(amova_t* amv);
 
+/* END-OF-FUNCTION-DECLARATIONS ---------------------------------------------- */
+
+// #endif  // __X_H__
+
+/* ========================================================================== */
 
 
 #endif  // __AMOVA_H__

@@ -255,17 +255,16 @@ ID="test2"
 INFILENAME=${TESTWD}/test1.distance_matrix.txt
 INOPT="--in-dm"
 
-bcfSrc=0 # no bcf source since input is distance matrix
+# bcfSrc=0 # no bcf source since input is distance matrix
 doJGTM=0
 doEm=0
 doAmova=1
 minInd=2
-doDist=1
+doDist=2 # read distances from input file
 metadataFile=${DATADIR}/metadata_Individual_Region_Population_Subpopulation.tsv
 formula="Individual~Population"
 
 ARGS=" \
---bcf-src ${bcfSrc} \
 -doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
@@ -325,17 +324,16 @@ INFILENAME=${TESTWD}/test1.distance_matrix.txt
 
 INOPT="--in-dm"
 
-bcfSrc=0 # no bcf source since input is distance matrix
+# bcfSrc=0 # no bcf source since input is distance matrix
 doJGTM=0
 doEm=0
 doAmova=1
 minInd=2
-doDist=1
+doDist=2 # read distances from input file
 metadataFile=${DATADIR}/metadata_Individual_Region_Population_Subpopulation_groupNotUniq.tsv
 formula="Individual~Population"
 
 ARGS=" \
---bcf-src ${bcfSrc} \
 -doJGTM ${doJGTM} \
 -doEM ${doEm} \
 -doAMOVA ${doAmova} \
@@ -843,6 +841,53 @@ ARGS=" \
 runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
 runTestDiff ${ID} ${TESTWD}/${ID}.amova.csv ${SCRIPTDIR}/reference/${ID}/${ID}.amova.csv
 # ###############################################################################
+
+
+################################################################################
+# TEST18
+ID="test18"
+INFILENAME=${DATADIR}/data8_1.vcf 
+INOPT="--in-vcf"
+
+bcfSrc=1 # source: gl tag
+doMajorMinor=1 # alleles from ref and alts[0] in vcf rec
+doJGTM=1
+doEm=1
+print_dm=1
+minInd=2
+doDist=1
+maxEmIter=10
+emTole="1e-10"
+rmInvarSites=1
+formula="Individual~Population"
+seed=2
+
+ARGS=" \
+--bcf-src ${bcfSrc} \
+-doMajorMinor ${doMajorMinor} \
+-doBlockBootstrap 1 \
+--in-majorminor ${inMajorMinor} \
+-doJGTM ${doJGTM} \
+-doEM ${doEm} \
+--print-dm ${print_dm} \
+--minInd ${minInd} \
+-doDist ${doDist} \
+--maxEmIter ${maxEmIter} \
+--em-tole ${emTole} \
+--rm-invar-sites ${rmInvarSites} \
+--seed ${seed} \
+--block-size 50000 \
+--print-blocks 1 \
+--nbootstraps 1 \
+--print-bootstrap 1 
+"
+
+
+runTest ${ID} ${INFILENAME} ${INOPT} "${ARGS}"
+runTestDiff ${ID} ${TESTWD}/${ID}.distance_matrix.txt ${SCRIPTDIR}/reference/${ID}/${ID}.distance_matrix.txt
+# runTestDiff ${ID} ${TESTWD}/${ID}.distance_matrix.txt ${SCRIPTDIR}/reference/${ID}/${ID}.distance_matrix.txt
+# ###############################################################################
+
 
 
 ${EXEC}

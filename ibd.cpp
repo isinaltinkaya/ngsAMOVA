@@ -4,6 +4,69 @@
 #define BUF_NSITES 500000
 
 const double NEG_INF = -std::numeric_limits<double>::infinity();
+
+/*
+ * Binomial coefficient: n choose k
+ *
+ * @brief nCk - n choose k recursive function
+ * @param n
+ * @param k
+ * @return choose(n,k)
+ */
+
+int nCk(int n, int k) {
+    if (k == 0) {
+        return 1;
+    }
+    return (n * nCk(n - 1, k - 1)) / k;
+}
+
+
+/*
+ * [nCk_idx]
+ * Maps a given pair of objects to their index in
+ * the lexicographically ordered binomial coefficients
+ * a.k.a. array of pairs
+ *
+ * @param nInd: number of individuals
+ * @param i1: index of first individual
+ * @param i2: index of second individual
+ *
+ * @return: index of pair in lexicographically ordered array of pairs
+ *
+ * @example:
+ *
+ *  	0	1	2	3
+ * 0		01	02	03
+ * 1			12	13
+ * 2				23
+ * 3
+ *
+ * 01 = 0, 02 = 1, 03 = 2, 12 = 3, 13 = 4, 23 = 5
+ *
+ * Formula:
+ * (nCk(nInd, 2) - nCk((nInd - i1), 2)) + (i2 - i1) - 1;
+ *
+ * e.g.:
+ * nInd=5, i1=1, i2=3
+ * nCk(5,2) - nCk(4,2) + (3-1) - 1 = 5 - 6 + 2 - 1 = 0
+ *
+ * Total number of pairs: nCk(nInd, 2)
+ * Starting index for each individual: nCk(nInd, 2) - nCk((nInd - i), 2)
+ * Difference between i2 and i1: (i2 - i1)
+ * Index of pair: (nCk(nInd, 2) - nCk((nInd - i1), 2)) + (i2 - i1) - 1;
+ *
+ */
+
+int nCk_idx(int nInd, int i1, int i2) {
+    ASSERT(i1 < nInd && i2 < nInd);  // safeguard for wrong order of arguments
+    if (i2 > i1) {
+        return (nCk(nInd, 2) - nCk((nInd - i1), 2)) + (i2 - i1) - 1;
+    } else {
+        return (nCk(nInd, 2) - nCk((nInd - i2), 2)) + (i1 - i2) - 1;
+    }
+}
+
 ///// if (args->minInd ) does not work with doibd
 
 const int dosePairIndex[3][3] = { {0,1,5}, {1,2,3}, {5,3,4} };
@@ -154,7 +217,7 @@ void readSites_doIbd(vcfData* vcfd, paramStruct* pars) {
 
 			int size_e = 0;
 			int n_gls = 0;
-			int n_missing_ind = 0;
+			// int n_missing_ind = 0;
 			int n_values = bcf_get_format_float(vcfd->hdr, vcfd->rec, "GL", &lgls, &size_e);
 			if (n_values <= 0) {
 				ERROR("Could not read GL tag from the VCF file.");

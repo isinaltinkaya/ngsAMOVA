@@ -17,9 +17,21 @@ typedef struct bblocks_t bblocks_t;
 /* END-OF-FORWARD-DECLARATIONS ---------------------------------------------- */
 
 /* MACROS ------------------------------------------------------------------- */
-#define EM_TERMINATION_REASON_THRES_TOLE 0
-#define EM_TERMINATION_REASON_THRES_MAXITER 1
-#define EM_TERMINATION_REASON_THRES_SHARED_NSITES 2
+// #define EM_TERM_REASON_THRES_TOLE 0
+// #define EM_TERM_REASON_THRES_MAXITER 1
+// #define EM_TERM_REASON_THRES_SHARED_NSITES 2
+
+typedef enum {
+    EM_TERM_REASON_THRES_TOLE = 0,
+    EM_TERM_REASON_THRES_MAXITER,
+    EM_TERM_REASON_THRES_SHARED_NSITES,
+    EM_TERM_REASON_COUNT 
+} em_term_reason;
+
+extern const char* em_term_reason_strs[EM_TERM_REASON_COUNT];
+const char* get_em_term_reason_str(em_term_reason reason);
+
+
 /* END-OF-MACROS ------------------------------------------------------------ */
 
 /* TYPEDEF-STRUCTS ---------------------------------------------------------- */

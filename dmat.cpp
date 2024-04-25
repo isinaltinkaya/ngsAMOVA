@@ -5,13 +5,36 @@
 #include "metadata.h"
 #include "io.h"
 
+const char* get_dmat_method_str(const int method) {
+    if (method < 0 || method > 9) {
+        ERROR("Unrecognized distance matrix method: %d", method);
+    }
+    const char* dmat_method_to_str[10] = {
+        "Dij",  // DMAT_METHOD_DIJ
+        "Sij",  // DMAT_METHOD_SIJ
+        "Fij",  // DMAT_METHOD_FIJ
+        "IBS0", // DMAT_METHOD_IBS0
+        "IBS1", // DMAT_METHOD_IBS1
+        "IBS2", // DMAT_METHOD_IBS2
+        "Kin",  // DMAT_METHOD_KIN
+        "R0",   // DMAT_METHOD_R0       
+        "R1",   // DMAT_METHOD_R1
+        "Dxy"  // DMAT_METHOD_DXY
+    };
+    return (dmat_method_to_str[method]);
+}
+
+//TODO add testcase
 /// @details if(has_drop); remove the individual with most dropped pairs from the matrix
 /// aim: remove as little individuals as possible while ensuring that there is no missing data in the matrix
-dmat_t* dmat_prune_drops(dmat_t* dmat) {
+dmat_t* dmat_prune_remove_dropped_distances(dmat_t* dmat) {
+
+    BEGIN_LOGSECTION_MSG("(--prune-dmat) Pruning distance matrix");
 
     if (dmat->n > 1) {
         ERROR("Pruning of distance matrices with more than one matrix is not possible, yet.");
     }
+    const size_t ni = 0; // dmat->n - 1
 
     // -> init
     dmat_t* prunedmat = NULL;
@@ -27,15 +50,14 @@ dmat_t* dmat_prune_drops(dmat_t* dmat) {
     prunedmat->drop = NULL;
     prunedmat->has_drop = false;
 
-    size_t idx, nItems, maxDrop, maxDropIdx, nIndsRemoved, totnPairsToPrune, * nDrops;
-    int* rmIdx;
-
+    size_t idx;
+    int maxDrop, maxDropIdx, totnPairsToPrune, nItems;
     nItems = dmat->names->len;
-    nDrops = (size_t*)malloc(nItems * sizeof(size_t));
-    ASSERT(nDrops != NULL);
-    rmIdx = (int*)malloc(nItems * sizeof(int));
-    ASSERT(rmIdx != NULL);
-    for (size_t i = 0;i < nItems;++i) {
+
+
+    int nDrops[nItems];
+    int rmIdx[nItems];
+    for (size_t i = 0;i < (size_t) nItems;++i) {
         nDrops[i] = 0;
         rmIdx[i] = -1;
     }
@@ -47,20 +69,20 @@ dmat_t* dmat_prune_drops(dmat_t* dmat) {
     prunedmat->method = dmat->method;
     // prunedmat->names = // TBD
     prunedmat->names_src = DMAT_NAMES_SRC_PRIVATE;
-    prunedmat->matrix = (double**)malloc(prunedmat->n * sizeof(dmat_t*));
+    prunedmat->matrix = (double**)malloc(prunedmat->n * sizeof(double*));
     ASSERT(prunedmat->matrix != NULL);
     // rest of matrix = // TBD
-    // prunedmat->drop =  // NO NEED, NULL
-    // prunedmat->has_drop = false; // NO NEED, FALSE
+    // prunedmat->drop =  // NO NEED, NULL above
+    // prunedmat->has_drop = false; // NO NEED, FALSE above
 
 
     prunedmat->names = strArray_init();
 
     totnPairsToPrune = 0;
     idx = 0;
-    for (size_t i = 1;i < nItems;++i) {
+    for (size_t i = 1;i < (size_t) nItems;++i) {
         for (size_t j = 0;j < i;++j) {
-            if (dmat->drop[0][idx]) {
+            if (dmat->drop[ni][idx]) {
                 nDrops[i]++;
                 nDrops[j]++;
                 totnPairsToPrune++;
@@ -69,87 +91,105 @@ dmat_t* dmat_prune_drops(dmat_t* dmat) {
         }
     }
 
-    nIndsRemoved = 0;
-    while (1) {
-        maxDrop = 0;
-        maxDropIdx = 0;
-        for (size_t i = 0;i < nItems;++i) {
-            if (nDrops[i] > maxDrop) {
-                maxDrop = nDrops[i];
-                maxDropIdx = i;
-            }
-        }
+    int new_nItems;
+    int nIndsRemoved = 0;
 
+    if (0 == totnPairsToPrune) {
+        new_nItems = nItems;
 
-        if (maxDrop == 0) {
-            ASSERT(totnPairsToPrune == 0);
-            break;
-        }
+    } else if (totnPairsToPrune > 0) {
 
-        ASSERT(totnPairsToPrune > 0);
+        LOG("Program will remove %d out of %ld pairwise distances.", totnPairsToPrune, dmat->size);
 
-        // remove individual with max drop count
-        rmIdx[nIndsRemoved] = maxDropIdx;
-        nDrops[maxDropIdx] = 0;
+        while (1) {
 
-        LOG("Removing individual %s with %ld dropped pairs", dmat->names->d[rmIdx[nIndsRemoved]], maxDrop);
-
-        idx = 0;
-        for (size_t i = 1;i < nItems;++i) {
-            for (size_t j = 0;j < i;++j) {
-                if (i == maxDropIdx) {
-                    if (nDrops[j] > 0) {
-                        nDrops[j]--;
-                        --totnPairsToPrune;
-                    }
-                } else if (j == maxDropIdx) {
-                    if (nDrops[i] > 0) {
-                        nDrops[i]--;
-                        --totnPairsToPrune;
-                    }
+            maxDrop = 0;
+            maxDropIdx = -1;
+            for (size_t i = 0;i < (size_t) nItems;++i) {
+                if (nDrops[i] > maxDrop) {
+                    maxDrop = nDrops[i];
+                    maxDropIdx = i;
                 }
-                ++idx;
             }
+
+            if (maxDrop == 0) {
+                ASSERT(totnPairsToPrune == 0);
+                break;
+            }
+            ASSERT(totnPairsToPrune > 0);
+
+            // remove individual with max drop count
+            rmIdx[nIndsRemoved] = maxDropIdx;
+            ASSERT(maxDropIdx > -1);
+            nDrops[maxDropIdx] = 0;
+
+            LOG("Removing individual %s, who is in %d out of %d remaining dropped pairs ", dmat->names->d[rmIdx[nIndsRemoved]], maxDrop, totnPairsToPrune);
+
+            idx = 0;
+            for (size_t i = 1;i < (size_t) nItems;++i) {
+                for (size_t j = 0;j < i;++j) {
+                    if (i == (size_t) maxDropIdx) {
+                        if (nDrops[j] > 0) {
+                            nDrops[j]--;
+                            --totnPairsToPrune;
+                        }
+                    } else if (j == (size_t) maxDropIdx) {
+                        if (nDrops[i] > 0) {
+                            nDrops[i]--;
+                            --totnPairsToPrune;
+                        }
+                    }
+                    ++idx;
+                }
+            }
+            ++nIndsRemoved;
         }
-        ++nIndsRemoved;
-    }
 
 
 #if DEV==1
-    ASSERT(totnPairsToPrune == 0);
-    for (size_t i = 0;i < nItems;++i) {
-        if (nDrops[i] > 0) {
-            NEVER;
-        }
-        bool isRemoved;
-        for (size_t k = 0;k < nIndsRemoved;++k) {
-            if (i == rmIdx[k]) {
-                isRemoved = true;
-                break;
+        ASSERT(totnPairsToPrune == 0);
+        for (size_t i = 0;i < (size_t) nItems;++i) {
+            if (nDrops[i] > 0) {
+                NEVER;
+            }
+            bool isRemoved;
+            for (size_t k = 0;k < (size_t) nIndsRemoved;++k) {
+                if ((int) i == rmIdx[k]) {
+                    isRemoved = true;
+                    break;
+                }
+            }
+            if (isRemoved) {
+                continue;
+            }
+            if (dmat->drop[0][i]) {
+                NEVER;
             }
         }
-        if (isRemoved) {
-            continue;
-        }
-        if (dmat->drop[0][i]) {
-            NEVER;
-        }
-    }
 #endif
 
 
-    // copy the remaining data to the new pruned matrix
+        // copy the remaining data to the new pruned matrix
 
-    int nRemainingItems = nItems - nIndsRemoved;
-    ASSERT(nRemainingItems > 0);
-    LOG("Removed %ld individuals from the distance matrix. Pruned matrix will have %d individuals", nIndsRemoved, nRemainingItems);
+        new_nItems = nItems - nIndsRemoved;
+        ASSERT(new_nItems > 0);
+        LOG("Removed %d individuals from the distance matrix. Pruned matrix will have %d individuals", nIndsRemoved, new_nItems);
 
-    // for(size_t i = 0;i < nIndsRemoved;++i) {
-        // LOG("Removed individual %s", dmat->names->d[rmIdx[i]]);
-    // }
+        kstring_t tmp = KS_INITIALIZE;
+        ksprintf(&tmp, "List of removed individuals:\n");
+        for (size_t i = 0;i < (size_t) nIndsRemoved;++i) {
+            ksprintf(&tmp, "%s\n", dmat->names->d[rmIdx[i]]);
+        }
+        LOG("%s", tmp.s);
+        ks_free(&tmp);
 
-    prunedmat->size = (nRemainingItems * (nRemainingItems - 1)) / 2;
-    prunedmat->matrix[0] = (double*)malloc(prunedmat->size * sizeof(double));
+    } else {
+        NEVER;
+    }
+
+
+    prunedmat->size = (new_nItems * (new_nItems - 1)) / 2;
+    prunedmat->matrix[ni] = (double*)malloc(prunedmat->size * sizeof(double));
     ASSERT(prunedmat->matrix[0] != NULL);
     for (size_t i = 0;i < prunedmat->size;++i) {
         prunedmat->matrix[0][i] = 0.0;
@@ -158,10 +198,11 @@ dmat_t* dmat_prune_drops(dmat_t* dmat) {
     bool isRemoved;
 
     size_t newidx = 0;
-    for (size_t i = 0;i < nItems;++i) {
+    for (size_t i = 0;i < (size_t) nItems;++i) {
+
         isRemoved = false;
-        for (size_t k = 0;k < nIndsRemoved;++k) {
-            if (i == rmIdx[k]) {
+        for (size_t k = 0;k < (size_t) nIndsRemoved;++k) {
+            if ((int)i == rmIdx[k]) {
                 isRemoved = true;
                 break;
             }
@@ -173,9 +214,10 @@ dmat_t* dmat_prune_drops(dmat_t* dmat) {
         prunedmat->names->add(dmat->names->d[i]);
 
         for (size_t j = 0;j < i;++j) {
+
             isRemoved = false;
-            for (size_t k = 0;k < nIndsRemoved;++k) {
-                if (j == rmIdx[k]) {
+            for (size_t k = 0;k < (size_t) nIndsRemoved;++k) {
+                if ((int)j == rmIdx[k]) {
                     isRemoved = true;
                     break;
                 }
@@ -184,16 +226,19 @@ dmat_t* dmat_prune_drops(dmat_t* dmat) {
                 continue;
             }
 
-            prunedmat->matrix[0][newidx] = dmat->matrix[0][MATRIX_GET_INDEX_LTED_IJ(i, j)];
+            prunedmat->matrix[ni][newidx] = dmat->matrix[ni][MATRIX_GET_INDEX_LTED_IJ(i, j)];
             ++newidx;
         }
     }
 
     DEVASSERT(newidx == prunedmat->size);
 
+    if (0 == nIndsRemoved) {
+        WARN("(--prune-dmat) No individuals were removed from the distance matrix. The pruned matrix is identical to the original matrix.");
 
-    FREE(nDrops);
-    FREE(rmIdx);
+    }
+
+    END_LOGSECTION;
 
     return(prunedmat);
 }
@@ -260,7 +305,7 @@ dmat_t* dmat_init(const size_t nInd, const uint8_t type, const uint32_t method, 
         NEVER;
     }
 
-    dmat->matrix = (double**)malloc(dmat->n * sizeof(dmat_t*));
+    dmat->matrix = (double**)malloc(dmat->n * sizeof(double*));
     ASSERT(dmat->matrix != NULL);
 
     dmat->drop = (bool**)malloc(dmat->n * sizeof(bool*));
@@ -324,6 +369,8 @@ void dmat_destroy(dmat_t* dmat) {
 /// @param metadata 
 /// @return 
 dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metadata_t* metadata) {
+
+    LOG("(--in-dm) Reading distance matrix from file: %s", in_dm_fn);
 
     FILE* fp = NULL;
 
@@ -429,14 +476,8 @@ dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metad
         ERROR("Could not read the method line (line 4) from the distance matrix input file %s", args->in_dm_fn);
     }
 
-    if (DMAT_METHOD_DIJ == dmat->method) {
-        LOG("Input distance matrix method is detected as: Dij");
-    } else if (DMAT_METHOD_FIJ == dmat->method) {
-        LOG("Input distance matrix method is detected as: Fij");
-    } else {
-        ERROR("Unrecognized distance matrix method: %d", dmat->method);
-    }
 
+    LOG("Input distance matrix method is detected as: %s (%d)", get_dmat_method_str(dmat->method), dmat->method);
 
     ++lineno;
 
@@ -520,8 +561,8 @@ dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metad
 
     } else if (dmat->names_src == DMAT_NAMES_SRC_IN_METADATA_NAMES_PTR) {
 
-        if (in_nInd != metadata->indNames->len) {
-            ERROR("Number of names in the distance matrix file (%ld) does not match the number of individuals in the metadata file (%ld). Please edit your metadata file to match the names in the distance matrix file.", in_nInd, metadata->indNames->len);
+        if (in_nInd != (int) metadata->indNames->len) {
+            ERROR("Number of names in the distance matrix file (%d) does not match the number of individuals in the metadata file (%ld). Please edit your metadata file to match the names in the distance matrix file.", in_nInd, metadata->indNames->len);
         }
 
         char tmp[1024] = { '\0' };
@@ -534,8 +575,8 @@ dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metad
                 ERROR("Found bad name at line %d of distance matrix file %s", lineno + 1, args->in_dm_fn);
             }
             if (metadata->indNames->find(tmp, &mtdidx)) {
-                if (mtdidx != lineno - 6) {
-                    DEVPRINT("name:%s idx:%ld mtdidx:%ld mtdname:%s", tmp, lineno - 6, mtdidx, metadata->indNames->d[mtdidx]);
+                if ((int) mtdidx != lineno - 6) {
+                    DEVPRINT("name:%s idx:%d mtdidx:%ld mtdname:%s", tmp, lineno - 6, mtdidx, metadata->indNames->d[mtdidx]);
                     badorder = true;
                     break;
                 }
@@ -557,7 +598,7 @@ dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metad
     /// ------------------------------------------------------------
     // lines (6+nInd):(6+nInd+nIndCmb-1) distances
 
-    dmat->matrix = (double**)malloc(dmat->n * sizeof(dmat_t*));
+    dmat->matrix = (double**)malloc(dmat->n * sizeof(double*));
     ASSERT(dmat->matrix != NULL);
 
     for (size_t i = 0; i < dmat->n;++i) {
@@ -570,7 +611,7 @@ dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metad
     }
 
     size_t j = 0;
-    while (lineno < 7 + ((in_nInd + in_nIndCmb) * dmat->n)) {
+    while ((int) lineno < (int) (7 + ((in_nInd + in_nIndCmb) * dmat->n))) {
         fscanf(fp, "%lf\n", &dmat->matrix[0][j]);
         ++lineno;
         ++j;
@@ -588,9 +629,11 @@ dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metad
         dmat->drop[i] = (bool*)malloc(dmat->size * sizeof(bool));
         ASSERT(dmat->drop[i] != NULL);
         for (size_t j = 0; j < dmat->size; ++j) {
-            if(isnan(dmat->matrix[i][j])){
+            if (isnan(dmat->matrix[i][j])) {
                 dmat->drop[i][j] = true;
                 dmat->has_drop = true;
+            } else {
+                dmat->drop[i][j] = false;
             }
         }
     }
@@ -654,41 +697,45 @@ dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metad
 /// @brief dmat_print - print a distance matrix to a kstring
 /// @param dmat - pointer to the distance matrix to be printed
 /// @param kbuf - pointer to the kstring to which the distance matrix will be printed
-void dmat_print(dmat_t* dmat, outfile_t* outfile){
+void dmat_print(dmat_t* dmat, outfile_t* outfile) {
+
+    LOG("(--print-dm) Printing distance matrix to: %s", outfile->fn);
+
+    kstring_t* kbuf = &outfile->kbuf;
 
     // line 0: number of matrices
-    ksprintf(&outfile->kbuf, "%ld\n", dmat->n);
+    ksprintf(kbuf, "%ld\n", dmat->n);
 
     // line 1: type
     if (DMAT_TYPE_LTED == dmat->type) {
-        ksprintf(&outfile->kbuf, "%s\n", "LTED");
+        ksprintf(kbuf, "%s\n", "LTED");
     } else if (DMAT_TYPE_LTID == dmat->type) {
-        ksprintf(&outfile->kbuf, "%s\n", "LTID");
+        ksprintf(kbuf, "%s\n", "LTID");
     } else if (DMAT_TYPE_UTED == dmat->type) {
-        ksprintf(&outfile->kbuf, "%s\n", "UTED");
+        ksprintf(kbuf, "%s\n", "UTED");
     } else if (DMAT_TYPE_UTID == dmat->type) {
-        ksprintf(&outfile->kbuf, "%s\n", "UTID");
+        ksprintf(kbuf, "%s\n", "UTID");
     } else if (DMAT_TYPE_FULL == dmat->type) {
-        ksprintf(&outfile->kbuf, "%s\n", "FULL");
+        ksprintf(kbuf, "%s\n", "FULL");
     } else {
         NEVER;
     }
 
     // line 2: transformation
-    ksprintf(&outfile->kbuf, "%d\n", dmat->transform);
+    ksprintf(kbuf, "%d\n", dmat->transform);
 
     // line 3: method
-    ksprintf(&outfile->kbuf, "%d\n", dmat->method);
+    ksprintf(kbuf, "%d\n", dmat->method);
 
     // line 4: number of dmat->names
-    ksprintf(&outfile->kbuf, "%ld\n", dmat->names->len);
+    ksprintf(kbuf, "%ld\n", dmat->names->len);
 
     // line 5: number of distances 
-    ksprintf(&outfile->kbuf, "%ld\n", dmat->size);
+    ksprintf(kbuf, "%ld\n", dmat->size);
 
     // lines 6-X: dmat->names
     for (size_t i = 0;i < dmat->names->len;++i) {
-        ksprintf(&outfile->kbuf, "%s\n", dmat->names->d[i]);
+        ksprintf(kbuf, "%s\n", dmat->names->d[i]);
     }
 
     double* matrix = NULL;
@@ -698,7 +745,122 @@ void dmat_print(dmat_t* dmat, outfile_t* outfile){
 
         // lines (X+1)-Y: distances 
         for (size_t p = 0; p < dmat->size; ++p) {
-            ksprintf(&outfile->kbuf, "%.17g\n", matrix[p]);
+            ksprintf(kbuf, "%.17g\n", matrix[p]);
+        }
+    }
+
+    return;
+}
+
+void dmat_print_verbose(dmat_t* dmat, outfile_t* outfile){
+
+    if (dmat->type != DMAT_TYPE_LTED) {
+        ERROR("Verbose printing is only supported for Lower Triangular Matrix (Excluding Diagonal) distance matrices.");
+    }
+
+    kstring_t* kbuf = &outfile->kbuf;
+
+    // line 0: number of matrices
+    ksprintf(kbuf, "# This file was produced by: %s\n", PROGRAM_VERSION_INFO);
+    // ksprintf(kbuf, "# The command was: %s\n", PROGRAM_COMMAND); // TODO
+    ksprintf(kbuf, "# Number of distance matrices: %ld\n", dmat->n);
+
+    // line 1: type
+    ksprintf(kbuf, "# Type of the distance matrix: ");
+    if (DMAT_TYPE_LTED == dmat->type) {
+        ksprintf(kbuf, "%s\n", "Lower Triangular Matrix (Excluding Diagonal)");
+    } else if (DMAT_TYPE_LTID == dmat->type) {
+        ksprintf(kbuf, "%s\n", "Lower Triangular Matrix (Including Diagonal)");
+    } else if (DMAT_TYPE_UTED == dmat->type) {
+        ksprintf(kbuf, "%s\n", "Upper Triangular Matrix (Excluding Diagonal)");
+    } else if (DMAT_TYPE_UTID == dmat->type) {
+        ksprintf(kbuf, "%s\n", "Upper Triangular Matrix (Including Diagonal)");
+    } else if (DMAT_TYPE_FULL == dmat->type) {
+        ksprintf(kbuf, "%s\n", "Full Matrix");
+    } else {
+        NEVER;
+    }
+
+    // line 2: transformation
+    ksprintf(kbuf, "# Transformation applied to the distances: ");
+    if (DMAT_TRANSFORM_NONE == dmat->transform) {
+        ksprintf(kbuf, "%s", "None");
+    } else if (DMAT_TRANSFORM_SQUARE == dmat->transform) {
+        ksprintf(kbuf, "%s", "Squared");
+    } else {
+        NEVER;
+    }
+
+    ksprintf(kbuf, " (--dm-transform %d)", DMAT_TRANSFORM_NONE);
+    kputc('\n', kbuf);
+
+
+    // line 3: method
+    ksprintf(kbuf, "# Method used to calculate the distances: ");
+    ksprintf(kbuf, "%s", get_dmat_method_str(dmat->method));
+    ksprintf(kbuf, " (--dm-method %d)", DMAT_METHOD_DIJ);
+    kputc('\n', kbuf);
+
+    // line 4: number of dmat->names
+    ksprintf(kbuf, "# Number of items in the distance matrix: %ld\n", dmat->names->len);
+
+    // line 5: number of distances 
+    ksprintf(kbuf, "# Number of distances in the distance matrix: %ld\n", dmat->size);
+
+    // lines 6-X: dmat->names
+    ksprintf(kbuf, "# NAME, Names of the items in the distance matrix:\n");
+    ksprintf(kbuf, "# NAME\t[2]item_index\t[3]item_name\n");
+    for (size_t i = 0;i < dmat->names->len;++i) {
+        // ksprintf(kbuf, "%s\n", dmat->names->d[i]);
+        ksprintf(kbuf, "NAME\t%ld\t%s\n", i, dmat->names->d[i]);
+    }
+
+    double* matrix = NULL;
+
+    ksprintf(kbuf, "# DIST, Pairwise distances in the distance matrix:\n");
+    ksprintf(kbuf, "# DIST\t[2]matrix_index\t[3]pair_index\t[4]first_item_index\t[5]second_item_index\t[6]first_item_name\t[7]second_item_name\t[8]distance\n");
+
+    for (size_t mi = 0;mi < dmat->n;++mi) {
+        matrix = dmat->matrix[mi];
+
+
+        size_t idx;
+        idx = 0;
+        for (size_t i = 0;i < dmat->names->len;++i) {
+            for (size_t j = 0;j < i;++j) {
+                ksprintf(kbuf, "DIST\t%ld\t%ld\t%ld\t%ld\t%s\t%s\t%.17g\n", mi, idx, i, j, dmat->names->d[i], dmat->names->d[j], matrix[idx]);
+                ++idx;
+            }
+        }
+
+        // lines (X+1)-Y: distances 
+        // for (size_t p = 0; p < dmat->size; ++p) {
+            // ksprintf(kbuf, "%.17g\n", matrix[p]);
+
+        // }
+    // print as matrix (pretty)
+        ksprintf(kbuf, "# DMAT, Distance matrix in matrix format:\n");
+        ksprintf(kbuf, "%-25s\t%-25s\t", "DMAT", "ITEMS");
+        for (size_t i = 0;i < dmat->names->len;++i) {
+            ksprintf(kbuf, "%-25s", dmat->names->d[i]);
+            if (i != dmat->names->len - 1) {
+                kputc('\t', kbuf);
+            }
+        }
+        kputc('\n', kbuf);
+        idx = 0;
+        for (size_t i = 0;i < dmat->names->len;++i) {
+            ksprintf(kbuf, "%-25s\t", "DMAT");
+            ksprintf(kbuf, "%-25s\t", dmat->names->d[i]);
+            for (size_t j = 0;j < i;++j) {
+
+                ksprintf(kbuf, "%-25.17g", matrix[idx]);
+                if (j != i - 1) {
+                    kputc('\t', kbuf);
+                }
+                ++idx;
+            }
+            kputc('\n', kbuf);
         }
     }
 
@@ -721,6 +883,7 @@ void dmat_calculate_distances(jgtmat_t* jgtmat, dmat_t* dmat) {
 
     int nPairs_after_drop;
     size_t idx;
+
     for (size_t i = 0;i < dmat->n;++i) {
         // N.B. i==0 original run in dmat
 

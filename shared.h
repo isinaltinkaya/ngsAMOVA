@@ -33,6 +33,7 @@ typedef struct paramStruct paramStruct;
 
 /* MACROS ------------------------------------------------------------------- */
 
+
 // -> ARG_* - argument flags
 
 
@@ -44,6 +45,7 @@ typedef struct paramStruct paramStruct;
 
 #define ARG_INTPLUS_PRINT_DM_ORIG  (1<<0)
 #define ARG_INTPLUS_PRINT_DM_PRUNED  (1<<1)
+#define ARG_INTPLUS_PRINT_DM_VERBOSE  (1<<2)
 
 
 #define ARG_INTPLUS_BCFSRC_FMT_GL (1<<0)
@@ -60,6 +62,11 @@ typedef struct paramStruct paramStruct;
 #define ARG_DOJGTM_UNSET 0
 #define ARG_DOJGTM_3GT 1
 #define ARG_DOJGTM_10GT 2
+
+#define ARG_DODIST_UNSET 0
+#define ARG_DODIST_CALCULATE 1
+#define ARG_DODIST_INFILE 2
+#define ARG_DODIST_WITH_BOOTSTRAP 3
 
 #define ARG_INTPLUS_INPUT_UNSET      (0<<0)
 #define ARG_INTPLUS_INPUT_VCF        (1<<0)
@@ -93,8 +100,7 @@ typedef struct paramStruct paramStruct;
 #define PROGRAM_WILL_USE_ALLELES_REF_ALT1 \
     ( ((args->doMajorMinor) == ARG_DOMAJORMINOR_BCF_REFALT1) )
 
-#define PROGRAM_WILL_PERFORM_BLOCK_BOOTSTRAPPING \
-    ( (args->doAMOVA==ARG_DOAMOVA_BOOTSTRAP))
+
 //TODO add block bootstrap test for nj and dxy
 
 #define PROGRAM_WILL_USE_BCF_FMT_GL \
@@ -205,7 +211,16 @@ do { \
 
 
 
+
 // -> other function-like macros
+
+#define SQUARE(n) ((((n)) * ((n))))
+
+/*
+ * Macro:[LOG2LN]
+ * convert log_10(x) to log_e(x)
+ */
+#define LOG2LN(x) ((((x)) / (M_LOG10E)))
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
@@ -246,17 +261,58 @@ do{ \
 #define AT __FILE__ ":" ASSTR(__LINE__)
 
 
+
+/// @brief PROGRAM_CURRENT_FUNCTION - get the current function name
+/// @note  use instead of __FUNCTION__
+
+/// source: https://www.boost.org/doc/libs/1_84_0/boost/current_function.hpp
+#ifdef PROGRAM_DISABLE_CURRENT_FUNCTION
+# define PROGRAM_CURRENT_FUNCTION " "
+
+#elif defined(__GNUC__) || (defined(__MWERKS__) && (__MWERKS__ >= 0x3000)) || (defined(__ICC) && (__ICC >= 600)) || defined(__ghs__) || defined(__clang__)
+// # define PROGRAM_CURRENT_FUNCTION __PRETTY_FUNCTION__
+# define PROGRAM_CURRENT_FUNCTION __FUNCTION__ // prefer non-pretty function
+
+#elif defined(__DMC__) && (__DMC__ >= 0x810)
+// # define PROGRAM_CURRENT_FUNCTION __PRETTY_FUNCTION__
+# define PROGRAM_CURRENT_FUNCTION __FUNCTION__ // prefer non-pretty function
+
+#elif defined(__FUNCSIG__)
+# define PROGRAM_CURRENT_FUNCTION __FUNCSIG__
+
+#elif (defined(__INTEL_COMPILER) && (__INTEL_COMPILER >= 600)) || (defined(__IBMCPP__) && (__IBMCPP__ >= 500))
+# define PROGRAM_CURRENT_FUNCTION __FUNCTION__
+
+#elif defined(__BORLANDC__) && (__BORLANDC__ >= 0x550)
+# define PROGRAM_CURRENT_FUNCTION __FUNC__
+
+#elif defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901)
+# define PROGRAM_CURRENT_FUNCTION __func__
+
+#elif defined(__cplusplus) && (__cplusplus >= 201103)
+# define PROGRAM_CURRENT_FUNCTION __func__
+
+#else
+# define PROGRAM_CURRENT_FUNCTION " "
+
+#endif
+
+
+
+
+
  /*
   * Macro:[ERROR]
   * print a custom error message and exit the program
   */
 #define ERROR(...)  \
     do{ \
-        fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, __FUNCTION__, __LINE__); \
+        fprintf(stderr, "\n\n*******\n[ERROR](%s:%d)\n\t", __FILE__, __LINE__); \
         fprintf(stderr, __VA_ARGS__); \
         fprintf(stderr, "\n*******\n"); \
         exit(1); \
     } while(0)
+
 
   /*
    * Macro:[NEVER]
@@ -264,10 +320,7 @@ do{ \
    */
 #define NEVER \
     do{ \
-        fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, __FUNCTION__, __LINE__); \
-        fprintf(stderr, "Control should never reach this point; please report this to the developers."); \
-        fprintf(stderr, "\n*******\n"); \
-        exit(1); \
+        ERROR("Control should never reach this point; please report this to the developers."); \
     } while(0)
 
 
@@ -283,7 +336,7 @@ do{ \
     do {                                                                    \
         if (!(ASSERT_EXPAND(expr))){                                        \
             fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d) %s\n*******\n", \
-                    __FILE__, __FUNCTION__, __LINE__, #expr);               \
+                    __FILE__, PROGRAM_CURRENT_FUNCTION, __LINE__, #expr);               \
             exit(1);                                                        \
         }                                                                   \
     } while(0)
@@ -295,8 +348,7 @@ do{ \
     */
 #define WARN(...)                                                            \
 do {                                                                     \
-	fprintf(stderr, "\n\n[WARNING](%s/%s:%d): ", __FILE__, __FUNCTION__, \
-			__LINE__);                                                   \
+	fprintf(stderr, "\n\n[WARNING](%s): ", PROGRAM_CURRENT_FUNCTION); \
 	fprintf(stderr, __VA_ARGS__);                                        \
 	fprintf(stderr, "\n");                                               \
 } while(0)
@@ -308,8 +360,7 @@ do {                                                                     \
 #define VWARN(...)                                                 \
 do {                                                           \
 	if (0 != VERBOSITY_LEVEL) {                                  \
-		fprintf(stderr, "\n\n[WARNING](%s/%s:%d): ", __FILE__, \
-				__FUNCTION__, __LINE__);                       \
+		fprintf(stderr, "\n\n[WARNING](%s): ", PROGRAM_CURRENT_FUNCTION); \
 		fprintf(stderr, __VA_ARGS__);                          \
 		fprintf(stderr, "\n");                                 \
 	}                                                          \
@@ -331,13 +382,13 @@ do { \
           */
 #define LOG(...) \
 do{ \
-    fprintf(stderr, "\n[LOG](%s)\t", __FUNCTION__); \
+    fprintf(stderr, "\n[LOG]\t"); \
     fprintf(stderr, __VA_ARGS__); \
 } while(0)
 
-#define LOGADD(...) \
+#define LONGLOG(...) \
 do{ \
-    fprintf(stderr, "\n[LOG]\t"); \
+    fprintf(stderr, "\n[LOG](%s)\t", PROGRAM_CURRENT_FUNCTION); \
     fprintf(stderr, __VA_ARGS__); \
 } while(0)
 
@@ -351,21 +402,32 @@ do{ \
 #define BEGIN_LOGSECTION \
 do{ \
     fprintf(stderr, "\n________________________________________\n"); \
-    fprintf(stderr, "[LOG]\t-> Program is now at <%s/%s>\n", __FILE__, __FUNCTION__); \
+    fprintf(stderr, "[LOG]\t-> Program is now at: <%s>\n", PROGRAM_CURRENT_FUNCTION); \
+}while(0)
+
+
+#define BEGIN_LOGSECTION_MSG(...) \
+do{ \
+    fprintf(stderr, "\n________________________________________\n"); \
+    fprintf(stderr, "[LOG]\t-> Program is now at: "); \
+    fprintf(stderr, __VA_ARGS__); \
+    fprintf(stderr, " <%s>\n", PROGRAM_CURRENT_FUNCTION); \
 }while(0)
 
 #define END_LOGSECTION \
 do{ \
-    fprintf(stderr, "\n________________________________________\n"); \
+    fprintf(stderr, "\n\n[LOG]\t-> Finished: <%s>\n", PROGRAM_CURRENT_FUNCTION); \
+    fprintf(stderr, "________________________________________\n"); \
 }while(0)
 
-#define BEGIN_LOGSECTION_MSG(msg) \
+
+#define END_LOGSECTION_MSG(...) \
 do{ \
-    fprintf(stderr, "\n________________________________________\n"); \
-    fprintf(stderr, "[LOG]\t-> Program is now at <%s/%s>\n", __FILE__, __FUNCTION__); \
-    fprintf(stderr, "[LOG]\t-> %s\n", msg); \
+    fprintf(stderr, "\n\n[LOG]\t-> Finished: "); \
+    fprintf(stderr, __VA_ARGS__); \
+    fprintf(stderr, " <%s>\n", PROGRAM_CURRENT_FUNCTION); \
+    fprintf(stderr, "________________________________________\n"); \
 }while(0)
-
 
 
            /*
@@ -376,7 +438,7 @@ do{ \
 #define ASSERTM(expr, msg)                                                                               \
 do{ \
     if (!(expr)) {                                                                                       \
-        fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d) %s\n", __FILE__, __FUNCTION__, __LINE__, #expr); \
+        fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d) %s\n", __FILE__, PROGRAM_CURRENT_FUNCTION, __LINE__, #expr); \
         fprintf(stderr, "\n%s!!\n", #msg);                                                               \
         exit(1);                                                                                         \
     } \
@@ -413,7 +475,7 @@ do{ \
 	do{ \
 		void* tmp = (void*) realloc(((p)), (((size)) * sizeof( *((p)) ))); \
         if (NULL == tmp) { \
-            fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, __FUNCTION__, __LINE__); \
+            fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, PROGRAM_CURRENT_FUNCTION, __LINE__); \
             fprintf(stderr, "Failed to reallocate memory\n");                                        \
             fprintf(stderr, "\n*******\n");                                                          \
             exit(1);                                                                                 \
@@ -428,7 +490,7 @@ do{ \
         ((p)) = NULL; \
 		((p)) = ( ((type)) ) malloc ( ((size)) * sizeof( *((p))) ); \
 		if(NULL == ((p))) { \
-			fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, __FUNCTION__, __LINE__); \
+			fprintf(stderr, "\n\n*******\n[ERROR](%s/%s:%d)\n\t", __FILE__, PROGRAM_CURRENT_FUNCTION, __LINE__); \
 			fprintf(stderr, "Failed to allocate memory\n");                                        \
 			fprintf(stderr, "\n*******\n");                                                          \
 			exit(1);                                                                                 \

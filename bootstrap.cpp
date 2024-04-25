@@ -3,8 +3,6 @@
 
 #include <algorithm>
 
-// TODO add test case
-
 bblocks_t* bblocks_init(void) {
     bblocks_t* bblocks = (bblocks_t*)malloc(sizeof(bblocks_t));
     ASSERT(bblocks != NULL);
@@ -21,7 +19,7 @@ bblocks_t* bblocks_init(void) {
 }
 
 void bblocks_destroy(bblocks_t* bblocks) {
-    for (size_t i = 0;i < args->nBootstraps;++i) {
+    for (size_t i = 0;i < (size_t) args->nBootstraps;++i) {
         FREE(bblocks->rblocks[i]);
     }
     FREE(bblocks->rblocks);
@@ -38,27 +36,25 @@ void bblocks_destroy(bblocks_t* bblocks) {
 
 void bblocks_sample_with_replacement(bblocks_t* bblocks) {
     DEVASSERT(bblocks != NULL);
-
     const size_t nReps = args->nBootstraps;
     const int nBlocks = bblocks->n_blocks;
-
-
-    for (size_t rep = 0;rep < nReps;++rep) {
-        for (size_t block = 0;block < nBlocks;++block) {
+    for (size_t rep = 0;rep < (size_t) nReps;++rep) {
+        for (size_t block = 0;block < (size_t) nBlocks;++block) {
             bblocks->rblocks[rep][block] = (int)(nBlocks * drand48());
         }
     }
-
+    return;
 }
 
 void bblocks_print_bootstrap_samples(bblocks_t* bblocks, outfile_t* outfile) {
 
+    kstring_t* kbuf = &outfile->kbuf;
     LOG("Writing bootstrap samples to file: %s\n", outfile->fn);
 
-    ksprintf(&outfile->kbuf, "Replicate,BlockNo,BlockID\n");
-    for (size_t rep = 0;rep < args->nBootstraps;++rep) {
-        for (size_t block = 0;block < bblocks->n_blocks;++block) {
-            ksprintf(&outfile->kbuf, "%ld,%ld,%ld\n", rep, block, bblocks->rblocks[rep][block]);
+    ksprintf(kbuf, "Rep\tPos\tBlockID\tBlockContig\tBlockStart\tBlockEnd\n");
+    for (size_t rep = 0;rep < (size_t) args->nBootstraps;++rep) {
+        for (size_t block = 0;block < (size_t) bblocks->n_blocks;++block) {
+            ksprintf(kbuf, "%ld\t%ld\t%ld\t%s\t%ld\t%ld\n", rep, block, bblocks->rblocks[rep][block],bblocks->contig_names->d[bblocks->block_contig[bblocks->rblocks[rep][block]]],bblocks->block_start_pos[bblocks->rblocks[rep][block]]+1, bblocks->block_end_pos[bblocks->rblocks[rep][block]]);
         }
     }
     return;
@@ -70,31 +66,31 @@ void bblocks_print_bootstrap_samples(bblocks_t* bblocks, outfile_t* outfile) {
 // internal representation = 0-based, [start, end)
 // conversion from internal to blocks tab: start+1,end
 void bblocks_print_blocks_tab(bblocks_t* bblocks, outfile_t* outfile) {
+    kstring_t* kbuf = &outfile->kbuf;
 
-    LOGADD("(%s) Writing the bootstrapping blocks to tsv file: %s", "--print-blocks", outfile->fn);
+    LOG("(%s) Writing the bootstrapping blocks to tsv file: %s", "--print-blocks", outfile->fn);
 
     size_t ci;
     for (size_t bi = 0;bi < bblocks->n_blocks;++bi) {
 
         ci = bblocks->block_contig[bi];
 
-        ksprintf(&outfile->kbuf, "%s\t%ld\t%ld\n", bblocks->contig_names->d[ci], bblocks->block_start_pos[bi] + 1, bblocks->block_end_pos[bi]);
+        ksprintf(kbuf, "%s\t%ld\t%ld\n", bblocks->contig_names->d[ci], bblocks->block_start_pos[bi] + 1, bblocks->block_end_pos[bi]);
     }
     return;
 }
 
 void bblocks_generate_blocks_with_size(bblocks_t* bblocks, vcfData* vcfd, paramStruct* pars, const uint64_t blockSize) {
 
-    BEGIN_LOGSECTION_MSG("Generating blocks for block bootstrapping");
+    BEGIN_LOGSECTION_MSG("(--block-size) Generating blocks with given block size");
 
-    LOGADD("(%s) Targeted block size: %d", "--block-size", blockSize);
+    LOG("(--block-size) Targeted block size: %ld", blockSize);
 
     const size_t nInd = pars->names->len;
     const size_t nContigs = vcfd->nContigs;
 
     const int targeted_blockSize = args->blockSize;
     int current_blockSize = targeted_blockSize;
-
 
     bblocks->n_contigs = nContigs;
     bblocks->contig_names = strArray_alloc(nContigs);
@@ -107,10 +103,10 @@ void bblocks_generate_blocks_with_size(bblocks_t* bblocks, vcfData* vcfd, paramS
         const char* contigName = vcfd->hdr->id[BCF_DT_CTG][ci].key;
 
         bblocks->contig_names->add(contigName);
-        LOGADD("Found contig %s with size %d", contigName, contigSize);
+        LOG("Found contig %s with size %ld", contigName, contigSize);
 
-        if (targeted_blockSize > contigSize) {
-            LOGADD("Size of the contig %s (%d) is smaller than the targeted block size (%d). Setting the block size to the size of the contig.", contigName, contigSize, targeted_blockSize);
+        if ((size_t) targeted_blockSize > contigSize) {
+            WARN("Size of the contig %s (%ld) is smaller than the targeted block size (%d). Setting the block size to the size of the contig.", contigName, contigSize, targeted_blockSize);
             current_blockSize = contigSize;
         } else {
             current_blockSize = targeted_blockSize;
@@ -120,7 +116,7 @@ void bblocks_generate_blocks_with_size(bblocks_t* bblocks, vcfData* vcfd, paramS
         const int nBlocks_perContig = (contigSize % current_blockSize == 0) ? (contigSize / current_blockSize) : ((contigSize / current_blockSize) + 1);
         DEVASSERT(nBlocks_perContig > 0);
 
-        LOGADD("Generating %d block%c of size %d for contig %s", nBlocks_perContig, (nBlocks_perContig > 1) ? 's' : '\0', current_blockSize, contigName);
+        LOG("Generating %d block%c of size %d for contig %s", nBlocks_perContig, (nBlocks_perContig > 1) ? 's' : '\0', current_blockSize, contigName);
 
         prev_nBlocks = totnBlocks;
         totnBlocks += nBlocks_perContig;
@@ -134,7 +130,7 @@ void bblocks_generate_blocks_with_size(bblocks_t* bblocks, vcfData* vcfd, paramS
             ASSERT(bblocks->block_contig != NULL);
             bblocks->block_start_siteidx = (size_t*)malloc(totnBlocks * sizeof(size_t));
             ASSERT(bblocks->block_start_siteidx != NULL);
-            for(size_t i = 0;i < totnBlocks;++i) {
+            for (size_t i = 0;i < totnBlocks;++i) {
                 bblocks->block_start_pos[i] = 0;
                 bblocks->block_end_pos[i] = 0;
                 bblocks->block_contig[i] = 0;
@@ -155,15 +151,15 @@ void bblocks_generate_blocks_with_size(bblocks_t* bblocks, vcfData* vcfd, paramS
 
             tmp = (size_t*)realloc(bblocks->block_contig, totnBlocks * sizeof(size_t));
             ASSERT(tmp != NULL);
-            bblocks->block_contig =tmp;
+            bblocks->block_contig = tmp;
             tmp = NULL;
 
-            tmp= (size_t*)realloc(bblocks->block_start_siteidx, totnBlocks * sizeof(size_t));
+            tmp = (size_t*)realloc(bblocks->block_start_siteidx, totnBlocks * sizeof(size_t));
             ASSERT(tmp != NULL);
             bblocks->block_start_siteidx = tmp;
             tmp = NULL;
 
-            for(size_t i = prev_nBlocks;i < totnBlocks;++i) {
+            for (size_t i = prev_nBlocks;i < totnBlocks;++i) {
                 bblocks->block_start_pos[i] = 0;
                 bblocks->block_end_pos[i] = 0;
                 bblocks->block_contig[i] = 0;
@@ -173,7 +169,7 @@ void bblocks_generate_blocks_with_size(bblocks_t* bblocks, vcfData* vcfd, paramS
         }
 
         // -> set
-        for (size_t bi = 0;bi < nBlocks_perContig;++bi) {
+        for (size_t bi = 0;bi < (size_t) nBlocks_perContig;++bi) {
             bblocks->block_start_pos[bi + prev_nBlocks] = bi * current_blockSize;
             bblocks->block_end_pos[bi + prev_nBlocks] = ((bi + 1) * current_blockSize);
             bblocks->block_contig[bi + prev_nBlocks] = ci;
@@ -192,10 +188,10 @@ void bblocks_generate_blocks_with_size(bblocks_t* bblocks, vcfData* vcfd, paramS
 
     bblocks->rblocks = (size_t**)malloc(args->nBootstraps * sizeof(size_t*));
     ASSERT(bblocks->rblocks != NULL);
-    for (size_t i = 0;i < args->nBootstraps;++i) {
+    for (size_t i = 0;i < (size_t) args->nBootstraps;++i) {
         bblocks->rblocks[i] = (size_t*)malloc(totnBlocks * sizeof(size_t));
         ASSERT(bblocks->rblocks[i] != NULL);
-        for (size_t j = 0;j < totnBlocks;++j) {
+        for (size_t j = 0;j < (size_t) totnBlocks;++j) {
             bblocks->rblocks[i][j] = 0;
         }
     }
@@ -206,6 +202,7 @@ void bblocks_generate_blocks_with_size(bblocks_t* bblocks, vcfData* vcfd, paramS
         bblocks->nsites_per_block[i] = 0;
     }
 
+    END_LOGSECTION_MSG("(--block-size) Generating blocks with given block size");
     return;
 }
 
@@ -213,6 +210,9 @@ void bblocks_generate_blocks_with_size(bblocks_t* bblocks, vcfData* vcfd, paramS
 // blocks tab file = 1-based, [start, end]
 // internal representation = 0-based, [start, end)
 void bblocks_read_tab(bblocks_t* bblocks, const char* fn, vcfData* vcfd, paramStruct* pars) {
+
+    LOG("(in-blocks-tab) Reading blocks tab file: %s", fn);
+
 
     FILE* fp = IO::getFile(fn, "r");
     char* firstLine = IO::readFile::getFirstLine(fp);
@@ -297,11 +297,11 @@ void bblocks_read_tab(bblocks_t* bblocks, const char* fn, vcfData* vcfd, paramSt
         // -> check if the contig in input blocks file exists in the VCF file
         if (contigChanged) {
             size_t contig_i;
-            for (contig_i = 0; contig_i < nContigsVcf; ++contig_i) {
+            for (contig_i = 0; contig_i < (size_t) nContigsVcf; ++contig_i) {
                 if (strcmp(chr, vcfContigs[contig_i]) == 0) {
                     break;
                 }
-                if (contig_i == nContigsVcf - 1) {
+                if ((int)contig_i == nContigsVcf - 1) {
                     ERROR("Contig %s in input blocks file does not exist in the VCF file.", chr);
                 }
             }
@@ -344,6 +344,8 @@ void bblocks_read_tab(bblocks_t* bblocks, const char* fn, vcfData* vcfd, paramSt
 
 
 void bblocks_read_bed(bblocks_t* bblocks, const char* fn, vcfData* vcfd, paramStruct* pars) {
+
+    LOG("(in-blocks-bed) Reading blocks bed file: %s", fn);
 
     FILE* fp = IO::getFile(fn, "r");
     char* firstLine = IO::readFile::getFirstLine(fp);
@@ -426,11 +428,11 @@ void bblocks_read_bed(bblocks_t* bblocks, const char* fn, vcfData* vcfd, paramSt
         // -> check if the contig in input blocks file exists in the VCF file
         if (contigChanged) {
             size_t contig_i;
-            for (contig_i = 0; contig_i < nContigsVcf; ++contig_i) {
+            for (contig_i = 0; contig_i < (size_t) nContigsVcf; ++contig_i) {
                 if (strcmp(chr, vcfContigs[contig_i]) == 0) {
                     break;
                 }
-                if (contig_i == nContigsVcf - 1) {
+                if ((int)contig_i == nContigsVcf - 1) {
                     ERROR("Contig %s in input blocks file does not exist in the VCF file.", chr);
                 }
             }
@@ -473,9 +475,6 @@ void bblocks_read_bed(bblocks_t* bblocks, const char* fn, vcfData* vcfd, paramSt
 
 
 void bblocks_get(bblocks_t* bblocks, vcfData* vcfd, paramStruct* pars) {
-    DEVASSERT(bblocks != NULL);
-    DEVASSERT(vcfd != NULL);
-
 
     if (PROGRAM_HAS_INPUT_BLOCKS) {
         if (args->in_blocks_bed_fn != NULL) {

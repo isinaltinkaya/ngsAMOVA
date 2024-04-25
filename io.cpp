@@ -55,26 +55,22 @@ outfile_t* outfile_init(const char* suffix, const char* extension, const uint8_t
         fnlen += 1 + strlen(extension);
     }
 
-    char* cextension = NULL; // compression extension
+    char cextension[4] = {'\0'};
     if (PROGRAM_OUTFILE_CTYPE_NONE == ctype) {
-
+        ;;
     } else if (PROGRAM_OUTFILE_CTYPE_GZ == ctype) {
-        cextension = (char*)malloc(3 * sizeof(char));
-        ASSERT(cextension != NULL);
         cextension[0] = 'g';
         cextension[1] = 'z';
-        cextension[2] = '\0';
+        // cextension[2] = '\0';
 
         // add space for: .gz
         fnlen += 3;
 
     } else if (PROGRAM_OUTFILE_CTYPE_BGZ == ctype) {
-        cextension = (char*)malloc(4 * sizeof(char));
-        ASSERT(cextension != NULL);
         cextension[0] = 'b';
         cextension[1] = 'g';
         cextension[2] = 'z';
-        cextension[3] = '\0';
+        // cextension[3] = '\0';
         // add space for: .bgz
         fnlen += 4;
 
@@ -83,7 +79,11 @@ outfile_t* outfile_init(const char* suffix, const char* extension, const uint8_t
     outfile->fn = NULL;
     outfile->fn = (char*)malloc(fnlen + 1);
     ASSERT(outfile->fn != NULL);
-    snprintf(outfile->fn, fnlen + 1, "%s.%s%c%s%c%s", prefix, suffix, (extension == NULL) ? '\0' : '.', (extension == NULL) ? "" : extension, (cextension == NULL) ? '\0' : '.', (cextension == NULL) ? "" : cextension);
+    snprintf(outfile->fn, fnlen + 1, "%s.%s%c%s%c%s", prefix, suffix, 
+    (extension == NULL) ? '\0' : '.', 
+    (extension == NULL) ? "" : extension, 
+    (cextension[0] == '\0') ? '\0' : '.',
+    (cextension[0] == '\0') ? "" : cextension);
 
     return outfile;
 }

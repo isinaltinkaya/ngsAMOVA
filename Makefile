@@ -11,7 +11,7 @@ CXX ?= g++
 
 
 # No-compile targets
-NO_COMPILE = clean test help
+NO_COMPILE = help clean test test-%
 
 
 VAL_ADD_CRYPTOLIB = -lcrypto
@@ -203,7 +203,7 @@ DEP := $(OBJ:.o=.d)
 FLAGS := $(CPPFLAGS) $(CXXFLAGS)
 
 
-VERSION = v0.4
+VERSION = v0.5
 
 ifneq ($(wildcard .git),)
 VERSION := $(VERSION)-$(shell git describe --always)
@@ -212,7 +212,7 @@ endif
 VERSIONH = version.h
 
 $(VERSIONH):
-	$(if $(wildcards version.h),$(if $(findstring "$(VERSION)",$(shell cat version.h)),,$(shell echo '#define ngsAMOVA_VERSION "$(VERSION)"' > version.h)), $(shell echo '#define ngsAMOVA_VERSION "$(VERSION)"' > version.h))
+	$(if $(wildcards version.h),$(if $(findstring "$(VERSION)",$(shell cat version.h)),,$(shell echo '#define NGSAMOVA_VERSION "$(VERSION)"' > version.h)), $(shell echo '#define NGSAMOVA_VERSION "$(VERSION)"' > version.h))
 
 
 # Build info

@@ -73,7 +73,7 @@ struct jgtmat_t {
     uint64_t** m;
 
     /// @var drop[n] - array of bool indicators for excluding specific matrices from downstream analyses
-    /// @note allocated iff args->drop_pairs==1
+    /// @note allocated iff args->allow_mispairs==1
     /// @details if gl data, filled in em.cpp. if gt data, filled in vcfReader.cpp
     bool* drop;
 

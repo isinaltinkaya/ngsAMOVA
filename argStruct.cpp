@@ -1,10 +1,35 @@
 #include "argStruct.h"
 #include "shared.h"
+#include "version.h"
+#include "build.h"
+
+#include <htslib/hts.h> // hts_version()
 
 #include "io.h"
 
 uint8_t PROGRAM_VERBOSITY_LEVEL = 0;
+char* PROGRAM_VERSION_INFO = NULL;
+char* PROGRAM_COMMAND = NULL;
 argStruct* args = NULL;
+
+
+
+
+void version_page() {
+    fprintf(stderr, "ngsAMOVA [version: %s] [build: %s %s] [htslib: %s]\n", NGSAMOVA_VERSION, __DATE__, __TIME__, hts_version());
+    fprintf(stderr, "\n");
+    fprintf(stderr, "Build details:\n");
+    fprintf(stderr, "\t-> CXX=%s\n", NGSAMOVA_MAKE_CXX);
+    fprintf(stderr, "\t-> CXXFLAGS=%s\n", NGSAMOVA_MAKE_CXXFLAGS);
+    fprintf(stderr, "\t-> CPPFLAGS=%s\n", NGSAMOVA_MAKE_CPPFLAGS);
+    fprintf(stderr, "\t-> LIBS=%s\n", NGSAMOVA_MAKE_LIBS);
+    fprintf(stderr, "\t-> FLAGS=%s\n", NGSAMOVA_MAKE_FLAGS);
+    fprintf(stderr, "\t-> HTSSRC=%s\n", NGSAMOVA_MAKE_HTSSRC);
+    fprintf(stderr, "\n");
+
+}
+
+
 
 // TODO:
 // check multiple of same argument
@@ -82,6 +107,8 @@ argStruct* argStruct_get(int argc, char** argv) {
             args->doJGTM = atoi(val);
         } else if (strcasecmp("-doEM", arv) == 0) {
             args->doEM = atoi(val);
+            // when performing block bootstrapping em, use --verbose >1 to print per em optimization termination reason, last d value, and number of iterations
+            // TODO add this to help
         } else if (strcasecmp("-doDxy", arv) == 0) {
             args->doDxy = atoi(val);
         } else if ((strcasecmp("-doNeighborJoining", arv) == 0) || (strcasecmp("-doPhylo", arv) == 0)) {
@@ -99,6 +126,8 @@ argStruct* argStruct_get(int argc, char** argv) {
             args->doIbd = atoi(val);
         } else if (strcasecmp("-doMajorMinor", arv) == 0) {
             args->doMajorMinor = atoi(val);
+        } else if (strcasecmp("-doBlockBootstrap", arv) == 0) {
+            args->doBlockBootstrap = atoi(val);
         } else if (strcasecmp("--bcf-src", arv) == 0) {
             args->bcfSrc = atoi(val);
         } else if (strcasecmp("--prune-dmat", arv) == 0) {
@@ -189,8 +218,46 @@ argStruct* argStruct_get(int argc, char** argv) {
             args->print_amova = atoi(val);
         } else if (strcasecmp("--print-blocks", arv) == 0) {
             args->print_blocks = atoi(val);
-        } else if (strcasecmp("--print-bootstrap-verbose", arv) == 0) {
-            args->print_bootstrap_verbose = atoi(val);
+        } else if (strcasecmp("--print-bootstrap", arv) == 0) {
+            // prints to <prefix>.bootstrap_samples.tsv
+            // with header:
+            // Rep\tPos\tBlockID\tBlockContig\tBlockStart\tBlockEnd
+            // Rep 	Pos 	BlockID 	BlockContig BlockStart 	BlockEnd
+            // Rep:        Replicate number
+            // Pos:        Position of the sampled block in the replicates synthetic genome (0-based)
+            // BlockID:    ID of the sampled block
+            // BlockContig: Name of the chromosome to which the block belongs to
+            // BlockStart: 1-based, inclusive [start position of the block with the given BlockID
+            // BlockEnd:   1-based, inclusive end] position of the block with the given BlockID
+            //
+            // e.g.
+            // if we have 4 blocks in the original genome, each with a size of 1000 bps 
+            // {block1, block2, block3, block4} 
+            // (0     , 1     , 2     , 3) BlockIDs
+            // internal representation start end pos: (0-based inclusive start exclusive end)
+            // (all belonging to chr1)
+            // block1 start:0,    end:1000 
+            // block2 start:1000, end:2000
+            // block3 start:2000, end:3000
+            // block4 start:3000, end:4000
+            // blocks tab representation: (1-based inclusive start end)
+            // block1 start:1,    end:1000
+            // block2 start:1001, end:2000
+            // block3 start:2001, end:3000
+            // block4 start:3001, end:4000
+            //
+            // and we have one replicate which has sampled the following ordered set:
+            // {block3, block1, block2, block4}
+            //
+            // Our output file output.bootstrap_samples.tsv will have:
+            // Rep 	Pos 	BlockID 	BlockContig BlockStart 	BlockEnd
+            // 0    0       2           chr1        2001        3000
+            // 0    1       0           chr1        0           1000
+            // 0    2       1           chr1        1001        2000
+            // 0    3       3           chr1        3001        4000
+            // 
+
+            args->print_bootstrap = atoi(val);
         }
 
         // #######################################################################
@@ -420,14 +487,13 @@ argStruct* argStruct_get(int argc, char** argv) {
         }
 
         else if ((strcasecmp("--bootstrap-ci", arv) == 0)) {
-            args->bootstrap_ci = atof(val);
+            args->bootstrap_pctci = atof(val);
         }
 
-        else if ((strcasecmp("--maxEmIter", arv) == 0) || (strcasecmp("--max-em-iter", arv) == 0)) {
+        else if ((strcasecmp("--maxEmIter", arv) == 0) || (strcasecmp("--em-max-iter", arv) == 0)) {
             args->maxEmIter = atoi(val);
 
         } else if ((strcasecmp("-P", arv) == 0) || (strcasecmp("-@", arv) == 0) || (strcasecmp("--nThreads", arv) == 0) || (strcasecmp("--threads", arv) == 0) || (strcasecmp("-nThreads", arv) == 0)) {
-            args->nThreads = atoi(val);
             args->nThreads = atoi(val);
 
         } else if (strcasecmp("--rm-invar-sites", arv) == 0) {
@@ -435,7 +501,7 @@ argStruct* argStruct_get(int argc, char** argv) {
 
         } else if (strcasecmp("--drop-pairs", arv) == 0) {
             // if an individual pair has no shared sites, should the program drop the pair or give err and exit?
-            args->drop_pairs = atoi(val);
+            args->allow_mispairs = atoi(val);
 
         } else if (strcasecmp("--min-pairsites", arv) == 0) {
             // TODO
@@ -468,12 +534,12 @@ argStruct* argStruct_get(int argc, char** argv) {
     }
 
 
-    if (-1 != args->drop_pairs) {
-        CHECK_ARG_INTERVAL_01(args->drop_pairs, "--drop-pairs");
-        WARN("--drop pairs is set to %d. For downstream analyses, use this option with caution as it may lead to decreased power.", args->drop_pairs);
+    if (-1 != args->allow_mispairs) {
+        CHECK_ARG_INTERVAL_01(args->allow_mispairs, "--drop-pairs");
+        WARN("--drop pairs is set to %d. For downstream analyses, use this option with caution as it may lead to decreased power.", args->allow_mispairs);
     } else {
-        args->drop_pairs = 0;
-        LOG("--drop-pairs is not set, setting to default value %d (do not drop pairs). Program will give error and exit if an individual pair has no shared sites.", args->drop_pairs);
+        args->allow_mispairs = 0;
+        LOG("--drop-pairs is not set, setting to default value %d (do not drop pairs). Program will give error and exit if an individual pair has no shared sites.", args->allow_mispairs);
     }
 
     if (-1 != args->pair_min_n_sites) {
@@ -492,10 +558,10 @@ argStruct* argStruct_get(int argc, char** argv) {
 
     if (-1 != args->min_n_pairs) {
         // requires: --drop-pairs 1
-        CHECK_ARG_INTERVAL_INT(args->min_n_pairs, 1, INT_MAX, "--min-npairs");
-        if (0 == args->drop_pairs) {
-            ERROR("Cannot set --min-npairs without setting --drop-pairs to 1. Please set --drop-pairs to 1.");
-        }
+        CHECK_ARG_INTERVAL_INT(args->min_n_pairs, 0, INT_MAX, "--min-npairs");
+        // if (0 == args->allow_mispairs) {
+        //     ERROR("Cannot set --min-npairs without setting --drop-pairs to 1. Please set --drop-pairs to 1.");
+        // }
     } else {
         args->min_n_pairs = 1;
         LOG("--min-npairs is not set, setting to default value %d. Program will give error if the number of individual pairs left after dropping pairs is less than this value.", args->min_n_pairs);
@@ -505,9 +571,13 @@ argStruct* argStruct_get(int argc, char** argv) {
     if (0 == args->nThreads) {
         args->nThreads = 1;
     }
+
     if (NULL != args->in_vcf_fn) {
         fprintf(stderr, "\n[INFO]\tFound input VCF file: %s\n", args->in_vcf_fn);
         args->in_ft = args->in_ft | ARG_INTPLUS_INPUT_VCF;
+        if (-1 == args->bcfSrc) {
+            ERROR("BCF data source is necessary for VCF input. Please set the BCF data source using --bcf-src.");
+        }
     }
 
     if (NULL != args->in_dm_fn) {
@@ -562,7 +632,7 @@ argStruct* argStruct_get(int argc, char** argv) {
     }
 
     if (PROGRAM_HAS_INPUT_DM) {
-        if (args->blockSize != 0) {
+        if (args->blockSize > 0) {
             ERROR("-blockSize is not supported for distance matrix input.");
         }
         if (args->doEM) {
@@ -575,13 +645,13 @@ argStruct* argStruct_get(int argc, char** argv) {
 
     if (PROGRAM_HAS_INPUT_METADATA && (!PROGRAM_NEEDS_METADATA)) {
         WARN("Metadata file is provided but no analysis requires it; will ignore the metadata file %s.", args->in_mtd_fn);
-        if(NULL!=args->formula) {
+        if (NULL != args->formula) {
             WARN("Formula is set but no analysis requires it; will ignore the formula '%s'.", args->formula);
         }
     }
 
     if ((!(PROGRAM_HAS_INPUT_METADATA)) && PROGRAM_NEEDS_METADATA) {
-        ERROR("Metadata file is not provided but required for the analysis.");
+        ERROR("Metadata file is required for the specified analyses. Please provide the metadata file using --metadata.");
     }
 
     if (PROGRAM_HAS_INPUT_METADATA && PROGRAM_NEEDS_METADATA) {
@@ -591,18 +661,22 @@ argStruct* argStruct_get(int argc, char** argv) {
     }
 
 
-    if (PROGRAM_WILL_PERFORM_BLOCK_BOOTSTRAPPING) {
+    if (args->doBlockBootstrap){
+        if (PROGRAM_WILL_USE_BCF_FMT_GT) {
+            ERROR("Program cannot use GT data for block bootstrapping.");
+        }
+
 
         if (args->nBootstraps != -1) {
             CHECK_ARG_INTERVAL_INT(args->nBootstraps, 1, 100000, "-nb/--nBootstraps");
         }
 
-        if (-1.0 == args->bootstrap_ci) {
-            args->bootstrap_ci = 0.95;
-            LOG("Bootstrap confidence interval is not set, setting to default value %f.", args->bootstrap_ci);
+        if (-1.0 == args->bootstrap_pctci) {
+            args->bootstrap_pctci = 95.0;
+            LOG("Bootstrap confidence interval is not set, setting to default value %.17g %%.", args->bootstrap_pctci);
 
         } else {
-            CHECK_ARG_INTERVAL_II_DBL(args->bootstrap_ci, 0.0, 1.0, "--bootstrap-ci");
+            CHECK_ARG_INTERVAL_EE_DBL(args->bootstrap_pctci, 0.0, 100.0, "--bootstrap-ci");
         }
 
         if (args->blockSize == 0 && args->in_blocks_tab_fn == NULL && args->in_blocks_bed_fn == NULL) {
@@ -628,6 +702,12 @@ argStruct* argStruct_get(int argc, char** argv) {
 
     args->check_arg_dependencies();
 
+
+    ASSERT(asprintf(&PROGRAM_VERSION_INFO, "ngsAMOVA [version: %s] [build: %s %s] [htslib: %s]", NGSAMOVA_VERSION, __DATE__, __TIME__, hts_version()) != -1);
+
+    ASSERT(asprintf(&PROGRAM_COMMAND, "%s", argv[0]) != -1);
+
+
     return args;
 }
 
@@ -645,21 +725,14 @@ void argStruct::check_arg_dependencies() {
         ERROR("minInd is set to %d. Minimum value allowed for minInd is 2.", minInd);
     }
 
-    if (print_dm != 0) {
-        fprintf(stderr, "\n[INFO]\t-> -printMatrix %d; will print distance matrix\n", print_dm);
-    }
-
-
-    if (PROGRAM_WILL_USE_RNG) {
-        if (seed == -1) {
-            seed = time(NULL);
-            srand48(seed);
-            LOG("Seed is not defined, will use current time as random seed for the random number generator. Seed is now set to: %d.\n", seed);
-            WARN("Used the current time as random seed for random number generator. For parallel runs this may cause seed collisions. Hence, it is recommended to set the seed manually using `--seed <INTEGER>`.");
-        } else {
-            srand48(seed);
-            LOG("Seed is set to: %d.\n", seed);
-        }
+    if (seed == -1) {
+        seed = time(NULL);
+        srand48(seed);
+        LOG("Seed is not defined, will use current time as random seed for the random number generator. Seed is now set to: %d.\n", seed);
+        WARN("Used the current time as random seed for random number generator. For parallel runs this may cause seed collisions. Hence, it is recommended to set the seed manually using `--seed <INTEGER>`.");
+    } else {
+        srand48(seed);
+        LOG("Seed is set to: %d.\n", seed);
     }
 
     if (in_dm_fn != NULL) {
@@ -680,26 +753,31 @@ void argStruct::check_arg_dependencies() {
     //              default: 0
     //
     //              0: do not estimate distance matrix
-    //              1: calculate the pairwise distance matrix using the method defined via --distance-method
+    //              1: calculate the pairwise distance matrix using the method defined via --dm-method
     //              2: read the distance matrix from the file defined via --in-dm
-
+    //              3: do doDist 1 for original dataset and the block bootstrapped datasets
 
     if (0 == doDist) {
         //
-    } else if (1 == doDist) {
-        LOG("-doDist %d; will estimate pairwise distance matrix using Dij.", doDist);
+    } else if ((1 == doDist) || (3 == doDist)) {
         // if dm_method dm_transform not defined, set to default and inform user
         if (-1 == dm_method) {
             dm_method = DMAT_METHOD_DIJ;
             LOG("Distance matrix method is not set, setting to default value %d (Dij).", dm_method);
         } else {
             CHECK_ARG_INTERVAL_INT(dm_method, 0, 9, "--dm-method");
+            LOG("--dm-method is set to %d (%s).", dm_method, get_dmat_method_str(dm_method));
         }
         if (-1 == dm_transform) {
             dm_transform = DMAT_TRANSFORM_NONE;
             LOG("Distance matrix transform is not set, setting to default value %d (none).", dm_transform);
         } else {
             CHECK_ARG_INTERVAL_INT(dm_transform, 0, 1, "--dm-transform");
+        }
+
+        if (ARG_INTPLUS_UNSET == args->print_dm) {
+            args->print_dm = ARG_INTPLUS_PRINT_DM_ORIG;
+            LOG("--print-dm is not set, setting to default value %d (print the distance matrix).", args->print_dm);
         }
 
     } else if (2 == doDist) {
@@ -750,6 +828,7 @@ void argStruct::check_arg_dependencies() {
         }
     }
 
+    // If the input data source is genotype likelihoods(`- - bcf - src 1`), the EM optimization(`-doEM 1`) is needed to obtain the joint genotype matrix.
     if (0 == doEM) {
         //
         if (-1 != tole) {
@@ -887,12 +966,14 @@ void argStruct::check_arg_dependencies() {
         ERROR("Program cannot use both GL and GT data at the same time.");
     }
 
-    if (PROGRAM_WILL_USE_BCF_FMT_GT) {
-        if (PROGRAM_WILL_PERFORM_BLOCK_BOOTSTRAPPING) {
-            ERROR("Program cannot use GT data for block bootstrapping.");
-        }
+    if (args->rmInvarSites && PROGRAM_WILL_USE_BCF_FMT_GL) {
+        LOG("(--rm-invar-sites %d --bcf-src %d) Program will remove invariant sites based on AD tag from input VCF file.", args->rmInvarSites, args->bcfSrc);
     }
 
+    if (args->rmInvarSites && PROGRAM_WILL_USE_BCF_FMT_GL && PROGRAM_WILL_USE_BCF_FMT_GT) {
+        ERROR("Program cannot remove invariant sites when using both GL and GT data.");
+    }
+    // todo use rmInvarSites INT value to determine what to use to remove invar
 
 }
 
@@ -947,6 +1028,8 @@ void argStruct_destroy(argStruct* args) {
         FREE(args->formula);
     }
 
+    FREE(PROGRAM_VERSION_INFO);
+    FREE(PROGRAM_COMMAND);
 
     delete args;
 }

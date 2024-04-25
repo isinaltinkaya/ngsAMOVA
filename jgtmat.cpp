@@ -60,7 +60,7 @@ jgtmat_t* jgtmat_init(const size_t n) {
         }
     }
 
-    if (args->drop_pairs) {
+    if (args->allow_mispairs) {
         jgtmat->drop = (bool*)malloc(jgtmat->n * sizeof(bool));
         ASSERT(jgtmat->drop != NULL);
         for (size_t i = 0;i < jgtmat->n;++i) {

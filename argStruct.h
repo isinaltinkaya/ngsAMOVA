@@ -7,6 +7,8 @@
 typedef struct argStruct argStruct;
 
 extern uint8_t PROGRAM_VERBOSITY_LEVEL;
+extern char* PROGRAM_VERSION_INFO;
+extern char* PROGRAM_COMMAND;
 extern argStruct* args;
 
 /*
@@ -134,7 +136,7 @@ struct argStruct {
     char* in_regions_tab_fn = NULL;
     char* in_regions_bed_fn = NULL;
 
-    int blockSize = 0;
+    int blockSize = -1;
     char* in_blocks_tab_fn = NULL;
     char* in_blocks_bed_fn = NULL;
 
@@ -163,24 +165,26 @@ struct argStruct {
     int doIbd = 0;
     int doMajorMinor = 0;
 
+    int doBlockBootstrap = 0;
+
     int doUnitTests = 0;
 
     int bcfSrc = 0;
 
     int handle_neg_branch_length = 0;
 
-    int print_amova = ARG_INTPLUS_UNSET;
-    int print_blocks = 0;
-    int print_bootstrap_verbose = 0;
-
-    int print_jgtm = 0;
+    int print_jgtm = ARG_INTPLUS_UNSET;
     int print_dm = ARG_INTPLUS_UNSET;
+    int print_amova = ARG_INTPLUS_UNSET;
+    int print_blocks = ARG_INTPLUS_UNSET;
+    int print_bootstrap = ARG_INTPLUS_UNSET;
+
 
 
     // ------------------------------------------------
     // block bootstrapping
     int nBootstraps = -1;
-    double bootstrap_ci=-1.0;
+    double bootstrap_pctci=-1.0;
 
     // EM
     int minInd = -1;
@@ -206,7 +210,7 @@ struct argStruct {
 
     // ------------------------------------------------
     // -> pair filters
-    int drop_pairs=-1;
+    int allow_mispairs=-1;
     int pair_min_n_sites=-1;
     int min_n_pairs=-1;
     // ------------------------------------------------

@@ -10,7 +10,6 @@
 #include "dev.h"
 #include "dxy.h"
 #include "io.h"
-#include "mathUtils.h"
 #include "neighborJoining.h"
 #include "paramStruct.h"
 #include "shared.h"
@@ -30,7 +29,7 @@ void input_VCF(paramStruct* pars, metadata_t* metadata) {
 
 
     bblocks_t* bblocks = NULL;
-    if (PROGRAM_WILL_PERFORM_BLOCK_BOOTSTRAPPING) {
+    if (args->doBlockBootstrap) {
 
         bblocks = bblocks_init();
         bblocks_get(bblocks, vcfd, pars);
@@ -43,8 +42,8 @@ void input_VCF(paramStruct* pars, metadata_t* metadata) {
         }
 
         bblocks_sample_with_replacement(bblocks);
-        if (args->print_bootstrap_verbose) {
-            outfile_t* outfile = outfile_init("bootstrap_samples", "txt", PROGRAM_OUTFILE_CTYPE_NONE);
+        if (args->print_bootstrap) {
+            outfile_t* outfile = outfile_init("bootstrap_samples", "tsv", PROGRAM_OUTFILE_CTYPE_GZ);
             bblocks_print_bootstrap_samples(bblocks, outfile);
             outfile_write(outfile);
             outfile_destroy(outfile);
@@ -66,14 +65,16 @@ void input_VCF(paramStruct* pars, metadata_t* metadata) {
 
         const size_t nIndCmb = (pars->names->len * (pars->names->len - 1)) / 2;
         const size_t nRuns = (args->nBootstraps > 0) ? (args->nBootstraps + 1) : 1;
-
         jgtmat = jgtmat_init(nIndCmb * nRuns);
 
-        readSites(jgtmat, bblocks, vcfd, pars);
-        if (1 == args->doEM) {
-            jgtmat_get_run_em_optim(jgtmat, pars, vcfd->gldata, bblocks);
-        }
+    }
 
+    //TODO add jgtmat printing
+
+    readSites(jgtmat, bblocks, vcfd, pars);
+
+    if (args->doEM) {
+        jgtmat_get_run_em_optim(jgtmat, pars, vcfd->gldata, bblocks);
     }
 
     // -> end of vcfd lifetime
@@ -94,23 +95,37 @@ void input_VCF(paramStruct* pars, metadata_t* metadata) {
 
         dmat_t* pruned_dmat = NULL;
         if (args->prune_dmat) {
-            pruned_dmat = dmat_prune_drops(dmat);
+            pruned_dmat = dmat_prune_remove_dropped_distances(dmat);
         }
 
         if (args->print_dm & ARG_INTPLUS_PRINT_DM_PRUNED) {
-            LOG("Writing pruned distance matrix to %s", args->out_fnp);
             outfile_t* out_prunedmat = outfile_init("distance_matrix.pruned", "txt", PROGRAM_OUTFILE_CTYPE_NONE);
             dmat_print(pruned_dmat, out_prunedmat);
             outfile_write(out_prunedmat);
             outfile_destroy(out_prunedmat);
+
+            if (args->print_dm & ARG_INTPLUS_PRINT_DM_VERBOSE) {
+                outfile_t* out_prunedmat_verbose = outfile_init("distance_matrix.pruned.verbose", "txt", PROGRAM_OUTFILE_CTYPE_NONE);
+                dmat_print_verbose(pruned_dmat, out_prunedmat_verbose);
+                outfile_write(out_prunedmat_verbose);
+                outfile_destroy(out_prunedmat_verbose);
+            }
+
         }
 
         if (args->print_dm & ARG_INTPLUS_PRINT_DM_ORIG) {
-            LOG("Writing distance matrix to %s", args->out_fnp);
             outfile_t* out_dmat = outfile_init("distance_matrix", "txt", PROGRAM_OUTFILE_CTYPE_NONE);
             dmat_print(dmat, out_dmat);
             outfile_write(out_dmat);
             outfile_destroy(out_dmat);
+
+            if (args->print_dm & ARG_INTPLUS_PRINT_DM_VERBOSE) {
+                outfile_t* out_dmat_verbose = outfile_init("distance_matrix.verbose", "txt", PROGRAM_OUTFILE_CTYPE_NONE);
+                dmat_print_verbose(dmat, out_dmat_verbose);
+                outfile_write(out_dmat_verbose);
+                outfile_destroy(out_dmat_verbose);
+            }
+
         }
 
         if (args->prune_dmat) {
@@ -198,6 +213,14 @@ void input_DM(paramStruct* pars, metadata_t* metadata) {
     dmat_t* dmat = NULL;
     dmat = dmat_read(args->in_dm_fn, required_transform, metadata);
 
+
+    if (args->prune_dmat) {
+        dmat_t* pruned_dmat = NULL;
+        pruned_dmat = dmat_prune_remove_dropped_distances(dmat);
+        dmat_destroy(dmat);
+        dmat = pruned_dmat; // use pruned dmat for downstream analyses
+    }
+
     //TODO match metadata->indNames dmat_t->names vcfd->hdr->samples
 
     if (args->doAMOVA != 0) {
@@ -278,7 +301,7 @@ int main(int argc, char** argv) {
         input_DM(pars, metadata);
     }
 
-    fprintf(stderr, "\n[INFO]\tDone.\n\n");
+    fprintf(stderr, "\n\n[DONE]\t-> All analyses completed successfully.\n\n");
 
     // == CLEANUP ==
     if (metadata != NULL) {

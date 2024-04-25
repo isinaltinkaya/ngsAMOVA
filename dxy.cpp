@@ -144,7 +144,7 @@ static void dxy_print(dxy_t* dxy, outfile_t* outfile) {
     kstring_t* kbuf = &outfile->kbuf;
     ksprintf(kbuf, "hierarchy_level,group1_id,group2_id,dxy\n");
     for (size_t i = 0; i < dxy->n; i++) {
-        ksprintf(kbuf, "%s,%s,%s,%f\n", dxy->levelnames_p[i], dxy->g1names_p[i], dxy->g2names_p[i], dxy->d[i]);
+        ksprintf(kbuf, "%s,%s,%s,%.17g\n", dxy->levelnames_p[i], dxy->g1names_p[i], dxy->g2names_p[i], dxy->d[i]);
     }
 
     return;
@@ -166,7 +166,7 @@ dxy_t* dxy_get(paramStruct* pars, dmat_t* dmat, metadata_t* mtd) {
 
 
     double dist;
-    size_t i1id, i2id, idx;
+    size_t i1id, i2id;
     size_t dxy_i = 0;
     double val = 0.0;
 
@@ -195,7 +195,6 @@ dxy_t* dxy_get(paramStruct* pars, dmat_t* dmat, metadata_t* mtd) {
                     for (size_t i2 = 0; i2 < Ng2; ++i2) {
                         i1id = mtd->group2indIndices[g1id]->d[i1];
                         i2id = mtd->group2indIndices[g2id]->d[i2];
-                        idx = MATRIX_GET_INDEX_LTED_IJ_UNORDERED(i1id, i2id);
                         dist = dm[MATRIX_GET_INDEX_LTED_IJ_UNORDERED(i1id, i2id)];
                         val += dist;
                     }

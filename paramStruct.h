@@ -128,6 +128,8 @@ struct paramStruct {
     // a1a2[1] is the index of the allele2/minor/derived allele in vcfd->rec->d.allele
     int a1a2[2];
 
+    // int b1b2[2];
+
 
     /// @var formulaTokens
      // array of tokens in the formula, in hierarchical order

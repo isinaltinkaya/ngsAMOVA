@@ -21,13 +21,16 @@
 // where BASE_UNOBSERVED is the unobserved allele denoted by <*> or <NON_REF>
 #define BASE_UNOBSERVED 4
 
+// index file types
+#define IDX_NONE 0
+#define IDX_CSI (1 << 0)  // 1
+#define IDX_TBI (1 << 1)  // 2
+
+
 
 /* FORWARD DECLARATIONS ----------------------------------------------------- */
 
 typedef struct vcfData vcfData;
-typedef struct gtData gtData;
-
-struct blobStruct;
 typedef struct bblocks_t bblocks_t;
 /* -------------------------------------------------------------------------- */
 
@@ -43,11 +46,6 @@ extern const int acgt_charToInt[256];
 
 int bcf_alleles_get_gtidx(int a1, int a2);
 int bcf_alleles_get_gtidx(char a1, char a2);
-
-// index file types
-#define IDX_NONE 0
-#define IDX_CSI (1 << 0)  // 1
-#define IDX_TBI (1 << 1)  // 2
 
 /// @brief require_index - check if the analysis requires loading an index file
 /// @param pars
@@ -207,7 +205,5 @@ struct get_data {
 void readSites(jgtmat_t* jgtm, bblocks_t* bblocks, vcfData* vcfd, paramStruct* pars);
 
 
-
-int read_site_with_alleles(const int site_i, vcfData* vcfd, paramStruct* pars);
 
 #endif  // __VCF_READER__

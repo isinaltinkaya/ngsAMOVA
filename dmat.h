@@ -45,6 +45,7 @@ typedef struct outfile_t outfile_t;
 /// (1<<2)|(1<<1)|(1<<0)
 #define DMAT_TYPE_FULL 7
 
+
 /// @brief DMAT_TRANSFORM_* - transformation applied to the distances in the matrix
 ///
 /// NONE: not transformed
@@ -64,6 +65,8 @@ typedef struct outfile_t outfile_t;
 #define DMAT_METHOD_R1 8
 #define DMAT_METHOD_DXY 9
 
+const char* get_dmat_method_str(const int method);
+
 /// @brief DMAT_NAMES_SRC_* - source of the names in the distance matrix
 /// NONE: no names (names=NULL)
 #define DMAT_NAMES_SRC_NONE 0
@@ -79,6 +82,7 @@ typedef struct outfile_t outfile_t;
 /// PRIVATE: names is allocated and used internally in the program
 #define DMAT_NAMES_SRC_PRIVATE 4
 /* END-OF-MACROS ------------------------------------------------------------ */
+
 
 /* TYPEDEF-STRUCTS ---------------------------------------------------------- */
 /// @struct dmat_t - distance matrix struct 
@@ -127,7 +131,7 @@ struct dmat_t {
     double** matrix;
 
     /// @var drop[n][size] - 2d array of bool indicators for excluding specific distances from downstream analyses
-    /// @note allocated iff args->drop_pairs==1
+    /// @note allocated iff args->allow_mispairs==1
     bool** drop;
 
     /// @var has_drop - flag indicating if any distances have been dropped
@@ -144,10 +148,11 @@ void dmat_destroy(dmat_t* d);
 dmat_t* dmat_read(const char* in_dm_fn, const uint32_t required_transform, metadata_t* metadata);
 
 void dmat_print(dmat_t* dmat, outfile_t* outfile);
+void dmat_print_verbose(dmat_t* dmat, outfile_t* outfile);
 void dmat_calculate_distances(jgtmat_t* jgtmat, dmat_t* dmat);
 
 
-dmat_t* dmat_prune_drops(dmat_t* dmat);
+dmat_t* dmat_prune_remove_dropped_distances(dmat_t* dmat);
 
 /* END-OF-FUNCTION-DECLARATIONS --------------------------------------------- */
 

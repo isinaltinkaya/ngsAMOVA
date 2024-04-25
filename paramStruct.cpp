@@ -181,7 +181,7 @@ void estimate_memory_needed(paramStruct* pars, vcfData* vcfd) {
                 ++ncontigs;
                 ++contigidx;
             } else {
-                if (contigidx != ncontigs - 1) {
+                if ((int) contigidx != ncontigs - 1) {
                     ERROR("Contig names in the alleles file %s are not sorted. Please make sure they are sorted by contig name.", fn);
                 }
             }
@@ -254,7 +254,7 @@ void estimate_memory_needed(paramStruct* pars, vcfData* vcfd) {
     alleles->d[currblock] = tmp;
 
     // we can also calculate the expected j as:
-    DEVASSERT(j == (((int)nrow % 16) * 4));
+    DEVASSERT((int) j == (((int)nrow % 16) * 4));
     DEVASSERT(i == nrow);
     DEVASSERT(alleles->cposidx->len == alleles->cnames->len);
     DEVASSERT(alleles->pos->len == nrow);
@@ -485,6 +485,8 @@ paramStruct* paramStruct_init(argStruct* args) {
     pars->alleles_contigidx = -1;
     pars->a1a2[0] = -1;
     pars->a1a2[1] = -1;
+    // pars->b1b2[0] = -1;
+    // pars->b1b2[1] = -1;
     pars->formulaTokens = NULL;
     pars->ibd = NULL;
     pars->DATETIME = NULL;

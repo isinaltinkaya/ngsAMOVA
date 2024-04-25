@@ -490,10 +490,10 @@ metadata_t* metadata_read(paramStruct* pars) {
     }
 
 
-
     FREE(full_line);
     FCLOSE(fp);
 
     return (mtd);
 
 }
+

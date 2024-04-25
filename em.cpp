@@ -5,12 +5,25 @@
 static int s_max_n_threads;
 static double s_thres_tole;
 static int s_thres_max_iter;
-static int s_thres_min_shared_nsites;
-static bool s_drop_pairs;
-static int s_pair_min_sites;
+static int s_thres_pair_min_nsites;
+static size_t s_max_shared_nsites;
+static bool s_allow_mispairs;
 static bool s_do_blocks;
 static size_t* s_block_start_siteidx;
 static size_t s_n_blocks;
+
+const char* em_term_reason_strs[EM_TERM_REASON_COUNT] = {
+	"Tolerance threshold reached (--em-tole)",          // EM_TERM_REASON_THRES_TOLE
+	"Maximum number of iterations reached (--em-max-iter)", // EM_TERM_REASON_THRES_MAXITER
+	"Number of shared sites per individual pair is less than the minimum required (--min-pairsites)" // EM_TERM_REASON_THRES_SHARED_NSITES
+};
+
+const char* get_em_term_reason_str(em_term_reason reason) {
+	if (reason >= 0 && reason < EM_TERM_REASON_COUNT) {
+		return (em_term_reason_strs[reason]);
+	}
+	ERROR("Unknown termination reason (%d).", reason);
+}
 
 /// @brief ptdata_em_t - thread data for EM optimization for a pair of individuals
 typedef struct ptdata_em_t ptdata_em_t;
@@ -54,15 +67,15 @@ struct ptdata_em_bootstrap_rep_t {
 /// @param shared_nsites - number of shared sites (to be set)
 /// @param last_d        - last d value (to be set)
 /// @param last_n_iter   - last number of iterations (to be set)
-/// @return int reason for termination (see EM_TERMINATION_REASON_*)
+/// @return enum em_term_reason reason for termination (see EM_TERM_REASON_*)
 /// @details
 /// terminate optimization when:
 ///   (1) d <= s_thres_tole
 ///   (2) n_iter == s_thres_max_iter
-///   (3) shared_nSites < s_pair_min_sites
-static int em_optim_jgtmat9(double** i1sites, double** i2sites, const bool* mis1, const bool* mis2, double* pm, int* shared_nsites, double* last_d, int* last_n_iter) {
+///   (3) shared_nSites < s_thres_pair_min_nsites
+static em_term_reason em_optim_jgtmat9(double** i1sites, double** i2sites, const bool* mis1, const bool* mis2, double* pm, int* shared_nsites, double* last_d, int* last_n_iter) {
 
-	int reason = -1;
+	em_term_reason reason = EM_TERM_REASON_COUNT;
 
 	double* i1p = NULL;
 	double* i2p = NULL;
@@ -77,7 +90,7 @@ static int em_optim_jgtmat9(double** i1sites, double** i2sites, const bool* mis1
 	int shared_nSites = 0;
 
 	// --> first loop
-	for (s = 0;s < s_thres_min_shared_nsites;++s) {
+	for (s = 0;s < s_max_shared_nsites;++s) {
 
 		if (mis1[s] || mis2[s]) {
 			continue;
@@ -106,8 +119,8 @@ static int em_optim_jgtmat9(double** i1sites, double** i2sites, const bool* mis1
 	// <- first loop
 
 
-	if (shared_nSites < s_pair_min_sites) {
-		reason = EM_TERMINATION_REASON_THRES_SHARED_NSITES;
+	if (shared_nSites < s_thres_pair_min_nsites) {
+		reason = EM_TERM_REASON_THRES_SHARED_NSITES;
 		goto exit;
 	}
 
@@ -125,16 +138,16 @@ static int em_optim_jgtmat9(double** i1sites, double** i2sites, const bool* mis1
 		++n_iter;
 
 		if (d <= s_thres_tole) {
-			reason = EM_TERMINATION_REASON_THRES_TOLE;
+			reason = EM_TERM_REASON_THRES_TOLE;
 			goto exit;
 		}
 		if (n_iter == s_thres_max_iter) {
-			reason = EM_TERMINATION_REASON_THRES_MAXITER;
+			reason = EM_TERM_REASON_THRES_MAXITER;
 			goto exit;
 		}
 
 		// -> expectation
-		for (s = 0;s < s_thres_min_shared_nsites;++s) {
+		for (s = 0;s < s_max_shared_nsites;++s) {
 
 
 			if (mis1[s] || mis2[s]) {
@@ -182,11 +195,10 @@ exit:
 /// @param shared_nsites - number of shared sites (to be set)
 /// @param last_d        - last d value (to be set)
 /// @param last_n_iter   - last number of iterations (to be set)
-/// @return int reason for termination (see EM_TERMINATION_REASON_*)
-static int em_optim_jgtmat9_bootstrap_rep(const size_t* const rblocks, double** i1sites, double** i2sites, const bool* mis1, const bool* mis2, double* pm, int* shared_nsites, double* last_d, int* last_n_iter) {
+/// @return enum em_term_reason reason for termination (see EM_TERM_REASON_*)
+static em_term_reason em_optim_jgtmat9_bootstrap_rep(const size_t* const rblocks, double** i1sites, double** i2sites, const bool* mis1, const bool* mis2, double* pm, int* shared_nsites, double* last_d, int* last_n_iter) {
 
-
-	int reason = -1;
+	em_term_reason reason = EM_TERM_REASON_COUNT;
 
 	double* i1p = NULL;
 	double* i2p = NULL;
@@ -204,7 +216,7 @@ static int em_optim_jgtmat9_bootstrap_rep(const size_t* const rblocks, double** 
 	for (b = 0;b < s_n_blocks;++b) {
 		wb = rblocks[b];
 		block_start = s_block_start_siteidx[wb];
-		block_end = (wb == s_n_blocks - 1) ? s_thres_min_shared_nsites : s_block_start_siteidx[wb + 1];
+		block_end = (wb == s_n_blocks - 1) ? s_max_shared_nsites : s_block_start_siteidx[wb + 1];
 		// DEVPRINT("%ld-th sampled block (%ld) = [%ld, %ld)", b, wb, block_start, block_end);
 
 		for (s = block_start;s < block_end;++s) {
@@ -238,8 +250,8 @@ static int em_optim_jgtmat9_bootstrap_rep(const size_t* const rblocks, double** 
 		// <- first loop
 	}
 
-	if (shared_nSites < s_pair_min_sites) {
-		reason = EM_TERMINATION_REASON_THRES_SHARED_NSITES;
+	if (shared_nSites < s_thres_pair_min_nsites) {
+		reason = EM_TERM_REASON_THRES_SHARED_NSITES;
 		goto exit;
 	}
 
@@ -256,11 +268,11 @@ static int em_optim_jgtmat9_bootstrap_rep(const size_t* const rblocks, double** 
 		++n_iter;
 
 		if (d <= s_thres_tole) {
-			reason = EM_TERMINATION_REASON_THRES_TOLE;
+			reason = EM_TERM_REASON_THRES_TOLE;
 			goto exit;
 		}
 		if (n_iter == s_thres_max_iter) {
-			reason = EM_TERMINATION_REASON_THRES_MAXITER;
+			reason = EM_TERM_REASON_THRES_MAXITER;
 			goto exit;
 		}
 
@@ -268,7 +280,7 @@ static int em_optim_jgtmat9_bootstrap_rep(const size_t* const rblocks, double** 
 		for (b = 0;b < s_n_blocks;++b) {
 			wb = rblocks[b];
 			block_start = s_block_start_siteidx[wb];
-			block_end = (wb == s_n_blocks - 1) ? s_thres_min_shared_nsites : s_block_start_siteidx[wb + 1];
+			block_end = (wb == s_n_blocks - 1) ? s_max_shared_nsites : s_block_start_siteidx[wb + 1];
 
 			for (s = block_start;s < block_end;++s) {
 
@@ -313,19 +325,17 @@ exit:
 static void* t_em_optim_jgtmat9(void* data) {
 	ptdata_em_t* tdata = (ptdata_em_t*)data;
 
-	int ret = em_optim_jgtmat9(tdata->gldata->d[tdata->i1], tdata->gldata->d[tdata->i2], tdata->gldata->mis[tdata->i1], tdata->gldata->mis[tdata->i2], tdata->jgtmat->pm[tdata->pair_idx], &tdata->shared_nsites, &tdata->last_d, &tdata->last_n_iter);
-	ASSERT(ret != -1);
+	em_term_reason ret = em_optim_jgtmat9(tdata->gldata->d[tdata->i1], tdata->gldata->d[tdata->i2], tdata->gldata->mis[tdata->i1], tdata->gldata->mis[tdata->i2], tdata->jgtmat->pm[tdata->pair_idx], &tdata->shared_nsites, &tdata->last_d, &tdata->last_n_iter);
+	ASSERT(ret != EM_TERM_REASON_COUNT);
 
-	if (EM_TERMINATION_REASON_THRES_SHARED_NSITES == ret) {
-		if (s_drop_pairs) {
+	if (EM_TERM_REASON_THRES_SHARED_NSITES == ret) {
+		if (s_allow_mispairs) {
 			tdata->drop[tdata->pair_idx] = true;
 		} else {
-			ERROR("Individuals with indices %ld and %ld have %d shared sites, which is less than the minimum number of shared sites required (%d).", tdata->i1, tdata->i2, tdata->shared_nsites, s_pair_min_sites);
+			ERROR("Individuals with indices %ld and %ld have %d shared sites, which is less than the minimum number of shared sites required (%d).", tdata->i1, tdata->i2, tdata->shared_nsites, s_thres_pair_min_nsites);
 		}
 	}
-	if (PROGRAM_VERBOSITY_LEVEL > 1) {
-		LOG("EM optimization for individuals with indices %ld and %ld terminated after %d iterations with d=%f.", tdata->i1, tdata->i2, tdata->last_n_iter, tdata->last_d);
-	}
+	LOG("EM optimization for individuals with indices %ld and %ld terminated after %d iterations with d=%.17g. Reason for termination: %s", tdata->i1, tdata->i2, tdata->last_n_iter, tdata->last_d, get_em_term_reason_str(ret));
 
 	return(NULL);
 }
@@ -337,21 +347,29 @@ static void* t_em_optim_jgtmat9_bootstrap_rep(void* data) {
 
 	ptdata_em_bootstrap_rep_t* tdata = (ptdata_em_bootstrap_rep_t*)data;
 
-	int ret = em_optim_jgtmat9_bootstrap_rep(tdata->rblocks, tdata->gldata->d[tdata->i1], tdata->gldata->d[tdata->i2], tdata->gldata->mis[tdata->i1], tdata->gldata->mis[tdata->i2], tdata->jgtmat->pm[tdata->rep_pair_idx], &tdata->shared_nsites, &tdata->last_d, &tdata->last_n_iter);
-	ASSERT(ret != -1);
+	ASSERT(tdata->rblocks != NULL);
+	ASSERT(tdata->gldata != NULL);
 
-	if (EM_TERMINATION_REASON_THRES_SHARED_NSITES == ret) {
-		if (s_drop_pairs) {
+	ASSERT(tdata->jgtmat != NULL);
+	ASSERT(tdata->gldata->mis != NULL);
+	ASSERT(tdata->gldata->d != NULL);
+	ASSERT(tdata->jgtmat->pm != NULL);
+
+
+
+	em_term_reason ret = em_optim_jgtmat9_bootstrap_rep(tdata->rblocks, tdata->gldata->d[tdata->i1], tdata->gldata->d[tdata->i2], tdata->gldata->mis[tdata->i1], tdata->gldata->mis[tdata->i2], tdata->jgtmat->pm[tdata->rep_pair_idx], &tdata->shared_nsites, &tdata->last_d, &tdata->last_n_iter);
+	ASSERT(ret != EM_TERM_REASON_COUNT);
+
+	if (EM_TERM_REASON_THRES_SHARED_NSITES == ret) {
+		if (s_allow_mispairs) {
 			tdata->drop[tdata->pair_idx] = true;
 		} else {
-			ERROR("(Bootstrap replicate: %d) Individuals with indices %ld and %ld have %d shared sites, which is less than the minimum number of shared sites required (%d).", tdata->rep, tdata->i1, tdata->i2, tdata->shared_nsites, s_pair_min_sites);
+			ERROR("(Bootstrap replicate: %d) Individuals with indices %ld and %ld have %d shared sites, which is less than the minimum number of shared sites required (%d).", tdata->rep, tdata->i1, tdata->i2, tdata->shared_nsites, s_thres_pair_min_nsites);
 		}
 	}
 	if (PROGRAM_VERBOSITY_LEVEL > 1) {
-		LOG("(Bootstrap replicate: %d) EM optimization for individuals with indices %ld and %ld terminated after %d iterations with d=%f.", tdata->rep, tdata->i1, tdata->i2, tdata->last_n_iter, tdata->last_d);
+		LOG("(Bootstrap replicate: %d) EM optimization for individuals with indices %ld and %ld terminated after %d iterations with d=%.17g. Reason for termination: %s", tdata->rep, tdata->i1, tdata->i2, tdata->last_n_iter, tdata->last_d, get_em_term_reason_str(ret));
 	}
-
-
 
 	return(NULL);
 }
@@ -364,19 +382,6 @@ static void* t_em_optim_jgtmat9_bootstrap_rep(void* data) {
 /// @param bblocks - bootstrap blocks
 static void jgtmat_get_run_em_optim_bootstrap_reps(jgtmat_t* jgtmat, paramStruct* pars, gldata_t* gldata, bblocks_t* bblocks) {
 
-	s_thres_tole = args->tole;
-	s_thres_max_iter = args->maxEmIter;
-	s_thres_min_shared_nsites = gldata->size;
-	s_drop_pairs = (args->drop_pairs == 1);
-	s_pair_min_sites = args->pair_min_n_sites;
-
-	s_do_blocks = (bblocks != NULL);
-	s_block_start_siteidx = (s_do_blocks) ? bblocks->block_start_siteidx : NULL;
-	s_n_blocks = (s_do_blocks) ? bblocks->n_blocks : 1;
-
-	s_block_start_siteidx = (s_do_blocks) ? bblocks->block_start_siteidx : NULL;
-
-	s_max_n_threads = (args->nThreads > 0) ? args->nThreads : 1;
 	const int nInd = pars->names->len;
 	size_t nPairs = (size_t)((nInd * (nInd - 1)) / 2);
 
@@ -401,18 +406,18 @@ static void jgtmat_get_run_em_optim_bootstrap_reps(jgtmat_t* jgtmat, paramStruct
 
 		pairidx = 0;
 
-		for (size_t i1 = 0; i1 < nInd;++i1) {
+		for (size_t i1 = 0; i1 < (size_t) nInd;++i1) {
 
 			for (size_t i2 = 0;i2 < i1;++i2) {
 
-
+				breptdata[repidx + pairidx].rep = rep;
 				breptdata[repidx + pairidx].i1 = i1;
 				breptdata[repidx + pairidx].i2 = i2;
 				breptdata[repidx + pairidx].pair_idx = pairidx;
 				breptdata[repidx + pairidx].rep_pair_idx = allidx + pairidx;
 				breptdata[repidx + pairidx].gldata = gldata;
+				breptdata[repidx + pairidx].jgtmat = jgtmat;
 				breptdata[repidx + pairidx].rblocks = bblocks->rblocks[rep];
-				breptdata[repidx + pairidx].rep = rep;
 
 
 				++pairidx;
@@ -471,12 +476,15 @@ static void jgtmat_get_run_em_optim_bootstrap_reps(jgtmat_t* jgtmat, paramStruct
 /// @param bblocks - bootstrap blocks data
 void jgtmat_get_run_em_optim(jgtmat_t* jgtmat, paramStruct* pars, gldata_t* gldata, bblocks_t* bblocks) {
 
-	s_max_n_threads = (args->nThreads > 0) ? args->nThreads : 1;
+	s_max_n_threads = args->nThreads;
 	s_thres_tole = args->tole;
 	s_thres_max_iter = args->maxEmIter;
-	s_thres_min_shared_nsites = gldata->size;
-	s_drop_pairs = (args->drop_pairs == 1);
-	s_pair_min_sites = args->pair_min_n_sites;
+	s_thres_pair_min_nsites = args->pair_min_n_sites;
+	s_max_shared_nsites = gldata->size;
+	s_allow_mispairs = (args->allow_mispairs == 1);
+	s_do_blocks = (bblocks != NULL);
+	s_block_start_siteidx = (s_do_blocks) ? bblocks->block_start_siteidx : NULL;
+	s_n_blocks = (s_do_blocks) ? bblocks->n_blocks : 1;
 
 	const int nInd = pars->names->len;
 	size_t nPairs = (size_t)((nInd * (nInd - 1)) / 2);
@@ -488,7 +496,7 @@ void jgtmat_get_run_em_optim(jgtmat_t* jgtmat, paramStruct* pars, gldata_t* glda
 
 	size_t pairidx = 0;
 
-	for (size_t i1 = 0; i1 < nInd;++i1) {
+	for (size_t i1 = 0; i1 < (size_t) nInd;++i1) {
 		for (size_t i2 = 0;i2 < i1;++i2) {
 			tdata[pairidx].i1 = i1;
 			tdata[pairidx].i2 = i2;
@@ -546,7 +554,7 @@ void jgtmat_get_run_em_optim(jgtmat_t* jgtmat, paramStruct* pars, gldata_t* glda
 	}
 
 
-	if (PROGRAM_WILL_PERFORM_BLOCK_BOOTSTRAPPING) {
+	if (args->doBlockBootstrap){
 		jgtmat_get_run_em_optim_bootstrap_reps(jgtmat, pars, gldata, bblocks);
 	}
 

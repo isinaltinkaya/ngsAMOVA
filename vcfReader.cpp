@@ -49,7 +49,7 @@ static gldata_t* gldata_alloc(const uint8_t n_gls, const size_t n_ind, const siz
     gldata->type = type;
 
     if (n_gls != 3) {
-        ERROR("Not implemented yet.");
+        NEVER;
     }
 
     gldata->d = (double***)malloc(n_ind * sizeof(double**));
@@ -318,24 +318,26 @@ int read_site_with_alleles_ref_alt(vcfData* vcfd, paramStruct* pars, const bool 
         // b2 = acgt_charToInt[(int)vcfd->rec->d.allele[1][0]];
 
     } else if (1 == vcfd->allele_unobserved) {
-
-        if (PROGRAM_WILL_USE_ALLELES_REF_ALT1) {
-            IO::vprint(2, "Skipping site at %s:%ld. Reason: Program will use REF allele as major allele, but ALT allele is set to <NON_REF> or <*>.\n", vcfd->get_contig_name(), this_pos + 1);
-            return(1);
-        }
-
         // if ALT==ALLELE_UNOBSERVED
 
-        if (2 == nAlleles) {
-            // invariable site, only REF and UNOBSERVED alleles are found
-            // if (args->rmInvarSites) {
-            IO::vprint(2, "Skipping site at %s:%ld. Reason: Site is not variable.\n", vcfd->get_contig_name(), this_pos + 1);
-            return(1);
-            // }
+        if (PROGRAM_WILL_USE_ALLELES_REF_ALT1) {
+
+            // sample one allele to set as minor that is not equal to the major
+            // int base_major=acgt_charToInt[(int)vcfd->rec->d.allele[0][0]];
+            // int base_minor;
+            // drand48 interval: [0.0, 1.0) ->OK
+            // while((base_minor=floor(4* drand48()))==base_major);
+            // N.B. currently we can just move forward using NON_REF as minor allele since this makes no difference
+
         }
 
-        // b1 = acgt_charToInt[(int)vcfd->rec->d.allele[0][0]];
-        // b2 = BASE_UNOBSERVED;
+        if (2 == nAlleles) {
+            if (args->rmInvarSites) {
+                IO::vprint(2, "Skipping site at %s:%ld. Reason: Site is not variable.\n", vcfd->get_contig_name(), this_pos + 1);
+                return(1);
+            }
+        }
+
 
     } else if (-1 == vcfd->allele_unobserved) {
         // -> no unobserved alt allele is found
@@ -362,7 +364,7 @@ int read_site_with_alleles_ref_alt(vcfData* vcfd, paramStruct* pars, const bool 
     }
 
 
-    if (args->rmInvarSites && !(PROGRAM_WILL_USE_BCF_FMT_GT)) {
+    if (args->rmInvarSites && PROGRAM_WILL_USE_BCF_FMT_GL) {
         int32_t* ads = NULL;
         int32_t n_ads = 0;
         int32_t n = 0;
@@ -376,15 +378,15 @@ int read_site_with_alleles_ref_alt(vcfData* vcfd, paramStruct* pars, const bool 
         for (int i = 0; i < nAlleles; ++i) {
             n_non0[i] = 0;
         }
-        for (int i = 0; i < pars->names->len; ++i) {
-            for (int j = 0; j < nAlleles; ++j) {
+        for (size_t i = 0; i < pars->names->len; ++i) {
+            for (size_t j = 0; j < (size_t)nAlleles; ++j) {
                 if (ads[i * nAlleles + j] > 0) {
                     n_non0[j]++;
                 }
             }
         }
         int tot_non0 = 0;
-        for (int i = 0; i < nAlleles; ++i) {
+        for (size_t i = 0; i < (size_t)nAlleles; ++i) {
             if (n_non0[i] > 0) {
                 tot_non0++;
             }
@@ -401,7 +403,7 @@ int read_site_with_alleles_ref_alt(vcfData* vcfd, paramStruct* pars, const bool 
     }
 
 
-    alleles_t* alleles = NULL;
+    static alleles_t* alleles = NULL;
 
     if (pars->majorminor != NULL) {
         alleles = pars->majorminor;
@@ -433,7 +435,6 @@ int read_site_with_alleles_ref_alt(vcfData* vcfd, paramStruct* pars, const bool 
                 ERROR("Could not retrieve contig name for record %d.", vcfd->rec->rid);
             }
             // find the new contig, start with the last contig idx+1
-            size_t search_start = pars->alleles_contigidx + 1;
             size_t cnamesidx;
             if (alleles->cnames->find_from(contigname, &cnamesidx, pars->alleles_contigidx)) {
                 pars->alleles_contigidx = cnamesidx;
@@ -449,7 +450,7 @@ int read_site_with_alleles_ref_alt(vcfData* vcfd, paramStruct* pars, const bool 
 
 
     // if not the last contig, only search until the start of next contig
-    size_t pos_search_end = (pars->alleles_contigidx < alleles->cnames->len - 1) ? alleles->cposidx->d[pars->alleles_contigidx + 1] : alleles->pos->len;
+    size_t pos_search_end = (pars->alleles_contigidx < (int)alleles->cnames->len - 1) ? alleles->cposidx->d[pars->alleles_contigidx + 1] : alleles->pos->len;
 
     bool foundSite;
 
@@ -525,8 +526,6 @@ static int site_read_3GL(vcfData* vcfd, paramStruct* pars, const size_t block_i,
     }
 
     const size_t site_idx = pars->nSites;
-    const size_t gldata_n_gls = vcfd->gldata->n_gls;
-
 
     const int ngt_to_use = vcfd->nGT;
     // DEVPRINT("n_gls: %d nGT:%d", lgls.n_gls, vcfd->nGT);
@@ -541,6 +540,9 @@ static int site_read_3GL(vcfData* vcfd, paramStruct* pars, const size_t block_i,
     if (n_values <= 0) {
         ERROR("Could not read GL tag from the VCF file.");
     }
+    if (n_values % pars->names->len != 0) {
+        NEVER;
+    }
     n_gls = n_values / pars->names->len;
 
 
@@ -550,7 +552,6 @@ static int site_read_3GL(vcfData* vcfd, paramStruct* pars, const size_t block_i,
     }
 
     float* sample_lgls = NULL;
-
 
     int skipSite = 0;
 
@@ -608,7 +609,7 @@ static int site_read_3GL(vcfData* vcfd, paramStruct* pars, const size_t block_i,
 
             n_missing_ind++;
 
-            if (i == nInd - 1 && nInd == n_missing_ind) {
+            if (((int)i == (int)nInd - 1) && ((int)nInd == n_missing_ind)) {
                 // check if all ividuals are missing
                 skipSite = 1;
                 break;
@@ -616,7 +617,7 @@ static int site_read_3GL(vcfData* vcfd, paramStruct* pars, const size_t block_i,
 
             // skip site if minInd is defined and #non-missing inds=<nInd
             if (args->minInd != 2) {
-                if ((nInd - n_missing_ind) < args->minInd) {
+                if (((int)nInd - n_missing_ind) < args->minInd) {
                     IO::vprint(2, "Skipping site at %s:%ld. Reason: Number of non-missing ividuals is less than the minimum number of ividuals -minInd.\n", vcfd->get_contig_name(), vcfd->rec->pos + 1);
                     skipSite = 1;
                     break;
@@ -692,8 +693,11 @@ int site_read_GT(jgtmat_t* jgtmat, vcfData* vcfd, paramStruct* pars, const bool 
     if (n_values <= 0) {
         ERROR("Could not read GT tag from the VCF file.");
     }
+    if (n_values % pars->names->len != 0) {
+        NEVER;
+    }
     if ((n_values / pars->names->len) != PROGRAM_PLOIDY) {
-        ERROR("Ploidy %d not supported.", n_values / pars->names->len);
+        ERROR("Ploidy %ld not supported.", n_values / pars->names->len);
     }
 
     int32_t* sample_gts = NULL;
@@ -883,8 +887,6 @@ int site_read_GT(jgtmat_t* jgtmat, vcfData* vcfd, paramStruct* pars, const bool 
 
 vcfData* vcfData_init(paramStruct* pars, metadata_t* metadata) {
 
-    BEGIN_LOGSECTION;
-
     vcfData* vcfd = new vcfData;
 
 
@@ -923,7 +925,7 @@ vcfData* vcfData_init(paramStruct* pars, metadata_t* metadata) {
     }
 
 
-    if (1 == args->doDist) {
+    if ((ARG_DODIST_CALCULATE == args->doDist)||(ARG_DODIST_WITH_BOOTSTRAP == args->doDist)) {
         // EM using 3 GL values
         if (args->doEM == 1) {
             vcfd->nGT = 3;
@@ -934,11 +936,13 @@ vcfData* vcfData_init(paramStruct* pars, metadata_t* metadata) {
             NEVER;//TODO
             // vcfd->nGT = 10;
             // vcfd->nJointClasses = 100;
+        } else {
+            if (args->bcfSrc & ARG_INTPLUS_BCFSRC_FMT_GL) {
+                NEVER; //TODO check this before here
+            }
         }
     } else if (2 == args->doDist) {
-        // GT
-        vcfd->nGT = 3;
-        vcfd->nJointClasses = 9;
+        NEVER;
     } else if (1 == args->doIbd) {
         // using 3 GL values
         vcfd->nGT = 3;
@@ -960,7 +964,7 @@ vcfData* vcfData_init(paramStruct* pars, metadata_t* metadata) {
             pars->names->add(vcfd->hdr->samples[i]);
         }
         DEVASSERT(pars->names->len == in_vcf_nind);
-        LOGADD("Found %d individuals in the VCF file", pars->names->len);
+        LOG("Found %ld individuals in the VCF file", pars->names->len);
     } else {
         // -> set pars with vcfdata
         const size_t mtd_nind = metadata->indNames->len;
@@ -980,7 +984,7 @@ vcfData* vcfData_init(paramStruct* pars, metadata_t* metadata) {
                 }
                 ++newvidx;
             } else {
-                LOGADD("Skipping individual %s in the VCF file. Reason: Individual not present in metadata file.", vcfd->hdr->samples[vidx]);
+                LOG("Skipping individual %s in the VCF file. Reason: Individual not present in metadata file.", vcfd->hdr->samples[vidx]);
             }
         }
         if (newvidx != mtd_nind) {
@@ -1005,12 +1009,12 @@ vcfData* vcfData_init(paramStruct* pars, metadata_t* metadata) {
         }
         FREE(tmp.s);
         int nsamples = bcf_hdr_nsamples(vcfd->hdr); // sanity check
-        ASSERT(nsamples == metadata->indNames->len);
+        ASSERT(nsamples == (int)metadata->indNames->len);
 
-        if (nsamples != in_vcf_nind) {
-            LOGADD("Will use %d individuals (out of %d) found in the VCF file.", nsamples, in_vcf_nind);
+        if ((size_t)nsamples != in_vcf_nind) {
+            LOG("Will use %d individuals (out of %ld) found in the VCF file.", nsamples, in_vcf_nind);
         } else {
-            LOGADD("Found %d individuals in the VCF file", nsamples);
+            LOG("Found %d individuals in the VCF file", nsamples);
         }
 
     }
@@ -1022,17 +1026,17 @@ vcfData* vcfData_init(paramStruct* pars, metadata_t* metadata) {
     vcfd->nContigs = vcfd->hdr->n[BCF_DT_CTG];
     ASSERT(vcfd->nContigs > 0);
 
-    if (args->minInd == pars->names->len) {
-        DEVPRINT("-minInd %d is equal to the number of individuals found in file: %d. Setting -minInd to 0 (all).\n", args->minInd, pars->names->len);
+    if ((int)pars->names->len < args->minInd) {
+        ERROR("Number of individuals in the VCF file is less than the minimum number of individuals provided by -minInd (%d).", args->minInd);
+    }
+
+    if (args->minInd == (int)pars->names->len) {
+        DEVPRINT("-minInd %d is equal to the number of individuals found in file: %ld. Setting -minInd to 0 (all).\n", args->minInd, pars->names->len);
         args->minInd = 0;
     }
 
     if (pars->names->len == 1) {
         ERROR("Only one individual found in the VCF file. At least two individuals are required to perform the analysis.");
-    }
-
-    if (pars->names->len < args->minInd) {
-        ERROR("Number of individuals in the VCF file is less than the minimum number of individuals provided by -minInd (%d).", args->minInd);
     }
 
 
@@ -1049,14 +1053,12 @@ vcfData* vcfData_init(paramStruct* pars, metadata_t* metadata) {
             ERROR("GT tag not found in the VCF file.");
         }
     }
-    if (args->rmInvarSites && !(PROGRAM_WILL_USE_BCF_FMT_GT)) {
+    if (args->rmInvarSites && PROGRAM_WILL_USE_BCF_FMT_GL) {
         int tag_id = bcf_hdr_id2int(vcfd->hdr, BCF_DT_ID, "AD");
         if (!bcf_hdr_idinfo_exists(vcfd->hdr, BCF_HL_FMT, tag_id)) {
-            ERROR("AD tag not found in the VCF file.");
+            ERROR("AD tag is required to remove invariant sites when using GL values (--rm-invar-sites).");
         }
     }
-
-    END_LOGSECTION;
 
     return(vcfd);
 }
@@ -1124,10 +1126,9 @@ int vcfData::records_next() {
 
 void readSites(jgtmat_t* jgtmat, bblocks_t* bblocks, vcfData* vcfd, paramStruct* pars) {
 
-    BEGIN_LOGSECTION;
+    BEGIN_LOGSECTION_MSG("(--in-vcf) Read sites from VCF file");
 
     int skip_site = 0;
-
 
     char prev_contig[1024];
 
@@ -1227,9 +1228,6 @@ void readSites(jgtmat_t* jgtmat, bblocks_t* bblocks, vcfData* vcfd, paramStruct*
         // -> first, if doBlocks, find which block we are in
         if (doBlocks) {
 
-
-
-
             while (1) {
                 block_start_pos = bblocks->block_start_pos[block_i];
                 block_end_pos = bblocks->block_end_pos[block_i];
@@ -1248,7 +1246,7 @@ void readSites(jgtmat_t* jgtmat, bblocks_t* bblocks, vcfData* vcfd, paramStruct*
                     } else if (this_pos == block_start_pos) {
                         break;
                     } else {
-                        NEVER;
+                        ERROR("Found unexpected position (%ld). Please make sure your input file is sorted, and contact the developers if the issue persists.", this_pos + 1);
                     }
                 } else if (block_i == nBlocks) {
                     // out of blocks but still not found
@@ -1259,7 +1257,7 @@ void readSites(jgtmat_t* jgtmat, bblocks_t* bblocks, vcfData* vcfd, paramStruct*
 
             }
 
-            ASSERT(bblocks->block_contig[block_i] == contig_i);
+            ASSERT(bblocks->block_contig[block_i] == (size_t)contig_i);
 
             // DEVPRINT("Position %ld is located at block %ld (%s:%ld-%ld)", this_pos + 1, block_i, this_contigName, block_start_pos, block_end_pos);
 
@@ -1314,10 +1312,11 @@ void readSites(jgtmat_t* jgtmat, bblocks_t* bblocks, vcfData* vcfd, paramStruct*
     if (doBlocks) {
         for (size_t i = 0;i < nBlocks;++i) {
             if (nsites_per_block[i] == 0) {
-                ERROR("Block %ld has no sites", i);
+                ERROR("Empty block %ld: Found 0 sites for the block interval %s:%ld-%ld", i, bblocks->contig_names->get(bblocks->block_contig[i]), bblocks->block_start_pos[i]+1, bblocks->block_end_pos[i]);
+
             }
             if (PROGRAM_VERBOSITY_LEVEL >= 1) {
-                LOG("Block %ld has %ld sites", i, nsites_per_block[i]);
+                LOG("Found %ld sites in block %ld (%s:%ld-%ld)", nsites_per_block[i], i, bblocks->contig_names->get(bblocks->block_contig[i]), bblocks->block_start_pos[i]+1, bblocks->block_end_pos[i]);
 
             }
         }
@@ -1335,12 +1334,12 @@ void readSites(jgtmat_t* jgtmat, bblocks_t* bblocks, vcfData* vcfd, paramStruct*
                 for (size_t i = 0;i < jgtmat->size;++i) {
                     pair_shared_nSites += jgtmat->m[pair][i];
                 }
-                if (pair_shared_nSites < args->pair_min_n_sites) {
-                    if (args->drop_pairs) {
+                if ((int)pair_shared_nSites < args->pair_min_n_sites) {
+                    if (args->allow_mispairs) {
                         IO::vprint(1, "Dropping pair %ld (%s, %s) due to insufficient number of shared sites (%ld)", pair, pars->names->d[i1], pars->names->d[i2], pair_shared_nSites);
                         jgtmat->drop[pair] = true;
                     } else {
-                        ERROR("Individuals %s and %s have %ld shared sites, which is less than the minimum number of shared sites required (%ld).", pars->names->d[i1], pars->names->d[i2], pair_shared_nSites, args->pair_min_n_sites);
+                        ERROR("Individuals %s and %s have %ld shared sites, which is less than the minimum number of shared sites required (%d).", pars->names->d[i1], pars->names->d[i2], pair_shared_nSites, args->pair_min_n_sites);
                     }
                 }
                 ++pair;
@@ -1357,4 +1356,6 @@ void readSites(jgtmat_t* jgtmat, bblocks_t* bblocks, vcfData* vcfd, paramStruct*
     LOG("Total number of sites skipped for all individual pairs: %lu", pars->totSites - pars->nSites);
     LOG("Total number of sites retained: %lu", pars->nSites);
     END_LOGSECTION;
+
 }
+

@@ -62,19 +62,19 @@ nj_t* nj_init(dmat_t* dmat, const size_t which_dmat) {
 
     nj->NJD = (double*)malloc(nj->nTreeNodePairs * sizeof(double));
     ASSERT(nj->NJD != NULL);
-    for (size_t i = 0; i < nj->nTreeNodePairs; ++i) {
+    for (size_t i = 0; i < (size_t) nj->nTreeNodePairs; ++i) {
         nj->NJD[i] = 0.0;
     }
     size_t idx;
     double* matrix = dmat->matrix[which_dmat];
-    bool* drop = dmat->drop[which_dmat];
+
+    if(dmat->has_drop){
+        ERROR("Neighbor-Joining does not support missing data. Please remove missing data from the input matrix via the --prune-dmat option.");
+    }
+
     for (size_t i = 0; i < nj->names->len; ++i) {
         for (size_t j = i + 1; j < nj->names->len; ++j) {
             idx = MATRIX_GET_INDEX_LTED_IJ(j, i);
-            if (drop[idx]) {
-                continue;
-            }
-
             nj->NJD[idx] = matrix[idx];
         }
     }
@@ -107,12 +107,12 @@ nj_t* nj_init(dmat_t* dmat, const size_t which_dmat) {
 
 void nj_destroy(nj_t* nj) {
     FREE(nj->nEdgesPerParentNode);
-    for (size_t i = 0; i < nj->nParents; ++i) {
+    for (size_t i = 0; i < (size_t) nj->nParents; ++i) {
         FREE(nj->parentToEdgeIdx[i]);
     }
     FREE(nj->parentToEdgeIdx);
     FREE(nj->edgeLengths);
-    for (size_t i = 0; i < nj->nTreeEdges; ++i) {
+    for (size_t i = 0; i < (size_t) nj->nTreeEdges; ++i) {
         FREE(nj->edgeNodes[i]);
     }
     FREE(nj->NJD);
@@ -217,10 +217,11 @@ void nj_print(nj_t* nj, outfile_t* outfile) {
     fprintf(stderr, "\n[INFO]\t-> Writing the Neighbor-Joining tree to the output file %s (format: Newick)", outfile->fn);
     // if unrooted tree, choose an arbitrary node as the root for printing
     int node = nj->nTreeNodes - 1;
-    nj_print_leaf_newick(nj, node, &outfile->kbuf);
+    kstring_t* kbuf = &outfile->kbuf;
+    nj_print_leaf_newick(nj, node, kbuf);
 
     // close the tree
-    ksprintf(&outfile->kbuf, ";\n");
+    ksprintf(kbuf, ";\n");
     return;
 }
 
@@ -239,11 +240,11 @@ void nj_run(nj_t* nj) {
     double TotalDistances[nj->nTreeNodes];
     double NetDivergence[nj->nTreeNodes];
     double AdjustedDistances[nj->nTreeNodePairs];
-    for (size_t i = 0; i < nj->nTreeNodes; ++i) {
+    for (size_t i = 0; i < (size_t) nj->nTreeNodes; ++i) {
         TotalDistances[i] = 0.0;
         NetDivergence[i] = 0.0;
     }
-    for (size_t i = 0; i < nj->nTreeNodePairs; ++i) {
+    for (size_t i = 0; i < (size_t) nj->nTreeNodePairs; ++i) {
         AdjustedDistances[i] = 0.0;
     }
 
@@ -282,7 +283,7 @@ void nj_run(nj_t* nj) {
         // NET DIVERGENCE
         //
         // calculate the net divergence of each node ==TotalDistance[i]/(nNodesAtIteration-2)
-        for (size_t i = 0; i < totL; i++) {
+        for (size_t i = 0; i < (size_t) totL; i++) {
             NetDivergence[i] = 0.0; // clear for iteration nji
         }
 
@@ -303,7 +304,7 @@ void nj_run(nj_t* nj) {
         //---------------------------------------------------------------------
         // ADJUSTED DISTANCES
         //
-        for (size_t i = 0; i < nj->nTreeNodePairs; ++i) {
+        for (size_t i = 0; i < (size_t) nj->nTreeNodePairs; ++i) {
             AdjustedDistances[i] = 0.0;
         }
 

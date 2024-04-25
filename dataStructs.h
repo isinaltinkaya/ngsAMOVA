@@ -2,7 +2,6 @@
 #define __DATA_STRUCTS__
 
 #include "argStruct.h"
-#include "mathUtils.h"
 #include "paramStruct.h"
 #include "vcfReader.h"
 
@@ -10,18 +9,13 @@
 /* FORWARD DECLARATIONS ----------------------------------------------------- */
 
 namespace IO {
-    void validateString(const char* str);
     int verbose(const int verbose_threshold);
     void vprint(const char* format, ...);
     void vprint(const int verbose_threshold, const char* format, ...);
     void vprint(FILE* fp, const int verbose_threshold, const char* format, ...);
 }
 
-struct blobStruct;
-
 typedef struct vcfData vcfData;
-typedef struct indPairThreads indPairThreads;
-
 typedef struct intArray intArray;
 
 /// ----------------------------------------------------------------------- ///
@@ -509,19 +503,6 @@ inline void strArray_destroy(strArray* sa) {
 /// formulaTokens->d[2] = "Subpopulation" (level 3, lvlidx 2)
 /// formulaTokens->d[3] = "Individual" (level 4, lvlidx 3)
 strArray* read_formula_str(const char* formula);
-struct indPairThreads {
-
-    paramStruct* pars = NULL;
-    vcfData* vcfd = NULL;
-
-    int pidx = -1;
-
-    indPairThreads(vcfData* vcfd_, paramStruct* pars_, const int pairIndex) {
-        this->pars = pars_;
-        this->vcfd = vcfd_;
-        pidx = pairIndex;
-    }
-};
 
 inline void trimSpaces(char* str) {
     char* ptr = str;

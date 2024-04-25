@@ -3,7 +3,6 @@
 
 #include "dataStructs.h"
 #include "io.h"
-// #include "mathUtils.h"
 #include "shared.h"
 #include "paramStruct.h"
 #include "vcfReader.h"
