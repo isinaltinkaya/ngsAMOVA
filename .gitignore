@@ -20,7 +20,7 @@ ngsAMOVA
 *.log
 
 # In-place test output
-amovaput*
+output*
 
 # NFS ongoing job
 .nfs*
@@ -51,4 +51,4 @@ git_message.txt
 
 # Commit message draft
 COMMIT_CHANGES
-
+TODO

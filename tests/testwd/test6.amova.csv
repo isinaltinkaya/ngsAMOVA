@@ -1,0 +1,17 @@
+df,Total,8
+SSD,Total,0.030001752047255231
+MSD,Total,0.0037502190059069038
+df,Among_Population_within_Total,2
+SSD,Among_Population_within_Total,0.011968522808158039
+MSD,Among_Population_within_Total,0.0059842614040790196
+df,Among_Individual_within_Population,6
+SSD,Among_Individual_within_Population,0.018033229239097191
+MSD,Among_Individual_within_Population,0.0030055382065161985
+Phi,Population_in_Total,0.24832341055986398
+Variance_coefficient,c_0_0,3
+Variance_coefficient,c_0_1,1
+Variance_coefficient,c_1_1,1
+Variance_component,Population,0.00099290773252094051
+Percentage_variance,Population,24.832341055986397
+Variance_component,Individual,0.0030055382065161985
+Percentage_variance,Individual,75.167658944013596
