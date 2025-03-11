@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install dependencies
-      run: sudo apt-get update; sudo apt-get install -y libcurl4-openssl-dev bzip2 libbz2
+      run: sudo apt-get update; sudo apt-get install -y libcurl4-openssl-dev bzip2 libbz2-dev
     - name: Install htslib 
       run: sudo apt-get install libhts3 libhts-dev
     - name: make HTSSRC="systemwide"
