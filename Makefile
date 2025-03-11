@@ -394,7 +394,7 @@ test:
 	@echo ""
 	@echo "________________________________________________________________________________"
 	@echo ""
-	/bin/sh tests/runTests.sh -e $(PROGRAM_BIN) -t regular -d tests/data -r tests/reference -w tests/testwd 
+	/bin/bash tests/runTests.sh -e $(PROGRAM_BIN) -t regular -d tests/data -r tests/reference -w tests/testwd 
 
 test%:
 	@echo "________________________________________________________________________________"
@@ -403,7 +403,7 @@ test%:
 	@echo ""
 	@echo "________________________________________________________________________________"
 	@echo ""
-	/bin/sh tests/runTests.sh -e $(PROGRAM_BIN) -t regular -d tests/data -r tests/reference -w tests/testwd  -x $*
+	/bin/bash tests/runTests.sh -e $(PROGRAM_BIN) -t regular -d tests/data -r tests/reference -w tests/testwd  -x $*
 
 test-%:
 	@echo "________________________________________________________________________________"
@@ -411,7 +411,7 @@ test-%:
 	@echo "[INFO]    Running all unit tests with test type $*"
 	@echo "" 
 	@echo "________________________________________________________________________________"
-	/bin/sh tests/runTests.sh -e $(PROGRAM_BIN) -t $* -d tests/data -r tests/reference -w tests/testwd 
+	/bin/bash tests/runTests.sh -e $(PROGRAM_BIN) -t $* -d tests/data -r tests/reference -w tests/testwd 
 
 ####################################################################################################
 ## [.activate_module]

@@ -1108,7 +1108,3 @@ echo -e "
 "
 
 printf "${nl}${nl}"
-
-
-
-
