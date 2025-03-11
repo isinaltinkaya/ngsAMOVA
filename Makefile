@@ -308,6 +308,7 @@ $(PROGRAM_BIN): $(OBJ) $(DEVH) $(VERSIONH) $(BUILDH)
 	@echo "________________________________________________________________________________"
 	@echo ""
 	@echo "$(PRINTF_YELLOW)[INFO]    -> Finishing up$(PRINTF_NORMAL)"
+	mkdir -p bin/
 	$(CXX) -o $@ $(OBJ) $(LIBS) 
 	@echo "________________________________________________________________________________"
 	@echo ""
@@ -377,7 +378,7 @@ clean:
 	@echo "[INFO]    Cleaning up the directory"
 	@echo ""
 	@echo "________________________________________________________________________________"
-	$(RM) $(OBJ) $(DEP) $(PREP) $(ASM) $(VERSIONH) $(BUILDH) $(PROGRAM_BIN) vgcore.*
+	$(RM) $(OBJ) $(DEP) $(PREP) $(ASM) $(VERSIONH) $(BUILDH) $(PROGRAM_BIN) vgcore.* tests/testwd/*
 	@echo ""
 	
 ####################################################################################################
