@@ -34,7 +34,7 @@ vgcore*
 .vscode/
 
 # Test output files
-test/testwd/
+tests/testwd/
 
 # Version info
 version.h

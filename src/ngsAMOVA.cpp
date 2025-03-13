@@ -12,7 +12,7 @@
 #include "jgtmat.h"
 #include "em.h"
 #include "metadata.h"
-
+#include "euclid.h"
 
 // read a2f (allele 2 frequencies) file
 // one line per site, each line contains the frequency of the second allele
@@ -541,6 +541,7 @@ static int run_unit_tests(void) {
     fprintf(stderr, "\n\n\n---------------------\n");
     fprintf(stderr, "\n[TEST]\tRunning unit tests...\n");
     test_alleles_t();
+    test_cailliez();
     fprintf(stderr, "\n[TEST]\t\033[0;32mUnit tests passed.\033[0m\n");
     fprintf(stderr, "\n\n\n---------------------\n");
     argStruct_destroy(args);

@@ -3,14 +3,6 @@
 #include "metadata.h"
 
 
-
-
-
-
-
-
-
-
 strArray* read_formula_str(const char* formula) {
 
     if (formula == NULL) {

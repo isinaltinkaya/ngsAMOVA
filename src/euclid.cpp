@@ -198,7 +198,6 @@ void jacobi_eigenvalues_and_eigenvectors(double* m, int n, double* eigenvals, do
     FREE(Q);
 }
 
-
 bool matrix_is_euclidean(double* m, int n, double tole) {
 
     // allocate memory for squared distance matrix
@@ -464,4 +463,88 @@ void cailliez(double* distmat, const size_t n_elems, double* corrected, const do
     return;
 }
 
+
 #endif
+
+void test_cailliez(void) {
+
+    fprintf(stderr, "[TEST]\tTesting cailliez correction...\n");
+
+    // test case 1: 3x3 matrix
+
+    double dist[9] = { 0.0, 1.0, 3.0,
+                     1.0, 0.0, 1.0,
+                     3.0, 1.0, 0.0 };
+    double corrected[9]={0.0};
+    bool cor_zero = true; // prevent modifying diagonal
+    const size_t n = 3;
+    const double tole = 1e-6;
+    cailliez(dist, n, corrected, tole, cor_zero);
+
+    // assert that diagonal is zero
+    for (size_t i = 0; i < n; ++i) {
+        ASSERT(corrected[i * n + i] < tole);
+    }
+
+    // compute correction constant 'c' from an off-diagonal element
+    double c = corrected[1] - dist[1]; // corrected[0,1] - original[0,1]
+
+    // verify all off-diagonal elements are original + c
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            if (i == j) continue;
+            double expected = dist[i * n + j] + c;
+            ASSERT(std::abs(corrected[i * n + j] - expected) < tole);
+        }
+    }
+
+    // check all triangle inequalities hold in corrected matrix
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            for (size_t k = 0; k < n; ++k) {
+                double d_ij = corrected[i * n + j];
+                double d_ik = corrected[i * n + k];
+                double d_kj = corrected[k * n + j];
+                ASSERT(d_ij <= d_ik + d_kj + tole);
+            }
+        }
+    }
+
+    // ensure c is at least the minimal required (1.0 for this case)
+    ASSERT(c >= 1.0 - tole);
+
+    // test case 2: 9x9 matrix
+
+    double input_matrix[81] = {
+        0.00000000, 0.09994188, 0.09592893, 0.06988508, 0.08424226, 0.09127032, 0.08358203, 0.11055160, 0.09924835,
+        0.09994188, 0.00000000, 0.07466009, 0.08649618, 0.09024176, 0.06597396, 0.08041258, 0.10501214, 0.09153607,
+        0.09592893, 0.07466009, 0.00000000, 0.07563580, 0.08362073, 0.09960032, 0.08340970, 0.10880270, 0.11064248,
+        0.06988508, 0.08649618, 0.07563580, 0.00000000, 0.05771541, 0.07287094, 0.05936952, 0.08497043, 0.07286583,
+        0.08424226, 0.09024176, 0.08362073, 0.05771541, 0.00000000, 0.06533255, 0.08880927, 0.09373346, 0.08217741,
+        0.09127032, 0.06597396, 0.09960032, 0.07287094, 0.06533255, 0.00000000, 0.06397473, 0.06152818, 0.06611328,
+        0.08358203, 0.08041258, 0.08340970, 0.05936952, 0.08880927, 0.06397473, 0.00000000, 0.08863064, 0.07812159,
+        0.11055160, 0.10501214, 0.10880270, 0.08497043, 0.09373346, 0.06152818, 0.08863064, 0.00000000, 0.07992440,
+        0.09924835, 0.09153607, 0.11064248, 0.07286583, 0.08217741, 0.06611328, 0.07812159, 0.07992440, 0.00000000
+    };
+
+    double expected_output_matrix[81] = {
+        0.00000000, 0.10414821, 0.10013526, 0.07409141, 0.08844859, 0.09547665, 0.08778836, 0.11475793, 0.10345468,
+        0.10414821, 0.00000000, 0.07886642, 0.09070251, 0.09444809, 0.07018029, 0.08461891, 0.10921848, 0.09574240,
+        0.10013526, 0.07886642, 0.00000000, 0.07984213, 0.08782706, 0.10380665, 0.08761603, 0.11300903, 0.11484881,
+        0.07409141, 0.09070251, 0.07984213, 0.00000000, 0.06192174, 0.07707727, 0.06357586, 0.08917676, 0.07707216,
+        0.08844859, 0.09444809, 0.08782706, 0.06192174, 0.00000000, 0.06953889, 0.09301560, 0.09793979, 0.08638375,
+        0.09547665, 0.07018029, 0.10380665, 0.07707727, 0.06953889, 0.00000000, 0.06818106, 0.06573451, 0.07031961,
+        0.08778836, 0.08461891, 0.08761603, 0.06357586, 0.09301560, 0.06818106, 0.00000000, 0.09283697, 0.08232792,
+        0.11475793, 0.10921848, 0.11300903, 0.08917676, 0.09793979, 0.06573451, 0.09283697, 0.00000000, 0.08413073,
+        0.10345468, 0.09574240, 0.11484881, 0.07707216, 0.08638375, 0.07031961, 0.08232792, 0.08413073, 0.00000000
+    };
+
+    double output_matrix[81]={0};
+    cailliez(input_matrix, 9, output_matrix, 1e-7, true);
+    for (int i = 0; i < 81; ++i) {
+        ASSERT(fabs(output_matrix[i] - expected_output_matrix[i]) < 1e-7);
+    }
+
+    fprintf(stderr, "[TEST]\tCailliez correction test passed.\n");
+    return;
+}

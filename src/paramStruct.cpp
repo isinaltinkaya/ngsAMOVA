@@ -438,6 +438,7 @@ void test_alleles_t(void) {
     ASSERT(ret == 2);
 
     alleles_destroy(alleles);
+    fprintf(stderr, "[TEST]\tAll alleles_t unit tests passed.\n");
     return;
 }
 

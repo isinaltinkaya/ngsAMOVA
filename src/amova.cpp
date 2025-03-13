@@ -796,8 +796,8 @@ static void amova_print_as_csv(amova_t* amova, metadata_t* metadata, const char*
     kstring_t* kbuf = &outfile->kbuf;
 
     ksprintf(kbuf, "df,Total,%d\n", amova->df_total);
-    ksprintf(kbuf, "SSD,Total,%.17g\n", amova->ssd_total[0]);
-    ksprintf(kbuf, "MSD,Total,%.17g\n", amova->msd_total[0]);
+    ksprintf(kbuf, "SSD,Total,%f\n", amova->ssd_total[0]);
+    ksprintf(kbuf, "MSD,Total,%f\n", amova->msd_total[0]);
 
 
     // among       idx |   within    idx
@@ -812,16 +812,16 @@ static void amova_print_as_csv(amova_t* amova, metadata_t* metadata, const char*
 
     amonglvlidx = 0;
     ksprintf(kbuf, "df,Among_%s_within_Total,%d\n", metadata->levelNames->d[amonglvlidx], amova->df[amonglvlidx]);
-    ksprintf(kbuf, "SSD,Among_%s_within_Total,%.17g\n", metadata->levelNames->d[amonglvlidx], amova->ssd[0][amonglvlidx]);
-    ksprintf(kbuf, "MSD,Among_%s_within_Total,%.17g\n", metadata->levelNames->d[amonglvlidx], amova->msd[0][amonglvlidx]);
+    ksprintf(kbuf, "SSD,Among_%s_within_Total,%f\n", metadata->levelNames->d[amonglvlidx], amova->ssd[0][amonglvlidx]);
+    ksprintf(kbuf, "MSD,Among_%s_within_Total,%f\n", metadata->levelNames->d[amonglvlidx], amova->msd[0][amonglvlidx]);
 
     ++amonglvlidx;
 
     while (amonglvlidx < nLevels) {
 
         ksprintf(kbuf, "df,Among_%s_within_%s,%d\n", metadata->levelNames->d[amonglvlidx], metadata->levelNames->d[amonglvlidx - 1], amova->df[amonglvlidx]);
-        ksprintf(kbuf, "SSD,Among_%s_within_%s,%.17g\n", metadata->levelNames->d[amonglvlidx], metadata->levelNames->d[amonglvlidx - 1], amova->ssd[0][amonglvlidx]);
-        ksprintf(kbuf, "MSD,Among_%s_within_%s,%.17g\n", metadata->levelNames->d[amonglvlidx], metadata->levelNames->d[amonglvlidx - 1], amova->msd[0][amonglvlidx]);
+        ksprintf(kbuf, "SSD,Among_%s_within_%s,%f\n", metadata->levelNames->d[amonglvlidx], metadata->levelNames->d[amonglvlidx - 1], amova->ssd[0][amonglvlidx]);
+        ksprintf(kbuf, "MSD,Among_%s_within_%s,%f\n", metadata->levelNames->d[amonglvlidx], metadata->levelNames->d[amonglvlidx - 1], amova->msd[0][amonglvlidx]);
 
         ++amonglvlidx;
     }
@@ -829,41 +829,41 @@ static void amova_print_as_csv(amova_t* amova, metadata_t* metadata, const char*
     // -> phi_xy (NULL if nLevels < 3)
     for (size_t iti = 1; iti < nLevels - 1;++iti) {
         // only run if nLevels > 2
-        ksprintf(kbuf, "Phi,%s_in_%s,%.17g\n", metadata->levelNames->d[iti], metadata->levelNames->d[iti - 1], amova->phi_xy[0][iti - 1]);
+        ksprintf(kbuf, "Phi,%s_in_%s,%f\n", metadata->levelNames->d[iti], metadata->levelNames->d[iti - 1], amova->phi_xy[0][iti - 1]);
     }
 
     // phi_xt
     for (size_t iti = 0;iti < (size_t)(metadata->nLevels - 1);++iti) {
-        ksprintf(kbuf, "Phi,%s_in_Total,%.17g\n", metadata->levelNames->d[iti], amova->phi_xt[0][iti]);
+        ksprintf(kbuf, "Phi,%s_in_Total,%f\n", metadata->levelNames->d[iti], amova->phi_xt[0][iti]);
     }
 
 
     for (size_t iti = 0;iti < nLevels;++iti) {
         for (size_t itj = iti;itj < nLevels;++itj) {
-            ksprintf(kbuf, "Variance_coefficient,c_%ld_%ld,%.17g\n", iti, itj, amova->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)]);
+            ksprintf(kbuf, "Variance_coefficient,c_%ld_%ld,%f\n", iti, itj, amova->cmat[MATRIX_GET_INDEX_UTID_IJ(iti, itj, nLevels)]);
         }
     }
 
     for (size_t i = 0;i < nLevels;++i) {
-        ksprintf(kbuf, "Variance_component,%s,%.17g\n", metadata->levelNames->d[i], amova->sigmasq[0][i]);
-        ksprintf(kbuf, "Percentage_variance,%s,%.17g\n", metadata->levelNames->d[i], (amova->sigmasq[0][i] / amova->sigmasq_total[0]) * 100.0);
+        ksprintf(kbuf, "Variance_component,%s,%f\n", metadata->levelNames->d[i], amova->sigmasq[0][i]);
+        ksprintf(kbuf, "Percentage_variance,%s,%f\n", metadata->levelNames->d[i], (amova->sigmasq[0][i] / amova->sigmasq_total[0]) * 100.0);
     }
 
     if (amova->sigmasq_adj != NULL && amova->sigmasq_adj[0] != NULL) {
 
         for (size_t i = 0;i < nLevels;++i) {
-            ksprintf(kbuf, "Variance_component_adjusted,%s,%.17g\n", amova->metadata->levelNames->d[i], amova->sigmasq_adj[0][i]);
-            ksprintf(kbuf, "Percentage_variance_adjusted,%s,%.17g\n", amova->metadata->levelNames->d[i], (amova->sigmasq_adj[0][i] / amova->sigmasq_total_adj[0]) * 100.0);
+            ksprintf(kbuf, "Variance_component_adjusted,%s,%f\n", amova->metadata->levelNames->d[i], amova->sigmasq_adj[0][i]);
+            ksprintf(kbuf, "Percentage_variance_adjusted,%s,%f\n", amova->metadata->levelNames->d[i], (amova->sigmasq_adj[0][i] / amova->sigmasq_total_adj[0]) * 100.0);
         }
         // -> phi_xt
         for (size_t iti = 0;iti < (size_t)(amova->metadata->nLevels - 1);++iti) {
-            ksprintf(kbuf, "Phi_adjusted,%s_in_Total,%.17g\n", amova->metadata->levelNames->d[iti], amova->phi_xt_adj[0][iti]);
+            ksprintf(kbuf, "Phi_adjusted,%s_in_Total,%f\n", amova->metadata->levelNames->d[iti], amova->phi_xt_adj[0][iti]);
         }
 
         // -> phi_xy 
         for (size_t iti = 1; iti < nLevels - 1;++iti) {
             // only 0 if nLevels > 2
-            ksprintf(kbuf, "Phi_adjusted,%s_in_%s,%.17g\n", amova->metadata->levelNames->d[iti], amova->metadata->levelNames->d[iti - 1], amova->phi_xy_adj[0][iti - 1]);
+            ksprintf(kbuf, "Phi_adjusted,%s_in_%s,%f\n", amova->metadata->levelNames->d[iti], amova->metadata->levelNames->d[iti - 1], amova->phi_xy_adj[0][iti - 1]);
         }
 
     }
@@ -1179,7 +1179,7 @@ static void amova_get_bootstrap_results(amova_t* amova, metadata_t* metadata, co
     double lowerq = alpha / 2.0; // lower bound quantile
     double upperq = 1.0 - (alpha / 2.0); // upper bound quantile
 
-    LOG("Confidence interval: %.17g%%, alpha: %.17g, q_lower: %.17g, q_upper: %.17g", pctci, alpha, lowerq, upperq);
+    LOG("Confidence interval: %f%%, alpha: %f, q_lower: %f, q_upper: %f", pctci, alpha, lowerq, upperq);
 
     const int nReps = nRuns - 1;
     if (nReps == 1) {
@@ -1190,16 +1190,16 @@ static void amova_get_bootstrap_results(amova_t* amova, metadata_t* metadata, co
     ASSERT(prob > 0.0 && prob < 1.0);
 
     double zscore = M_SQRT2 * erfinv(prob);
-    LOG("Using z-score: %.17g for the specified confidence interval: %.17g%% two sided confidence interval (probability: %.17g, %.17g-th quantile of N(0,1))", zscore, args->bootstrap_pctci, prob, upperq);
+    LOG("Using z-score: %f for the specified confidence interval: %f%% two sided confidence interval (probability: %f, %f-th quantile of N(0,1))", zscore, args->bootstrap_pctci, prob, upperq);
 
     if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_CSV) {
         ksprintf(kbuf_csv, "BlockBootstrap,nReplicates,%d\n", nReps);
-        ksprintf(kbuf_csv, "BlockBootstrap,Percentage_Confidence_Interval,%.17g\n", pctci);
+        ksprintf(kbuf_csv, "BlockBootstrap,Percentage_Confidence_Interval,%f\n", pctci);
     }
     if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_TABLE) {
         ksprintf(kbuf_table, "-- Block bootstrapping:\n");
         ksprintf(kbuf_table, "Number of replicates: %d\n", nReps);
-        ksprintf(kbuf_table, "Confidence interval: %.17g%%\n", pctci);
+        ksprintf(kbuf_table, "Confidence interval: %f%%\n", pctci);
         ksprintf(kbuf_table, "\n");
     }
 
@@ -1259,19 +1259,19 @@ static void amova_get_bootstrap_results(amova_t* amova, metadata_t* metadata, co
             ci_upper = mean + margin_of_error;
 
             if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_CSV) {
-                ksprintf(kbuf_csv, "BlockBootstrap_Phi_Mean%s,%s_in_Total,%.17g\n", bufcsv, metadata->levelNames->d[i], mean);
-                ksprintf(kbuf_csv, "BlockBootstrap_Phi_SD%s,%s_in_Total,%.17g\n", bufcsv, metadata->levelNames->d[i], sd);
+                ksprintf(kbuf_csv, "BlockBootstrap_Phi_Mean%s,%s_in_Total,%f\n", bufcsv, metadata->levelNames->d[i], mean);
+                ksprintf(kbuf_csv, "BlockBootstrap_Phi_SD%s,%s_in_Total,%f\n", bufcsv, metadata->levelNames->d[i], sd);
 
-                ksprintf(kbuf_csv, "BlockBootstrap_Phi_NormalApproxMethod_LowerCI%s,%s_in_Total,%.17g\n", bufcsv, metadata->levelNames->d[i], ci_lower);
-                ksprintf(kbuf_csv, "BlockBootstrap_Phi_NormalApproxMethod_UpperCI%s,%s_in_Total,%.17g\n", bufcsv, metadata->levelNames->d[i], ci_upper);
+                ksprintf(kbuf_csv, "BlockBootstrap_Phi_NormalApproxMethod_LowerCI%s,%s_in_Total,%f\n", bufcsv, metadata->levelNames->d[i], ci_lower);
+                ksprintf(kbuf_csv, "BlockBootstrap_Phi_NormalApproxMethod_UpperCI%s,%s_in_Total,%f\n", bufcsv, metadata->levelNames->d[i], ci_upper);
             }
 
             if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_TABLE) {
-                ksprintf(kbuf_table, "Phi(%s in Total) Mean%s: %.17g\n", metadata->levelNames->d[i], buftable, mean);
-                ksprintf(kbuf_table, "Phi(%s in Total) Standard Deviation%s: %.17g\n", metadata->levelNames->d[i], buftable, sd);
+                ksprintf(kbuf_table, "Phi(%s in Total) Mean%s: %f\n", metadata->levelNames->d[i], buftable, mean);
+                ksprintf(kbuf_table, "Phi(%s in Total) Standard Deviation%s: %f\n", metadata->levelNames->d[i], buftable, sd);
 
-                ksprintf(kbuf_table, "Phi(%s in Total) <Normal Approximation Method> Lower CI%s: %.17g\n", metadata->levelNames->d[i], buftable, ci_lower);
-                ksprintf(kbuf_table, "Phi(%s in Total) <Normal Approximation Method> Upper CI%s: %.17g\n", metadata->levelNames->d[i], buftable, ci_upper);
+                ksprintf(kbuf_table, "Phi(%s in Total) <Normal Approximation Method> Lower CI%s: %f\n", metadata->levelNames->d[i], buftable, ci_lower);
+                ksprintf(kbuf_table, "Phi(%s in Total) <Normal Approximation Method> Upper CI%s: %f\n", metadata->levelNames->d[i], buftable, ci_upper);
             }
 
 
@@ -1281,12 +1281,12 @@ static void amova_get_bootstrap_results(amova_t* amova, metadata_t* metadata, co
             ci_upper = quantile(phistar, nReps, upperq);
 
             if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_CSV) {
-                ksprintf(kbuf_csv, "BlockBootstrap_Phi_PercentileMethod_LowerCI%s,%s_in_Total,%.17g\n", bufcsv, metadata->levelNames->d[i], ci_lower);
-                ksprintf(kbuf_csv, "BlockBootstrap_Phi_PercentileMethod_UpperCI%s,%s_in_Total,%.17g\n", bufcsv, metadata->levelNames->d[i], ci_upper);
+                ksprintf(kbuf_csv, "BlockBootstrap_Phi_PercentileMethod_LowerCI%s,%s_in_Total,%f\n", bufcsv, metadata->levelNames->d[i], ci_lower);
+                ksprintf(kbuf_csv, "BlockBootstrap_Phi_PercentileMethod_UpperCI%s,%s_in_Total,%f\n", bufcsv, metadata->levelNames->d[i], ci_upper);
             }
             if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_TABLE) {
-                ksprintf(kbuf_table, "Phi(%s in Total) <Percentile Method> Lower CI%s: %.17g\n", metadata->levelNames->d[i], buftable, ci_lower);
-                ksprintf(kbuf_table, "Phi(%s in Total) <Percentile Method> Upper CI%s: %.17g\n", metadata->levelNames->d[i], buftable, ci_upper);
+                ksprintf(kbuf_table, "Phi(%s in Total) <Percentile Method> Lower CI%s: %f\n", metadata->levelNames->d[i], buftable, ci_lower);
+                ksprintf(kbuf_table, "Phi(%s in Total) <Percentile Method> Upper CI%s: %f\n", metadata->levelNames->d[i], buftable, ci_upper);
             }
 
             // ->> (3) using bootstrap basic method (a.k.a. reverse percentile method)
@@ -1302,13 +1302,13 @@ static void amova_get_bootstrap_results(amova_t* amova, metadata_t* metadata, co
             basicci2 = o_phi - ci_upper;
 
             if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_CSV) {
-                ksprintf(kbuf_csv, "BlockBootstrap_Phi_BasicMethod_LowerCI%s,%s_in_Total,%.17g\n", bufcsv, metadata->levelNames->d[i], basicci1);
-                ksprintf(kbuf_csv, "BlockBootstrap_Phi_BasicMethod_UpperCI%s,%s_in_Total,%.17g\n", bufcsv, metadata->levelNames->d[i], basicci2);
+                ksprintf(kbuf_csv, "BlockBootstrap_Phi_BasicMethod_LowerCI%s,%s_in_Total,%f\n", bufcsv, metadata->levelNames->d[i], basicci1);
+                ksprintf(kbuf_csv, "BlockBootstrap_Phi_BasicMethod_UpperCI%s,%s_in_Total,%f\n", bufcsv, metadata->levelNames->d[i], basicci2);
             }
 
             if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_TABLE) {
-                ksprintf(kbuf_table, "Phi(%s in Total) <Basic Method> Lower CI%s: %.17g\n", metadata->levelNames->d[i], buftable, basicci1);
-                ksprintf(kbuf_table, "Phi(%s in Total) <Basic Method> Upper CI%s: %.17g\n", metadata->levelNames->d[i], buftable, basicci2);
+                ksprintf(kbuf_table, "Phi(%s in Total) <Basic Method> Lower CI%s: %f\n", metadata->levelNames->d[i], buftable, basicci1);
+                ksprintf(kbuf_table, "Phi(%s in Total) <Basic Method> Upper CI%s: %f\n", metadata->levelNames->d[i], buftable, basicci2);
             }
         }
 
@@ -1344,19 +1344,19 @@ static void amova_get_bootstrap_results(amova_t* amova, metadata_t* metadata, co
                 ci_upper = mean + margin_of_error;
 
                 if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_CSV) {
-                    ksprintf(kbuf_csv, "BlockBootstrap_Phi_Mean%s,%s_in_%s,%.17g\n", bufcsv, metadata->levelNames->d[i + 1], metadata->levelNames->d[i], mean);
-                    ksprintf(kbuf_csv, "BlockBootstrap_Phi_SD%s,%s_in_%s,%.17g\n", bufcsv, metadata->levelNames->d[i + 1], metadata->levelNames->d[i], sd);
+                    ksprintf(kbuf_csv, "BlockBootstrap_Phi_Mean%s,%s_in_%s,%f\n", bufcsv, metadata->levelNames->d[i + 1], metadata->levelNames->d[i], mean);
+                    ksprintf(kbuf_csv, "BlockBootstrap_Phi_SD%s,%s_in_%s,%f\n", bufcsv, metadata->levelNames->d[i + 1], metadata->levelNames->d[i], sd);
 
-                    ksprintf(kbuf_csv, "BlockBootstrap_Phi_NormalApproxMethod_LowerCI%s,%s_in_%s,%.17g\n", bufcsv, metadata->levelNames->d[i + 1], metadata->levelNames->d[i], ci_lower);
-                    ksprintf(kbuf_csv, "BlockBootstrap_Phi_NormalApproxMethod_UpperCI%s,%s_in_%s,%.17g\n", bufcsv, metadata->levelNames->d[i + 1], metadata->levelNames->d[i], ci_upper);
+                    ksprintf(kbuf_csv, "BlockBootstrap_Phi_NormalApproxMethod_LowerCI%s,%s_in_%s,%f\n", bufcsv, metadata->levelNames->d[i + 1], metadata->levelNames->d[i], ci_lower);
+                    ksprintf(kbuf_csv, "BlockBootstrap_Phi_NormalApproxMethod_UpperCI%s,%s_in_%s,%f\n", bufcsv, metadata->levelNames->d[i + 1], metadata->levelNames->d[i], ci_upper);
                 }
 
                 if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_TABLE) {
-                    ksprintf(kbuf_table, "Phi(%s in %s) Mean%s: %.17g\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], buftable, mean);
-                    ksprintf(kbuf_table, "Phi(%s in %s) Standard Deviation%s: %.17g\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], buftable, sd);
+                    ksprintf(kbuf_table, "Phi(%s in %s) Mean%s: %f\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], buftable, mean);
+                    ksprintf(kbuf_table, "Phi(%s in %s) Standard Deviation%s: %f\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], buftable, sd);
 
-                    ksprintf(kbuf_table, "Phi(%s in %s) <Normal Approximation Method> Lower CI%s: %.17g\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], buftable, ci_lower);
-                    ksprintf(kbuf_table, "Phi(%s in %s) <Normal Approximation Method> Upper CI%s: %.17g\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], buftable, ci_upper);
+                    ksprintf(kbuf_table, "Phi(%s in %s) <Normal Approximation Method> Lower CI%s: %f\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], buftable, ci_lower);
+                    ksprintf(kbuf_table, "Phi(%s in %s) <Normal Approximation Method> Upper CI%s: %f\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], buftable, ci_upper);
                 }
 
                 // ->> (2) using bootstrap percentile method
@@ -1365,13 +1365,13 @@ static void amova_get_bootstrap_results(amova_t* amova, metadata_t* metadata, co
                 ci_upper = quantile(phistar, nReps, upperq);
 
                 if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_CSV) {
-                    ksprintf(kbuf_csv, "BlockBootstrap_Phi_PercentileMethod_LowerCI%s,%s_in_%s,%.17g\n", bufcsv, metadata->levelNames->d[i + 1], metadata->levelNames->d[i], ci_lower);
-                    ksprintf(kbuf_csv, "BlockBootstrap_Phi_PercentileMethod_UpperCI%s,%s_in_%s,%.17g\n", bufcsv, metadata->levelNames->d[i + 1], metadata->levelNames->d[i], ci_upper);
+                    ksprintf(kbuf_csv, "BlockBootstrap_Phi_PercentileMethod_LowerCI%s,%s_in_%s,%f\n", bufcsv, metadata->levelNames->d[i + 1], metadata->levelNames->d[i], ci_lower);
+                    ksprintf(kbuf_csv, "BlockBootstrap_Phi_PercentileMethod_UpperCI%s,%s_in_%s,%f\n", bufcsv, metadata->levelNames->d[i + 1], metadata->levelNames->d[i], ci_upper);
                 }
 
                 if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_TABLE) {
-                    ksprintf(kbuf_table, "Phi(%s in %s) <Percentile Method> Lower CI%s: %.17g\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], buftable, ci_lower);
-                    ksprintf(kbuf_table, "Phi(%s in %s) <Percentile Method> Upper CI%s: %.17g\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], buftable, ci_upper);
+                    ksprintf(kbuf_table, "Phi(%s in %s) <Percentile Method> Lower CI%s: %f\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], buftable, ci_lower);
+                    ksprintf(kbuf_table, "Phi(%s in %s) <Percentile Method> Upper CI%s: %f\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], buftable, ci_upper);
                 }
 
                 // ->> (3) using bootstrap basic method (a.k.a. reverse percentile method)
@@ -1387,13 +1387,13 @@ static void amova_get_bootstrap_results(amova_t* amova, metadata_t* metadata, co
                 basicci2 = o_phi - ci_upper;
 
                 if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_CSV) {
-                    ksprintf(kbuf_csv, "BlockBootstrap_Phi_BasicMethod_LowerCI%s,%s_in_%s,%.17g\n", bufcsv, metadata->levelNames->d[i + 1], metadata->levelNames->d[i], basicci1);
-                    ksprintf(kbuf_csv, "BlockBootstrap_Phi_BasicMethod_UpperCI%s,%s_in_%s,%.17g\n", bufcsv, metadata->levelNames->d[i + 1], metadata->levelNames->d[i], basicci2);
+                    ksprintf(kbuf_csv, "BlockBootstrap_Phi_BasicMethod_LowerCI%s,%s_in_%s,%f\n", bufcsv, metadata->levelNames->d[i + 1], metadata->levelNames->d[i], basicci1);
+                    ksprintf(kbuf_csv, "BlockBootstrap_Phi_BasicMethod_UpperCI%s,%s_in_%s,%f\n", bufcsv, metadata->levelNames->d[i + 1], metadata->levelNames->d[i], basicci2);
                 }
 
                 if (args->print_amova & ARG_INTPLUS_PRINT_AMOVA_TABLE) {
-                    ksprintf(kbuf_table, "Phi(%s in %s) <Basic Method> Lower CI%s: %.17g\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], buftable, basicci1);
-                    ksprintf(kbuf_table, "Phi(%s in %s) <Basic Method> Upper CI%s: %.17g\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], buftable, basicci2);
+                    ksprintf(kbuf_table, "Phi(%s in %s) <Basic Method> Lower CI%s: %f\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], buftable, basicci1);
+                    ksprintf(kbuf_table, "Phi(%s in %s) <Basic Method> Upper CI%s: %f\n", metadata->levelNames->d[i + 1], metadata->levelNames->d[i], buftable, basicci2);
                 }
 
 

@@ -31,6 +31,8 @@
 /// @return void
 void cailliez(double* distmat, const size_t n_elems, double* corrected, const double tole, const bool cor_zero);
 
+void test_cailliez(void);
+
 /// @brief matrix_is_euclidean - check if a matrix is Euclidean
 /// @param m    - pointer to the matrix
 /// @param n    - number of elements in the matrix

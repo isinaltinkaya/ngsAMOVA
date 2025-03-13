@@ -140,7 +140,6 @@ metadata_t* metadata_read(paramStruct* pars) {
     while (hdrtok != NULL) {
 
         if (hdr_colidx + 1 > n_mtd) {
-            DEVPRINT("Realloc mtdcol2lvlidx to size %ld from %ld", hdr_colidx + 1, n_mtd);
             mtdcol2lvlidx = (int*)realloc(mtdcol2lvlidx, (hdr_colidx + 1) * sizeof(int));
             ASSERT(mtdcol2lvlidx != NULL);
             for (size_t i = n_mtd;i < hdr_colidx + 1;++i) {
@@ -234,7 +233,6 @@ metadata_t* metadata_read(paramStruct* pars) {
 
         while (('\n' != full_line[full_line_len - 1]) && (!missing_newline)) {
             // line was not fully read
-            // DEVPRINT("Line was not fully read, increasing buffer size from %ld to %ld\n", buf_size, buf_size * 2);
             buf_size *= 2;
             REALLOC(char*, full_line, buf_size);
 

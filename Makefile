@@ -281,7 +281,9 @@ DEP := $(OBJ:.o=.d)
 ifeq ($(filter $(NO_COMPILE),$(MAKECMDGOALS))$(findstring test,$(MAKECMDGOALS)),) #1
 CXXFLAGS ?=
 $(info [INFO]    -> CXXFLAGS was "$(CXXFLAGS)")
+ifneq "$(LAPACK_TRY)" "0" 
 CXXFLAGS += -DEIGEN_EXTERN_INSTANTIATIONS -DEIGEN_NO_DEBUG -fno-exceptions
+endif
 $(info [INFO]    -> Updated CXXFLAGS to "$(CXXFLAGS)")
 
 FLAGS = -Ibuild $(CXXFLAGS) $(CPPFLAGS) -Iinclude 
