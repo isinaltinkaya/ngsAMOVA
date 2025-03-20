@@ -21,14 +21,9 @@ SHELL := /bin/bash
 # No-compile targets
 NO_COMPILE = help clean test 
 
-VAL_ADD_LAPACKLIB = -llapack
-
-VAL_ADD_CRYPTOLIB = -lcrypto
-
-
 ####################################################################################################
 # [BLOCK START]
-# ony run if make will try compiling, i.e. not NO_COMPILE
+# ony run if make will try compiling, i.e. not NO_COMPILE and not test%
 
 DEVH = build/dev.h
 
@@ -41,12 +36,13 @@ $(info )
 
 ## ----------------- [LAPACK LIBRARY] ----------------- ##
 ## -> [lapack availability check]
-LAPACK_TRY = $(shell echo 'int main(){}'|$(CXX) -x c++ - -llapack 2>/dev/null -o /dev/null; echo $$?)
+#LAPACK_TRY = $(shell echo 'int main(){}'|$(CXX) -x c++ - -llapacke -llapack -lblas 2>/dev/null -o /dev/null; echo $$?)
+LAPACK_TRY = $(shell echo -e '#include <lapacke.h>\nint main(){}'|$(CXX) -x c++ - -llapacke -llapack -lblas 2>/dev/null -o /dev/null; echo $$?)
 
 ifeq "$(LAPACK_TRY)" "0" #1_0
 
 $(info $(PRINTF_GREEN)[INFO]    -> LAPACK library is available to link$(PRINTF_NORMAL))
-THIS_LAPACKLIB = $(VAL_ADD_LAPACKLIB)
+THIS_LAPACKLIB = -llapacke -llapack -lblas
 
 # if LAPACK_TRY != 0
 else  #1_0
@@ -64,7 +60,7 @@ CRYPTO_TRY = $(shell echo 'int main(){}'|$(CXX) -x c++ - -lcrypto 2>/dev/null -o
 ifeq "$(CRYPTO_TRY)" "0" #1_1
 
 $(info $(PRINTF_GREEN)[INFO]    -> Crypto library is available to link$(PRINTF_NORMAL))
-THIS_CRYPTOLIB = $(VAL_ADD_CRYPTOLIB)
+THIS_CRYPTOLIB = -lcrypto
 
 # if CRYPTO_TRY != 0
 else  #1_1
@@ -84,7 +80,7 @@ ifdef HTSSRC #1_2
 ifeq ($(HTSSRC),systemwide) #1_2_1
 
 $(info [INFO]    -> HTSSRC set to systemwide; assuming systemwide installation)
-HTS_TRY = $(shell echo 'int main(){}'|$(CXX) -x c++ - -lhts 2>/dev/null -o /dev/null; echo $$?)
+HTS_TRY = $(shell echo -e '#include <htslib/hts.h>\nint main(){}'|$(CXX) -x c++ - -lhts 2>/dev/null -o /dev/null; echo $$?)
 
 ifeq "$(HTS_TRY)" "0" #1_2_1_0
 

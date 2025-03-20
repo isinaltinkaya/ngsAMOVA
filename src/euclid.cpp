@@ -363,29 +363,15 @@ void cailliez(double* distmat, const size_t n_elems, double* corrected, const do
         }
     }
 
-    // Compute eigenvalues using LAPACK's dgeev (with Fortran character length args)
     char jobvl = 'N', jobvr = 'N';
     ASSERT(m_size <= INT32_MAX);
     lapack_int n = (lapack_int)m_size, lda = (lapack_int)m_size, info;
-    double* wr = (double*)malloc(n * sizeof(double));
-    double* wi = (double*)malloc(n * sizeof(double));
+    double* wr = (double*)malloc(n * sizeof(double)); // real part of eigenvalues
+    double* wi = (double*)malloc(n * sizeof(double)); // imaginary part of eigenvalues
 
-    // Workspace query with Fortran-style string length arguments (1 for each 'N')
-    double work_query;
-    lapack_int lwork = -1;
-    dgeev_(&jobvl, &jobvr, &n, M1, &lda, wr, wi,
-        NULL, &lda, NULL, &lda,
-        &work_query, &lwork, &info,
-        1, 1);  // Add string length args for jobvl/jobvr
-
-    lwork = (lapack_int)work_query;
-    double* work = (double*)malloc(lwork * sizeof(double));
-
-    // Actual eigenvalue computation with length args
-    dgeev_(&jobvl, &jobvr, &n, M1, &lda, wr, wi,
-        NULL, &lda, NULL, &lda,
-        work, &lwork, &info,
-        1, 1);  // String length args for jobvl/jobvr
+    // compute eigenvalues
+    info = LAPACKE_dgeev(LAPACK_COL_MAJOR, jobvl, jobvr, n, M1, lda, wr, wi, NULL, 1, NULL, 1);
+    ASSERT(0==info);
 
     // Find maximum real eigenvalue with |Im| < tole
     double c = -INFINITY;
@@ -412,7 +398,6 @@ void cailliez(double* distmat, const size_t n_elems, double* corrected, const do
     FREE(M1);
     FREE(wr);
     FREE(wi);
-    FREE(work);
     return;
 }
 
