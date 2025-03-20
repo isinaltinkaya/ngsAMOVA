@@ -232,7 +232,7 @@ endif #1
 ####################################################################################################
 
 
-VERSION = v0.6
+VERSION = v0.6.1
 
 ifneq ($(wildcard .git),)
 $(info [INFO]    -> Building from git repository, using git to determine version)
