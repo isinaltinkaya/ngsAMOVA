@@ -136,6 +136,35 @@ check_exit_code(){
 
 }
 
+compare_amova_csv() {
+
+	local id=${1}
+    local file1="${2}"
+    local file2="${3}"
+
+	local cmd="awk -f tests/compare_amova_csv.awk ${file1} ${file2}"
+
+	printf "# -> Running AMOVA CSV comparison for ${id}${nl}"
+	printf "${YELLOW}"
+	printf "# Command:${nl}${cmd}${nl}"
+	printf "${NOCOLOR}"
+
+	eval ${cmd}
+
+	if [ $? -eq 0 ]; then
+		printf "${GREEN}"
+		printf "# ${id} -> AMOVA CSV comparison: OK${nl}"
+		printf "${NOCOLOR}"
+		printf "${nl}${nl}"
+	else
+		printf "${RED}"
+		printf "# ${id} -> AMOVA CSV comparison: FAILED${nl}"
+		printf "${NOCOLOR}"
+		printf "${nl}${nl}"
+		exit 1
+	fi
+}
+
 diff_test_out_ref(){
 	local id=${1}
 	local outFile=${2}
@@ -285,7 +314,7 @@ test1(){
 	eval ${cmd}
 	local exitCode=$?
 	check_exit_code ${id} ${exitCode}
-	diff_test_out_ref ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
+	compare_amova_csv ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
 	diff_test_out_ref ${id} ${TESTWD}/${id}.distance_matrix.txt ${REFDIR}/${id}.distance_matrix.txt
 }
 
@@ -310,7 +339,7 @@ test2(){
 	eval ${cmd}
 	local exitCode=$?
 	check_exit_code ${id} ${exitCode}
-	diff_test_out_ref ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
+	compare_amova_csv ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
 }
 
 
@@ -340,7 +369,7 @@ test3(){
 	eval ${cmd}
 	local exitCode=$?
 	check_exit_code ${id} ${exitCode}
-	diff_test_out_ref ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
+	compare_amova_csv ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
 }
 
 ################################################################################
@@ -363,7 +392,7 @@ test4(){
 	eval ${cmd}
 	local exitCode=$?
 	check_exit_code ${id} ${exitCode}
-	diff_test_out_ref ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/test2.amova.csv
+	compare_amova_csv ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/test2.amova.csv
 }
 
 ################################################################################
@@ -418,7 +447,7 @@ test6(){
 	eval ${cmd}
 	local exitCode=$?
 	check_exit_code ${id} ${exitCode}
-	diff_test_out_ref ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
+	compare_amova_csv ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
 }
 
 ################################################################################
@@ -448,7 +477,7 @@ test7(){
 	eval ${cmd}
 	local exitCode=$?
 	check_exit_code ${id} ${exitCode}
-	diff_test_out_ref ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
+	compare_amova_csv ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
 }
 
 
@@ -504,7 +533,7 @@ test9(){
 	eval ${cmd}
 	local exitCode=$?
 	check_exit_code ${id} ${exitCode}
-	diff_test_out_ref ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
+	compare_amova_csv ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
 }
 
 ################################################################################
@@ -535,7 +564,7 @@ test10(){
 	eval ${cmd}
 	local exitCode=$?
 	check_exit_code ${id} ${exitCode}
-	diff_test_out_ref ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
+	compare_amova_csv ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
 	diff_test_out_ref ${id} ${TESTWD}/${id}.distance_matrix.txt ${REFDIR}/${id}.distance_matrix.txt
 }
 
@@ -567,7 +596,7 @@ test11(){
 	eval ${cmd}
 	local exitCode=$?
 	check_exit_code ${id} ${exitCode}
-	diff_test_out_ref ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
+	compare_amova_csv ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
 }
 
 
@@ -599,7 +628,7 @@ test12(){
 	eval ${cmd}
 	local exitCode=$?
 	check_exit_code ${id} ${exitCode}
-	diff_test_out_ref ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
+	compare_amova_csv ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
 }
 
 
@@ -631,7 +660,7 @@ test13(){
 	eval ${cmd}
 	local exitCode=$?
 	check_exit_code ${id} ${exitCode}
-	diff_test_out_ref ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
+	compare_amova_csv ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
 }
 
 
@@ -663,7 +692,7 @@ test14(){
 	eval ${cmd}
 	local exitCode=$?
 	check_exit_code ${id} ${exitCode}
-	diff_test_out_ref ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
+	compare_amova_csv ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
 }
 
 
@@ -696,7 +725,7 @@ test15(){
 	eval ${cmd}
 	local exitCode=$?
 	check_exit_code ${id} ${exitCode}
-	diff_test_out_ref ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
+	compare_amova_csv ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
 }
 
 ################################################################################
@@ -726,7 +755,7 @@ test16(){
 	eval ${cmd}
 	local exitCode=$?
 	check_exit_code ${id} ${exitCode}
-	diff_test_out_ref ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
+	compare_amova_csv ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
 }
 
 ################################################################################
@@ -760,7 +789,7 @@ test17(){
 	eval ${cmd}
 	local exitCode=$?
 	check_exit_code ${id} ${exitCode}
-	diff_test_out_ref ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
+	compare_amova_csv ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
 }
 
 
@@ -1049,7 +1078,7 @@ test27(){
 	eval ${cmd}
 	local exitCode=$?
 	check_exit_code ${id} ${exitCode}
-	diff_test_out_ref ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
+	compare_amova_csv ${id} ${TESTWD}/${id}.amova.csv ${REFDIR}/${id}.amova.csv
 	diff_test_out_ref ${id} ${TESTWD}/${id}.distance_matrix.txt ${REFDIR}/${id}.distance_matrix.txt
 }
 
