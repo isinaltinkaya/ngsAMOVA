@@ -254,13 +254,11 @@ static void bblocks_generate_blocks_with_size(bblocks_t* bblocks, vcfData* vcfd,
         bblocks->block_start_siteidx[i] = 0;
     }
 
-#if DEV==1
-    printf("Generated %ld blocks", totnBlocks);
+    // printf("Generated %ld blocks", totnBlocks);
     //print each block
-    for (size_t i = 0;i < totnBlocks;++i) {
-        printf("Block %ld: %s:%ld-%ld", i, bblocks->contig_names->d[bblocks->block_contig[i]], bblocks->block_start_pos[i], bblocks->block_end_pos[i]);
-    }
-#endif
+    // for (size_t i = 0;i < totnBlocks;++i) {
+        // printf("Block %ld: %s:%ld-%ld", i, bblocks->contig_names->d[bblocks->block_contig[i]], bblocks->block_start_pos[i], bblocks->block_end_pos[i]);
+    // }
 
     // reset the iteration for vcf record so that it can be used again
     bcf_destroy(vcfd_rec);

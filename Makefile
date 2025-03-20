@@ -16,6 +16,7 @@ PRINTF_NORMAL := $(shell command -v tput > /dev/null && tput sgr0 || echo "")
 # Compiler specs
 CXX ?= g++
 
+SHELL := /bin/bash
 
 # No-compile targets
 NO_COMPILE = help clean test 
